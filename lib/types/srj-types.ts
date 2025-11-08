@@ -19,6 +19,7 @@ export interface Obstacle {
   height: number
   connectedTo: TraceId[]
   netIsAssignable?: boolean
+  offBoardConnectsTo?: TraceId[]
 }
 
 export interface SimpleRouteConnection {

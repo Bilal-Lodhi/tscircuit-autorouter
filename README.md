@@ -68,6 +68,7 @@ interface Obstacle {
   width: number
   height: number
   connectedTo: string[] // TraceIds
+  offBoardConnectsTo?: string[] // TraceIds connected off-board
 }
 
 interface SimpleRouteConnection {
