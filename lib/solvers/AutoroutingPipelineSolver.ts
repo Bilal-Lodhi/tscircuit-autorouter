@@ -38,6 +38,8 @@ import { MinimalMergeCollisionSolver } from "./MinimalMergeCollisionSolver/Minim
 import { CapacityNodeTargetMerger2 } from "./CapacityNodeTargetMerger/CapacityNodeTargetMerger2"
 import { SingleSimplifiedPathSolver } from "./SimplifiedPathSolver/SingleSimplifiedPathSolver"
 import { MultiSimplifiedPathSolver } from "./SimplifiedPathSolver/MultiSimplifiedPathSolver"
+import { StrawSolver } from "./StrawSolver/StrawSolver"
+import { SingleLayerNodeMergerSolver } from "./SingleLayerNodeMerger/SingleLayerNodeMergerSolver"
 import {
   HighDensityIntraNodeRoute,
   HighDensityRoute,
@@ -102,6 +104,8 @@ export class AutoroutingPipelineSolver extends BaseSolver {
   highDensityRouteSolver?: HighDensitySolver
   highDensityStitchSolver?: MultipleHighDensityRouteStitchSolver
   minimalMergeCollisionSolver?: MinimalMergeCollisionSolver
+  singleLayerNodeMerger?: SingleLayerNodeMergerSolver
+  strawSolver?: StrawSolver
   deadEndSolver?: DeadEndSolver
   uselessViaRemovalSolver1?: UselessViaRemovalSolver
   uselessViaRemovalSolver2?: UselessViaRemovalSolver
@@ -168,6 +172,26 @@ export class AutoroutingPipelineSolver extends BaseSolver {
       {
         onSolved: (cms) => {
           cms.capacityNodes = cms.minimalMergeCollisionSolver?.newNodes!
+        },
+      },
+    ),
+    definePipelineStep(
+      "singleLayerNodeMerger",
+      SingleLayerNodeMergerSolver,
+      (cms) => [cms.capacityNodes!],
+      {
+        onSolved: (cms) => {
+          cms.capacityNodes = cms.singleLayerNodeMerger?.newNodes!
+        },
+      },
+    ),
+    definePipelineStep(
+      "strawSolver",
+      StrawSolver,
+      (cms) => [{ nodes: cms.capacityNodes! }],
+      {
+        onSolved: (cms) => {
+          cms.capacityNodes = cms.strawSolver?.getResultNodes()!
         },
       },
     ),
@@ -451,6 +475,8 @@ export class AutoroutingPipelineSolver extends BaseSolver {
     const nodeTargetMergerViz = this.nodeTargetMerger?.visualize()
     const minimalMergeCollisionViz =
       this.minimalMergeCollisionSolver?.visualize()
+    const singleLayerMergeViz = this.singleLayerNodeMerger?.visualize()
+    const strawViz = this.strawSolver?.visualize()
     const edgeViz = this.edgeSolver?.visualize()
     const deadEndViz = this.deadEndSolver?.visualize()
     const initialPathingViz = this.initialPathingSolver?.visualize()
@@ -533,6 +559,8 @@ export class AutoroutingPipelineSolver extends BaseSolver {
       nodeViz,
       nodeTargetMergerViz,
       minimalMergeCollisionViz,
+      singleLayerMergeViz,
+      strawViz,
       edgeViz,
       deadEndViz,
       initialPathingViz,

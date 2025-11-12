@@ -27,12 +27,9 @@ export class MinimalMergeCollisionSolver extends BaseSolver {
     const explicitCollisionFlag = COLLISION_FLAGS.some(
       (flag) => (node as any)[flag],
     )
-    const overlapsObstacle = Boolean(
-      node._containsObstacle || node._completelyInsideObstacle,
-    )
     const hasTarget = Boolean(node._containsTarget)
 
-    return (explicitCollisionFlag || overlapsObstacle) && !hasTarget
+    return explicitCollisionFlag && !hasTarget
   }
 
   private generateNodeId(): string {
