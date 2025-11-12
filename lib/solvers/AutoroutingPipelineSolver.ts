@@ -34,8 +34,7 @@ import { MultipleHighDensityRouteStitchSolver } from "./RouteStitchingSolver/Mul
 import { convertSrjToGraphicsObject } from "lib/utils/convertSrjToGraphicsObject"
 import { UnravelMultiSectionSolver } from "./UnravelSolver/UnravelMultiSectionSolver"
 import { CapacityPathingMultiSectionSolver } from "./CapacityPathingSectionSolver/CapacityPathingMultiSectionSolver" // Added import
-import { StrawSolver } from "./StrawSolver/StrawSolver"
-import { SingleLayerNodeMergerSolver } from "./SingleLayerNodeMerger/SingleLayerNodeMergerSolver"
+import { MinimalMergeCollisionSolver } from "./MinimalMergeCollisionSolver/MinimalMergeCollisionSolver"
 import { CapacityNodeTargetMerger2 } from "./CapacityNodeTargetMerger/CapacityNodeTargetMerger2"
 import { SingleSimplifiedPathSolver } from "./SimplifiedPathSolver/SingleSimplifiedPathSolver"
 import { MultiSimplifiedPathSolver } from "./SimplifiedPathSolver/MultiSimplifiedPathSolver"
@@ -102,8 +101,7 @@ export class AutoroutingPipelineSolver extends BaseSolver {
   segmentToPointOptimizer?: CapacitySegmentPointOptimizer
   highDensityRouteSolver?: HighDensitySolver
   highDensityStitchSolver?: MultipleHighDensityRouteStitchSolver
-  singleLayerNodeMerger?: SingleLayerNodeMergerSolver
-  strawSolver?: StrawSolver
+  minimalMergeCollisionSolver?: MinimalMergeCollisionSolver
   deadEndSolver?: DeadEndSolver
   uselessViaRemovalSolver1?: UselessViaRemovalSolver
   uselessViaRemovalSolver2?: UselessViaRemovalSolver
@@ -164,22 +162,12 @@ export class AutoroutingPipelineSolver extends BaseSolver {
     //   cms.srj.connections,
     // ]),
     definePipelineStep(
-      "singleLayerNodeMerger",
-      SingleLayerNodeMergerSolver,
-      (cms) => [cms.nodeSolver?.finishedNodes!],
+      "minimalMergeCollisionSolver",
+      MinimalMergeCollisionSolver,
+      (cms) => [{ nodes: cms.nodeSolver?.finishedNodes! }],
       {
         onSolved: (cms) => {
-          cms.capacityNodes = cms.singleLayerNodeMerger?.newNodes!
-        },
-      },
-    ),
-    definePipelineStep(
-      "strawSolver",
-      StrawSolver,
-      (cms) => [{ nodes: cms.singleLayerNodeMerger?.newNodes! }],
-      {
-        onSolved: (cms) => {
-          cms.capacityNodes = cms.strawSolver?.getResultNodes()!
+          cms.capacityNodes = cms.minimalMergeCollisionSolver?.newNodes!
         },
       },
     ),
@@ -461,8 +449,8 @@ export class AutoroutingPipelineSolver extends BaseSolver {
     const netToPPSolver = this.netToPointPairsSolver?.visualize()
     const nodeViz = this.nodeSolver?.visualize()
     const nodeTargetMergerViz = this.nodeTargetMerger?.visualize()
-    const singleLayerNodeMergerViz = this.singleLayerNodeMerger?.visualize()
-    const strawSolverViz = this.strawSolver?.visualize()
+    const minimalMergeCollisionViz =
+      this.minimalMergeCollisionSolver?.visualize()
     const edgeViz = this.edgeSolver?.visualize()
     const deadEndViz = this.deadEndSolver?.visualize()
     const initialPathingViz = this.initialPathingSolver?.visualize()
@@ -544,8 +532,7 @@ export class AutoroutingPipelineSolver extends BaseSolver {
       netToPPSolver,
       nodeViz,
       nodeTargetMergerViz,
-      singleLayerNodeMergerViz,
-      strawSolverViz,
+      minimalMergeCollisionViz,
       edgeViz,
       deadEndViz,
       initialPathingViz,
