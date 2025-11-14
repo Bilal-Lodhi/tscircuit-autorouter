@@ -60,7 +60,7 @@ export class SingleTransitionCrossingRouteSolver extends BaseSolver {
     super()
 
     this.nodeWithPortPoints = params.nodeWithPortPoints
-    this.viaDiameter = params?.viaDiameter ?? 0.6
+    this.viaDiameter = params?.viaDiameter ?? 0.3
     this.traceThickness = params?.traceThickness ?? 0.15
     this.obstacleMargin = params?.obstacleMargin ?? 0.1
     this.layerCount = params?.layerCount ?? 2

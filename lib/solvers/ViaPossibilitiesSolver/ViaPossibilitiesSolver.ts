@@ -754,7 +754,7 @@ export class ViaPossibilitiesSolver extends BaseSolver {
           const color = colorMap[connectionName] ?? "black"
           graphics.circles!.push({
             center: face.centroid,
-            radius: 0.25,
+            radius: 0.15,
             fill: safeTransparentize(color, 0.5), // Make via fill 50% transparent
             stroke: "white",
             label: `Via: ${connectionName}`,

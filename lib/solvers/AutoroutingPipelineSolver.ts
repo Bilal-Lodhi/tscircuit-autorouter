@@ -562,7 +562,10 @@ export class AutoroutingPipelineSolver extends BaseSolver {
       this.solved
         ? combineVisualizations(
             problemViz,
-            convertSrjToGraphicsObject(this.getOutputSimpleRouteJson()),
+            convertSrjToGraphicsObject(
+              this.getOutputSimpleRouteJson(),
+              this._getOutputHdRoutes()[0]?.viaDiameter ?? 0.3,
+            ),
           )
         : null,
     ].filter(Boolean) as GraphicsObject[]

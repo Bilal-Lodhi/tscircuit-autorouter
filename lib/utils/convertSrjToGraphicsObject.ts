@@ -4,7 +4,10 @@ import { getColorMap, safeTransparentize } from "lib/solvers/colors"
 import { mapZToLayerName } from "lib/utils/mapZToLayerName"
 import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
 
-export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
+export const convertSrjToGraphicsObject = (
+  srj: SimpleRouteJson,
+  viaDiameter: number = 0.6,
+) => {
   const lines: Line[] = []
   const circles: Circle[] = []
   const points: Point[] = []
@@ -42,7 +45,7 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
           // Add a circle for the via
           circles.push({
             center: { x: routePoint.x, y: routePoint.y },
-            radius: 0.3, // 0.6 via diameter
+            radius: viaDiameter / 2,
             fill: "blue",
             stroke: "none",
             layer: "z0,1",

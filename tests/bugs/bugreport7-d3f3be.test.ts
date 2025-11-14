@@ -38,10 +38,13 @@ describe("bug d3f3be1b path simplification", () => {
     const lastSegment = targetTrace!.route[targetTrace!.route.length - 1]
     expect(lastSegment).toMatchObject({ x: 1.175, y: -5 })
 
+    const hdRoutes = solver._getOutputHdRoutes()
+    const viaDiameter = hdRoutes[0]?.viaDiameter ?? 0.3
     circuitJson = convertToCircuitJson(
       srjWithPointPairs,
       simplifiedTraces,
       srj.minTraceWidth,
+      viaDiameter,
     )
 
     pcbSvg = convertCircuitJsonToPcbSvg(circuitJson)

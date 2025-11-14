@@ -392,7 +392,7 @@ export class ViaPossibilitiesSolver2 extends BaseSolver {
             // Draw Via for Z change
             graphics.circles!.push({
               center: { x: p1.x, y: p1.y },
-              radius: 0.3, // Diameter 0.6
+              radius: 0.15, // Diameter 0.3
               fill: safeTransparentize(color, 0.5),
               label: `${labelPrefix}: ${connectionName} Via (z${p1.z}->z${p2.z})`,
             })
@@ -425,7 +425,7 @@ export class ViaPossibilitiesSolver2 extends BaseSolver {
         if (p1.x === p2.x && p1.y === p2.y && p1.z !== p2.z) {
           graphics.circles!.push({
             center: { x: p1.x, y: p1.y },
-            radius: 0.3,
+            radius: 0.15,
             fill: safeTransparentize(color, 0.5),
             label: `Current: ${this.currentConnectionName} Via (z${p1.z}->z${p2.z})`,
           })

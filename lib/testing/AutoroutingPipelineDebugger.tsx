@@ -278,10 +278,14 @@ export const AutoroutingPipelineDebugger = ({
       }
 
       // Convert to circuit-json format with both connection information and routes
+      // Get via diameter from the actual HD routes, not the simplified traces
+      const hdRoutes = solver._getOutputHdRoutes?.() ?? []
+      const viaDiameter = hdRoutes.length > 0 ? hdRoutes[0].viaDiameter : 0.3
       const circuitJson = convertToCircuitJson(
         srjWithPointPairs,
         routes,
         solver.srj.minTraceWidth,
+        viaDiameter,
       )
 
       const { errors: allErrors, locationAwareErrors } =
@@ -1059,10 +1063,15 @@ export const AutoroutingPipelineDebugger = ({
         </button>
         <button
           onClick={() => {
+            const routes = solver.getOutputSimplifiedPcbTraces()
+            // Get via diameter from the actual HD routes, not the simplified traces
+            const hdRoutes = solver._getOutputHdRoutes?.() ?? []
+            const viaDiameter = hdRoutes.length > 0 ? hdRoutes[0].viaDiameter : 0.3
             const circuitJson = convertToCircuitJson(
               solver.srjWithPointPairs!,
-              solver.getOutputSimplifiedPcbTraces(),
+              routes,
               solver.srj.minTraceWidth,
+              viaDiameter,
             )
             const blob = new Blob([JSON.stringify(circuitJson, null, 2)], {
               type: "application/json",

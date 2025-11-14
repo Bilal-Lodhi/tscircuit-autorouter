@@ -28,10 +28,13 @@ describe("bugreport8-e3ec95", () => {
 
     const simplifiedTraces = solver.getOutputSimplifiedPcbTraces()
 
+    const hdRoutes = solver._getOutputHdRoutes()
+    const viaDiameter = hdRoutes[0]?.viaDiameter ?? 0.3
     circuitJson = convertToCircuitJson(
       srjWithPointPairs,
       simplifiedTraces,
       srj.minTraceWidth,
+      viaDiameter,
     )
 
     const layersUsed = new Set(
