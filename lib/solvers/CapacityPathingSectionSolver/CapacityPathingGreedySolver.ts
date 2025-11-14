@@ -1,5 +1,6 @@
 import { CapacityMeshNode } from "lib/types"
 import { CapacityPathingSolver5 } from "../CapacityPathingSolver/CapacityPathingSolver5"
+import { getTunedTotalCapacity1 } from "lib/utils/getTunedTotalCapacity1"
 
 export class CapacityPathingGreedySolver extends CapacityPathingSolver5 {
   doesNodeHaveCapacityForTrace(
@@ -7,6 +8,13 @@ export class CapacityPathingGreedySolver extends CapacityPathingSolver5 {
     prevNode: CapacityMeshNode,
   ): boolean {
     return true
+  }
+
+  getTotalCapacity(node: CapacityMeshNode): number {
+    return (
+      getTunedTotalCapacity1(node, this.maxCapacityFactor) *
+      node.availableZ.length
+    )
   }
 
   getNodeCapacityPenalty(node: CapacityMeshNode): number {

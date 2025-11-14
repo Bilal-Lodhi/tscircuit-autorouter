@@ -29,13 +29,13 @@ interface Target {
 }
 
 export class CapacityMeshNodeSolver2_NodeUnderObstacle extends CapacityMeshNodeSolver {
-  VIA_DIAMETER = 0.6
-  OBSTACLE_MARGIN = 0.1
+  VIA_DIAMETER = 0.25
+  OBSTACLE_MARGIN = 0
   /**
    * The threshold for the percentage of a single-layer node that must be
    * covered by obstacles to be considered "under an obstacle"
    */
-  OVERLAP_THRESHOLD_FOR_SINGLE_LAYER_NODES = 0.2 // 20% coverage threshold
+  OVERLAP_THRESHOLD_FOR_SINGLE_LAYER_NODES = 0.5
 
   constructor(
     public srj: SimpleRouteJson,

@@ -35,8 +35,8 @@ export class MultipleHighDensityRouteStitchSolver extends BaseSolver {
       this.defaultViaDiameter = opts.hdRoutes[0].viaDiameter
     } else {
       // Fallback defaults if no hdRoutes are provided at all
-      this.defaultTraceThickness = 0.15
-      this.defaultViaDiameter = 0.6
+      this.defaultTraceThickness = 0.1
+      this.defaultViaDiameter = 0.3
     }
 
     this.unsolvedRoutes = opts.connections.map((c) => ({

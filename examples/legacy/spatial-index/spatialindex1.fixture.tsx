@@ -11,7 +11,7 @@ const BOARD_WIDTH = 10 // 10mm board width
 const BOARD_HEIGHT = 7.5 // 7.5mm board height
 const TRACE_WIDTH = 0.15
 const MARGIN = 0.1
-const VIA_DIAMETER = 0.6
+const VIA_DIAMETER = 0.25
 const SCALE = CANVAS_WIDTH / BOARD_WIDTH // Scale factor to convert mm to pixels
 
 // Create example routes for testing

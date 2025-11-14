@@ -14,7 +14,7 @@ export const getTunedTotalCapacity1 = (
   nodeOrWidth: CapacityMeshNode | { width: number; availableZ?: number[] },
   maxCapacityFactor = 1,
 ) => {
-  const VIA_DIAMETER = 0.6
+  const VIA_DIAMETER = 0.25
   const TRACE_WIDTH = 0.15
   const obstacleMargin = 0.2
 
