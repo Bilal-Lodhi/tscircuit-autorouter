@@ -199,10 +199,55 @@ export class CapacityMeshNodeSolver2_NodeUnderObstacle extends CapacityMeshNodeS
 
     const childNodes: CapacityMeshNode[] = []
 
-    // Split availableZ into individual layers
-    const otherZBlocks = node.availableZ.map((z) => [z])
+    const overlappingObstacles = this.getXYZOverlappingObstacles(node)
+    const nodeAvailableZSet = new Set(node.availableZ)
 
-    for (const zBlock of otherZBlocks) {
+    const blockedZLayers = new Set<number>()
+    for (const obstacle of overlappingObstacles) {
+      const obstacleZLayers =
+        obstacle.zLayers ??
+        obstacle.layers
+          ?.map((layerName) => mapLayerNameToZ(layerName, this.layerCount))
+          .filter((z): z is number => Number.isFinite(z))
+
+      if (!obstacleZLayers) continue
+
+      for (const z of obstacleZLayers) {
+        if (nodeAvailableZSet.has(z)) {
+          blockedZLayers.add(z)
+        }
+      }
+    }
+
+    const sortedAvailableZ = [...node.availableZ].sort((a, b) => a - b)
+
+    const availableZBlocks: number[][] = []
+    let currentBlock: number[] = []
+
+    for (const z of sortedAvailableZ) {
+      if (blockedZLayers.has(z)) {
+        if (currentBlock.length > 0) {
+          availableZBlocks.push(currentBlock)
+          currentBlock = []
+        }
+        continue
+      }
+
+      currentBlock.push(z)
+    }
+
+    if (currentBlock.length > 0) {
+      availableZBlocks.push(currentBlock)
+    }
+
+    const zBlocksToUse =
+      blockedZLayers.size > 0
+        ? availableZBlocks
+        : sortedAvailableZ.map((z) => [z])
+
+    for (const zBlock of zBlocksToUse) {
+      if (zBlock.length === 0) continue
+
       const childNode = this.createChildNodeAtPosition(node, {
         center: { ...node.center },
         width: node.width,
