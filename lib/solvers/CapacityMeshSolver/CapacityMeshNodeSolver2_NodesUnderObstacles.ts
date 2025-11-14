@@ -197,12 +197,55 @@ export class CapacityMeshNodeSolver2_NodeUnderObstacle extends CapacityMeshNodeS
   getZSubdivisionChildNodes(node: CapacityMeshNode): CapacityMeshNode[] {
     if (node.availableZ.length === 1) return []
 
+    const overlappingObstacles = node._containsObstacle
+      ? this.getXYZOverlappingObstacles(node)
+      : []
+
+    const blockedZ = new Set<number>()
+    for (const obstacle of overlappingObstacles) {
+      for (const z of obstacle.zLayers ?? []) {
+        if (node.availableZ.includes(z)) {
+          blockedZ.add(z)
+        }
+      }
+    }
+
+    const unobstructedZ = node.availableZ.filter((z) => !blockedZ.has(z))
+    if (unobstructedZ.length === 0) return []
+
+    const hasActualObstacleOverlap = blockedZ.size > 0
+
+    const shouldForceSingleLayerSplit =
+      node.width < this.VIA_DIAMETER + this.OBSTACLE_MARGIN &&
+      !hasActualObstacleOverlap
+
+    let zBlocks: number[][]
+
+    if (shouldForceSingleLayerSplit) {
+      zBlocks = unobstructedZ.map((z) => [z])
+    } else {
+      const sortedZ = Array.from(new Set(unobstructedZ)).sort((a, b) => a - b)
+      zBlocks = []
+      let currentBlock: number[] = []
+
+      for (const z of sortedZ) {
+        const lastZ = currentBlock[currentBlock.length - 1]
+        if (currentBlock.length === 0 || z === lastZ + 1) {
+          currentBlock.push(z)
+        } else {
+          zBlocks.push(currentBlock)
+          currentBlock = [z]
+        }
+      }
+
+      if (currentBlock.length > 0) {
+        zBlocks.push(currentBlock)
+      }
+    }
+
     const childNodes: CapacityMeshNode[] = []
 
-    // Split availableZ into individual layers
-    const otherZBlocks = node.availableZ.map((z) => [z])
-
-    for (const zBlock of otherZBlocks) {
+    for (const zBlock of zBlocks) {
       const childNode = this.createChildNodeAtPosition(node, {
         center: { ...node.center },
         width: node.width,
