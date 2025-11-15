@@ -42,6 +42,7 @@ export class CapacityMeshNodeSolver2_NodeUnderObstacle extends CapacityMeshNodeS
     public opts: CapacityMeshNodeSolverOptions = {},
   ) {
     super(srj, opts)
+    this.VIA_DIAMETER = srj.minViaDiameter ?? this.VIA_DIAMETER
   }
 
   isNodeCompletelyOutsideBounds(node: CapacityMeshNode): boolean {

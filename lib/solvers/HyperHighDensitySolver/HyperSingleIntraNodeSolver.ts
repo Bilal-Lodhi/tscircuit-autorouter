@@ -181,11 +181,13 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
     if (hyperParameters.CLOSED_FORM_TWO_TRACE_SAME_LAYER) {
       return new TwoCrossingRoutesHighDensitySolver({
         nodeWithPortPoints: this.nodeWithPortPoints,
+        viaDiameter: this.constructorParams.viaDiameter,
       }) as any
     }
     if (hyperParameters.CLOSED_FORM_TWO_TRACE_TRANSITION_CROSSING) {
       return new SingleTransitionCrossingRouteSolver({
         nodeWithPortPoints: this.nodeWithPortPoints,
+        viaDiameter: this.constructorParams.viaDiameter,
       }) as any
     }
     if (hyperParameters.MULTI_HEAD_POLYLINE_SOLVER) {
@@ -193,6 +195,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
         nodeWithPortPoints: this.nodeWithPortPoints,
         connMap: this.connMap,
         hyperParameters: hyperParameters,
+        viaDiameter: this.constructorParams.viaDiameter,
       }) as any
     }
     return new CachedIntraNodeRouteSolver({

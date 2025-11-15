@@ -93,6 +93,7 @@ export class CapacitySegmentPointOptimizer extends BaseSolver {
     assignedSegments,
     colorMap,
     nodes,
+    viaDiameter,
   }: {
     assignedSegments: NodePortSegment[]
     colorMap?: Record<string, string>
@@ -101,11 +102,13 @@ export class CapacitySegmentPointOptimizer extends BaseSolver {
      * for the result datatype (the center, width, height of the node)
      */
     nodes: CapacityMeshNode[]
+    viaDiameter?: number
   }) {
     super()
     this.MAX_ITERATIONS = 500_000
 
     this.assignedSegments = assignedSegments
+    this.VIA_DIAMETER = viaDiameter ?? this.VIA_DIAMETER
 
     const dedupedSegments: SegmentWithAssignedPoints[] = []
     type SegKey = `${number}-${number}-${number}-${number}`
@@ -188,7 +191,9 @@ export class CapacitySegmentPointOptimizer extends BaseSolver {
   computeNodeCost(nodeId: CapacityMeshNodeId) {
     const node = this.nodeMap.get(nodeId)
     if (node?._containsTarget) return 0
-    const totalCapacity = getTunedTotalCapacity1(node!)
+    const totalCapacity = getTunedTotalCapacity1(node!, 1, {
+      viaDiameter: this.VIA_DIAMETER,
+    })
     const usedViaCapacity = this.getUsedViaCapacity(nodeId)
     const usedTraceCapacity = this.getUsedTraceCapacity(nodeId)
 
@@ -694,7 +699,7 @@ export class CapacitySegmentPointOptimizer extends BaseSolver {
               } else {
                 const intraNodeCrossings =
                   getIntraNodeCrossingsFromSegments(segments)
-                label = `${node.capacityMeshNodeId}\n${this.computeNodeCost(node.capacityMeshNodeId).toFixed(2)}/${getTunedTotalCapacity1(node).toFixed(2)}\nTrace Capacity: ${this.getUsedTraceCapacity(node.capacityMeshNodeId).toFixed(2)}\nX'ings: ${intraNodeCrossings.numSameLayerCrossings}\nEnt/Ex LC: ${intraNodeCrossings.numEntryExitLayerChanges}\nT X'ings: ${intraNodeCrossings.numTransitionCrossings}\n${node.width.toFixed(2)}x${node.height.toFixed(2)}`
+                label = `${node.capacityMeshNodeId}\n${this.computeNodeCost(node.capacityMeshNodeId).toFixed(2)}/${getTunedTotalCapacity1(node, 1, { viaDiameter: this.VIA_DIAMETER }).toFixed(2)}\nTrace Capacity: ${this.getUsedTraceCapacity(node.capacityMeshNodeId).toFixed(2)}\nX'ings: ${intraNodeCrossings.numSameLayerCrossings}\nEnt/Ex LC: ${intraNodeCrossings.numEntryExitLayerChanges}\nT X'ings: ${intraNodeCrossings.numTransitionCrossings}\n${node.width.toFixed(2)}x${node.height.toFixed(2)}`
               }
 
               return {
@@ -774,7 +779,7 @@ export class CapacitySegmentPointOptimizer extends BaseSolver {
         radius: node.width / 4,
         stroke: "#0000ff",
         fill: "rgba(0, 0, 255, 0.2)",
-        label: `LAST OPERATION: ${op.op}\nCost: ${op.cost?.toString()}\n${node.capacityMeshNodeId}\n${this.currentNodeCosts.get(node.capacityMeshNodeId)}/${getTunedTotalCapacity1(node)}\n${node.width.toFixed(2)}x${node.height.toFixed(2)}`,
+        label: `LAST OPERATION: ${op.op}\nCost: ${op.cost?.toString()}\n${node.capacityMeshNodeId}\n${this.currentNodeCosts.get(node.capacityMeshNodeId)}/${getTunedTotalCapacity1(node, 1, { viaDiameter: this.VIA_DIAMETER })}\n${node.width.toFixed(2)}x${node.height.toFixed(2)}`,
       })
 
       // For both operation types, we'll highlight the affected points

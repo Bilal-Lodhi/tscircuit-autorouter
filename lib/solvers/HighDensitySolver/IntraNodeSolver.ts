@@ -26,6 +26,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
   failedSubSolvers: SingleHighDensityRouteSolver[]
   hyperParameters: Partial<HighDensityHyperParameters>
   minDistBetweenEnteringPoints: number
+  viaDiameter: number
 
   activeSubSolver: SingleHighDensityRouteSolver | null = null
   connMap?: ConnectivityMap
@@ -45,6 +46,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
     colorMap?: Record<string, string>
     hyperParameters?: Partial<HighDensityHyperParameters>
     connMap?: ConnectivityMap
+    viaDiameter?: number
   }) {
     const { nodeWithPortPoints, colorMap } = params
     super()
@@ -54,6 +56,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
     this.hyperParameters = params.hyperParameters ?? {}
     this.failedSubSolvers = []
     this.connMap = params.connMap
+    this.viaDiameter = params.viaDiameter ?? 0.6
     const unsolvedConnectionsMap: Map<
       string,
       { x: number; y: number; z: number }[]
@@ -195,6 +198,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
         layerCount: 2,
         hyperParameters: this.hyperParameters,
         connMap: this.connMap,
+        viaDiameter: this.viaDiameter,
       })
   }
 

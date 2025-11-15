@@ -93,13 +93,16 @@ export class ViaPossibilitiesSolver extends BaseSolver {
   nodeWidth: number
   availableZ: number[]
   GREEDY_MULTIPLIER = 1
+  viaDiameter: number
 
   constructor({
     nodeWithPortPoints,
     colorMap,
+    viaDiameter,
   }: {
     nodeWithPortPoints: NodeWithPortPoints
     colorMap?: Record<string, string>
+    viaDiameter?: number
   }) {
     super()
     this.MAX_ITERATIONS = 100e3
@@ -112,6 +115,7 @@ export class ViaPossibilitiesSolver extends BaseSolver {
     this.portPairMap = getPortPairMap(nodeWithPortPoints)
     this.stats.solutionsFound = 0
     this.availableZ = nodeWithPortPoints.availableZ ?? [0, 1]
+    this.viaDiameter = viaDiameter ?? 0.6
 
     this.transitionConnectionNames = Array.from(
       this.portPairMap
@@ -754,7 +758,7 @@ export class ViaPossibilitiesSolver extends BaseSolver {
           const color = colorMap[connectionName] ?? "black"
           graphics.circles!.push({
             center: face.centroid,
-            radius: 0.25,
+            radius: this.viaDiameter / 2,
             fill: safeTransparentize(color, 0.5), // Make via fill 50% transparent
             stroke: "white",
             label: `Via: ${connectionName}`,

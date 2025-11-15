@@ -26,18 +26,15 @@ export class MultipleHighDensityRouteStitchSolver extends BaseSolver {
     hdRoutes: HighDensityIntraNodeRoute[]
     colorMap?: Record<string, string>
     layerCount: number
+    defaultViaDiameter?: number
   }) {
     super()
     this.colorMap = opts.colorMap ?? {}
 
-    if (opts.hdRoutes.length > 0) {
-      this.defaultTraceThickness = opts.hdRoutes[0].traceThickness
-      this.defaultViaDiameter = opts.hdRoutes[0].viaDiameter
-    } else {
-      // Fallback defaults if no hdRoutes are provided at all
-      this.defaultTraceThickness = 0.15
-      this.defaultViaDiameter = 0.6
-    }
+    const firstRoute = opts.hdRoutes[0]
+    this.defaultTraceThickness = firstRoute?.traceThickness ?? 0.15
+    this.defaultViaDiameter =
+      firstRoute?.viaDiameter ?? opts.defaultViaDiameter ?? 0.6
 
     this.unsolvedRoutes = opts.connections.map((c) => ({
       connectionName: c.name,

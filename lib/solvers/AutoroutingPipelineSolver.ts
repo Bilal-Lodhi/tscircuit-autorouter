@@ -109,6 +109,7 @@ export class AutoroutingPipelineSolver extends BaseSolver {
   uselessViaRemovalSolver2?: UselessViaRemovalSolver
   multiSimplifiedPathSolver1?: MultiSimplifiedPathSolver
   multiSimplifiedPathSolver2?: MultiSimplifiedPathSolver
+  viaDiameter: number
 
   startTimeOfPhase: Record<string, number>
   endTimeOfPhase: Record<string, number>
@@ -283,6 +284,7 @@ export class AutoroutingPipelineSolver extends BaseSolver {
     //       assignedSegments: cms.segmentToPointSolver?.solvedSegments || [],
     //       colorMap: cms.colorMap,
     //       nodes: cms.nodeTargetMerger?.newNodes || [],
+    //       viaDiameter: cms.viaDiameter,
     //     },
     //   ],
     // ),
@@ -306,6 +308,7 @@ export class AutoroutingPipelineSolver extends BaseSolver {
           [],
         colorMap: cms.colorMap,
         connMap: cms.connMap,
+        viaDiameter: cms.viaDiameter,
       },
     ]),
     definePipelineStep(
@@ -317,6 +320,7 @@ export class AutoroutingPipelineSolver extends BaseSolver {
           hdRoutes: cms.highDensityRouteSolver!.routes,
           colorMap: cms.colorMap,
           layerCount: cms.srj.layerCount,
+          defaultViaDiameter: cms.viaDiameter,
         },
       ],
     ),
@@ -344,6 +348,7 @@ export class AutoroutingPipelineSolver extends BaseSolver {
           connMap: cms.connMap,
           colorMap: cms.colorMap,
           outline: cms.srj.outline,
+          defaultViaDiameter: cms.viaDiameter,
         },
       ],
     ),
@@ -371,6 +376,7 @@ export class AutoroutingPipelineSolver extends BaseSolver {
           connMap: cms.connMap,
           colorMap: cms.colorMap,
           outline: cms.srj.outline,
+          defaultViaDiameter: cms.viaDiameter,
         },
       ],
     ),
@@ -382,6 +388,7 @@ export class AutoroutingPipelineSolver extends BaseSolver {
   ) {
     super()
     this.MAX_ITERATIONS = 100e6
+    this.viaDiameter = srj.minViaDiameter ?? 0.6
 
     // If capacityDepth is not provided, calculate it automatically
     if (opts.capacityDepth === undefined) {

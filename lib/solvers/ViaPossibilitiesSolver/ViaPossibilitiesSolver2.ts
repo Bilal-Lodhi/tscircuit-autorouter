@@ -57,6 +57,7 @@ export class ViaPossibilitiesSolver2 extends BaseSolver {
   VIA_INTERSECTION_BUFFER_DISTANCE = 0.05
   PLACEHOLDER_WALL_BUFFER_DISTANCE = 0.1
   NEW_HEAD_WALL_BUFFER_DISTANCE = 0.05
+  viaDiameter: number
 
   unprocessedConnections: ConnectionName[]
 
@@ -72,10 +73,12 @@ export class ViaPossibilitiesSolver2 extends BaseSolver {
     nodeWithPortPoints,
     colorMap,
     hyperParameters,
+    viaDiameter,
   }: {
     nodeWithPortPoints: NodeWithPortPoints
     colorMap?: Record<string, string>
     hyperParameters?: ViaPossibilities2HyperParameters
+    viaDiameter?: number
   }) {
     super()
     this.MAX_ITERATIONS = 100e3
@@ -90,6 +93,7 @@ export class ViaPossibilitiesSolver2 extends BaseSolver {
     this.hyperParameters = hyperParameters ?? {
       SHUFFLE_SEED: 0,
     }
+    this.viaDiameter = viaDiameter ?? 0.6
 
     this.unprocessedConnections = Array.from(this.portPairMap.keys()).sort()
     if (hyperParameters?.SHUFFLE_SEED) {
@@ -392,7 +396,7 @@ export class ViaPossibilitiesSolver2 extends BaseSolver {
             // Draw Via for Z change
             graphics.circles!.push({
               center: { x: p1.x, y: p1.y },
-              radius: 0.3, // Diameter 0.6
+              radius: this.viaDiameter / 2,
               fill: safeTransparentize(color, 0.5),
               label: `${labelPrefix}: ${connectionName} Via (z${p1.z}->z${p2.z})`,
             })
@@ -425,7 +429,7 @@ export class ViaPossibilitiesSolver2 extends BaseSolver {
         if (p1.x === p2.x && p1.y === p2.y && p1.z !== p2.z) {
           graphics.circles!.push({
             center: { x: p1.x, y: p1.y },
-            radius: 0.3,
+            radius: this.viaDiameter / 2,
             fill: safeTransparentize(color, 0.5),
             label: `Current: ${this.currentConnectionName} Via (z${p1.z}->z${p2.z})`,
           })

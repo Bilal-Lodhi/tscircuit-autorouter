@@ -11,6 +11,7 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
 
   const colorMap: Record<string, string> = getColorMap(srj)
   const layerCount = 2
+  const viaRadius = (srj.minViaDiameter ?? 0.6) / 2
 
   // Add points for each connection's pointsToConnect
   if (srj.connections) {
@@ -42,7 +43,7 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
           // Add a circle for the via
           circles.push({
             center: { x: routePoint.x, y: routePoint.y },
-            radius: 0.3, // 0.6 via diameter
+            radius: viaRadius,
             fill: "blue",
             stroke: "none",
             layer: "z0,1",

@@ -19,6 +19,7 @@ export class MultiSimplifiedPathSolver extends BaseSolver {
   connMap: ConnectivityMap
   colorMap: Record<string, string>
   outline?: Array<{ x: number; y: number }>
+  defaultViaDiameter: number
 
   constructor(params: {
     unsimplifiedHdRoutes: HighDensityIntraNodeRoute[]
@@ -26,6 +27,7 @@ export class MultiSimplifiedPathSolver extends BaseSolver {
     connMap?: ConnectivityMap
     colorMap?: Record<string, string>
     outline?: Array<{ x: number; y: number }>
+    defaultViaDiameter?: number
   }) {
     super()
     this.MAX_ITERATIONS = 100e6
@@ -35,6 +37,7 @@ export class MultiSimplifiedPathSolver extends BaseSolver {
     this.connMap = params.connMap || new ConnectivityMap({})
     this.colorMap = params.colorMap || {}
     this.outline = params.outline
+    this.defaultViaDiameter = params.defaultViaDiameter ?? 0.6
 
     this.simplifiedHdRoutes = []
   }
@@ -114,7 +117,7 @@ export class MultiSimplifiedPathSolver extends BaseSolver {
       for (const via of route.vias || []) {
         graphics.circles.push({
           center: via,
-          radius: route.viaDiameter / 2 || 0.3, // Default radius if viaDiameter not specified
+          radius: (route.viaDiameter ?? this.defaultViaDiameter) / 2,
           fill: "rgba(0, 0, 255, 0.4)",
         })
       }

@@ -65,6 +65,7 @@ export class MultiHeadPolyLineIntraNodeSolver extends BaseSolver {
     colorMap?: Record<string, string>
     hyperParameters?: Partial<HighDensityHyperParameters>
     connMap?: ConnectivityMap
+    viaDiameter?: number
   }) {
     super()
     this.MAX_ITERATIONS = 10e3
@@ -77,6 +78,7 @@ export class MultiHeadPolyLineIntraNodeSolver extends BaseSolver {
       params.hyperParameters?.SEGMENTS_PER_POLYLINE ?? 3
     this.BOUNDARY_PADDING = params.hyperParameters?.BOUNDARY_PADDING ?? 0.05
     this.connMap = params.connMap
+    this.viaDiameter = params.viaDiameter ?? this.viaDiameter
 
     // TODO swap with more sophisticated grid in SingleHighDensityRouteSolver
     this.cellSize = this.nodeWithPortPoints.width / 1024
