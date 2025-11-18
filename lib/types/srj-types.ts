@@ -1,4 +1,7 @@
 export type TraceId = string
+export type NetId = string
+export type PointId = string
+export type OffBoardConnectionId = string
 
 export interface SimpleRouteJson {
   layerCount: number
@@ -18,23 +21,26 @@ export interface Obstacle {
   center: { x: number; y: number }
   width: number
   height: number
-  connectedTo: TraceId[]
+  connectedTo: Array<TraceId | NetId>
   netIsAssignable?: boolean
-  offBoardConnectsTo?: TraceId[]
+  offBoardConnectsTo?: Array<OffBoardConnectionId>
 }
 
 export interface SimpleRouteConnection {
   name: string
+  isOffBoardConnection?: boolean
   netConnectionName?: string
   nominalTraceWidth?: number
   pointsToConnect: Array<{
     x: number
     y: number
     layer: string
-    pointId?: string
+    pointId?: PointId
     pcb_port_id?: string
   }>
-  externallyConnectedPointIds?: string[][]
+
+  /** @deprecated DO NOT USE **/
+  externallyConnectedPointIds?: PointId[][]
 }
 
 export interface SimplifiedPcbTrace {
