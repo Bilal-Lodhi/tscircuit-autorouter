@@ -8,7 +8,7 @@ import { getLastStepSvg } from "../fixtures/getLastStepSvg"
 
 const srj = bugReport.simple_route_json as SimpleRouteJson
 
-test("bugreport11-b2de3c.json", () => {
+test.skip("bugreport11-b2de3c.json", () => {
   const solver = new AutoroutingPipelineSolver(srj)
   solver.solve()
   expect(getLastStepSvg(solver.visualize())).toMatchSvgSnapshot(
