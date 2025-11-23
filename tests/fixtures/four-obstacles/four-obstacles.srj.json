@@ -1,0 +1,57 @@
+{
+  "layerCount": 2,
+  "minTraceWidth": 0.15,
+  "bounds": {
+    "minX": -2,
+    "maxX": 14,
+    "minY": -2,
+    "maxY": 2
+  },
+  "obstacles": [
+    {
+      "type": "rect",
+      "layers": ["top"],
+      "center": { "x": 0, "y": 0 },
+      "width": 1,
+      "height": 1,
+      "connectedTo": ["A_net"]
+    },
+    {
+      "type": "rect",
+      "layers": ["top"],
+      "center": { "x": 4, "y": 0 },
+      "width": 1,
+      "height": 1,
+      "connectedTo": [],
+      "netIsAssignable": true,
+      "offBoardConnectsTo": ["BC_NET"]
+    },
+    {
+      "type": "rect",
+      "layers": ["top"],
+      "center": { "x": 8, "y": 0 },
+      "width": 1,
+      "height": 1,
+      "connectedTo": [],
+      "netIsAssignable": true,
+      "offBoardConnectsTo": ["BC_NET"]
+    },
+    {
+      "type": "rect",
+      "layers": ["top"],
+      "center": { "x": 12, "y": 0 },
+      "width": 1,
+      "height": 1,
+      "connectedTo": ["A_net"]
+    }
+  ],
+  "connections": [
+    {
+      "name": "A_net",
+      "pointsToConnect": [
+        { "x": 0, "y": 0, "layer": "top", "pointId": "A" },
+        { "x": 12, "y": 0, "layer": "top", "pointId": "D" }
+      ]
+    }
+  ]
+}
