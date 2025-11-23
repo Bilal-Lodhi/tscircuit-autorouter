@@ -22,8 +22,42 @@ export class CapacityMeshEdgeSolver2_NodeTreeOptimization extends CapacityMeshEd
     this.edgeSet = new Set<string>()
   }
 
+  private addOffBoardConnectionEdges() {
+    const offBoardIdToNodes = new Map<string, CapacityMeshNode[]>()
+
+    for (const node of this.nodes) {
+      const offBoardIds = node._offBoardConnectionIds
+      if (!offBoardIds || offBoardIds.length === 0) continue
+
+      for (const offBoardId of offBoardIds) {
+        const nodes = offBoardIdToNodes.get(offBoardId) ?? []
+        nodes.push(node)
+        offBoardIdToNodes.set(offBoardId, nodes)
+      }
+    }
+
+    for (const nodes of offBoardIdToNodes.values()) {
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const A = nodes[i]
+          const B = nodes[j]
+          const edgeKey = `${A.capacityMeshNodeId}-${B.capacityMeshNodeId}`
+          if (this.edgeSet.has(edgeKey)) continue
+
+          this.edgeSet.add(edgeKey)
+          this.edgeSet.add(`${B.capacityMeshNodeId}-${A.capacityMeshNodeId}`)
+          this.edges.push({
+            capacityMeshEdgeId: this.getNextCapacityMeshEdgeId(),
+            nodeIds: [A.capacityMeshNodeId, B.capacityMeshNodeId],
+          })
+        }
+      }
+    }
+  }
+
   _step() {
     if (this.currentNodeIndex >= this.nodes.length) {
+      this.addOffBoardConnectionEdges()
       this.handleTargetNodes()
       this.solved = true
       return

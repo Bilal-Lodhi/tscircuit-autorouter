@@ -16,6 +16,9 @@ export class CapacityPathingSolver5 extends CapacityPathingSolver {
   }
 
   getTotalCapacity(node: CapacityMeshNode): number {
+    if (node._maxCapacityOverride !== undefined)
+      return node._maxCapacityOverride
+
     return getTunedTotalCapacity1(node, this.maxCapacityFactor)
   }
 

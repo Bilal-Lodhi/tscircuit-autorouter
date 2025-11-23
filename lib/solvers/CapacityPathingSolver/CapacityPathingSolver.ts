@@ -99,6 +99,9 @@ export class CapacityPathingSolver extends BaseSolver {
   }
 
   getTotalCapacity(node: CapacityMeshNode): number {
+    if (node._maxCapacityOverride !== undefined)
+      return node._maxCapacityOverride
+
     const depth = node._depth ?? 0
     return (this.maxDepthOfNodes - depth + 1) ** 2
   }

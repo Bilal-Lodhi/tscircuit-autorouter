@@ -45,6 +45,17 @@ export class CapacityMeshNodeSolver2_NodeUnderObstacle extends CapacityMeshNodeS
     this.VIA_DIAMETER = srj.minViaDiameter ?? this.VIA_DIAMETER
   }
 
+  private getOverlappingAssignableOffBoardObstacles(
+    node: CapacityMeshNode,
+  ): Obstacle[] {
+    return this.getXYZOverlappingObstacles(node).filter(
+      (o) =>
+        Boolean((o as any)?.netIsAssignable) &&
+        Array.isArray(o.offBoardConnectsTo) &&
+        o.offBoardConnectsTo.length > 0,
+    )
+  }
+
   isNodeCompletelyOutsideBounds(node: CapacityMeshNode): boolean {
     if (this.outlinePolygon) {
       const nodeRect = this.getNodeRect(node)
@@ -143,6 +154,15 @@ export class CapacityMeshNodeSolver2_NodeUnderObstacle extends CapacityMeshNodeS
   shouldFilterNodeForObstacle(node: CapacityMeshNode): boolean {
     if (!node._containsObstacle) return false
 
+    const assignableOffBoardObstacles =
+      this.getOverlappingAssignableOffBoardObstacles(node)
+    if (assignableOffBoardObstacles.length > 0) {
+      // Allow nodes that overlap off-board assignable obstacles to remain in
+      // the mesh. These nodes will be marked traversable in
+      // createChildNodeAtPosition.
+      return false
+    }
+
     if (node.availableZ.length === 1) {
       return this.shouldFilterSingleLayerNodeForObstacle(node)
     }
@@ -173,10 +193,14 @@ export class CapacityMeshNodeSolver2_NodeUnderObstacle extends CapacityMeshNodeS
     }
 
     const overlappingObstacles = this.getXYZOverlappingObstacles(childNode)
+    const assignableOffBoardObstacles =
+      this.getOverlappingAssignableOffBoardObstacles(childNode)
+    const hasAssignableOffBoardObstacle = assignableOffBoardObstacles.length > 0
 
     childNode._containsObstacle =
-      overlappingObstacles.length > 0 ||
-      this.isNodePartiallyOutsideBounds(childNode)
+      !hasAssignableOffBoardObstacle &&
+      (overlappingObstacles.length > 0 ||
+        this.isNodePartiallyOutsideBounds(childNode))
 
     const target = this.getTargetIfNodeContainsTarget(childNode)
 
@@ -185,7 +209,17 @@ export class CapacityMeshNodeSolver2_NodeUnderObstacle extends CapacityMeshNodeS
       childNode._containsTarget = true
     }
 
-    if (childNode._containsObstacle) {
+    if (hasAssignableOffBoardObstacle) {
+      childNode._offBoardConnectionIds = Array.from(
+        new Set(
+          assignableOffBoardObstacles.flatMap(
+            (obstacle) => obstacle.offBoardConnectsTo ?? [],
+          ),
+        ),
+      )
+      childNode._maxCapacityOverride = 1
+      childNode._isOffBoardAssignableNode = true
+    } else if (childNode._containsObstacle) {
       childNode._completelyInsideObstacle =
         this.isNodeCompletelyInsideObstacle(childNode)
     }
