@@ -51,6 +51,7 @@ import { CapacityPathingGreedySolver } from "./CapacityPathingSectionSolver/Capa
 import { CacheProvider } from "lib/cache/types"
 import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
 import { NetToPointPairsSolver2_OffBoardConnection } from "./NetToPointPairsSolver2_OffBoardConnection/NetToPointPairsSolver2_OffBoardConnection"
+import { SameNetViaMerger } from "./SameNetViaMerger/SameNetViaMerger"
 
 interface CapacityMeshSolverOptions {
   capacityDepth?: number
@@ -110,6 +111,7 @@ export class AutoroutingPipelineSolver extends BaseSolver {
   uselessViaRemovalSolver2?: UselessViaRemovalSolver
   multiSimplifiedPathSolver1?: MultiSimplifiedPathSolver
   multiSimplifiedPathSolver2?: MultiSimplifiedPathSolver
+  sameNetViaMerger?: SameNetViaMerger
   viaDiameter: number
   minTraceWidth: number
 
@@ -383,6 +385,12 @@ export class AutoroutingPipelineSolver extends BaseSolver {
         },
       ],
     ),
+    definePipelineStep("sameNetViaMerger", SameNetViaMerger, (cms) => [
+      {
+        hdRoutes: cms._getHdRoutesBeforeSameNetMerge(),
+        connections: cms.srj.connections,
+      },
+    ]),
   ]
 
   constructor(
@@ -641,13 +649,20 @@ export class AutoroutingPipelineSolver extends BaseSolver {
     return match ? match[1] : mstConnectionName
   }
 
-  _getOutputHdRoutes(): HighDensityRoute[] {
+  private _getHdRoutesBeforeSameNetMerge(): HighDensityRoute[] {
     return (
       this.multiSimplifiedPathSolver2?.simplifiedHdRoutes ??
       this.uselessViaRemovalSolver2?.getOptimizedHdRoutes() ??
       this.multiSimplifiedPathSolver1?.simplifiedHdRoutes ??
       this.uselessViaRemovalSolver1?.getOptimizedHdRoutes() ??
       this.highDensityStitchSolver!.mergedHdRoutes
+    )
+  }
+
+  _getOutputHdRoutes(): HighDensityRoute[] {
+    return (
+      this.sameNetViaMerger?.mergedHdRoutes ??
+      this._getHdRoutesBeforeSameNetMerge()
     )
   }
 
