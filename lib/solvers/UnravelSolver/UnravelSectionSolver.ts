@@ -273,7 +273,24 @@ export class UnravelSectionSolver extends BaseSolver {
 
     const mutableSegmentPointIds = new Set<SegmentPointId>()
     for (const sp of segmentPoints) {
-      if (sp.capacityMeshNodeIds.some((id) => mutableNodeIds.includes(id))) {
+      const belongsToMutableNode = sp.capacityMeshNodeIds.some((id) =>
+        mutableNodeIds.includes(id),
+      )
+
+      if (belongsToMutableNode) {
+        mutableSegmentPointIds.add(sp.segmentPointId)
+        continue
+      }
+
+      const belongsToMultiLayerTargetNode = sp.capacityMeshNodeIds.some(
+        (id) => {
+          const node = this.nodeMap.get(id)
+          if (!node?._containsTarget) return false
+          return (node.availableZ?.length ?? 0) > 1
+        },
+      )
+
+      if (belongsToMultiLayerTargetNode) {
         mutableSegmentPointIds.add(sp.segmentPointId)
       }
     }
