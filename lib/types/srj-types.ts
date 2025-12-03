@@ -9,6 +9,13 @@ export type ConnectionPoint = {
   pointId?: PointId
   pcb_port_id?: string
 }
+export type MultiLayerConnectionPoint = {
+  x: number
+  y: number
+  layers: string[]
+  pointId?: PointId
+  pcb_port_id?: string
+}
 
 export interface SimpleRouteJson {
   layerCount: number
@@ -38,7 +45,7 @@ export interface SimpleRouteConnection {
   isOffBoard?: boolean
   netConnectionName?: string
   nominalTraceWidth?: number
-  pointsToConnect: ConnectionPoint[]
+  pointsToConnect: Array<ConnectionPoint | MultiLayerConnectionPoint>
 
   /** @deprecated DO NOT USE **/
   externallyConnectedPointIds?: PointId[][]
