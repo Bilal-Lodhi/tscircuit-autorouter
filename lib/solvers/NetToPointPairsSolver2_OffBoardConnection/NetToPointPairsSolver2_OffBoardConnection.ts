@@ -1,5 +1,6 @@
 import {
   ConnectionPoint,
+  MultiLayerConnectionPoint,
   SimpleRouteConnection,
   SimpleRouteJson,
 } from "lib/types"
@@ -25,7 +26,7 @@ import { buildMinimumSpanningTree } from "../NetToPointPairsSolver/buildMinimumS
  */
 export class NetToPointPairsSolver2_OffBoardConnection extends NetToPointPairsSolver {
   connectionPointDsu: DSU
-  connectionPointMap: Map<string, ConnectionPoint>
+  connectionPointMap: Map<string, ConnectionPoint | MultiLayerConnectionPoint>
 
   constructor(
     public ogSrj: SimpleRouteJson,
@@ -34,7 +35,10 @@ export class NetToPointPairsSolver2_OffBoardConnection extends NetToPointPairsSo
     const allConnectionPoints = ogSrj.connections.flatMap(
       (connection) => connection.pointsToConnect,
     )
-    const connectionPointMap = new Map<string, ConnectionPoint>()
+    const connectionPointMap = new Map<
+      string,
+      ConnectionPoint | MultiLayerConnectionPoint
+    >()
     for (const connectionPoint of allConnectionPoints) {
       if (connectionPoint.pointId) {
         connectionPointMap.set(connectionPoint.pointId, connectionPoint)
@@ -73,9 +77,14 @@ export class NetToPointPairsSolver2_OffBoardConnection extends NetToPointPairsSo
   }
 
   _findBestConnectionPointsFromDisjointSets(
-    sourcePoint: ConnectionPoint,
-    targetPoint: ConnectionPoint,
-  ): { pointsToConnect: [ConnectionPoint, ConnectionPoint] } {
+    sourcePoint: ConnectionPoint | MultiLayerConnectionPoint,
+    targetPoint: ConnectionPoint | MultiLayerConnectionPoint,
+  ): {
+    pointsToConnect: [
+      ConnectionPoint | MultiLayerConnectionPoint,
+      ConnectionPoint | MultiLayerConnectionPoint,
+    ]
+  } {
     if (!sourcePoint.pointId || !targetPoint.pointId)
       return { pointsToConnect: [sourcePoint, targetPoint] }
 

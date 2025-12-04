@@ -8,6 +8,10 @@ import type {
   SimpleRouteJson,
 } from "../../types"
 import {
+  getConnectionPointLayer,
+  getConnectionPointLayers,
+} from "lib/types/srj-types"
+import {
   isRectCompletelyInsidePolygon,
   isRectOverlappingPolygon,
   type Polygon,
@@ -111,11 +115,14 @@ export class CapacityMeshNodeSolver extends BaseSolver {
     const targets: Target[] = []
     for (const conn of this.srj.connections) {
       for (const ptc of conn.pointsToConnect) {
+        const ptcLayers = getConnectionPointLayers(ptc)
         const obstacles = this.obstacleTree
           .searchArea(ptc.x, ptc.y, 0.01, 0.01)
           .filter((o) =>
-            o.zLayers!.some(
-              (z) => z === mapLayerNameToZ(ptc.layer, this.layerCount),
+            o.zLayers!.some((z) =>
+              ptcLayers.some(
+                (layer) => z === mapLayerNameToZ(layer, this.layerCount),
+              ),
             ),
           )
 
@@ -141,7 +148,9 @@ export class CapacityMeshNodeSolver extends BaseSolver {
         const target = {
           ...ptc,
           connectionName: conn.name,
-          availableZ: [mapLayerNameToZ(ptc.layer, this.layerCount)],
+          availableZ: ptcLayers.map((layer) =>
+            mapLayerNameToZ(layer, this.layerCount),
+          ),
           bounds,
         }
         targets.push(target)
@@ -551,10 +560,11 @@ export class CapacityMeshNodeSolver extends BaseSolver {
     this.srj.connections.forEach((connection, index) => {
       const color = COLORS[index % COLORS.length]
       for (const pt of connection.pointsToConnect) {
+        const layers = getConnectionPointLayers(pt)
         graphics.points!.push({
           x: pt.x,
           y: pt.y,
-          label: `conn-${index} (${pt.layer})`,
+          label: `conn-${index} (${layers.join(",")})`,
           color,
         })
       }

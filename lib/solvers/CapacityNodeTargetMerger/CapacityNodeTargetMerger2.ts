@@ -1,4 +1,8 @@
-import { CapacityMeshNode, CapacityMeshNodeId } from "lib/types"
+import {
+  CapacityMeshNode,
+  CapacityMeshNodeId,
+  SimpleRouteConnection,
+} from "lib/types"
 import { Obstacle } from "lib/types"
 import { BaseSolver } from "../BaseSolver"
 import { GraphicsObject } from "graphics-debug"
@@ -7,7 +11,6 @@ import { doRectsOverlap } from "lib/utils/doRectsOverlap"
 import { isPointInRect } from "lib/utils/isPointInRect"
 import { createRectFromCapacityNode } from "lib/utils/createRectFromCapacityNode"
 import { areNodesBordering } from "lib/utils/areNodesBordering"
-import { SimpleRouteConnection } from "@tscircuit/core"
 
 export class CapacityNodeTargetMerger2 extends BaseSolver {
   nodeMap: Map<CapacityMeshNodeId, CapacityMeshNode>

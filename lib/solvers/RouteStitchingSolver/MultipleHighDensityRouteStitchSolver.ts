@@ -1,5 +1,6 @@
 import { SimpleRouteConnection } from "lib/types"
 import { HighDensityIntraNodeRoute } from "lib/types/high-density-types"
+import { getConnectionPointLayer } from "lib/types/srj-types"
 import { BaseSolver } from "../BaseSolver"
 import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
 import { SingleHighDensityRouteStitchSolver } from "./SingleHighDensityRouteStitchSolver"
@@ -41,11 +42,17 @@ export class MultipleHighDensityRouteStitchSolver extends BaseSolver {
       hdRoutes: opts.hdRoutes.filter((r) => r.connectionName === c.name),
       start: {
         ...c.pointsToConnect[0],
-        z: mapLayerNameToZ(c.pointsToConnect[0].layer, opts.layerCount),
+        z: mapLayerNameToZ(
+          getConnectionPointLayer(c.pointsToConnect[0]),
+          opts.layerCount,
+        ),
       },
       end: {
         ...c.pointsToConnect[1],
-        z: mapLayerNameToZ(c.pointsToConnect[1].layer, opts.layerCount),
+        z: mapLayerNameToZ(
+          getConnectionPointLayer(c.pointsToConnect[1]),
+          opts.layerCount,
+        ),
       },
     }))
     this.MAX_ITERATIONS = 100e3

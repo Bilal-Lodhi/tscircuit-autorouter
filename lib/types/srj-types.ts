@@ -74,3 +74,42 @@ export interface SimplifiedPcbTrace {
 }
 
 export type SimplifiedPcbTraces = Array<SimplifiedPcbTrace>
+
+// Type guards and helpers for ConnectionPoint types
+export function isMultiLayerConnectionPoint(
+  point: ConnectionPoint | MultiLayerConnectionPoint
+): point is MultiLayerConnectionPoint {
+  return "layers" in point && Array.isArray((point as any).layers)
+}
+
+export function isSingleLayerConnectionPoint(
+  point: ConnectionPoint | MultiLayerConnectionPoint
+): point is ConnectionPoint {
+  return "layer" in point && typeof (point as any).layer === "string"
+}
+
+/**
+ * Gets the primary layer from a connection point.
+ * For MultiLayerConnectionPoint, returns the first layer as default.
+ */
+export function getConnectionPointLayer(
+  point: ConnectionPoint | MultiLayerConnectionPoint
+): string {
+  if (isMultiLayerConnectionPoint(point)) {
+    return point.layers[0]
+  }
+  return point.layer
+}
+
+/**
+ * Gets all layers from a connection point.
+ * For ConnectionPoint, returns an array with the single layer.
+ */
+export function getConnectionPointLayers(
+  point: ConnectionPoint | MultiLayerConnectionPoint
+): string[] {
+  if (isMultiLayerConnectionPoint(point)) {
+    return point.layers
+  }
+  return [point.layer]
+}

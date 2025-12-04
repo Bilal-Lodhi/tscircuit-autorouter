@@ -147,7 +147,9 @@ export class AutoroutingPipelineSolver extends BaseSolver {
     definePipelineStep(
       "nodeSolver",
       RectDiffSolver,
-      (cms) => [{ simpleRouteJson: cms.srjWithPointPairs! }],
+      // Cast to any because RectDiffSolver uses an older SimpleRouteJson type
+      // that doesn't support MultiLayerConnectionPoint yet
+      (cms) => [{ simpleRouteJson: cms.srjWithPointPairs! as any }],
       {
         onSolved: (cms) => {
           cms.capacityNodes = cms.nodeSolver?.getOutput().meshNodes ?? []

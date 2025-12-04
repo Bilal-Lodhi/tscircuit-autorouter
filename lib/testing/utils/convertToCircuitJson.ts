@@ -1,6 +1,7 @@
 import type { AnyCircuitElement, PcbTrace, PcbVia } from "circuit-json"
 import { Obstacle, SimpleRouteJson, SimplifiedPcbTrace } from "lib/types"
 import { HighDensityRoute } from "lib/types/high-density-types"
+import { getConnectionPointLayers } from "lib/types/srj-types"
 import { LayerName, mapZToLayerName } from "lib/utils/mapZToLayerName"
 import { pointToBoxDistance } from "@tscircuit/math-utils"
 
@@ -169,7 +170,7 @@ function createPcbPorts(srj: SimpleRouteJson): AnyCircuitElement[] {
           source_port_id: point.pcb_port_id, // Assuming same ID for simplicity
           x: point.x,
           y: point.y,
-          layers: [point.layer],
+          layers: getConnectionPointLayers(point),
         })
       }
     })

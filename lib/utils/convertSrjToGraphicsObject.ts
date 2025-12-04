@@ -1,5 +1,9 @@
 import { Rect, Line, Circle, Point } from "graphics-debug"
 import { SimpleRouteJson } from "lib/types"
+import {
+  getConnectionPointLayer,
+  getConnectionPointLayers,
+} from "lib/types/srj-types"
 import { getColorMap, safeTransparentize } from "lib/solvers/colors"
 import { mapZToLayerName } from "lib/utils/mapZToLayerName"
 import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
@@ -17,16 +21,17 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
   if (srj.connections) {
     for (const connection of srj.connections) {
       for (const point of connection.pointsToConnect) {
+        const pointLayers = getConnectionPointLayers(point)
         points.push({
           x: point.x,
           y: point.y,
           color: colorMap[connection.name]!,
           layer:
-            point.layer ??
+            pointLayers[0] ??
             ("z" in point
               ? mapZToLayerName(point.z as number, layerCount)
               : "top"),
-          label: `${connection.name} (${point.layer})`,
+          label: `${connection.name} (${pointLayers.join(",")})`,
         })
       }
     }

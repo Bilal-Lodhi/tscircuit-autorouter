@@ -6,6 +6,7 @@ import type {
   CapacityPath,
   SimpleRouteConnection,
 } from "lib/types"
+import { getConnectionPointLayer } from "lib/types/srj-types"
 import { isPointInRect } from "lib/utils/isPointInRect"
 import { createNodeMap } from "lib/utils/createNodeMap"
 
@@ -166,7 +167,7 @@ export class OffboardPathFragmentSolver extends BaseSolver {
         const syntheticPoint = {
           x: offboardNode.center.x,
           y: offboardNode.center.y,
-          layer: realPoint.layer,
+          layer: getConnectionPointLayer(realPoint),
         }
 
         const pointsToConnect = isFirstFragment
