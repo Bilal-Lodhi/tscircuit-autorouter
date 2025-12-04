@@ -2,7 +2,7 @@ export type TraceId = string
 export type NetId = string
 export type PointId = string
 export type OffBoardConnectionId = string
-export type ConnectionPoint = {
+export type SingleLayerConnectionPoint = {
   x: number
   y: number
   layer: string
@@ -16,6 +16,9 @@ export type MultiLayerConnectionPoint = {
   pointId?: PointId
   pcb_port_id?: string
 }
+export type ConnectionPoint =
+  | SingleLayerConnectionPoint
+  | MultiLayerConnectionPoint
 
 export interface SimpleRouteJson {
   layerCount: number
@@ -45,7 +48,7 @@ export interface SimpleRouteConnection {
   isOffBoard?: boolean
   netConnectionName?: string
   nominalTraceWidth?: number
-  pointsToConnect: Array<ConnectionPoint | MultiLayerConnectionPoint>
+  pointsToConnect: Array<ConnectionPoint>
 
   /** @deprecated DO NOT USE **/
   externallyConnectedPointIds?: PointId[][]
@@ -77,14 +80,14 @@ export type SimplifiedPcbTraces = Array<SimplifiedPcbTrace>
 
 // Type guards and helpers for ConnectionPoint types
 export function isMultiLayerConnectionPoint(
-  point: ConnectionPoint | MultiLayerConnectionPoint,
+  point: ConnectionPoint,
 ): point is MultiLayerConnectionPoint {
   return "layers" in point && Array.isArray((point as any).layers)
 }
 
 export function isSingleLayerConnectionPoint(
-  point: ConnectionPoint | MultiLayerConnectionPoint,
-): point is ConnectionPoint {
+  point: ConnectionPoint,
+): point is SingleLayerConnectionPoint {
   return "layer" in point && typeof (point as any).layer === "string"
 }
 
@@ -92,9 +95,7 @@ export function isSingleLayerConnectionPoint(
  * Gets the primary layer from a connection point.
  * For MultiLayerConnectionPoint, returns the first layer as default.
  */
-export function getConnectionPointLayer(
-  point: ConnectionPoint | MultiLayerConnectionPoint,
-): string {
+export function getConnectionPointLayer(point: ConnectionPoint): string {
   if (isMultiLayerConnectionPoint(point)) {
     return point.layers[0]
   }
@@ -105,9 +106,7 @@ export function getConnectionPointLayer(
  * Gets all layers from a connection point.
  * For ConnectionPoint, returns an array with the single layer.
  */
-export function getConnectionPointLayers(
-  point: ConnectionPoint | MultiLayerConnectionPoint,
-): string[] {
+export function getConnectionPointLayers(point: ConnectionPoint): string[] {
   if (isMultiLayerConnectionPoint(point)) {
     return point.layers
   }
