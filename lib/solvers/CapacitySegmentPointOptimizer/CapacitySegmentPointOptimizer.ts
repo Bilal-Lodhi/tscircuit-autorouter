@@ -74,6 +74,8 @@ export class CapacitySegmentPointOptimizer extends BaseSolver {
   randomSeed: number
   numNodes: number
 
+  multiLayerTargetNodeIds: Set<CapacityMeshNodeId>
+
   probabilityOfFailure: number
   nodesThatCantFitVias: Set<CapacityMeshNodeId>
   mutableSegments: Set<NodePortSegmentId>
@@ -162,6 +164,11 @@ export class CapacitySegmentPointOptimizer extends BaseSolver {
     }
 
     this.numNodes = this.segmentIdToNodeIds.size
+    this.multiLayerTargetNodeIds = new Set(
+      [...this.nodeMap.values()]
+        .filter((node) => node._containsTarget && node.availableZ.length > 1)
+        .map((node) => node.capacityMeshNodeId),
+    )
     const { cost, nodeCosts, probabilityOfFailure } = this.computeCurrentCost()
     this.currentCost = cost
     this.currentNodeCosts = nodeCosts
@@ -279,8 +286,21 @@ export class CapacitySegmentPointOptimizer extends BaseSolver {
   getRandomWeightedNodeId(): CapacityMeshNodeId {
     // return "cn7009"
     const nodeIdsWithCosts = [...this.currentNodeCosts.entries()]
+      .map(([nodeId, cost]) => {
+        // Target nodes normally have zero cost, but multi-layer targets can
+        // act as implicit vias. Give them a tiny weight so they can still be
+        // selected for layer-switching operations.
+        if (this.multiLayerTargetNodeIds.has(nodeId) && cost === 0) {
+          return [nodeId, 0.001] as const
+        }
+        return [nodeId, cost] as const
+      })
       .filter(([nodeId, cost]) => cost > 0.00001)
-      .filter(([nodeId]) => !this.nodeMap.get(nodeId)?._containsTarget)
+      .filter(
+        ([nodeId]) =>
+          !this.nodeMap.get(nodeId)?._containsTarget ||
+          this.multiLayerTargetNodeIds.has(nodeId),
+      )
 
     if (nodeIdsWithCosts.length === 0) {
       console.error(
@@ -315,9 +335,15 @@ export class CapacitySegmentPointOptimizer extends BaseSolver {
     for (const segmentId of this.currentMutatedSegments.keys()) {
       const segment = this.currentMutatedSegments.get(segmentId)!
       const nodes = this.segmentIdToNodeIds.get(segmentId)!
-      const isMutable = nodes.every(
-        (nodeId) => !this.nodeMap.get(nodeId)?._containsTarget,
-      )
+      const isMutable = nodes.every((nodeId) => {
+        const node = this.nodeMap.get(nodeId)
+        if (!node?._containsTarget) return true
+
+        // Multi-layer targets (e.g. plated holes) can safely switch layers
+        // without needing a dedicated via, so we allow their segments to
+        // participate in layer-change mutations.
+        return this.multiLayerTargetNodeIds.has(nodeId)
+      })
       if (isMutable) {
         mutableSegments.add(segmentId)
       }
@@ -333,8 +359,12 @@ export class CapacitySegmentPointOptimizer extends BaseSolver {
   ): SwitchOperation | ChangeLayerOperation | null {
     const segment = this.currentMutatedSegments.get(randomSegmentId)!
 
+    const segmentTouchesMultiLayerTarget = this.segmentIdToNodeIds
+      .get(randomSegmentId)!
+      .some((nodeId) => this.multiLayerTargetNodeIds.has(nodeId))
+
     let operationType = this.random() < 0.5 ? "switch" : "changeLayer"
-    if (segment.assignedPoints!.length <= 1) {
+    if (segment.assignedPoints!.length <= 1 || segmentTouchesMultiLayerTarget) {
       operationType = "changeLayer"
     }
 
@@ -363,11 +393,18 @@ export class CapacitySegmentPointOptimizer extends BaseSolver {
 
     const point = segment.assignedPoints![randomPointIndex]
 
+    const alternativeLayers = segment.availableZ.filter(
+      (layer) => layer !== point.point.z,
+    )
+    const nextLayer =
+      alternativeLayers[Math.floor(this.random() * alternativeLayers.length)] ??
+      point.point.z
+
     return {
       op: "changeLayer",
       segmentId: randomSegmentId,
       pointIndex: randomPointIndex,
-      newLayer: point.point.z === 0 ? 1 : 0,
+      newLayer: nextLayer,
     } as ChangeLayerOperation
   }
 
