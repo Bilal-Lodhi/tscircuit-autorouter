@@ -14,4 +14,12 @@ test("bugreport18-1b2d06.json", () => {
   expect(getLastStepSvg(solver.visualize())).toMatchSvgSnapshot(
     import.meta.path,
   )
+
+  const simplifiedTraces = solver.getOutputSimplifiedPcbTraces()
+  const viaCount = simplifiedTraces
+    .flatMap((trace) => trace.route)
+    .filter((segment) => segment.route_type === "via").length
+
+  // TODO: Expect no vias once via removal is fixed
+  // expect(viaCount).toBe(0)
 })
