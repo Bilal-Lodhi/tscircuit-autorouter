@@ -10,4 +10,8 @@ export interface CapacityPath {
   isFragmentedPath?: boolean
   /** MST pair connection name before fragmentation */
   mstPairConnectionName?: string
+  /** Chosen z-layer for the start point (for multi-layer connection points) */
+  startZ?: number
+  /** Chosen z-layer for the end point (for multi-layer connection points) */
+  endZ?: number
 }

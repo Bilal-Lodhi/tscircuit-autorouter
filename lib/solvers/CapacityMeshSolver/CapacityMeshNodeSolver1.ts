@@ -412,6 +412,10 @@ export class CapacityMeshNodeSolver extends BaseSolver {
         childNode._targetConnectionName = target.connectionName
         childNode.availableZ = target.availableZ
         childNode._containsTarget = true
+        // Mark as multi-layer connection point if target spans multiple layers
+        if (target.availableZ.length > 1) {
+          childNode._isMultiLayerConnectionPoint = true
+        }
       }
 
       if (childNode._containsObstacle) {

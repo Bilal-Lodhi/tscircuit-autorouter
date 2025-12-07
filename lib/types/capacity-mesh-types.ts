@@ -24,6 +24,9 @@ export interface CapacityMeshNode {
   _isVirtualOffboard?: boolean
   _offboardNetName?: string
 
+  /** True if this node contains a MultiLayerConnectionPoint (e.g., plated hole) */
+  _isMultiLayerConnectionPoint?: boolean
+
   _adjacentNodeIds?: CapacityMeshNodeId[]
 
   _parent?: CapacityMeshNode

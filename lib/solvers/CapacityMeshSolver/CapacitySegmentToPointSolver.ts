@@ -40,6 +40,13 @@ export class CapacitySegmentToPointSolver extends BaseSolver {
   // Each segment will get an added property "assignedPoints" which is an array of:
   // { connectionName: string, point: {x: number, y: number } }
   // This is a temporary extension used by the solver.
+
+  /**
+   * Map of connection name to optimal z-layer.
+   * Computed by finding common layers across all segments for each connection.
+   */
+  connectionOptimalZMap: Map<string, number>
+
   constructor({
     segments,
     colorMap,
@@ -61,6 +68,68 @@ export class CapacitySegmentToPointSolver extends BaseSolver {
     this.nodeMap = Object.fromEntries(
       nodes.map((node) => [node.capacityMeshNodeId, node]),
     )
+    this.connectionOptimalZMap = this.computeOptimalZPerConnection(segments)
+  }
+
+  /**
+   * For each connection, find the optimal z-layer by looking at ALL segments
+   * that include this connection and finding a common layer if possible.
+   * This allows multi-layer connection points to choose a layer that matches
+   * the destination, avoiding unnecessary vias.
+   */
+  computeOptimalZPerConnection(
+    segments: NodePortSegment[],
+  ): Map<string, number> {
+    const connectionSegmentsMap = new Map<string, NodePortSegment[]>()
+
+    // Group segments by connection name
+    for (const seg of segments) {
+      for (const connName of seg.connectionNames) {
+        if (!connectionSegmentsMap.has(connName)) {
+          connectionSegmentsMap.set(connName, [])
+        }
+        connectionSegmentsMap.get(connName)!.push(seg)
+      }
+    }
+
+    const optimalZMap = new Map<string, number>()
+
+    // For each connection, find a common z-layer across all its segments
+    for (const [connName, connSegments] of connectionSegmentsMap) {
+      if (connSegments.length === 0) continue
+
+      // Start with all layers from first segment
+      let commonZ = new Set(connSegments[0].availableZ)
+
+      // Intersect with each subsequent segment's available layers
+      for (let i = 1; i < connSegments.length; i++) {
+        const segZ = new Set(connSegments[i].availableZ)
+        commonZ = new Set([...commonZ].filter((z) => segZ.has(z)))
+      }
+
+      if (commonZ.size > 0) {
+        // Found a common layer - use the first one (prefer lower z values / top layer)
+        optimalZMap.set(connName, Math.min(...commonZ))
+      } else {
+        // No common layer - fall back to first segment's first available
+        optimalZMap.set(connName, connSegments[0].availableZ[0])
+      }
+    }
+
+    return optimalZMap
+  }
+
+  /**
+   * Get the optimal z-layer for a segment and connection.
+   * Uses the pre-computed optimal z if it's available in this segment,
+   * otherwise falls back to the segment's first available z.
+   */
+  getOptimalZ(seg: NodePortSegment, connectionName: string): number {
+    const optimalZ = this.connectionOptimalZMap.get(connectionName)
+    if (optimalZ !== undefined && seg.availableZ.includes(optimalZ)) {
+      return optimalZ
+    }
+    return seg.availableZ[0]
   }
 
   /**
@@ -79,13 +148,14 @@ export class CapacitySegmentToPointSolver extends BaseSolver {
 
       if (n === 1) {
         // For a single connection, assign the center of the segment.
+        const connectionName = seg.connectionNames[0]
         const center = {
           x: (seg.start.x + seg.end.x) / 2,
           y: (seg.start.y + seg.end.y) / 2,
-          z: seg.availableZ[0],
+          z: this.getOptimalZ(seg, connectionName),
         }
         ;(seg as any).assignedPoints = [
-          { connectionName: seg.connectionNames[0], point: center },
+          { connectionName, point: center },
         ]
         // Move seg from unsolvedSegments to solvedSegments.
         this.unsolvedSegments.splice(this.unsolvedSegments.indexOf(seg), 1)
@@ -109,21 +179,20 @@ export class CapacitySegmentToPointSolver extends BaseSolver {
       const dx = candidate.end.x - candidate.start.x
       const dy = candidate.end.y - candidate.start.y
       const n = sortedConnections.length
-      const points: { x: number; y: number; z: number }[] = []
       // Evenly space positions using fractions of the segment distance.
-      for (let i = 1; i <= n; i++) {
-        const fraction = i / (n + 1)
-        points.push({
-          x: candidate.start.x + dx * fraction,
-          y: candidate.start.y + dy * fraction,
-          z: candidate.availableZ[0],
-        })
-      }
+      // Each connection gets its optimal z-layer.
       ;(candidate as any).assignedPoints = sortedConnections.map(
-        (conn, idx) => ({
-          connectionName: conn,
-          point: points[idx],
-        }),
+        (connName, idx) => {
+          const fraction = (idx + 1) / (n + 1)
+          return {
+            connectionName: connName,
+            point: {
+              x: candidate.start.x + dx * fraction,
+              y: candidate.start.y + dy * fraction,
+              z: this.getOptimalZ(candidate, connName),
+            },
+          }
+        },
       )
       // Move candidate from unsolvedSegments to solvedSegments.
       this.unsolvedSegments.splice(this.unsolvedSegments.indexOf(candidate), 1)
