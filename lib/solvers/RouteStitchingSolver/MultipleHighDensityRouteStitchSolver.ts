@@ -37,24 +37,39 @@ export class MultipleHighDensityRouteStitchSolver extends BaseSolver {
     this.defaultViaDiameter =
       firstRoute?.viaDiameter ?? opts.defaultViaDiameter ?? 0.6
 
-    this.unsolvedRoutes = opts.connections.map((c) => ({
-      connectionName: c.name,
-      hdRoutes: opts.hdRoutes.filter((r) => r.connectionName === c.name),
-      start: {
-        ...c.pointsToConnect[0],
-        z: mapLayerNameToZ(
+    this.unsolvedRoutes = opts.connections.map((c) => {
+      const connectionHdRoutes = opts.hdRoutes.filter((r) => r.connectionName === c.name)
+
+      // Get z value from the actual HD routes if available, otherwise use original connection layer
+      // This ensures we use the optimally assigned layer from capacity pathing, not the original
+      const getZFromRoutes = (): number => {
+        // Use the z value from any point in the HD routes for this connection
+        // All points in the route should have the same z value for connections with MLCP endpoints
+        if (connectionHdRoutes.length > 0 && connectionHdRoutes[0].route.length > 0) {
+          return connectionHdRoutes[0].route[0].z
+        }
+        // Fallback to original connection layer
+        return mapLayerNameToZ(
           getConnectionPointLayer(c.pointsToConnect[0]),
           opts.layerCount,
-        ),
-      },
-      end: {
-        ...c.pointsToConnect[1],
-        z: mapLayerNameToZ(
-          getConnectionPointLayer(c.pointsToConnect[1]),
-          opts.layerCount,
-        ),
-      },
-    }))
+        )
+      }
+
+      const routeZ = getZFromRoutes()
+
+      return {
+        connectionName: c.name,
+        hdRoutes: connectionHdRoutes,
+        start: {
+          ...c.pointsToConnect[0],
+          z: routeZ,
+        },
+        end: {
+          ...c.pointsToConnect[1],
+          z: routeZ,
+        },
+      }
+    })
     this.MAX_ITERATIONS = 100e3
   }
 
