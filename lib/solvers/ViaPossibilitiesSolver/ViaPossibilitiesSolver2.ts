@@ -242,7 +242,12 @@ export class ViaPossibilitiesSolver2 extends BaseSolver {
     checkIntersectionsWithPathMap(this.completedPaths)
     checkIntersectionsWithPathMap(this.placeholderPaths)
 
-    const needsZChange = this.currentHead.z !== targetEnd.z
+    // Check if we need to change layers to reach the target
+    // For MLCP endpoints (have availableZ), any layer in availableZ is acceptable
+    const targetAvailableZ = (targetEnd as any).availableZ as number[] | undefined
+    const needsZChange = targetAvailableZ
+      ? !targetAvailableZ.includes(this.currentHead.z)
+      : this.currentHead.z !== targetEnd.z
 
     if (closestIntersection || needsZChange) {
       this.currentViaCount++
@@ -319,8 +324,12 @@ export class ViaPossibilitiesSolver2 extends BaseSolver {
       this.currentPath.push(viaPoint1, viaPoint2)
       this.currentHead = viaPoint2
     } else {
-      // --- No Intersection, Z Matches: Path Clear ---
-      this.currentPath.push(targetEnd)
+      // --- No Intersection, Z Matches (or MLCP accepts current layer): Path Clear ---
+      // If target is MLCP and accepts current layer, use current layer's z
+      const finalZ = targetAvailableZ?.includes(this.currentHead.z)
+        ? this.currentHead.z
+        : targetEnd.z
+      this.currentPath.push({ x: targetEnd.x, y: targetEnd.y, z: finalZ })
       this.completedPaths.set(this.currentConnectionName, this.currentPath)
 
       if (this.unprocessedConnections.length === 0) {

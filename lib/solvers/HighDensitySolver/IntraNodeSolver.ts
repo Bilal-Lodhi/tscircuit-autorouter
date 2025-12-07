@@ -18,7 +18,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
   colorMap: Record<string, string>
   unsolvedConnections: {
     connectionName: string
-    points: { x: number; y: number; z: number }[]
+    points: { x: number; y: number; z: number; availableZ?: number[] }[]
   }[]
 
   totalConnections: number
@@ -62,12 +62,12 @@ export class IntraNodeRouteSolver extends BaseSolver {
     this.traceWidth = params.traceWidth ?? 0.15
     const unsolvedConnectionsMap: Map<
       string,
-      { x: number; y: number; z: number }[]
+      { x: number; y: number; z: number; availableZ?: number[] }[]
     > = new Map()
-    for (const { connectionName, x, y, z } of nodeWithPortPoints.portPoints) {
+    for (const { connectionName, x, y, z, availableZ } of nodeWithPortPoints.portPoints) {
       unsolvedConnectionsMap.set(connectionName, [
         ...(unsolvedConnectionsMap.get(connectionName) ?? []),
-        { x, y, z: z ?? 0 },
+        { x, y, z: z ?? 0, availableZ },
       ])
     }
     this.unsolvedConnections = Array.from(
@@ -177,17 +177,24 @@ export class IntraNodeRouteSolver extends BaseSolver {
       }
     }
     const { connectionName, points } = unsolvedConnection
+    const A = points[0]
+    const B = points[points.length - 1]
+
+    // Debug: log A and B z values
+    if (A.z !== B.z) {
+      console.log(`[IntraNodeSolver] ${connectionName}: A.z=${A.z}, B.z=${B.z} (different!)`)
+    }
+
+    // Determine layer count from node's availableZ or default to 2
+    const nodeAvailableZ = this.nodeWithPortPoints.availableZ
+    const layerCount = nodeAvailableZ ? Math.max(...nodeAvailableZ) + 1 : 2
     this.activeSubSolver =
       new SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost({
         connectionName,
         minDistBetweenEnteringPoints: this.minDistBetweenEnteringPoints,
         bounds: getBoundsFromNodeWithPortPoints(this.nodeWithPortPoints),
-        A: { x: points[0].x, y: points[0].y, z: points[0].z },
-        B: {
-          x: points[points.length - 1].x,
-          y: points[points.length - 1].y,
-          z: points[points.length - 1].z,
-        },
+        A: { x: A.x, y: A.y, z: A.z },
+        B: { x: B.x, y: B.y, z: B.z },
         obstacleRoutes: this.connMap
           ? this.solvedRoutes.filter(
               (sr) =>
@@ -198,7 +205,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
             )
           : this.solvedRoutes,
         futureConnections: this.unsolvedConnections,
-        layerCount: 2,
+        layerCount,
         hyperParameters: this.hyperParameters,
         connMap: this.connMap,
         viaDiameter: this.viaDiameter,

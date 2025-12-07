@@ -2,7 +2,7 @@ import { BaseSolver } from "../BaseSolver"
 import type { NodePortSegment } from "../../types/capacity-edges-to-port-segments-types"
 import type { GraphicsObject, Line } from "graphics-debug"
 import type { NodeWithPortPoints } from "../../types/high-density-types"
-import type { CapacityMeshNode, CapacityMeshNodeId } from "lib/types"
+import type { CapacityMeshNode, CapacityMeshNodeId, CapacityPath } from "lib/types"
 
 export interface SegmentWithAssignedPoints extends NodePortSegment {
   assignedPoints?: {
@@ -35,22 +35,18 @@ export class CapacitySegmentToPointSolver extends BaseSolver {
   })[]
   nodeMap: Record<string, CapacityMeshNode>
   colorMap: Record<string, string>
+  /** Map of connectionName to chosen layer info from A* pathfinding */
+  capacityPathLayerMap: Map<string, { startZ?: number; endZ?: number; startNodeId?: string; endNodeId?: string }>
 
   // We use an extra property on segments to remember assigned points.
   // Each segment will get an added property "assignedPoints" which is an array of:
   // { connectionName: string, point: {x: number, y: number } }
   // This is a temporary extension used by the solver.
-
-  /**
-   * Map of connection name to optimal z-layer.
-   * Computed by finding common layers across all segments for each connection.
-   */
-  connectionOptimalZMap: Map<string, number>
-
   constructor({
     segments,
     colorMap,
     nodes,
+    capacityPaths,
   }: {
     segments: NodePortSegment[]
     colorMap?: Record<string, string>
@@ -59,6 +55,11 @@ export class CapacitySegmentToPointSolver extends BaseSolver {
      * for the result datatype (the center, width, height of the node)
      */
     nodes: CapacityMeshNode[]
+    /**
+     * Capacity paths from the pathing solver, containing chosen layers for
+     * connections that start/end at MultiLayerConnectionPoints
+     */
+    capacityPaths?: CapacityPath[]
   }) {
     super()
     this.MAX_ITERATIONS = 100_000
@@ -68,67 +69,48 @@ export class CapacitySegmentToPointSolver extends BaseSolver {
     this.nodeMap = Object.fromEntries(
       nodes.map((node) => [node.capacityMeshNodeId, node]),
     )
-    this.connectionOptimalZMap = this.computeOptimalZPerConnection(segments)
-  }
-
-  /**
-   * For each connection, find the optimal z-layer by looking at ALL segments
-   * that include this connection and finding a common layer if possible.
-   * This allows multi-layer connection points to choose a layer that matches
-   * the destination, avoiding unnecessary vias.
-   */
-  computeOptimalZPerConnection(
-    segments: NodePortSegment[],
-  ): Map<string, number> {
-    const connectionSegmentsMap = new Map<string, NodePortSegment[]>()
-
-    // Group segments by connection name
-    for (const seg of segments) {
-      for (const connName of seg.connectionNames) {
-        if (!connectionSegmentsMap.has(connName)) {
-          connectionSegmentsMap.set(connName, [])
+    // Build map of connection -> layer info for quick lookup
+    // Note: nodeIds are in backtracked order (end -> start), so:
+    // - nodeIds[0] is the END node
+    // - nodeIds[length-1] is the START node
+    this.capacityPathLayerMap = new Map()
+    if (capacityPaths) {
+      for (const path of capacityPaths) {
+        if (path.startZ !== undefined || path.endZ !== undefined) {
+          this.capacityPathLayerMap.set(path.connectionName, {
+            startZ: path.startZ,
+            endZ: path.endZ,
+            // nodeIds are backtracked: [end, ..., start]
+            startNodeId: path.nodeIds[path.nodeIds.length - 1],
+            endNodeId: path.nodeIds[0],
+          })
         }
-        connectionSegmentsMap.get(connName)!.push(seg)
       }
     }
-
-    const optimalZMap = new Map<string, number>()
-
-    // For each connection, find a common z-layer across all its segments
-    for (const [connName, connSegments] of connectionSegmentsMap) {
-      if (connSegments.length === 0) continue
-
-      // Start with all layers from first segment
-      let commonZ = new Set(connSegments[0].availableZ)
-
-      // Intersect with each subsequent segment's available layers
-      for (let i = 1; i < connSegments.length; i++) {
-        const segZ = new Set(connSegments[i].availableZ)
-        commonZ = new Set([...commonZ].filter((z) => segZ.has(z)))
-      }
-
-      if (commonZ.size > 0) {
-        // Found a common layer - use the first one (prefer lower z values / top layer)
-        optimalZMap.set(connName, Math.min(...commonZ))
-      } else {
-        // No common layer - fall back to first segment's first available
-        optimalZMap.set(connName, connSegments[0].availableZ[0])
-      }
-    }
-
-    return optimalZMap
   }
 
   /**
-   * Get the optimal z-layer for a segment and connection.
-   * Uses the pre-computed optimal z if it's available in this segment,
-   * otherwise falls back to the segment's first available z.
+   * Get the optimal z-layer for a connection at a specific node.
+   * Uses chosen layer from A* pathfinding if available, otherwise falls back to first available.
+   *
+   * IMPORTANT: For connections with MLCP endpoints, we use the chosen layer for ALL nodes
+   * along the path (not just start/end) to maintain layer consistency and avoid unnecessary vias.
    */
   getOptimalZ(seg: NodePortSegment, connectionName: string): number {
-    const optimalZ = this.connectionOptimalZMap.get(connectionName)
-    if (optimalZ !== undefined && seg.availableZ.includes(optimalZ)) {
-      return optimalZ
+    const pathInfo = this.capacityPathLayerMap.get(connectionName)
+    if (pathInfo) {
+      // For connections with MLCP endpoints, use the chosen layer for ALL nodes in the path
+      // This maintains layer consistency and avoids vias at node boundaries
+      const chosenLayer = pathInfo.startZ ?? pathInfo.endZ
+      if (chosenLayer !== undefined && seg.availableZ.includes(chosenLayer)) {
+        return chosenLayer
+      }
+      // Debug: log if chosen layer not in availableZ
+      if (chosenLayer !== undefined && !seg.availableZ.includes(chosenLayer)) {
+        console.log(`[getOptimalZ] ${connectionName}: chosen layer ${chosenLayer} not in availableZ ${seg.availableZ}, falling back to ${seg.availableZ[0]}`)
+      }
     }
+    // Default to first available layer
     return seg.availableZ[0]
   }
 
@@ -179,21 +161,21 @@ export class CapacitySegmentToPointSolver extends BaseSolver {
       const dx = candidate.end.x - candidate.start.x
       const dy = candidate.end.y - candidate.start.y
       const n = sortedConnections.length
+      const assignedPoints: { connectionName: string; point: { x: number; y: number; z: number } }[] = []
       // Evenly space positions using fractions of the segment distance.
-      // Each connection gets its optimal z-layer.
-      ;(candidate as any).assignedPoints = sortedConnections.map(
-        (connName, idx) => {
-          const fraction = (idx + 1) / (n + 1)
-          return {
-            connectionName: connName,
-            point: {
-              x: candidate.start.x + dx * fraction,
-              y: candidate.start.y + dy * fraction,
-              z: this.getOptimalZ(candidate, connName),
-            },
-          }
-        },
-      )
+      for (let i = 0; i < n; i++) {
+        const fraction = (i + 1) / (n + 1)
+        const conn = sortedConnections[i]
+        assignedPoints.push({
+          connectionName: conn,
+          point: {
+            x: candidate.start.x + dx * fraction,
+            y: candidate.start.y + dy * fraction,
+            z: this.getOptimalZ(candidate, conn),
+          },
+        })
+      }
+      ;(candidate as any).assignedPoints = assignedPoints
       // Move candidate from unsolvedSegments to solvedSegments.
       this.unsolvedSegments.splice(this.unsolvedSegments.indexOf(candidate), 1)
       this.solvedSegments.push(candidate as any)
@@ -226,12 +208,16 @@ export class CapacitySegmentToPointSolver extends BaseSolver {
           center: node.center,
           width: node.width,
           height: node.height,
+          // Always include availableZ so HighDensitySolver knows all available layers
+          availableZ: node.availableZ,
         })
       }
       map.get(nodeId)!.portPoints.push(
         ...seg.assignedPoints.map((ap) => ({
           ...ap.point,
           connectionName: ap.connectionName,
+          // Include availableZ on port points at MLCP nodes for flexible layer selection
+          availableZ: node._isMultiLayerConnectionPoint ? node.availableZ : undefined,
         })),
       )
     }

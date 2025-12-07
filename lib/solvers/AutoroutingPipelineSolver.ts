@@ -53,7 +53,6 @@ import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
 import { NetToPointPairsSolver2_OffBoardConnection } from "./NetToPointPairsSolver2_OffBoardConnection/NetToPointPairsSolver2_OffBoardConnection"
 import { RectDiffSolver } from "@tscircuit/rectdiff"
 import { TraceSimplificationSolver } from "./TraceSimplificationSolver/TraceSimplificationSolver"
-import { getConnectionPointLayers } from "lib/types/srj-types"
 
 interface CapacityMeshSolverOptions {
   capacityDepth?: number
@@ -152,24 +151,10 @@ export class AutoroutingPipelineSolver extends BaseSolver {
           cms.capacityNodes = cms.nodeSolver?.getOutput().meshNodes ?? []
 
           // Mark nodes that contain multi-layer connection points
-          // Build a map of connection names to their layer counts
-          const connectionLayerCounts = new Map<string, number>()
-          for (const conn of cms.srjWithPointPairs!.connections) {
-            for (const ptc of conn.pointsToConnect) {
-              const layers = getConnectionPointLayers(ptc)
-              // Store max layer count for this connection
-              const existing = connectionLayerCounts.get(conn.name) ?? 0
-              connectionLayerCounts.set(conn.name, Math.max(existing, layers.length))
-            }
-          }
-
-          // Mark nodes with multi-layer targets
+          // A node is MLCP if it contains a target AND has multiple available layers
           for (const node of cms.capacityNodes) {
-            if (node._containsTarget && node._targetConnectionName) {
-              const layerCount = connectionLayerCounts.get(node._targetConnectionName)
-              if (layerCount && layerCount > 1) {
-                node._isMultiLayerConnectionPoint = true
-              }
+            if (node._containsTarget && node.availableZ.length > 1) {
+              node._isMultiLayerConnectionPoint = true
             }
           }
         },
@@ -285,6 +270,7 @@ export class AutoroutingPipelineSolver extends BaseSolver {
             segments: allSegments,
             colorMap: cms.colorMap,
             nodes: cms.capacityNodes!,
+            capacityPaths: cms.pathingOptimizer?.getCapacityPaths() || [],
           },
         ]
       },

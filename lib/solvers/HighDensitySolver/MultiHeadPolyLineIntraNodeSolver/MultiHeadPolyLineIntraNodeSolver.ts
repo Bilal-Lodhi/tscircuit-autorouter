@@ -1322,6 +1322,21 @@ export class MultiHeadPolyLineIntraNodeSolver extends BaseSolver {
 
     const solvedRoutes: HighDensityIntraNodeRoute[] = []
 
+    // Find MLCP positions (port points with multi-layer availability)
+    const mlcpPositions = new Set<string>()
+    let portPointsWithAvailableZ = 0
+    for (const portPoint of this.nodeWithPortPoints.portPoints) {
+      const availableZ = (portPoint as any).availableZ
+      if (availableZ?.length > 1) {
+        portPointsWithAvailableZ++
+        // Round to avoid floating point comparison issues
+        const key = `${Math.round(portPoint.x * 1000)},${Math.round(portPoint.y * 1000)}`
+        mlcpPositions.add(key)
+      }
+    }
+    // Debug: Show MLCP positions
+    console.log(`[MultiHeadPolyLine finalize] ${this.nodeWithPortPoints.portPoints.length} port points, ${portPointsWithAvailableZ} with availableZ, ${mlcpPositions.size} unique MLCP positions`)
+
     for (const polyLine of this.lastCandidate.polyLines) {
       const routePoints: Array<{ x: number; y: number; z: number }> = []
       const vias: Array<{ x: number; y: number }> = []
@@ -1337,10 +1352,17 @@ export class MultiHeadPolyLineIntraNodeSolver extends BaseSolver {
           z: currentPoint.z1,
         })
 
-        // If it's a via (layer transition)
+        // If it's a layer transition
         if (currentPoint.z1 !== currentPoint.z2) {
-          // Add the via location
-          vias.push({ x: currentPoint.x, y: currentPoint.y })
+          // Check if this is at an MLCP endpoint (layer change is free there)
+          const pointKey = `${Math.round(currentPoint.x * 1000)},${Math.round(currentPoint.y * 1000)}`
+          const isAtMLCP = mlcpPositions.has(pointKey)
+
+          // Only count as a via if NOT at an MLCP position
+          if (!isAtMLCP) {
+            vias.push({ x: currentPoint.x, y: currentPoint.y })
+          }
+
           // Add the point again on the ending layer (z2)
           // This creates the vertical segment in the route representation
           routePoints.push({

@@ -572,6 +572,8 @@ export class CapacityPathingMultiSectionSolver extends BaseSolver {
           capacityPathId: connection.connection.name,
           connectionName: connection.connection.name,
           nodeIds: path.map((node) => node.capacityMeshNodeId),
+          startZ: connection.startZ,
+          endZ: connection.endZ,
         })
       }
     }

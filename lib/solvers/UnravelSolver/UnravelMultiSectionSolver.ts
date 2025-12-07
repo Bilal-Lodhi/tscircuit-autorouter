@@ -234,6 +234,9 @@ export class UnravelMultiSectionSolver extends BaseSolver {
           pointModification,
         ] of bestCandidate.pointModifications.entries()) {
           const segmentPoint = this.segmentPointMap.get(segmentPointId)!
+          if (pointModification.z !== undefined && pointModification.z !== segmentPoint.z) {
+            console.log(`[Unravel] Changing z for ${segmentPoint.connectionName}: ${segmentPoint.z} -> ${pointModification.z}`)
+          }
           segmentPoint.x = pointModification.x ?? segmentPoint.x
           segmentPoint.y = pointModification.y ?? segmentPoint.y
           segmentPoint.z = pointModification.z ?? segmentPoint.z
@@ -414,6 +417,8 @@ export class UnravelMultiSectionSolver extends BaseSolver {
             center: node.center,
             width: node.width,
             height: node.height,
+            // Always include availableZ so HighDensitySolver knows all available layers
+            availableZ: node.availableZ,
           })
         }
       }
@@ -422,12 +427,15 @@ export class UnravelMultiSectionSolver extends BaseSolver {
     for (const segmentPoint of this.segmentPointMap.values()) {
       for (const nodeId of segmentPoint.capacityMeshNodeIds) {
         const nodeWithPortPoints = nodeWithPortPointsMap.get(nodeId)
+        const node = this.nodeMap.get(nodeId)
         if (nodeWithPortPoints) {
           nodeWithPortPoints.portPoints.push({
             x: segmentPoint.x,
             y: segmentPoint.y,
             z: segmentPoint.z,
             connectionName: segmentPoint.connectionName,
+            // Always include availableZ so HighDensitySolver knows all available layers
+            availableZ: node?.availableZ,
           })
         }
       }

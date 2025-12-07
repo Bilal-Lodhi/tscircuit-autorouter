@@ -280,9 +280,12 @@ export class SingleHighDensityRouteSolver extends BaseSolver {
   }
 
   computeG(node: Node) {
+    // Penalty for layer transition (via) - only when z changes from parent
+    const layerTransitionPenalty =
+      node.parent && node.z !== node.parent.z ? this.viaPenaltyDistance : 0
     return (
       (node.parent?.g ?? 0) +
-      (node.z === 0 ? 0 : this.viaPenaltyDistance) +
+      layerTransitionPenalty +
       distance(node, node.parent!)
     )
   }
@@ -342,26 +345,30 @@ export class SingleHighDensityRouteSolver extends BaseSolver {
       }
     }
 
-    const viaNeighbor = {
-      ...node,
-      parent: node,
-      z: node.z === 0 ? this.layerCount - 1 : 0,
-    }
+    // Only consider via neighbors if endpoints are on different layers
+    // When A.z === B.z, route entirely on that layer without vias
+    if (this.A.z !== this.B.z) {
+      const viaNeighbor = {
+        ...node,
+        parent: node,
+        z: node.z === 0 ? this.layerCount - 1 : 0,
+      }
 
-    if (
-      !this.exploredNodes.has(this.getNodeKey(viaNeighbor)) &&
-      !this.isNodeTooCloseToObstacle(
-        viaNeighbor,
-        this.viaDiameter / 2 + this.obstacleMargin / 2,
-        true,
-      ) &&
-      !this.isNodeTooCloseToEdge(viaNeighbor, true)
-    ) {
-      viaNeighbor.g = this.computeG(viaNeighbor)
-      viaNeighbor.h = this.computeH(viaNeighbor)
-      viaNeighbor.f = this.computeF(viaNeighbor.g, viaNeighbor.h)
+      if (
+        !this.exploredNodes.has(this.getNodeKey(viaNeighbor)) &&
+        !this.isNodeTooCloseToObstacle(
+          viaNeighbor,
+          this.viaDiameter / 2 + this.obstacleMargin / 2,
+          true,
+        ) &&
+        !this.isNodeTooCloseToEdge(viaNeighbor, true)
+      ) {
+        viaNeighbor.g = this.computeG(viaNeighbor)
+        viaNeighbor.h = this.computeH(viaNeighbor)
+        viaNeighbor.f = this.computeF(viaNeighbor.g, viaNeighbor.h)
 
-      neighbors.push(viaNeighbor)
+        neighbors.push(viaNeighbor)
+      }
     }
 
     return neighbors

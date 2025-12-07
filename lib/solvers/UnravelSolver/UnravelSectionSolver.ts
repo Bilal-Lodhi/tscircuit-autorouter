@@ -475,10 +475,18 @@ export class UnravelSectionSolver extends BaseSolver {
         return segmentObjects.every((seg) => seg.availableZ.includes(newZ))
       }
 
+      // Function to get the "other" layer to switch to
+      // Uses layer 0 and the maximum available layer for proper multi-layer support
+      const getAlternateLayer = (currentZ: number, availableZ: number[]): number => {
+        const maxZ = Math.max(...availableZ)
+        // If on layer 0, go to max layer; otherwise go to layer 0
+        return currentZ === 0 ? maxZ : 0
+      }
+
       // Only propose layer changes if both segments can use the target layer
       // and neither point is z-locked
       if (AIsMutable && BIsMutable && !AIsZLocked && !BIsZLocked) {
-        const newZ = A.z === 0 ? 1 : 0
+        const newZ = getAlternateLayer(A.z, aSegment.availableZ)
         if (isNewZAvailableForAll([aSegment, bSegment], newZ)) {
           operations.push({
             type: "change_layer",
@@ -489,7 +497,7 @@ export class UnravelSectionSolver extends BaseSolver {
       }
 
       if (CIsMutable && DIsMutable && !CIsZLocked && !DIsZLocked) {
-        const newZ = C.z === 0 ? 1 : 0
+        const newZ = getAlternateLayer(C.z, cSegment.availableZ)
         if (isNewZAvailableForAll([cSegment, dSegment], newZ)) {
           operations.push({
             type: "change_layer",
@@ -501,7 +509,7 @@ export class UnravelSectionSolver extends BaseSolver {
 
       // 3. CHANGE LAYER OF EACH POINT INDIVIDUALLY TO MAKE TRANSITION CROSSING
       if (AIsMutable && !AIsZLocked) {
-        const newZ = A.z === 0 ? 1 : 0
+        const newZ = getAlternateLayer(A.z, aSegment.availableZ)
         if (aSegment.availableZ.includes(newZ)) {
           operations.push({
             type: "change_layer",
@@ -512,7 +520,7 @@ export class UnravelSectionSolver extends BaseSolver {
       }
 
       if (BIsMutable && !BIsZLocked) {
-        const newZ = B.z === 0 ? 1 : 0
+        const newZ = getAlternateLayer(B.z, bSegment.availableZ)
         if (bSegment.availableZ.includes(newZ)) {
           operations.push({
             type: "change_layer",
@@ -523,7 +531,7 @@ export class UnravelSectionSolver extends BaseSolver {
       }
 
       if (CIsMutable && !CIsZLocked) {
-        const newZ = C.z === 0 ? 1 : 0
+        const newZ = getAlternateLayer(C.z, cSegment.availableZ)
         if (cSegment.availableZ.includes(newZ)) {
           operations.push({
             type: "change_layer",
@@ -534,7 +542,7 @@ export class UnravelSectionSolver extends BaseSolver {
       }
 
       if (DIsMutable && !DIsZLocked) {
-        const newZ = D.z === 0 ? 1 : 0
+        const newZ = getAlternateLayer(D.z, dSegment.availableZ)
         if (dSegment.availableZ.includes(newZ)) {
           operations.push({
             type: "change_layer",

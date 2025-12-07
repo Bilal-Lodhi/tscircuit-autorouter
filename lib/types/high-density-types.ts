@@ -3,6 +3,8 @@ export type PortPoint = {
   x: number
   y: number
   z: number
+  /** If this port point is at an MLCP, includes all available layers it can use */
+  availableZ?: number[]
 }
 
 export type NodeWithPortPoints = {
