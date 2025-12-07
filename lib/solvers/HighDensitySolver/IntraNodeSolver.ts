@@ -177,6 +177,8 @@ export class IntraNodeRouteSolver extends BaseSolver {
       }
     }
     const { connectionName, points } = unsolvedConnection
+    const availableLayerCount = this.nodeWithPortPoints.availableZ?.length ?? 2
+
     this.activeSubSolver =
       new SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost({
         connectionName,
@@ -198,7 +200,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
             )
           : this.solvedRoutes,
         futureConnections: this.unsolvedConnections,
-        layerCount: 2,
+        layerCount: availableLayerCount,
         hyperParameters: this.hyperParameters,
         connMap: this.connMap,
         viaDiameter: this.viaDiameter,

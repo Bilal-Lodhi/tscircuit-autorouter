@@ -342,26 +342,28 @@ export class SingleHighDensityRouteSolver extends BaseSolver {
       }
     }
 
-    const viaNeighbor = {
-      ...node,
-      parent: node,
-      z: node.z === 0 ? this.layerCount - 1 : 0,
-    }
+    if (this.A.z !== this.B.z) {
+      const viaNeighbor = {
+        ...node,
+        parent: node,
+        z: node.z === 0 ? this.layerCount - 1 : 0,
+      }
 
-    if (
-      !this.exploredNodes.has(this.getNodeKey(viaNeighbor)) &&
-      !this.isNodeTooCloseToObstacle(
-        viaNeighbor,
-        this.viaDiameter / 2 + this.obstacleMargin / 2,
-        true,
-      ) &&
-      !this.isNodeTooCloseToEdge(viaNeighbor, true)
-    ) {
-      viaNeighbor.g = this.computeG(viaNeighbor)
-      viaNeighbor.h = this.computeH(viaNeighbor)
-      viaNeighbor.f = this.computeF(viaNeighbor.g, viaNeighbor.h)
+      if (
+        !this.exploredNodes.has(this.getNodeKey(viaNeighbor)) &&
+        !this.isNodeTooCloseToObstacle(
+          viaNeighbor,
+          this.viaDiameter / 2 + this.obstacleMargin / 2,
+          true,
+        ) &&
+        !this.isNodeTooCloseToEdge(viaNeighbor, true)
+      ) {
+        viaNeighbor.g = this.computeG(viaNeighbor)
+        viaNeighbor.h = this.computeH(viaNeighbor)
+        viaNeighbor.f = this.computeF(viaNeighbor.g, viaNeighbor.h)
 
-      neighbors.push(viaNeighbor)
+        neighbors.push(viaNeighbor)
+      }
     }
 
     return neighbors

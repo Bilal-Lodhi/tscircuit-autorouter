@@ -35,6 +35,7 @@ export class CapacitySegmentToPointSolver extends BaseSolver {
   })[]
   nodeMap: Record<string, CapacityMeshNode>
   colorMap: Record<string, string>
+  preferredLayerByConnection: Map<string, number>
 
   // We use an extra property on segments to remember assigned points.
   // Each segment will get an added property "assignedPoints" which is an array of:
@@ -61,6 +62,85 @@ export class CapacitySegmentToPointSolver extends BaseSolver {
     this.nodeMap = Object.fromEntries(
       nodes.map((node) => [node.capacityMeshNodeId, node]),
     )
+
+    this.preferredLayerByConnection =
+      this.computePreferredLayerByConnection(segments)
+  }
+
+  /**
+   * Determine the preferred layer for each connection by looking at the
+   * availability across all related segments. If every segment that touches a
+   * connection shares a common layer, we choose that shared layer. Otherwise we
+   * fall back to the most frequently available layer for that connection.
+   */
+  computePreferredLayerByConnection(segments: NodePortSegment[]) {
+    const intersectionByConnection = new Map<string, number[]>()
+    const countsByConnection = new Map<string, Map<number, number>>()
+
+    for (const seg of segments) {
+      for (const connectionName of seg.connectionNames) {
+        // Track layer intersections
+        const existingIntersection =
+          intersectionByConnection.get(connectionName)
+        const segLayers = [...seg.availableZ]
+        if (existingIntersection) {
+          const intersection = existingIntersection.filter((z) =>
+            segLayers.includes(z),
+          )
+          intersectionByConnection.set(connectionName, intersection)
+        } else {
+          intersectionByConnection.set(connectionName, segLayers)
+        }
+
+        // Track frequency counts for fallback
+        const layerCounts =
+          countsByConnection.get(connectionName) ?? new Map<number, number>()
+        for (const z of segLayers) {
+          layerCounts.set(z, (layerCounts.get(z) ?? 0) + 1)
+        }
+        countsByConnection.set(connectionName, layerCounts)
+      }
+    }
+
+    const preferredLayerByConnection = new Map<string, number>()
+
+    for (const [connectionName, layerCounts] of countsByConnection.entries()) {
+      const intersection = intersectionByConnection.get(connectionName) ?? []
+      if (intersection.length > 0) {
+        preferredLayerByConnection.set(
+          connectionName,
+          [...intersection].sort((a, b) => a - b)[0],
+        )
+        continue
+      }
+
+      let bestLayer: number | null = null
+      let bestCount = -1
+      for (const [layer, count] of layerCounts.entries()) {
+        if (
+          count > bestCount ||
+          (count === bestCount && layer < (bestLayer ?? Infinity))
+        ) {
+          bestLayer = layer
+          bestCount = count
+        }
+      }
+
+      if (bestLayer !== null) {
+        preferredLayerByConnection.set(connectionName, bestLayer)
+      }
+    }
+
+    return preferredLayerByConnection
+  }
+
+  getPreferredLayer(connectionName: string, availableZ: number[]) {
+    const preferredLayer = this.preferredLayerByConnection.get(connectionName)
+    if (preferredLayer !== undefined && availableZ.includes(preferredLayer)) {
+      return preferredLayer
+    }
+
+    return availableZ[0]
   }
 
   /**
@@ -79,10 +159,14 @@ export class CapacitySegmentToPointSolver extends BaseSolver {
 
       if (n === 1) {
         // For a single connection, assign the center of the segment.
+        const preferredLayer = this.getPreferredLayer(
+          seg.connectionNames[0],
+          seg.availableZ,
+        )
         const center = {
           x: (seg.start.x + seg.end.x) / 2,
           y: (seg.start.y + seg.end.y) / 2,
-          z: seg.availableZ[0],
+          z: preferredLayer,
         }
         ;(seg as any).assignedPoints = [
           { connectionName: seg.connectionNames[0], point: center },
@@ -122,7 +206,10 @@ export class CapacitySegmentToPointSolver extends BaseSolver {
       ;(candidate as any).assignedPoints = sortedConnections.map(
         (conn, idx) => ({
           connectionName: conn,
-          point: points[idx],
+          point: {
+            ...points[idx],
+            z: this.getPreferredLayer(conn, candidate.availableZ),
+          },
         }),
       )
       // Move candidate from unsolvedSegments to solvedSegments.
@@ -157,6 +244,7 @@ export class CapacitySegmentToPointSolver extends BaseSolver {
           center: node.center,
           width: node.width,
           height: node.height,
+          availableZ: node.availableZ,
         })
       }
       map.get(nodeId)!.portPoints.push(

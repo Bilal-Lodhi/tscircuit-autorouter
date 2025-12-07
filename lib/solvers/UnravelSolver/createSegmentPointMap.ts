@@ -36,6 +36,7 @@ export const createSegmentPointMap = (
         x: point.point.x,
         y: point.point.y,
         z: point.point.z,
+        preferredZ: point.point.z,
         directlyConnectedSegmentPointIds: [],
       }
 

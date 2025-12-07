@@ -50,6 +50,7 @@ export interface SegmentPoint {
   x: number
   y: number
   z: number
+  preferredZ?: number
 }
 
 export type SegmentPointMap = Map<SegmentPointId, SegmentPoint>

@@ -414,6 +414,7 @@ export class UnravelMultiSectionSolver extends BaseSolver {
             center: node.center,
             width: node.width,
             height: node.height,
+            availableZ: node.availableZ,
           })
         }
       }
@@ -426,7 +427,7 @@ export class UnravelMultiSectionSolver extends BaseSolver {
           nodeWithPortPoints.portPoints.push({
             x: segmentPoint.x,
             y: segmentPoint.y,
-            z: segmentPoint.z,
+            z: segmentPoint.preferredZ ?? segmentPoint.z,
             connectionName: segmentPoint.connectionName,
           })
         }

@@ -8,6 +8,7 @@ import type {
   SimplifiedPcbTraces,
   TraceId,
 } from "../types"
+import { getConnectionPointLayers, isMultiLayerConnectionPoint } from "../types"
 import { BaseSolver } from "./BaseSolver"
 import { CapacityMeshEdgeSolver } from "./CapacityMeshSolver/CapacityMeshEdgeSolver"
 import { CapacityMeshNodeSolver } from "./CapacityMeshSolver/CapacityMeshNodeSolver1"
@@ -619,6 +620,26 @@ export class AutoroutingPipelineSolver extends BaseSolver {
             netConnectionName ??
             this.getOriginalConnectionName(connection.name),
           route: convertHdRouteToSimplifiedRoute(hdRoute, this.srj.layerCount),
+        }
+
+        const srjConnection = this.srj.connections.find(
+          (c) => c.name === connection.name,
+        )
+        const allPointsAreMultiLayer = srjConnection?.pointsToConnect.every(
+          (pt) => isMultiLayerConnectionPoint(pt),
+        )
+
+        if (allPointsAreMultiLayer && srjConnection) {
+          const targetLayer = getConnectionPointLayers(
+            srjConnection.pointsToConnect[0],
+          )[0]
+
+          simplifiedPcbTrace.route = simplifiedPcbTrace.route
+            .filter((segment) => segment.route_type === "wire")
+            .map((segment) => ({
+              ...segment,
+              layer: targetLayer,
+            }))
         }
 
         traces.push(simplifiedPcbTrace)

@@ -604,6 +604,7 @@ export class CapacitySegmentPointOptimizer extends BaseSolver {
             center: node.center,
             width: node.width,
             height: node.height,
+            availableZ: node.availableZ,
           })
         }
         map.get(nodeId)!.portPoints.push(
