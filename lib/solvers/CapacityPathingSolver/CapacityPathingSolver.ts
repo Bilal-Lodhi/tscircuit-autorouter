@@ -426,7 +426,7 @@ export class CapacityPathingSolver extends BaseSolver {
 
     // Apply layer assignments
     for (const conn of mlcpConnections) {
-      const layer = colorAssignment.get(conn.connection.name) ?? layer0
+      const layer = colorAssignment.get(conn.connection.name) ?? availableLayers[0]
       conn.startZ = layer
       conn.endZ = layer
     }
