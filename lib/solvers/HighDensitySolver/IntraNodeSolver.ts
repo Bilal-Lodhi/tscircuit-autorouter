@@ -180,11 +180,6 @@ export class IntraNodeRouteSolver extends BaseSolver {
     const A = points[0]
     const B = points[points.length - 1]
 
-    // Debug: log A and B z values
-    if (A.z !== B.z) {
-      console.log(`[IntraNodeSolver] ${connectionName}: A.z=${A.z}, B.z=${B.z} (different!)`)
-    }
-
     // Determine layer count from node's availableZ or default to 2
     const nodeAvailableZ = this.nodeWithPortPoints.availableZ
     const layerCount = nodeAvailableZ ? Math.max(...nodeAvailableZ) + 1 : 2

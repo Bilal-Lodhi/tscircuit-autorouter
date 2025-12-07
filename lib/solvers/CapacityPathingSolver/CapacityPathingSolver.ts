@@ -424,12 +424,6 @@ export class CapacityPathingSolver extends BaseSolver {
       colorAssignment.set(connName, assignedLayer ?? availableLayers[0])
     }
 
-    // Debug: log conflicts and assignments
-    console.log("[MLCP Layer Assignment] Conflicts:", Object.fromEntries(
-      [...conflicts.entries()].map(([name, conflictSet]) => [name, [...conflictSet]])
-    ))
-    console.log("[MLCP Layer Assignment] Assignments:", Object.fromEntries(colorAssignment))
-
     // Apply layer assignments
     for (const conn of mlcpConnections) {
       const layer = colorAssignment.get(conn.connection.name) ?? layer0

@@ -234,9 +234,6 @@ export class UnravelMultiSectionSolver extends BaseSolver {
           pointModification,
         ] of bestCandidate.pointModifications.entries()) {
           const segmentPoint = this.segmentPointMap.get(segmentPointId)!
-          if (pointModification.z !== undefined && pointModification.z !== segmentPoint.z) {
-            console.log(`[Unravel] Changing z for ${segmentPoint.connectionName}: ${segmentPoint.z} -> ${pointModification.z}`)
-          }
           segmentPoint.x = pointModification.x ?? segmentPoint.x
           segmentPoint.y = pointModification.y ?? segmentPoint.y
           segmentPoint.z = pointModification.z ?? segmentPoint.z

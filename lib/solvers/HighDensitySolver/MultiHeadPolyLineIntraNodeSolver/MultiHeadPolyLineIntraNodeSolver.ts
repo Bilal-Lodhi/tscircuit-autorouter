@@ -1334,8 +1334,6 @@ export class MultiHeadPolyLineIntraNodeSolver extends BaseSolver {
         mlcpPositions.add(key)
       }
     }
-    // Debug: Show MLCP positions
-    console.log(`[MultiHeadPolyLine finalize] ${this.nodeWithPortPoints.portPoints.length} port points, ${portPointsWithAvailableZ} with availableZ, ${mlcpPositions.size} unique MLCP positions`)
 
     for (const polyLine of this.lastCandidate.polyLines) {
       const routePoints: Array<{ x: number; y: number; z: number }> = []

@@ -105,10 +105,6 @@ export class CapacitySegmentToPointSolver extends BaseSolver {
       if (chosenLayer !== undefined && seg.availableZ.includes(chosenLayer)) {
         return chosenLayer
       }
-      // Debug: log if chosen layer not in availableZ
-      if (chosenLayer !== undefined && !seg.availableZ.includes(chosenLayer)) {
-        console.log(`[getOptimalZ] ${connectionName}: chosen layer ${chosenLayer} not in availableZ ${seg.availableZ}, falling back to ${seg.availableZ[0]}`)
-      }
     }
     // Default to first available layer
     return seg.availableZ[0]
