@@ -412,6 +412,9 @@ export class CapacityMeshNodeSolver extends BaseSolver {
         childNode._targetConnectionName = target.connectionName
         childNode.availableZ = target.availableZ
         childNode._containsTarget = true
+        if (target.availableZ.length > 1) {
+          childNode._allowMovingThroughLayersWithoutVia = true
+        }
       }
 
       if (childNode._containsObstacle) {

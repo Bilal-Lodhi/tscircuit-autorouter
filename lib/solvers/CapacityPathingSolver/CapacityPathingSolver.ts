@@ -333,6 +333,8 @@ export class CapacityPathingSolver extends BaseSolver {
         this.connectionsWithNodes[this.currentConnectionIndex].connection.name
       if (
         neighborNode._containsObstacle &&
+        !neighborNode._allowMovingThroughLayersWithoutVia &&
+        !currentCandidate.node._allowMovingThroughLayersWithoutVia &&
         !this.canTravelThroughObstacle(neighborNode, connectionName)
       ) {
         continue

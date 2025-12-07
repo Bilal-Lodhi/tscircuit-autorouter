@@ -19,6 +19,7 @@ export interface CapacityMeshNode {
   _containsObstacle?: boolean
   _containsTarget?: boolean
   _targetConnectionName?: string
+  _allowMovingThroughLayersWithoutVia?: boolean
   _strawNode?: boolean
   _strawParentCapacityMeshNodeId?: CapacityMeshNodeId
   _isVirtualOffboard?: boolean
