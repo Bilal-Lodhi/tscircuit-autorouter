@@ -190,7 +190,6 @@ export class CapacitySegmentPointOptimizer extends BaseSolver {
    */
   computeNodeCost(nodeId: CapacityMeshNodeId) {
     const node = this.nodeMap.get(nodeId)
-    if (node?._containsTarget) return 0
     const totalCapacity = getTunedTotalCapacity1(node!, 1, {
       viaDiameter: this.VIA_DIAMETER,
     })
@@ -278,9 +277,23 @@ export class CapacitySegmentPointOptimizer extends BaseSolver {
 
   getRandomWeightedNodeId(): CapacityMeshNodeId {
     // return "cn7009"
-    const nodeIdsWithCosts = [...this.currentNodeCosts.entries()]
-      .filter(([nodeId, cost]) => cost > 0.00001)
-      .filter(([nodeId]) => !this.nodeMap.get(nodeId)?._containsTarget)
+    const nodeIdsWithCosts: Array<[CapacityMeshNodeId, number]> = []
+
+    for (const [nodeId, cost] of this.currentNodeCosts.entries()) {
+      const containsTarget = this.nodeMap.get(nodeId)?._containsTarget
+      const hasMutableSegment =
+        this.nodeIdToSegmentIds
+          .get(nodeId)
+          ?.some((segmentId) => this.isSegmentMutable(segmentId)) ?? false
+
+      if (!hasMutableSegment) continue
+
+      const effectiveCost = cost > 0.00001 ? cost : containsTarget ? 0.0001 : 0
+
+      if (effectiveCost > 0) {
+        nodeIdsWithCosts.push([nodeId, effectiveCost])
+      }
+    }
 
     if (nodeIdsWithCosts.length === 0) {
       console.error(
@@ -315,9 +328,14 @@ export class CapacitySegmentPointOptimizer extends BaseSolver {
     for (const segmentId of this.currentMutatedSegments.keys()) {
       const segment = this.currentMutatedSegments.get(segmentId)!
       const nodes = this.segmentIdToNodeIds.get(segmentId)!
-      const isMutable = nodes.every(
-        (nodeId) => !this.nodeMap.get(nodeId)?._containsTarget,
+      const touchesTarget = nodes.some(
+        (nodeId) => this.nodeMap.get(nodeId)?._containsTarget,
       )
+
+      const isMutable =
+        nodes.every((nodeId) => !this.nodeMap.get(nodeId)?._containsTarget) ||
+        segment.availableZ.length > 1
+
       if (isMutable) {
         mutableSegments.add(segmentId)
       }
@@ -332,9 +350,12 @@ export class CapacitySegmentPointOptimizer extends BaseSolver {
     randomSegmentId: string,
   ): SwitchOperation | ChangeLayerOperation | null {
     const segment = this.currentMutatedSegments.get(randomSegmentId)!
+    const touchesTarget = this.segmentIdToNodeIds
+      .get(randomSegmentId)!
+      .some((nodeId) => this.nodeMap.get(nodeId)?._containsTarget)
 
     let operationType = this.random() < 0.5 ? "switch" : "changeLayer"
-    if (segment.assignedPoints!.length <= 1) {
+    if (segment.assignedPoints!.length <= 1 || touchesTarget) {
       operationType = "changeLayer"
     }
 
@@ -362,12 +383,20 @@ export class CapacitySegmentPointOptimizer extends BaseSolver {
     )
 
     const point = segment.assignedPoints![randomPointIndex]
+    const possibleNewLayers = segment.availableZ.filter(
+      (z) => z !== point.point.z,
+    )
+
+    if (possibleNewLayers.length === 0) return null
+
+    const newLayer =
+      possibleNewLayers[Math.floor(this.random() * possibleNewLayers.length)]
 
     return {
       op: "changeLayer",
       segmentId: randomSegmentId,
       pointIndex: randomPointIndex,
-      newLayer: point.point.z === 0 ? 1 : 0,
+      newLayer,
     } as ChangeLayerOperation
   }
 
@@ -574,7 +603,7 @@ export class CapacitySegmentPointOptimizer extends BaseSolver {
     // const temperature = INITIAL_TEMPERATURE * COOLING_RATE ** this.iterations
 
     // If new cost is better, accept it
-    if (newPf < oldPf) return true
+    if (newPf <= oldPf) return true
     return false
 
     // const probDelta = newPf - oldPf

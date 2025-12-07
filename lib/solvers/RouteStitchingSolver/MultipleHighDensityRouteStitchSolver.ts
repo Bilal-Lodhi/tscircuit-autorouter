@@ -3,6 +3,7 @@ import { HighDensityIntraNodeRoute } from "lib/types/high-density-types"
 import { getConnectionPointLayer } from "lib/types/srj-types"
 import { BaseSolver } from "../BaseSolver"
 import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
+import { distance } from "@tscircuit/math-utils"
 import { SingleHighDensityRouteStitchSolver } from "./SingleHighDensityRouteStitchSolver"
 import { GraphicsObject } from "graphics-debug"
 import { safeTransparentize } from "../colors"
@@ -37,24 +38,50 @@ export class MultipleHighDensityRouteStitchSolver extends BaseSolver {
     this.defaultViaDiameter =
       firstRoute?.viaDiameter ?? opts.defaultViaDiameter ?? 0.6
 
-    this.unsolvedRoutes = opts.connections.map((c) => ({
-      connectionName: c.name,
-      hdRoutes: opts.hdRoutes.filter((r) => r.connectionName === c.name),
-      start: {
-        ...c.pointsToConnect[0],
-        z: mapLayerNameToZ(
-          getConnectionPointLayer(c.pointsToConnect[0]),
-          opts.layerCount,
-        ),
-      },
-      end: {
-        ...c.pointsToConnect[1],
-        z: mapLayerNameToZ(
-          getConnectionPointLayer(c.pointsToConnect[1]),
-          opts.layerCount,
-        ),
-      },
-    }))
+    const inferConnectionZ = (
+      connectionPoint: (typeof opts.connections)[number]["pointsToConnect"][0],
+      connectionRoutes: HighDensityIntraNodeRoute[],
+    ) => {
+      let closestZ = mapLayerNameToZ(
+        getConnectionPointLayer(connectionPoint),
+        opts.layerCount,
+      )
+      let closestDistance = Infinity
+
+      for (const route of connectionRoutes) {
+        for (const endpoint of [route.route[0], route.route.at(-1)!]) {
+          const dist = distance(
+            { x: connectionPoint.x, y: connectionPoint.y },
+            endpoint,
+          )
+          if (dist < closestDistance) {
+            closestDistance = dist
+            closestZ = endpoint.z
+          }
+        }
+      }
+
+      return closestZ
+    }
+
+    this.unsolvedRoutes = opts.connections.map((c) => {
+      const connectionRoutes = opts.hdRoutes.filter(
+        (r) => r.connectionName === c.name,
+      )
+
+      return {
+        connectionName: c.name,
+        hdRoutes: connectionRoutes,
+        start: {
+          ...c.pointsToConnect[0],
+          z: inferConnectionZ(c.pointsToConnect[0], connectionRoutes),
+        },
+        end: {
+          ...c.pointsToConnect[1],
+          z: inferConnectionZ(c.pointsToConnect[1], connectionRoutes),
+        },
+      }
+    })
     this.MAX_ITERATIONS = 100e3
   }
 

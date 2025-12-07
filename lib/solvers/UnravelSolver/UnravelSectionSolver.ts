@@ -470,6 +470,20 @@ export class UnravelSectionSolver extends BaseSolver {
       const cSegment = this.dedupedSegmentMap.get(C.segmentId)!
       const dSegment = this.dedupedSegmentMap.get(D.segmentId)!
 
+      const getAlternativeZs = (currentZ: number, availableZ: number[]) =>
+        availableZ.filter((z) => z !== currentZ)
+
+      const getSharedAlternativeZs = (
+        currentZ: number,
+        segmentObjects: Array<{ availableZ: number[] }>,
+      ) => {
+        const shared = segmentObjects.reduce<number[]>(
+          (acc, seg) => acc.filter((z) => seg.availableZ.includes(z)),
+          [...(segmentObjects[0]?.availableZ ?? [])],
+        )
+        return shared.filter((z) => z !== currentZ)
+      }
+
       // Function to check if a new Z level is available for all segments
       const isNewZAvailableForAll = (segmentObjects: any[], newZ: number) => {
         return segmentObjects.every((seg) => seg.availableZ.includes(newZ))
@@ -478,69 +492,75 @@ export class UnravelSectionSolver extends BaseSolver {
       // Only propose layer changes if both segments can use the target layer
       // and neither point is z-locked
       if (AIsMutable && BIsMutable && !AIsZLocked && !BIsZLocked) {
-        const newZ = A.z === 0 ? 1 : 0
-        if (isNewZAvailableForAll([aSegment, bSegment], newZ)) {
-          operations.push({
-            type: "change_layer",
-            newZ,
-            segmentPointIds: [APointId, BPointId],
-          })
+        for (const newZ of getSharedAlternativeZs(A.z, [aSegment, bSegment])) {
+          if (isNewZAvailableForAll([aSegment, bSegment], newZ)) {
+            operations.push({
+              type: "change_layer",
+              newZ,
+              segmentPointIds: [APointId, BPointId],
+            })
+          }
         }
       }
 
       if (CIsMutable && DIsMutable && !CIsZLocked && !DIsZLocked) {
-        const newZ = C.z === 0 ? 1 : 0
-        if (isNewZAvailableForAll([cSegment, dSegment], newZ)) {
-          operations.push({
-            type: "change_layer",
-            newZ,
-            segmentPointIds: [CPointId, DPointId],
-          })
+        for (const newZ of getSharedAlternativeZs(C.z, [cSegment, dSegment])) {
+          if (isNewZAvailableForAll([cSegment, dSegment], newZ)) {
+            operations.push({
+              type: "change_layer",
+              newZ,
+              segmentPointIds: [CPointId, DPointId],
+            })
+          }
         }
       }
 
       // 3. CHANGE LAYER OF EACH POINT INDIVIDUALLY TO MAKE TRANSITION CROSSING
       if (AIsMutable && !AIsZLocked) {
-        const newZ = A.z === 0 ? 1 : 0
-        if (aSegment.availableZ.includes(newZ)) {
-          operations.push({
-            type: "change_layer",
-            newZ,
-            segmentPointIds: [APointId],
-          })
+        for (const newZ of getAlternativeZs(A.z, aSegment.availableZ)) {
+          if (aSegment.availableZ.includes(newZ)) {
+            operations.push({
+              type: "change_layer",
+              newZ,
+              segmentPointIds: [APointId],
+            })
+          }
         }
       }
 
       if (BIsMutable && !BIsZLocked) {
-        const newZ = B.z === 0 ? 1 : 0
-        if (bSegment.availableZ.includes(newZ)) {
-          operations.push({
-            type: "change_layer",
-            newZ,
-            segmentPointIds: [BPointId],
-          })
+        for (const newZ of getAlternativeZs(B.z, bSegment.availableZ)) {
+          if (bSegment.availableZ.includes(newZ)) {
+            operations.push({
+              type: "change_layer",
+              newZ,
+              segmentPointIds: [BPointId],
+            })
+          }
         }
       }
 
       if (CIsMutable && !CIsZLocked) {
-        const newZ = C.z === 0 ? 1 : 0
-        if (cSegment.availableZ.includes(newZ)) {
-          operations.push({
-            type: "change_layer",
-            newZ,
-            segmentPointIds: [CPointId],
-          })
+        for (const newZ of getAlternativeZs(C.z, cSegment.availableZ)) {
+          if (cSegment.availableZ.includes(newZ)) {
+            operations.push({
+              type: "change_layer",
+              newZ,
+              segmentPointIds: [CPointId],
+            })
+          }
         }
       }
 
       if (DIsMutable && !DIsZLocked) {
-        const newZ = D.z === 0 ? 1 : 0
-        if (dSegment.availableZ.includes(newZ)) {
-          operations.push({
-            type: "change_layer",
-            newZ,
-            segmentPointIds: [DPointId],
-          })
+        for (const newZ of getAlternativeZs(D.z, dSegment.availableZ)) {
+          if (dSegment.availableZ.includes(newZ)) {
+            operations.push({
+              type: "change_layer",
+              newZ,
+              segmentPointIds: [DPointId],
+            })
+          }
         }
       }
     }

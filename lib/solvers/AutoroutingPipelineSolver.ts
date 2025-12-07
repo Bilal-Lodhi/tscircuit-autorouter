@@ -38,6 +38,7 @@ import { StrawSolver } from "./StrawSolver/StrawSolver"
 import { SingleLayerNodeMergerSolver } from "./SingleLayerNodeMerger/SingleLayerNodeMergerSolver"
 import { CapacityNodeTargetMerger2 } from "./CapacityNodeTargetMerger/CapacityNodeTargetMerger2"
 import { SingleSimplifiedPathSolver } from "./SimplifiedPathSolver/SingleSimplifiedPathSolver"
+import { getConnectionPointLayers } from "lib/types/srj-types"
 import { MultiSimplifiedPathSolver } from "./SimplifiedPathSolver/MultiSimplifiedPathSolver"
 import {
   HighDensityIntraNodeRoute,
@@ -605,6 +606,13 @@ export class AutoroutingPipelineSolver extends BaseSolver {
         this.srj.connections.find((c) => c.name === connection.name)
           ?.netConnectionName
 
+      const allowedLayers = connection.pointsToConnect
+        .map((ptc) => getConnectionPointLayers(ptc))
+        .reduce<string[]>(
+          (acc, layers) => acc.filter((l) => layers.includes(l)),
+          getConnectionPointLayers(connection.pointsToConnect[0]!),
+        )
+
       // Find all the hdRoutes that correspond to this connection
       const hdRoutes = allHdRoutes.filter(
         (r) => r.connectionName === connection.name,
@@ -618,7 +626,10 @@ export class AutoroutingPipelineSolver extends BaseSolver {
           connection_name:
             netConnectionName ??
             this.getOriginalConnectionName(connection.name),
-          route: convertHdRouteToSimplifiedRoute(hdRoute, this.srj.layerCount),
+          route: collapseRedundantVias(
+            convertHdRouteToSimplifiedRoute(hdRoute, this.srj.layerCount),
+            allowedLayers,
+          ),
         }
 
         traces.push(simplifiedPcbTrace)
@@ -638,4 +649,50 @@ export class AutoroutingPipelineSolver extends BaseSolver {
 
 /** @deprecated Use AutoroutingPipelineSolver instead */
 export const CapacityMeshSolver = AutoroutingPipelineSolver
+
+type SimplifiedRouteSegment = SimplifiedPcbTrace["route"][number]
+
+function collapseRedundantVias(
+  route: SimplifiedRouteSegment[],
+  allowedLayers: string[],
+): SimplifiedRouteSegment[] {
+  if (allowedLayers.length === 0) return route
+
+  const viaIndices = route
+    .map((segment, idx) => (segment.route_type === "via" ? idx : -1))
+    .filter((idx) => idx >= 0)
+
+  if (viaIndices.length < 2) return route
+
+  const firstVia = route[viaIndices[0]] as Extract<
+    SimplifiedRouteSegment,
+    { route_type: "via" }
+  >
+  const lastVia = route[viaIndices[viaIndices.length - 1]] as Extract<
+    SimplifiedRouteSegment,
+    { route_type: "via" }
+  >
+
+  if (firstVia.to_layer !== lastVia.from_layer) return route
+  if (!allowedLayers.includes(firstVia.to_layer)) return route
+
+  const middleLayers = new Set(
+    route
+      .slice(viaIndices[0] + 1, viaIndices[viaIndices.length - 1])
+      .filter((segment) => segment.route_type === "wire")
+      .map((segment) => segment.layer),
+  )
+
+  if (middleLayers.size !== 1 || !middleLayers.has(firstVia.to_layer)) {
+    return route
+  }
+
+  return route
+    .filter((segment) => segment.route_type === "wire")
+    .map((segment) =>
+      segment.route_type === "wire"
+        ? { ...segment, layer: firstVia.to_layer }
+        : segment,
+    )
+}
 export type CapacityMeshSolver = AutoroutingPipelineSolver
