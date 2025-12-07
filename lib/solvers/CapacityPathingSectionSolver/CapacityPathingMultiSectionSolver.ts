@@ -30,6 +30,7 @@ import {
 import { getNodeEdgeMap } from "../CapacityMeshSolver/getNodeEdgeMap"
 import { CachedHyperCapacityPathingSingleSectionSolver } from "./CachedHyperCapacityPathingSingleSectionSolver"
 import { CacheProvider } from "lib/cache/types"
+import { buildLayerFlexibleNeighborMap } from "lib/utils/buildLayerFlexibleNeighborMap"
 
 type CapacityMeshEdgeId = string
 
@@ -45,6 +46,8 @@ export class CapacityPathingMultiSectionSolver extends BaseSolver {
   nodeEdgeMap: Map<CapacityMeshEdgeId, CapacityMeshEdge[]>
   connectionsWithNodes: Array<ConnectionPathWithNodes> = [] // Initialize here
   colorMap: Record<string, string>
+
+  layerFlexibleNeighborMap: Map<CapacityMeshNodeId, CapacityMeshNodeId[]>
 
   initialSolver: CapacityPathingGreedySolver
   cacheProvider?: CacheProvider | null
@@ -140,6 +143,10 @@ export class CapacityPathingMultiSectionSolver extends BaseSolver {
       this.nodes.map((node) => [node.capacityMeshNodeId, node]),
     )
     this.nodeEdgeMap = getNodeEdgeMap(this.edges)
+    this.layerFlexibleNeighborMap = buildLayerFlexibleNeighborMap({
+      connections: this.simpleRouteJson.connections,
+      nodes: this.nodes,
+    })
     this.initialSolver =
       params.initialPathingSolver ||
       new CapacityPathingGreedySolver({
@@ -291,6 +298,7 @@ export class CapacityPathingMultiSectionSolver extends BaseSolver {
         colorMap: this.colorMap,
         centerNodeId: this.currentSection.centerNodeId,
         nodeEdgeMap: this.nodeEdgeMap,
+        layerFlexibleNeighborMap: this.layerFlexibleNeighborMap,
         hyperParameters: {
           EXPANSION_DEGREES: this.currentSchedule.MAX_EXPANSION_DEGREES,
         },

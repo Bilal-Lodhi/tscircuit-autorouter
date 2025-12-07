@@ -47,6 +47,7 @@ export interface CapacityPathingSingleSectionPathingSolverParams {
   nodeMap?: Map<CapacityMeshNodeId, CapacityMeshNode>
   nodeEdgeMap?: Map<CapacityMeshNodeId, CapacityMeshEdge[]>
   hyperParameters?: CpssPathingSolverHyperParameters
+  layerFlexibleNeighborMap?: Map<CapacityMeshNodeId, CapacityMeshNodeId[]>
 }
 
 export class CapacityPathingSingleSectionSolver extends BaseSolver {
@@ -66,6 +67,9 @@ export class CapacityPathingSingleSectionSolver extends BaseSolver {
   totalNodeCapacityMap: Map<CapacityMeshNodeId, number> // Added: Stores total capacity for each node
   centerNodeId: string
   private currentSectionScore: number = 0
+
+  layerFlexibleNeighborMap: Map<CapacityMeshNodeId, CapacityMeshNodeId[]> =
+    new Map()
 
   MAX_CANDIDATES_IN_MEMORY = 10_000
 
@@ -103,6 +107,7 @@ export class CapacityPathingSingleSectionSolver extends BaseSolver {
       new Map(this.sectionNodes.map((n) => [n.capacityMeshNodeId, n]))
     this.nodeEdgeMap = params.nodeEdgeMap ?? getNodeEdgeMap(this.sectionEdges) // Use only section edges
     this.colorMap = params.colorMap ?? {}
+    this.layerFlexibleNeighborMap = params.layerFlexibleNeighborMap ?? new Map()
 
     // Initialize capacity map, potentially with starting values
     this.usedNodeCapacityMap = new Map(
@@ -235,15 +240,24 @@ export class CapacityPathingSingleSectionSolver extends BaseSolver {
   getNeighboringNodes(node: CapacityMeshNode): CapacityMeshNode[] {
     if (!this.nodeMap.has(node.capacityMeshNodeId)) return [] // Node not in section
 
-    return (
+    const edgeNeighborIds =
       this.nodeEdgeMap
         .get(node.capacityMeshNodeId)
         ?.flatMap((edge): CapacityMeshNodeId[] =>
           edge.nodeIds.filter((n) => n !== node.capacityMeshNodeId),
-        )
-        .map((nId) => this.nodeMap.get(nId)!)
-        .filter(Boolean) ?? [] // Ensure nodes exist in the section map and filter out undefined
-    )
+        ) ?? []
+
+    const layerFlexibleNeighborIds =
+      this.layerFlexibleNeighborMap.get(node.capacityMeshNodeId) ?? []
+
+    const allNeighborIds = new Set<CapacityMeshNodeId>([
+      ...edgeNeighborIds,
+      ...layerFlexibleNeighborIds,
+    ])
+
+    return Array.from(allNeighborIds)
+      .map((nId) => this.nodeMap.get(nId)!)
+      .filter(Boolean) // Ensure nodes exist in the section map and filter out undefined
   }
 
   // Adapted from CapacityPathingSolver - uses section's nodeEdgeMap

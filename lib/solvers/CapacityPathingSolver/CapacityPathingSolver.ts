@@ -13,6 +13,7 @@ import { CapacityHyperParameters } from "../CapacityHyperParameters"
 import { GraphicsObject } from "graphics-debug"
 import { safeTransparentize } from "../colors"
 import { createRectFromCapacityNode } from "lib/utils/createRectFromCapacityNode"
+import { buildLayerFlexibleNeighborMap } from "lib/utils/buildLayerFlexibleNeighborMap"
 
 export type Candidate = {
   prevCandidate: Candidate | null
@@ -45,6 +46,8 @@ export class CapacityPathingSolver extends BaseSolver {
   connectionNameToGoalNodeIds: Map<string, CapacityMeshNodeId[]>
   colorMap: Record<string, string>
   maxDepthOfNodes: number
+
+  layerFlexibleNeighborMap: Map<CapacityMeshNodeId, CapacityMeshNodeId[]>
 
   activeCandidateStraightLineDistance?: number
 
@@ -84,6 +87,10 @@ export class CapacityPathingSolver extends BaseSolver {
       this.getConnectionsWithNodes()
     this.connectionsWithNodes = connectionsWithNodes
     this.connectionNameToGoalNodeIds = connectionNameToGoalNodeIds
+    this.layerFlexibleNeighborMap = buildLayerFlexibleNeighborMap({
+      connections: this.simpleRouteJson.connections,
+      nodes: this.nodes,
+    })
     this.hyperParameters = hyperParameters
     this.usedNodeCapacityMap = new Map(
       this.nodes.map((node) => [node.capacityMeshNodeId, 0]),
@@ -190,12 +197,24 @@ export class CapacityPathingSolver extends BaseSolver {
   }
 
   getNeighboringNodes(node: CapacityMeshNode) {
-    return this.nodeEdgeMap
-      .get(node.capacityMeshNodeId)!
-      .flatMap((edge): CapacityMeshNodeId[] =>
-        edge.nodeIds.filter((n) => n !== node.capacityMeshNodeId),
-      )
-      .map((n) => this.nodeMap.get(n)!)
+    const edgeNeighborIds =
+      this.nodeEdgeMap
+        .get(node.capacityMeshNodeId)!
+        .flatMap((edge): CapacityMeshNodeId[] =>
+          edge.nodeIds.filter((n) => n !== node.capacityMeshNodeId),
+        ) ?? []
+
+    const layerFlexibleNeighborIds =
+      this.layerFlexibleNeighborMap.get(node.capacityMeshNodeId) ?? []
+
+    const allNeighborIds = new Set<CapacityMeshNodeId>([
+      ...edgeNeighborIds,
+      ...layerFlexibleNeighborIds,
+    ])
+
+    return Array.from(allNeighborIds)
+      .map((n) => this.nodeMap.get(n))
+      .filter((n): n is CapacityMeshNode => Boolean(n))
   }
 
   getCapacityPaths() {
