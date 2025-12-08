@@ -6,23 +6,33 @@ type ViaSegment = Extract<SimplifiedRouteSegment, { route_type: "via" }>
 
 type WireSegment = Extract<SimplifiedRouteSegment, { route_type: "wire" }>
 
+export interface CollapseRedundantViasResult {
+  route: SimplifiedRouteSegment[]
+  collapsedPair: {
+    startVia: ViaSegment
+    endVia: ViaSegment
+  } | null
+}
+
 export function collapseRedundantVias(
   route: SimplifiedRouteSegment[],
   allowedLayers: string[],
-): SimplifiedRouteSegment[] {
-  if (allowedLayers.length === 0) return route
+): CollapseRedundantViasResult {
+  if (allowedLayers.length === 0) return { route, collapsedPair: null }
 
   const viaIndices = route
     .map((segment, idx) => (segment.route_type === "via" ? idx : -1))
     .filter((idx) => idx >= 0)
 
-  if (viaIndices.length < 2) return route
+  if (viaIndices.length < 2) return { route, collapsedPair: null }
 
   const firstVia = route[viaIndices[0]] as ViaSegment
   const lastVia = route[viaIndices[viaIndices.length - 1]] as ViaSegment
 
-  if (firstVia.to_layer !== lastVia.from_layer) return route
-  if (!allowedLayers.includes(firstVia.to_layer)) return route
+  if (firstVia.to_layer !== lastVia.from_layer)
+    return { route, collapsedPair: null }
+  if (!allowedLayers.includes(firstVia.to_layer))
+    return { route, collapsedPair: null }
 
   const middleLayers = new Set(
     route
@@ -32,14 +42,20 @@ export function collapseRedundantVias(
   )
 
   if (middleLayers.size !== 1 || !middleLayers.has(firstVia.to_layer)) {
-    return route
+    return { route, collapsedPair: null }
   }
 
-  return route
-    .filter((segment) => segment.route_type === "wire")
-    .map((segment) =>
-      segment.route_type === "wire"
-        ? { ...segment, layer: firstVia.to_layer }
-        : segment,
-    )
+  return {
+    route: route
+      .filter((segment) => segment.route_type === "wire")
+      .map((segment) =>
+        segment.route_type === "wire"
+          ? { ...segment, layer: firstVia.to_layer }
+          : segment,
+      ),
+    collapsedPair: {
+      startVia: firstVia,
+      endVia: lastVia,
+    },
+  }
 }

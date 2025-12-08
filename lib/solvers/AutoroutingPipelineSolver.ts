@@ -657,7 +657,7 @@ export class AutoroutingPipelineSolver extends BaseSolver {
             collapseRedundantVias(
               convertHdRouteToSimplifiedRoute(hdRoute, this.srj.layerCount),
               allowedLayers,
-            ),
+            ).route,
         }
 
         traces.push(simplifiedPcbTrace)
