@@ -273,19 +273,33 @@ export class UnravelSectionSolver extends BaseSolver {
 
     const mutableSegmentPointIds = new Set<SegmentPointId>()
     for (const sp of segmentPoints) {
-      if (sp.capacityMeshNodeIds.some((id) => mutableNodeIds.includes(id))) {
+      // A segment point is mutable if it's in any mutable node
+      const isInMutableNode = sp.capacityMeshNodeIds.some((id) =>
+        mutableNodeIds.includes(id),
+      )
+      // Also consider segment points at MLCPs (multi-layer connection points) as mutable
+      // since their z can be changed without requiring a via
+      const segment = this.dedupedSegmentMap.get(sp.segmentId)
+      const isAtMLCP = segment && segment.availableZ.length > 1
+
+      if (isInMutableNode || isAtMLCP) {
         mutableSegmentPointIds.add(sp.segmentPointId)
       }
     }
 
     const zLockedSegmentPointIds = new Set<SegmentPointId>()
     for (const sp of segmentPoints) {
-      if (
-        sp.capacityMeshNodeIds.some(
-          (id) => this.nodeMap.get(id)?._containsTarget,
-        )
-      ) {
-        zLockedSegmentPointIds.add(sp.segmentPointId)
+      const isAtTargetNode = sp.capacityMeshNodeIds.some(
+        (id) => this.nodeMap.get(id)?._containsTarget,
+      )
+      if (isAtTargetNode) {
+        // Only z-lock if the segment has a single available Z (single-layer connection point)
+        // Multi-layer connection points (e.g., plated holes) should not be z-locked
+        // so the UnravelSolver can optimize layer assignments
+        const segment = this.dedupedSegmentMap.get(sp.segmentId)
+        if (segment && segment.availableZ.length === 1) {
+          zLockedSegmentPointIds.add(sp.segmentPointId)
+        }
       }
     }
 
@@ -360,6 +374,39 @@ export class UnravelSectionSolver extends BaseSolver {
     }
   }
 
+  /**
+   * Get all segment points in the section that belong to a given connection.
+   * This is used to propose layer changes for the entire connection path
+   * when all endpoints are MLCPs (multi-layer connection points).
+   */
+  getConnectionSegmentPointIds(connectionName: string): SegmentPointId[] {
+    const result: SegmentPointId[] = []
+    for (const [spId, sp] of this.unravelSection.segmentPointMap.entries()) {
+      if (sp.connectionName === connectionName) {
+        result.push(spId)
+      }
+    }
+    return result
+  }
+
+  /**
+   * Check if all segment points for a connection can use a given z layer.
+   * Returns true if all segments have the target z in their availableZ.
+   */
+  canConnectionUseLayer(
+    connectionSegmentPointIds: SegmentPointId[],
+    targetZ: number,
+  ): boolean {
+    for (const spId of connectionSegmentPointIds) {
+      const sp = this.unravelSection.segmentPointMap.get(spId)!
+      const segment = this.dedupedSegmentMap.get(sp.segmentId)
+      if (!segment || !segment.availableZ.includes(targetZ)) {
+        return false
+      }
+    }
+    return true
+  }
+
   getOperationsForIssue(
     candidate: UnravelCandidate,
     issue: UnravelIssue,
@@ -372,6 +419,8 @@ export class UnravelSectionSolver extends BaseSolver {
       const [APointId, BPointId] = issue.segmentPoints
       const pointA = this.getPointInCandidate(candidate, APointId)
       const pointB = this.getPointInCandidate(candidate, BPointId)
+      const spA = this.unravelSection.segmentPointMap.get(APointId)!
+      const spB = this.unravelSection.segmentPointMap.get(BPointId)!
 
       const aAvailableZ = this.dedupedSegmentMap.get(
         pointA.segmentId,
@@ -385,6 +434,45 @@ export class UnravelSectionSolver extends BaseSolver {
       const BIsZLocked =
         this.unravelSection.zLockedSegmentPointIds.has(BPointId)
 
+      // First, try to change the entire connection to a single layer (for MLCP connections)
+      // This avoids creating cascading transition_via issues
+      const connectionSegmentPointIds = this.getConnectionSegmentPointIds(
+        spA.connectionName,
+      )
+
+      // Try changing entire connection to pointB's z
+      if (this.canConnectionUseLayer(connectionSegmentPointIds, pointB.z)) {
+        const mutablePoints = connectionSegmentPointIds.filter(
+          (spId) =>
+            this.unravelSection.mutableSegmentPointIds.has(spId) &&
+            !this.unravelSection.zLockedSegmentPointIds.has(spId),
+        )
+        if (mutablePoints.length > 0) {
+          operations.push({
+            type: "change_layer",
+            newZ: pointB.z,
+            segmentPointIds: mutablePoints,
+          })
+        }
+      }
+
+      // Try changing entire connection to pointA's z
+      if (this.canConnectionUseLayer(connectionSegmentPointIds, pointA.z)) {
+        const mutablePoints = connectionSegmentPointIds.filter(
+          (spId) =>
+            this.unravelSection.mutableSegmentPointIds.has(spId) &&
+            !this.unravelSection.zLockedSegmentPointIds.has(spId),
+        )
+        if (mutablePoints.length > 0) {
+          operations.push({
+            type: "change_layer",
+            newZ: pointA.z,
+            segmentPointIds: mutablePoints,
+          })
+        }
+      }
+
+      // Also try individual point changes as fallback
       if (
         this.unravelSection.mutableSegmentPointIds.has(APointId) &&
         !AIsZLocked &&
@@ -464,7 +552,69 @@ export class UnravelSectionSolver extends BaseSolver {
         })
       }
 
-      // 2. CHANGE LAYER OF EACH SEGMENT ENTIRELY TO REMOVE CROSSING
+      // 2. TRY CHANGING ENTIRE CONNECTION TO A DIFFERENT LAYER
+      // This is more effective for MLCP connections as it avoids creating transition_via issues
+      const connection1SegmentPointIds = this.getConnectionSegmentPointIds(
+        A.connectionName,
+      )
+      const connection2SegmentPointIds = this.getConnectionSegmentPointIds(
+        C.connectionName,
+      )
+
+      // Get all available Z values from the section's segments
+      const availableZValues = new Set<number>()
+      for (const sp of this.unravelSection.segmentPointMap.values()) {
+        const segment = this.dedupedSegmentMap.get(sp.segmentId)
+        if (segment) {
+          for (const z of segment.availableZ) {
+            availableZValues.add(z)
+          }
+        }
+      }
+
+      // Try moving connection 1 to each available layer different from its current one
+      for (const newZ of availableZValues) {
+        if (newZ === A.z) continue // Skip current layer
+        if (this.canConnectionUseLayer(connection1SegmentPointIds, newZ)) {
+          const mutablePoints = connection1SegmentPointIds.filter(
+            (spId) =>
+              this.unravelSection.mutableSegmentPointIds.has(spId) &&
+              !this.unravelSection.zLockedSegmentPointIds.has(spId),
+          )
+          // Change all mutable points (even if not all are mutable, subsequent iterations
+          // will handle the rest as transition_via issues)
+          if (mutablePoints.length > 0) {
+            operations.push({
+              type: "change_layer",
+              newZ,
+              segmentPointIds: mutablePoints,
+            })
+          }
+        }
+      }
+
+      // Try moving connection 2 to each available layer different from its current one
+      for (const newZ of availableZValues) {
+        if (newZ === C.z) continue // Skip current layer
+        if (this.canConnectionUseLayer(connection2SegmentPointIds, newZ)) {
+          const mutablePoints = connection2SegmentPointIds.filter(
+            (spId) =>
+              this.unravelSection.mutableSegmentPointIds.has(spId) &&
+              !this.unravelSection.zLockedSegmentPointIds.has(spId),
+          )
+          // Change all mutable points (even if not all are mutable, subsequent iterations
+          // will handle the rest as transition_via issues)
+          if (mutablePoints.length > 0) {
+            operations.push({
+              type: "change_layer",
+              newZ,
+              segmentPointIds: mutablePoints,
+            })
+          }
+        }
+      }
+
+      // 3. CHANGE LAYER OF CROSSING LINE SEGMENTS (fallback)
       const aSegment = this.dedupedSegmentMap.get(A.segmentId)!
       const bSegment = this.dedupedSegmentMap.get(B.segmentId)!
       const cSegment = this.dedupedSegmentMap.get(C.segmentId)!

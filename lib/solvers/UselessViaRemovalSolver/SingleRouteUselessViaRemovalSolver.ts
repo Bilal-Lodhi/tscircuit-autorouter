@@ -72,21 +72,57 @@ export class SingleRouteUselessViaRemovalSolver extends BaseSolver {
   }
 
   _step() {
-    // We skip the first/last segment (since it's connected to the destination)
-    if (this.currentSectionIndex >= this.routeSections.length - 1) {
+    if (this.currentSectionIndex >= this.routeSections.length) {
       this.solved = true
       return
     }
 
+    // Handle first section (endpoint 1) - can be moved if it's a multi-layer connection point
+    if (this.currentSectionIndex === 0 && this.routeSections.length > 1) {
+      const firstSection = this.routeSections[0]
+      const secondSection = this.routeSections[1]
+
+      if (firstSection.z !== secondSection.z) {
+        // Try moving first section to match second section (for MLCP endpoints)
+        const targetZ = secondSection.z
+        if (this.canSectionMoveToLayer({ currentSection: firstSection, targetZ })) {
+          firstSection.z = targetZ
+          firstSection.points = firstSection.points.map((p) => ({
+            ...p,
+            z: targetZ,
+          }))
+          this.currentSectionIndex = 2 // Skip to after the now-merged sections
+          return
+        }
+      }
+      this.currentSectionIndex++
+      return
+    }
+
+    // Handle last section (endpoint 2) - can be moved if it's a multi-layer connection point
+    if (this.currentSectionIndex === this.routeSections.length - 1) {
+      const lastSection = this.routeSections[this.routeSections.length - 1]
+      const secondLastSection = this.routeSections[this.routeSections.length - 2]
+
+      if (lastSection.z !== secondLastSection.z) {
+        // Try moving last section to match second-last section (for MLCP endpoints)
+        const targetZ = secondLastSection.z
+        if (this.canSectionMoveToLayer({ currentSection: lastSection, targetZ })) {
+          lastSection.z = targetZ
+          lastSection.points = lastSection.points.map((p) => ({
+            ...p,
+            z: targetZ,
+          }))
+        }
+      }
+      this.solved = true
+      return
+    }
+
+    // Handle middle sections (original logic)
     const prevSection = this.routeSections[this.currentSectionIndex - 1]
     const currentSection = this.routeSections[this.currentSectionIndex]
     const nextSection = this.routeSections[this.currentSectionIndex + 1]
-    // console.log({
-    //   routeSections: this.routeSections,
-    //   prevSection,
-    //   currentSection,
-    //   nextSection,
-    // })
 
     if (prevSection.z !== nextSection.z) {
       // We only remove vias where there is a middle section that can be
@@ -158,7 +194,26 @@ export class SingleRouteUselessViaRemovalSolver extends BaseSolver {
       )
 
       for (const obstacle of obstacles) {
-        // TODO connMap test
+        // Skip obstacles that are connected to this trace
+        // (the trace is supposed to connect to them)
+        if (obstacle.connectedTo?.includes(this.unsimplifiedRoute.connectionName)) {
+          continue
+        }
+
+        // For obstacles that support the target layer, only skip if the trace
+        // is connecting TO the obstacle (at segment endpoints)
+        if (obstacle.zLayers?.includes(targetZ)) {
+          // Check if either endpoint of this segment is at the obstacle center
+          const isAtObstacle =
+            (Math.abs(A.x - obstacle.center.x) < 0.01 &&
+              Math.abs(A.y - obstacle.center.y) < 0.01) ||
+            (Math.abs(B.x - obstacle.center.x) < 0.01 &&
+              Math.abs(B.y - obstacle.center.y) < 0.01)
+          if (isAtObstacle) {
+            continue
+          }
+        }
+
         const distToObstacle = segmentToBoxMinDistance(A, B, obstacle)
 
         if (distToObstacle < this.TRACE_THICKNESS + this.OBSTACLE_MARGIN) {
