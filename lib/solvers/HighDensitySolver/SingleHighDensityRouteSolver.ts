@@ -121,8 +121,14 @@ export class SingleHighDensityRouteSolver extends BaseSolver {
     this.cellStep *= this.CELL_SIZE_FACTOR
 
     const isOnSameEdge =
-      Math.abs(this.A.x - this.B.x) < 0.001 ||
-      Math.abs(this.A.y - this.B.y) < 0.001
+      (Math.abs(this.A.x - this.bounds.minX) < 0.001 &&
+        Math.abs(this.B.x - this.bounds.minX) < 0.001) || // both on left
+      (Math.abs(this.A.x - this.bounds.maxX) < 0.001 &&
+        Math.abs(this.B.x - this.bounds.maxX) < 0.001) || // both on right
+      (Math.abs(this.A.y - this.bounds.minY) < 0.001 &&
+        Math.abs(this.B.y - this.bounds.minY) < 0.001) || // both on bottom
+      (Math.abs(this.A.y - this.bounds.maxY) < 0.001 &&
+        Math.abs(this.B.y - this.bounds.maxY) < 0.001) // both on top
 
     if (
       this.futureConnections &&
