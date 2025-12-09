@@ -49,6 +49,10 @@ export interface Obstacle {
 export interface SimpleRouteConnection {
   name: string
   isOffBoard?: boolean
+  /** True when this connection was produced by splitting a multi-point net */
+  isMstConnection?: boolean
+  /** Original connection name before MST splitting or other transformations */
+  originalConnectionName?: string
   netConnectionName?: string
   nominalTraceWidth?: number
   pointsToConnect: Array<ConnectionPoint>

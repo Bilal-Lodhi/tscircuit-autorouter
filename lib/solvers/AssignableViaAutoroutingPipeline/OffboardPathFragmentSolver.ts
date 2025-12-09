@@ -178,6 +178,10 @@ export class OffboardPathFragmentSolver extends BaseSolver {
           name: fragment.connectionName,
           pointsToConnect,
           netConnectionName: originalConnection.netConnectionName,
+          isMstConnection: originalConnection.isMstConnection,
+          originalConnectionName:
+            originalConnection.originalConnectionName ||
+            originalConnection.name,
         })
       }
     }

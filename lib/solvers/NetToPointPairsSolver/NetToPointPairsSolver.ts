@@ -79,7 +79,9 @@ export class NetToPointPairsSolver extends BaseSolver {
       this.newConnections.push({
         pointsToConnect: [edge.from, edge.to],
         name: `${connection.name}_mst${mstIdx++}`,
-        netConnectionName: connection.netConnectionName,
+        netConnectionName: connection.netConnectionName || connection.name,
+        isMstConnection: true,
+        originalConnectionName: connection.name,
       })
     }
   }

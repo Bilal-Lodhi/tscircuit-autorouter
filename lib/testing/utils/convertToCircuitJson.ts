@@ -95,8 +95,7 @@ function createSourceTraces(
       .map((point) => point.pcb_port_id!)
       .filter(Boolean)
 
-    // Look for original connection name (might be MST-suffixed by NetToPointPairsSolver)
-    const baseName = connection.name.replace(/_mst\d+$/, "")
+    const baseName = connection.originalConnectionName || connection.name
     const netConnectionName = connection.netConnectionName || baseName
 
     // Test for obstacles we're inside of
@@ -339,7 +338,7 @@ export function convertToCircuitJson(
   // Build a map of connection names to simplify lookups
   const connectionMap = new Map<string, string>()
   srjWithPointPairs.connections.forEach((conn) => {
-    const baseName = conn.name.replace(/_mst\d+$/, "")
+    const baseName = conn.originalConnectionName || conn.name
     connectionMap.set(conn.name, conn.netConnectionName || baseName)
   })
 
