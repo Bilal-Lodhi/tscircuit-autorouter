@@ -99,7 +99,7 @@ export class SingleHighDensityRouteSolver extends BaseSolver {
     this.exploredNodes = new Set()
     this.straightLineDistance = distance(this.A, this.B)
     this.futureConnections = opts.futureConnections ?? []
-    this.MAX_ITERATIONS = 5000
+    this.MAX_ITERATIONS = 10e3 // 5000
 
     this.debug_exploredNodesOrdered = []
     this.debug_nodesTooCloseToObstacle = new Set()
@@ -285,8 +285,8 @@ export class SingleHighDensityRouteSolver extends BaseSolver {
   computeH(node: Node) {
     return (
       distance(node, this.B) +
-      // via penalty
-      Math.abs(node.z - this.B.z) * this.viaPenaltyDistance
+      // via penalty (one via can reach any layer, so just check if layers differ)
+      (node.z !== this.B.z ? this.viaPenaltyDistance : 0)
     )
   }
 

@@ -21,8 +21,10 @@ export class SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost extends Sing
 
     // Ratio of available space determines via penalty
     const viasThatCanFitHorz = this.boundsSize.width / this.viaDiameter
+    // Avoid division by zero when there are no routes
+    const routeCount = Math.max(1, this.numRoutes)
     this.VIA_PENALTY_FACTOR =
-      0.3 * (viasThatCanFitHorz / this.numRoutes) * this.VIA_PENALTY_FACTOR_2
+      0.3 * (viasThatCanFitHorz / routeCount) * this.VIA_PENALTY_FACTOR_2
   }
 
   getClosestFutureConnectionPoint(node: Node) {
