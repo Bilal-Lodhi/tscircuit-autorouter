@@ -98,9 +98,7 @@ export const HighDensityDebugger = ({
         Iterations: {solver.iterations}
       </span>
       {solver.error && (
-        <div className="border p-2 m-2 text-red-500">
-          Error: {solver.error}
-        </div>
+        <div className="border p-2 m-2 text-red-500">Error: {solver.error}</div>
       )}
       <InteractiveGraphics
         graphics={
