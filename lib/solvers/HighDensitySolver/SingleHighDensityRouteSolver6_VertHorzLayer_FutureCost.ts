@@ -90,11 +90,13 @@ export class SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost extends Sing
     const dy = Math.abs(node.y - node.parent!.y)
     const dist = Math.sqrt(dx ** 2 + dy ** 2)
 
+    // Even layers (0, 2, ...) prefer horizontal, odd layers (1, 3, ...) prefer vertical
+    const isEvenLayer = node.z % 2 === 0
     const misalignedDist = !this.FLIP_TRACE_ALIGNMENT_DIRECTION
-      ? node.z === 0
+      ? isEvenLayer
         ? dy
         : dx
-      : node.z === 0
+      : isEvenLayer
         ? dx
         : dy
 
