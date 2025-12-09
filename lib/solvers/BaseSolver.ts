@@ -37,7 +37,7 @@ export class BaseSolver {
       this.tryFinalAcceptance()
     }
     if (!this.solved && this.iterations > this.MAX_ITERATIONS) {
-      this.error = `${this.constructor.name} ran out of iterations`
+      this.error = `${this.constructor.name} ran out of iterations (MAX_ITERATIONS=${this.MAX_ITERATIONS})`
       console.error(this.error)
       this.failed = true
     }

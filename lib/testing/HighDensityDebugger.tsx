@@ -94,6 +94,14 @@ export const HighDensityDebugger = ({
       <span className="border p-2 m-2 text-center font-bold">
         {solver.solvedRoutes.length} / {solver.totalConnections}
       </span>
+      <span className="border p-2 m-2 text-center">
+        Iterations: {solver.iterations}
+      </span>
+      {solver.error && (
+        <div className="border p-2 m-2 text-red-500">
+          Error: {solver.error}
+        </div>
+      )}
       <InteractiveGraphics
         graphics={
           solver.failedSubSolvers.length > 0
