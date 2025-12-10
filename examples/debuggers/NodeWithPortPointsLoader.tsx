@@ -8,25 +8,53 @@ interface NodeWithPortPointsLoaderProps {
   renderDebugger: (node: NodeWithPortPoints) => ReactNode
 }
 
+const tryParse = (raw: string): NodeWithPortPoints | null => {
+  const parsed = JSON.parse(raw) as NodeWithPortPoints
+  if (!parsed || typeof parsed !== "object") {
+    return null
+  }
+
+  return parsed
+}
+
 const parseNodeWithPortPoints = (
   raw: string | null,
 ): { node: NodeWithPortPoints | null; error?: string } => {
   if (!raw) return { node: null }
 
-  try {
-    const parsed = JSON.parse(raw) as NodeWithPortPoints
-    if (!parsed || typeof parsed !== "object") {
-      return { node: null, error: "Provided data is not a valid object." }
-    }
+  const attempts: string[] = [raw]
 
-    return { node: parsed }
-  } catch (error) {
-    return {
-      node: null,
-      error: `Failed to parse NodeWithPortPoints: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
+  try {
+    const decoded = decodeURIComponent(raw)
+    if (decoded !== raw) {
+      attempts.push(decoded)
+      const doubleDecoded = decodeURIComponent(decoded)
+      if (doubleDecoded !== decoded) attempts.push(doubleDecoded)
     }
+  } catch {
+    // ignore decode errors, we'll fall back to the raw value
+  }
+
+  for (const attempt of attempts) {
+    try {
+      const parsed = tryParse(attempt)
+      if (parsed) return { node: parsed }
+    } catch (error) {
+      // Keep trying other candidates
+      const message = error instanceof Error ? error.message : String(error)
+      if (attempt === attempts[attempts.length - 1]) {
+        return {
+          node: null,
+          error: `Failed to parse NodeWithPortPoints: ${message}`,
+        }
+      }
+    }
+  }
+
+  return {
+    node: null,
+    error:
+      "Failed to parse NodeWithPortPoints: Provided data is not a valid object.",
   }
 }
 
@@ -52,7 +80,11 @@ export const NodeWithPortPointsLoader = ({
     [initialRaw],
   )
 
-  const [inputValue, setInputValue] = useState(initialRaw ?? "")
+  const [inputValue, setInputValue] = useState(
+    initialParse.node
+      ? JSON.stringify(initialParse.node, null, 2)
+      : (initialRaw ?? ""),
+  )
   const [node, setNode] = useState<NodeWithPortPoints | null>(initialParse.node)
   const [error, setError] = useState<string | undefined>(initialParse.error)
 
@@ -63,7 +95,9 @@ export const NodeWithPortPointsLoader = ({
     setError(parsed.error)
 
     if (parsed.node) {
-      persistNodeToUrl(inputValue)
+      const serialized = JSON.stringify(parsed.node)
+      persistNodeToUrl(serialized)
+      setInputValue(JSON.stringify(parsed.node, null, 2))
     }
   }
 
