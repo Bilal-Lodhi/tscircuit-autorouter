@@ -59,7 +59,7 @@ export const NodeDebugDialog = ({
     if (!nodeData?.nodeWithPortPoints) return
 
     const url = new URL(window.location.href)
-    url.searchParams.set("fixtureId", fixtureId)
+    url.searchParams.set("fixtureId", JSON.stringify(fixtureId))
     url.searchParams.set(
       "nodeWithPortPoints",
       JSON.stringify(nodeData.nodeWithPortPoints),
