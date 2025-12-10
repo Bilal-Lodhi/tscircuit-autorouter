@@ -53,11 +53,13 @@ import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
 import { NetToPointPairsSolver2_OffBoardConnection } from "./NetToPointPairsSolver2_OffBoardConnection/NetToPointPairsSolver2_OffBoardConnection"
 import { RectDiffSolver } from "@tscircuit/rectdiff"
 import { TraceSimplificationSolver } from "./TraceSimplificationSolver/TraceSimplificationSolver"
+import { CapacityNodeAspectRatioSolver } from "./CapacityMeshSolver/CapacityNodeAspectRatioSolver"
 
 interface CapacityMeshSolverOptions {
   capacityDepth?: number
   targetMinCapacity?: number
   cacheProvider?: CacheProvider | null
+  maxNodeAspectRatio?: number
 }
 export type AutoroutingPipelineSolverOptions = CapacityMeshSolverOptions
 
@@ -94,6 +96,7 @@ function definePipelineStep<
 export class AutoroutingPipelineSolver extends BaseSolver {
   netToPointPairsSolver?: NetToPointPairsSolver
   nodeSolver?: RectDiffSolver
+  nodeAspectRatioSolver?: CapacityNodeAspectRatioSolver
   nodeTargetMerger?: CapacityNodeTargetMerger
   edgeSolver?: CapacityMeshEdgeSolver
   initialPathingSolver?: CapacityPathingGreedySolver
@@ -149,6 +152,22 @@ export class AutoroutingPipelineSolver extends BaseSolver {
       {
         onSolved: (cms) => {
           cms.capacityNodes = cms.nodeSolver?.getOutput().meshNodes ?? []
+        },
+      },
+    ),
+    definePipelineStep(
+      "nodeAspectRatioSolver",
+      CapacityNodeAspectRatioSolver,
+      (cms) => [
+        {
+          nodes: cms.capacityNodes!,
+          maxAspectRatio: cms.opts.maxNodeAspectRatio,
+        },
+      ],
+      {
+        onSolved: (cms) => {
+          cms.capacityNodes =
+            cms.nodeAspectRatioSolver?.getResultNodes() ?? null
         },
       },
     ),

@@ -2,6 +2,7 @@ export {
   CapacityMeshSolver,
   AutoroutingPipelineSolver,
 } from "./solvers/AutoroutingPipelineSolver"
+export { CapacityNodeAspectRatioSolver } from "./solvers/CapacityMeshSolver/CapacityNodeAspectRatioSolver"
 export {
   getTunedTotalCapacity1,
   calculateOptimalCapacityDepth,
