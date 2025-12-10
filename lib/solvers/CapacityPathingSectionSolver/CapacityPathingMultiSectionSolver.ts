@@ -85,9 +85,19 @@ export class CapacityPathingMultiSectionSolver extends BaseSolver {
   // Adjusting this schedule is a trade-off between optimization speed and quality.
   OPTIMIZATION_SCHEDULE = [
     {
+      MAX_ATTEMPTS_PER_NODE: 1,
+      MAX_EXPANSION_DEGREES: 3,
+      MINIMUM_PROBABILITY_OF_FAILURE_TO_OPTIMIZE: 0.05,
+    },
+    {
       MAX_ATTEMPTS_PER_NODE: 2,
       MAX_EXPANSION_DEGREES: 4,
       MINIMUM_PROBABILITY_OF_FAILURE_TO_OPTIMIZE: 0.02,
+    },
+    {
+      MAX_ATTEMPTS_PER_NODE: 2,
+      MAX_EXPANSION_DEGREES: 5,
+      MINIMUM_PROBABILITY_OF_FAILURE_TO_OPTIMIZE: 0.08,
     },
     {
       MAX_ATTEMPTS_PER_NODE: 3,
@@ -98,6 +108,11 @@ export class CapacityPathingMultiSectionSolver extends BaseSolver {
       MAX_ATTEMPTS_PER_NODE: 4,
       MAX_EXPANSION_DEGREES: 8,
       MINIMUM_PROBABILITY_OF_FAILURE_TO_OPTIMIZE: 0.2,
+    },
+    {
+      MAX_ATTEMPTS_PER_NODE: 3,
+      MAX_EXPANSION_DEGREES: 7,
+      MINIMUM_PROBABILITY_OF_FAILURE_TO_OPTIMIZE: 0.9,
     },
     {
       MAX_ATTEMPTS_PER_NODE: 5,
