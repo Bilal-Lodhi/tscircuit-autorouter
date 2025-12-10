@@ -28,8 +28,6 @@ export type Candidate = {
 
 export interface CpssPathingSolverHyperParameters {
   SHUFFLE_SEED?: number
-  MAX_CAPACITY_FACTOR?: number
-  MAX_CANDIDATES_IN_MEMORY?: number
   EXPANSION_DEGREES?: number
 }
 
@@ -105,15 +103,6 @@ export class CapacityPathingSingleSectionSolver extends BaseSolver {
       new Map(this.sectionNodes.map((n) => [n.capacityMeshNodeId, n]))
     this.nodeEdgeMap = params.nodeEdgeMap ?? getNodeEdgeMap(this.sectionEdges) // Use only section edges
     this.colorMap = params.colorMap ?? {}
-
-    if (params.hyperParameters?.MAX_CAPACITY_FACTOR) {
-      this.maxCapacityFactor = params.hyperParameters.MAX_CAPACITY_FACTOR
-    }
-
-    if (params.hyperParameters?.MAX_CANDIDATES_IN_MEMORY) {
-      this.MAX_CANDIDATES_IN_MEMORY =
-        params.hyperParameters.MAX_CANDIDATES_IN_MEMORY
-    }
 
     // Initialize capacity map, potentially with starting values
     this.usedNodeCapacityMap = new Map(

@@ -247,10 +247,22 @@ export class CapacityPathingMultiSectionSolver extends BaseSolver {
   }
 
   getOverallScore() {
-    const highestNodePf = this._getHighestNodeProbability({
-      usedNodeCapacityMap: this.usedNodeCapacityMap,
-      sectionNodeIds: this.allNodeIdsSet,
-    })
+    let highestNodePf = 0
+    for (const node of this.nodes) {
+      if (node._containsTarget) continue
+      const totalCapacity = this.totalNodeCapacityMap.get(
+        node.capacityMeshNodeId,
+      )!
+      const nodePf = calculateNodeProbabilityOfFailure(
+        this.usedNodeCapacityMap.get(node.capacityMeshNodeId) ?? 0,
+        totalCapacity,
+        node.availableZ.length,
+      )
+
+      if (nodePf > highestNodePf) {
+        highestNodePf = nodePf
+      }
+    }
     return {
       highestNodePf,
       score: computeSectionScore({
@@ -260,33 +272,6 @@ export class CapacityPathingMultiSectionSolver extends BaseSolver {
         sectionNodeIds: this.allNodeIdsSet,
       }),
     }
-  }
-
-  private _getHighestNodeProbability({
-    usedNodeCapacityMap,
-    sectionNodeIds,
-  }: {
-    usedNodeCapacityMap: Map<CapacityMeshNodeId, number>
-    sectionNodeIds: Set<CapacityMeshNodeId>
-  }) {
-    let highestNodePf = 0
-    for (const nodeId of sectionNodeIds) {
-      const node = this.nodeMap.get(nodeId)
-      if (!node) continue
-
-      const totalCapacity = this.totalNodeCapacityMap.get(nodeId) ?? 0
-      const nodePf = calculateNodeProbabilityOfFailure(
-        usedNodeCapacityMap.get(nodeId) ?? 0,
-        totalCapacity,
-        node.availableZ.length,
-      )
-
-      if (nodePf > highestNodePf) {
-        highestNodePf = nodePf
-      }
-    }
-
-    return highestNodePf
   }
 
   _stepSectionOptimization() {
@@ -308,19 +293,12 @@ export class CapacityPathingMultiSectionSolver extends BaseSolver {
         return
       }
 
-      const attemptCount =
-        this.nodeOptimizationAttemptCountMap.get(centerNodeId) ?? 0
-      const expansionDegrees = Math.min(
-        this.currentSchedule.MAX_EXPANSION_DEGREES + attemptCount,
-        this.currentSchedule.MAX_EXPANSION_DEGREES + 2,
-      )
-
       const section = computeSectionNodesTerminalsAndEdges({
         centerNodeId,
         connectionsWithNodes: this.connectionsWithNodes,
         nodeMap: this.nodeMap,
         edges: this.edges,
-        expansionDegrees, // Corrected
+        expansionDegrees: this.currentSchedule.MAX_EXPANSION_DEGREES, // Corrected
         nodeEdgeMap: this.nodeEdgeMap,
       })
       this.stats.scheduleScores[this.currentScheduleIndex].sectionAttempts++
@@ -334,7 +312,7 @@ export class CapacityPathingMultiSectionSolver extends BaseSolver {
         centerNodeId: this.currentSection.centerNodeId,
         nodeEdgeMap: this.nodeEdgeMap,
         hyperParameters: {
-          EXPANSION_DEGREES: expansionDegrees,
+          EXPANSION_DEGREES: this.currentSchedule.MAX_EXPANSION_DEGREES,
         },
         cacheProvider: this.cacheProvider,
       })
@@ -400,11 +378,6 @@ export class CapacityPathingMultiSectionSolver extends BaseSolver {
         sectionNodeIds,
       })
 
-      const beforeHighestPf = this._getHighestNodeProbability({
-        usedNodeCapacityMap: this.usedNodeCapacityMap,
-        sectionNodeIds,
-      })
-
       // --- Calculate After Score (Simulated) ---
       // 1. Create a temporary capacity map reflecting the state *after* applying new paths
       const afterUsedCapacityMap = new Map(this.usedNodeCapacityMap)
@@ -453,16 +426,8 @@ export class CapacityPathingMultiSectionSolver extends BaseSolver {
         sectionNodeIds,
       })
 
-      const afterHighestPf = this._getHighestNodeProbability({
-        usedNodeCapacityMap: afterUsedCapacityMap,
-        sectionNodeIds,
-      })
-
       // --- Compare and Merge ---
-      const improvedScore = afterScore > beforeScore
-      const relievedHighestPf = afterHighestPf + 1e-3 < beforeHighestPf
-
-      if (improvedScore || relievedHighestPf) {
+      if (afterScore > beforeScore) {
         this.stats.successfulOptimizations++
         // console.log(
         //   `Section ${

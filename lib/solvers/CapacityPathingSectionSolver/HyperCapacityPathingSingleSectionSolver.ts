@@ -44,13 +44,13 @@ export class HyperCapacityPathingSingleSectionSolver extends HyperParameterSuper
       this.constructorParams.sectionConnectionTerminals.length
 
     if (numConnections === 2) {
-      return [["orderings2_for2", "capacity_scaling", "candidate_pool"]]
+      return [["orderings2_for2"]]
     } else if (numConnections === 3) {
-      return [["orderings6_for3", "capacity_scaling", "candidate_pool"]]
+      return [["orderings6_for3"]]
     } else if (numConnections === 4) {
-      return [["orderings24_for4", "capacity_scaling", "candidate_pool"]]
+      return [["orderings24_for4"]]
     }
-    return [["orderings30", "capacity_scaling", "candidate_pool"]]
+    return [["orderings30"]]
   }
 
   getFailureMessage() {
@@ -82,21 +82,6 @@ export class HyperCapacityPathingSingleSectionSolver extends HyperParameterSuper
         possibleValues: range(30).map((i) => ({
           SHUFFLE_SEED: i,
         })),
-      },
-      {
-        name: "capacity_scaling",
-        possibleValues: [
-          { MAX_CAPACITY_FACTOR: 1 },
-          { MAX_CAPACITY_FACTOR: 1.2 },
-          { MAX_CAPACITY_FACTOR: 1.4 },
-        ],
-      },
-      {
-        name: "candidate_pool",
-        possibleValues: [
-          { MAX_CANDIDATES_IN_MEMORY: 10_000 },
-          { MAX_CANDIDATES_IN_MEMORY: 20_000 },
-        ],
       },
     ]
   }
