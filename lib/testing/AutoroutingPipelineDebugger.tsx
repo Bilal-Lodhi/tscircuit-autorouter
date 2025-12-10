@@ -12,8 +12,6 @@ import {
 } from "lib/solvers/AutoroutingPipelineSolver"
 import { GraphicsObject, Line, Point, Rect } from "graphics-debug"
 import { limitVisualizations } from "lib/utils/limitVisualizations"
-import { getNodesNearNode } from "lib/solvers/UnravelSolver/getNodesNearNode"
-import { filterUnravelMultiSectionInput } from "./utils/filterUnravelMultiSectionInput"
 import { convertToCircuitJson } from "./utils/convertToCircuitJson"
 import { getDrcErrors } from "./getDrcErrors"
 import { addVisualizationToLastStep } from "lib/utils/addVisualizationToLastStep"
@@ -25,6 +23,7 @@ import {
 } from "lib/cache/setupGlobalCaches"
 import { CacheProvider } from "lib/cache/types"
 import { AutoroutingPipelineMenuBar } from "./AutoroutingPipelineMenuBar"
+import { NodeDebugDialog } from "./NodeDebugDialog"
 
 interface CapacityMeshPipelineDebuggerProps {
   srj: SimpleRouteJson
@@ -683,173 +682,11 @@ export const AutoroutingPipelineDebugger = ({
       </div>
 
       {dialogObject && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-4 rounded-lg shadow-lg max-w-3xl max-h-[80vh] overflow-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-lg">
-                Selected Object "{dialogObject.label?.split("\n")[0]}" (step{" "}
-                {dialogObject.step})
-              </h3>
-              <button
-                className="text-gray-500 hover:text-gray-700"
-                onClick={() => setDialogObject(null)}
-              >
-                ✕
-              </button>
-            </div>
-            <div>
-              {dialogObject && (
-                <div className="mb-4 flex flex-col">
-                  <pre className="bg-gray-100 p-3 rounded overflow-auto max-h-96 text-sm">
-                    {dialogObject.label}
-                  </pre>
-                  <button
-                    className="mt-2 bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded text-sm"
-                    onClick={() => {
-                      if (dialogObject?.label) {
-                        // Extract the capacity mesh node ID from the label
-                        const match =
-                          dialogObject.label.match(/cn_(\d+)/) ??
-                          dialogObject.label.match(/cmn_(\d+)/)
-                        if (match?.[0]) {
-                          const nodeId = match[0]
-
-                          // Find the node in the solver's data
-                          let nodeData = null
-
-                          if (solver.nodeTargetMerger?.newNodes) {
-                            nodeData = solver.nodeTargetMerger.newNodes.find(
-                              (n: any) => n.capacityMeshNodeId === nodeId,
-                            )
-                          } else if (
-                            solver.nodeSolver &&
-                            "finishedNodes" in solver.nodeSolver
-                          ) {
-                            const finishedNodes = (solver.nodeSolver as any)
-                              .finishedNodes as Array<any> | undefined
-                            nodeData = finishedNodes?.find(
-                              (n: any) => n.capacityMeshNodeId === nodeId,
-                            )
-                          }
-
-                          // Get the node with port points from the segmentToPointOptimizer
-                          let nodeWithPortPoints = null
-                          if (
-                            solver.unravelMultiSectionSolver
-                              ?.getNodesWithPortPoints
-                          ) {
-                            nodeWithPortPoints = solver
-                              .unravelMultiSectionSolver!.getNodesWithPortPoints()
-                              .find((n) => n.capacityMeshNodeId === nodeId)
-                          }
-
-                          const dataToDownload = {
-                            nodeId,
-                            capacityMeshNode: nodeData,
-                            nodeWithPortPoints: nodeWithPortPoints,
-                          }
-
-                          const dataStr = JSON.stringify(
-                            dataToDownload,
-                            null,
-                            2,
-                          )
-                          const dataBlob = new Blob([dataStr], {
-                            type: "application/json",
-                          })
-                          const url = URL.createObjectURL(dataBlob)
-                          const a = document.createElement("a")
-                          a.href = url
-                          a.download = `${nodeId}-nodeWithPortPoints.json`
-                          document.body.appendChild(a)
-                          a.click()
-                          document.body.removeChild(a)
-                          URL.revokeObjectURL(url)
-                        }
-                      }
-                    }}
-                  >
-                    Download High Density Node Input (NodeWithPortPoints)
-                  </button>
-                  <button
-                    className="mt-2 bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded text-sm"
-                    onClick={() => {
-                      const match = dialogObject.label!.match(/cn(\d+)/)
-                      const nodeId = `cn${parseInt(match![1], 10)}`
-                      const umss = solver.unravelMultiSectionSolver
-                      if (!umss) return
-                      const verboseInput = {
-                        dedupedSegments: umss.dedupedSegments,
-                        dedupedSegmentMap: umss.dedupedSegmentMap,
-                        nodeMap: umss.nodeMap,
-                        nodeIdToSegmentIds: umss.nodeIdToSegmentIds,
-                        segmentIdToNodeIds: umss.segmentIdToNodeIds,
-                        colorMap: umss.colorMap,
-                        rootNodeId: nodeId,
-                        MUTABLE_HOPS: umss.MUTABLE_HOPS,
-                        segmentPointMap: umss.segmentPointMap,
-                        nodeToSegmentPointMap: umss.nodeToSegmentPointMap,
-                        segmentToSegmentPointMap: umss.segmentToSegmentPointMap,
-                      }
-
-                      const relevantNodeIds = new Set(
-                        getNodesNearNode({
-                          nodeId,
-                          nodeIdToSegmentIds: umss.nodeIdToSegmentIds,
-                          segmentIdToNodeIds: umss.segmentIdToNodeIds,
-                          hops: 8,
-                        }),
-                      )
-
-                      // Filter the verbose input to only include content related to relevant nodes
-                      const filteredVerboseInput =
-                        filterUnravelMultiSectionInput(
-                          verboseInput,
-                          relevantNodeIds,
-                        )
-
-                      // Create a JSON string with proper formatting
-                      const filteredInputJson = JSON.stringify(
-                        filteredVerboseInput,
-                        (key, value) => {
-                          // Convert Maps to objects for JSON serialization
-                          if (value instanceof Map) {
-                            return Object.fromEntries(value)
-                          }
-                          return value
-                        },
-                        2,
-                      )
-
-                      // Create a blob with the JSON data
-                      const blob = new Blob([filteredInputJson], {
-                        type: "application/json",
-                      })
-
-                      // Create a URL for the blob
-                      const url = URL.createObjectURL(blob)
-
-                      // Create a temporary anchor element
-                      const a = document.createElement("a")
-
-                      // Set the download filename
-                      a.download = `unravel_section_${nodeId}_input.json`
-                      a.href = url
-
-                      // Trigger the download
-                      a.click()
-
-                      // Clean up by revoking the URL
-                      URL.revokeObjectURL(url)
-                    }}
-                  >
-                    Download Unravel Section Input
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <NodeDebugDialog
+          dialogObject={dialogObject}
+          solver={solver}
+          onClose={() => setDialogObject(null)}
+        />
       )}
 
       <div className="mt-4 border-t pt-4">
