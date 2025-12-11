@@ -311,7 +311,9 @@ export class PortPointPathingSolver extends BaseSolver {
   }
 
   /**
-   * Assign port points along a path and record which connections use them
+   * Assign port points along a path and record which connections use them.
+   * Returns an array with one entry per edge (path.length - 1 entries).
+   * If no port point is available on an edge, generates a synthetic one at the edge center.
    */
   private assignPortPointsForPath(
     path: CapacityMeshNode[],
@@ -339,6 +341,41 @@ export class PortPointPathingSolver extends BaseSolver {
           rootConnectionName,
         )
         assignedPortPoints.push(portPoint)
+      } else {
+        // No available port points - create a synthetic one at the edge midpoint
+        // This ensures we always have a port point for each edge
+        const allPortPoints = this.segmentPointSolver.getPortPointsForEdge(
+          fromNode.capacityMeshNodeId,
+          toNode.capacityMeshNodeId,
+        )
+
+        if (allPortPoints.length > 0) {
+          // Reuse an existing port point location (may be used by another connection)
+          const portPoint = allPortPoints[0]
+          assignedPortPoints.push({
+            ...portPoint,
+            connectionName,
+            rootConnectionName,
+          })
+        } else {
+          // No port points at all for this edge - compute a synthetic midpoint
+          const midX = (fromNode.center.x + toNode.center.x) / 2
+          const midY = (fromNode.center.y + toNode.center.y) / 2
+          const availableZ = fromNode.availableZ.filter((z) =>
+            toNode.availableZ.includes(z),
+          )
+
+          assignedPortPoints.push({
+            segmentPortPointId: `synthetic_${fromNode.capacityMeshNodeId}_${toNode.capacityMeshNodeId}_${connectionName}`,
+            x: midX,
+            y: midY,
+            availableZ: availableZ.length > 0 ? availableZ : [0],
+            nodeIds: [fromNode.capacityMeshNodeId, toNode.capacityMeshNodeId],
+            edgeId: `synthetic_edge_${fromNode.capacityMeshNodeId}_${toNode.capacityMeshNodeId}`,
+            connectionName,
+            rootConnectionName,
+          })
+        }
       }
     }
 
@@ -471,17 +508,20 @@ export class PortPointPathingSolver extends BaseSolver {
 
   /**
    * Get the nodes with port points for the HighDensitySolver
+   *
+   * For each connection passing through a node, it needs exactly 2 port points:
+   * - For intermediate nodes: entry port point + exit port point
+   * - For start node: target point + exit port point
+   * - For end node: entry port point + target point
    */
   getNodesWithPortPoints(): NodeWithPortPoints[] {
     const nodePortPointsMap = new Map<CapacityMeshNodeId, NodeWithPortPoints>()
 
-    // Initialize all nodes that have port points
-    for (const segment of this.segmentPointSolver.sharedEdgeSegments) {
-      for (const nodeId of segment.nodeIds) {
+    // Helper to ensure node exists in map
+    const ensureNode = (nodeId: CapacityMeshNodeId) => {
+      if (!nodePortPointsMap.has(nodeId)) {
         const node = this.nodeMap.get(nodeId)
-        if (!node) continue
-
-        if (!nodePortPointsMap.has(nodeId)) {
+        if (node) {
           nodePortPointsMap.set(nodeId, {
             capacityMeshNodeId: nodeId,
             center: node.center,
@@ -492,66 +532,106 @@ export class PortPointPathingSolver extends BaseSolver {
           })
         }
       }
+      return nodePortPointsMap.get(nodeId)
     }
 
-    // Add assigned port points to their respective nodes
-    for (const portPoint of this.segmentPointSolver.portPointMap.values()) {
-      if (!portPoint.connectionName) continue
+    // Build a map from (nodeId, connectionName) -> list of port points
+    // This will help us collect all port points for a connection in a node
+    const nodeConnectionPortPoints = new Map<
+      string,
+      Array<{ x: number; y: number; z: number }>
+    >()
 
-      // Add to both nodes that share this port point
-      for (const nodeId of portPoint.nodeIds) {
-        const nodeWithPP = nodePortPointsMap.get(nodeId)
-        if (nodeWithPP) {
-          // Use the first available z layer for now
+    const addPortPoint = (
+      nodeId: CapacityMeshNodeId,
+      connectionName: string,
+      point: { x: number; y: number; z: number },
+    ) => {
+      const key = `${nodeId}::${connectionName}`
+      if (!nodeConnectionPortPoints.has(key)) {
+        nodeConnectionPortPoints.set(key, [])
+      }
+      nodeConnectionPortPoints.get(key)!.push(point)
+    }
+
+    // Process each solved connection
+    for (const result of this.connectionsWithResults) {
+      if (!result.path || result.path.length === 0) continue
+
+      const connection = result.connection
+      const path = result.path
+      const portPoints = result.portPoints ?? []
+
+      // Add target points (start and end connection points)
+      const startNode = path[0]
+      const endNode = path[path.length - 1]
+      const startPoint = connection.pointsToConnect[0]
+      const endPoint =
+        connection.pointsToConnect[connection.pointsToConnect.length - 1]
+
+      if (startPoint && startNode) {
+        const z = startNode.availableZ[0] ?? 0
+        addPortPoint(startNode.capacityMeshNodeId, connection.name, {
+          x: startPoint.x,
+          y: startPoint.y,
+          z,
+        })
+      }
+
+      if (endPoint && endNode) {
+        const z = endNode.availableZ[0] ?? 0
+        addPortPoint(endNode.capacityMeshNodeId, connection.name, {
+          x: endPoint.x,
+          y: endPoint.y,
+          z,
+        })
+      }
+
+      // Add port points to both adjacent nodes for each edge
+      for (let i = 0; i < portPoints.length; i++) {
+        const portPoint = portPoints[i]
+        if (!portPoint) continue
+
+        // This port point is on the edge between path[i] and path[i+1]
+        // It should be added to both nodes
+        const nodeA = path[i]
+        const nodeB = path[i + 1]
+
+        if (nodeA && nodeB) {
           const z = portPoint.availableZ[0] ?? 0
-
-          nodeWithPP.portPoints.push({
+          addPortPoint(nodeA.capacityMeshNodeId, connection.name, {
             x: portPoint.x,
             y: portPoint.y,
             z,
-            connectionName: portPoint.connectionName,
-            rootConnectionName: portPoint.rootConnectionName,
+          })
+          addPortPoint(nodeB.capacityMeshNodeId, connection.name, {
+            x: portPoint.x,
+            y: portPoint.y,
+            z,
           })
         }
       }
     }
 
-    // Add target points (connection endpoints) to their nodes
-    for (const result of this.connectionsWithResults) {
-      if (!result.path || result.path.length === 0) continue
+    // Convert to NodeWithPortPoints format
+    for (const [key, points] of nodeConnectionPortPoints) {
+      const [nodeId, connectionName] = key.split("::")
+      const nodeWithPP = ensureNode(nodeId)
+      if (!nodeWithPP) continue
 
-      const connection = result.connection
-      const startNode = result.path[0]
-      const endNode = result.path[result.path.length - 1]
-
-      // Add start point
-      const startPoint = connection.pointsToConnect[0]
-      const startNodeWithPP = nodePortPointsMap.get(
-        startNode.capacityMeshNodeId,
+      // Find the connection to get rootConnectionName
+      const result = this.connectionsWithResults.find(
+        (r) => r.connection.name === connectionName,
       )
-      if (startNodeWithPP && startPoint) {
-        const z = startNode.availableZ[0] ?? 0
-        startNodeWithPP.portPoints.push({
-          x: startPoint.x,
-          y: startPoint.y,
-          z,
-          connectionName: connection.name,
-          rootConnectionName: connection.rootConnectionName,
-        })
-      }
+      const rootConnectionName = result?.connection.rootConnectionName
 
-      // Add end point
-      const endPoint =
-        connection.pointsToConnect[connection.pointsToConnect.length - 1]
-      const endNodeWithPP = nodePortPointsMap.get(endNode.capacityMeshNodeId)
-      if (endNodeWithPP && endPoint) {
-        const z = endNode.availableZ[0] ?? 0
-        endNodeWithPP.portPoints.push({
-          x: endPoint.x,
-          y: endPoint.y,
-          z,
-          connectionName: connection.name,
-          rootConnectionName: connection.rootConnectionName,
+      for (const point of points) {
+        nodeWithPP.portPoints.push({
+          x: point.x,
+          y: point.y,
+          z: point.z,
+          connectionName: connectionName,
+          rootConnectionName,
         })
       }
     }
