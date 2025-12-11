@@ -170,7 +170,9 @@ export class CapacityPathingSolver extends BaseSolver {
     endGoal: CapacityMeshNode,
   ) {
     return (
-      prevCandidate.g + this.getDistanceBetweenNodes(prevCandidate.node, node)
+      prevCandidate.g +
+      this.getDistanceBetweenNodes(prevCandidate.node, node) +
+      this.getHeatmapPenalty(node)
     )
   }
 
@@ -179,7 +181,9 @@ export class CapacityPathingSolver extends BaseSolver {
     node: CapacityMeshNode,
     endGoal: CapacityMeshNode,
   ) {
-    return this.getDistanceBetweenNodes(node, endGoal)
+    return (
+      this.getDistanceBetweenNodes(node, endGoal) + this.getHeatmapPenalty(node)
+    )
   }
 
   getBacktrackedPath(candidate: Candidate) {
