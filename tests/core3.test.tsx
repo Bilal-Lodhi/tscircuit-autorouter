@@ -1,4 +1,5 @@
 import { RootCircuit, sel } from "@tscircuit/core"
+import "./helpers/patchRootCircuit"
 import { test, expect } from "bun:test"
 import { CapacityMeshAutorouterCoreBinding } from "./fixtures/CapacityMeshAutorouterCoreBinding"
 import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
@@ -6,6 +7,7 @@ import { Fragment } from "react/jsx-runtime"
 
 test("core3 - 0402 columns", async () => {
   const circuit = new RootCircuit()
+  circuit.render = RootCircuit.prototype.render
 
   circuit.add(
     <board

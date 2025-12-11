@@ -197,8 +197,10 @@ export class CapacityPathingSolver extends BaseSolver {
   }
 
   getNeighboringNodes(node: CapacityMeshNode) {
-    return this.nodeEdgeMap
-      .get(node.capacityMeshNodeId)!
+    const edges = this.nodeEdgeMap.get(node.capacityMeshNodeId)
+    if (!edges) return []
+
+    return edges
       .flatMap((edge): CapacityMeshNodeId[] =>
         edge.nodeIds.filter((n) => n !== node.capacityMeshNodeId),
       )

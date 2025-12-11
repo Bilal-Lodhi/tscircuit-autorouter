@@ -1,10 +1,12 @@
 import { RootCircuit, sel } from "@tscircuit/core"
+import "./helpers/patchRootCircuit"
 import { test, expect } from "bun:test"
 import { CapacityMeshAutorouterCoreBinding } from "./fixtures/CapacityMeshAutorouterCoreBinding"
 import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
 
 test("core1 - simple circuit", async () => {
   const circuit = new RootCircuit()
+  circuit.render = RootCircuit.prototype.render
 
   circuit.add(
     <board
