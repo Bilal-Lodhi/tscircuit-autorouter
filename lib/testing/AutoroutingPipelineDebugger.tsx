@@ -732,15 +732,16 @@ export const AutoroutingPipelineDebugger = ({
                             )
                           }
 
-                          // Get the node with port points from the segmentToPointOptimizer
+                          // Get the node with port points from the portPointPathingSolver
                           let nodeWithPortPoints = null
                           if (
-                            solver.unravelMultiSectionSolver
-                              ?.getNodesWithPortPoints
+                            solver.portPointPathingSolver?.getNodesWithPortPoints
                           ) {
                             nodeWithPortPoints = solver
-                              .unravelMultiSectionSolver!.getNodesWithPortPoints()
-                              .find((n) => n.capacityMeshNodeId === nodeId)
+                              .portPointPathingSolver!.getNodesWithPortPoints()
+                              .find(
+                                (n: any) => n.capacityMeshNodeId === nodeId,
+                              )
                           }
 
                           const dataToDownload = {
@@ -771,80 +772,7 @@ export const AutoroutingPipelineDebugger = ({
                   >
                     Download High Density Node Input (NodeWithPortPoints)
                   </button>
-                  <button
-                    className="mt-2 bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded text-sm"
-                    onClick={() => {
-                      const match = dialogObject.label!.match(/cn(\d+)/)
-                      const nodeId = `cn${parseInt(match![1], 10)}`
-                      const umss = solver.unravelMultiSectionSolver
-                      if (!umss) return
-                      const verboseInput = {
-                        dedupedSegments: umss.dedupedSegments,
-                        dedupedSegmentMap: umss.dedupedSegmentMap,
-                        nodeMap: umss.nodeMap,
-                        nodeIdToSegmentIds: umss.nodeIdToSegmentIds,
-                        segmentIdToNodeIds: umss.segmentIdToNodeIds,
-                        colorMap: umss.colorMap,
-                        rootNodeId: nodeId,
-                        MUTABLE_HOPS: umss.MUTABLE_HOPS,
-                        segmentPointMap: umss.segmentPointMap,
-                        nodeToSegmentPointMap: umss.nodeToSegmentPointMap,
-                        segmentToSegmentPointMap: umss.segmentToSegmentPointMap,
-                      }
-
-                      const relevantNodeIds = new Set(
-                        getNodesNearNode({
-                          nodeId,
-                          nodeIdToSegmentIds: umss.nodeIdToSegmentIds,
-                          segmentIdToNodeIds: umss.segmentIdToNodeIds,
-                          hops: 8,
-                        }),
-                      )
-
-                      // Filter the verbose input to only include content related to relevant nodes
-                      const filteredVerboseInput =
-                        filterUnravelMultiSectionInput(
-                          verboseInput,
-                          relevantNodeIds,
-                        )
-
-                      // Create a JSON string with proper formatting
-                      const filteredInputJson = JSON.stringify(
-                        filteredVerboseInput,
-                        (key, value) => {
-                          // Convert Maps to objects for JSON serialization
-                          if (value instanceof Map) {
-                            return Object.fromEntries(value)
-                          }
-                          return value
-                        },
-                        2,
-                      )
-
-                      // Create a blob with the JSON data
-                      const blob = new Blob([filteredInputJson], {
-                        type: "application/json",
-                      })
-
-                      // Create a URL for the blob
-                      const url = URL.createObjectURL(blob)
-
-                      // Create a temporary anchor element
-                      const a = document.createElement("a")
-
-                      // Set the download filename
-                      a.download = `unravel_section_${nodeId}_input.json`
-                      a.href = url
-
-                      // Trigger the download
-                      a.click()
-
-                      // Clean up by revoking the URL
-                      URL.revokeObjectURL(url)
-                    }}
-                  >
-                    Download Unravel Section Input
-                  </button>
+                  {/* Unravel section debug button removed - unravelMultiSectionSolver no longer exists */}
                 </div>
               )}
             </div>
