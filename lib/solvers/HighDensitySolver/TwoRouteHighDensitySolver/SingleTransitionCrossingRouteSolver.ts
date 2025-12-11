@@ -13,6 +13,7 @@ import type { GraphicsObject } from "graphics-debug"
 import { getIntraNodeCrossings } from "lib/utils/getIntraNodeCrossings"
 import { findCircleLineIntersections } from "./findCircleLineIntersections"
 import { findClosestPointToABCWithinBounds } from "lib/utils/findClosestPointToABCWithinBounds"
+import { getNamedPortPoints } from "lib/utils/getNamedPortPoints"
 import { calculatePerpendicularPointsAtDistance } from "lib/utils/calculatePointsAtDistance"
 import { snapToNearestBound } from "lib/utils/snapToNearestBound"
 import { findPointToGetAroundCircle } from "lib/utils/findPointToGetAroundCircle"
@@ -98,7 +99,9 @@ export class SingleTransitionCrossingRouteSolver extends BaseSolver {
    */
   private extractRoutesFromNode(): Route[] {
     const routes: Route[] = []
-    const connectedPorts = this.nodeWithPortPoints.portPoints!
+    const connectedPorts = getNamedPortPoints(
+      this.nodeWithPortPoints.portPoints!,
+    )
 
     // Group ports by connection name
     const connectionGroups = new Map<string, Point[]>()

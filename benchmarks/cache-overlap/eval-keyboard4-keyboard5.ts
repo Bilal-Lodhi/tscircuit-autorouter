@@ -8,10 +8,7 @@ import { InMemoryCache } from "lib/cache/InMemoryCache"
 
 interface RunResult {
   totalTimeMs: number
-  unravelTimeMs: number
-  unravelCacheHits: number
-  unravelCacheMisses: number
-  unravelTotalAttempts: number
+  portPointTimeMs: number
 }
 
 async function runSolver(
@@ -33,21 +30,11 @@ async function runSolver(
   const endTime = performance.now()
 
   const totalTimeMs = endTime - startTime
-  const unravelTimeMs =
-    solver.timeSpentOnPhase["unravelMultiSectionSolver"] ?? 0
-
-  // Access the unravel solver instance and its stats
-  const unravelSolver = solver.unravelMultiSectionSolver
-  const unravelCacheHits = unravelSolver?.stats.cacheHits ?? 0
-  const unravelCacheMisses = unravelSolver?.stats.cacheMisses ?? 0
-  const unravelTotalAttempts = unravelCacheHits + unravelCacheMisses
+  const portPointTimeMs = solver.timeSpentOnPhase["portPointPathingSolver"] ?? 0
 
   return {
     totalTimeMs,
-    unravelTimeMs,
-    unravelCacheHits,
-    unravelCacheMisses,
-    unravelTotalAttempts,
+    portPointTimeMs,
   }
 }
 
@@ -59,7 +46,7 @@ async function runBenchmark() {
   )
   const baselineCacheKeys = new Set([...cache.cache.keys()])
   console.log(
-    `Baseline completed: ${baselineResult.totalTimeMs.toFixed(2)}ms total, ${baselineResult.unravelTimeMs.toFixed(2)}ms unravel, ${cache.cache.size} Cache Keys`,
+    `Baseline completed: ${baselineResult.totalTimeMs.toFixed(2)}ms total, ${baselineResult.portPointTimeMs.toFixed(2)}ms port-point pathing, ${cache.cache.size} Cache Keys`,
   )
 
   console.log("Clearing cache...")
@@ -81,24 +68,13 @@ async function runBenchmark() {
     cache,
   )
   console.log(
-    `Test completed: ${testResult.totalTimeMs.toFixed(2)}ms total, ${testResult.unravelTimeMs.toFixed(2)}ms unravel`,
+    `Test completed: ${testResult.totalTimeMs.toFixed(2)}ms total, ${testResult.portPointTimeMs.toFixed(2)}ms port-point pathing`,
   )
 
   // Calculate metrics
-  const baselineCacheHitPercent =
-    baselineResult.unravelTotalAttempts > 0
-      ? (baselineResult.unravelCacheHits /
-          baselineResult.unravelTotalAttempts) *
-        100
-      : 0
-  const testCacheHitPercent =
-    testResult.unravelTotalAttempts > 0
-      ? (testResult.unravelCacheHits / testResult.unravelTotalAttempts) * 100
-      : 0
-
   const unravelSpeedup =
-    testResult.unravelTimeMs > 0
-      ? baselineResult.unravelTimeMs / testResult.unravelTimeMs
+    testResult.portPointTimeMs > 0
+      ? baselineResult.portPointTimeMs / testResult.portPointTimeMs
       : Infinity // Handle division by zero
   const overallSpeedup =
     testResult.totalTimeMs > 0
@@ -114,7 +90,7 @@ async function runBenchmark() {
     "| ----------- | -------------- | ------------------- | --------------- | --------------- |",
   )
   console.log(
-    `| keyboard4   | keyboard5      | ${testCacheHitPercent.toFixed(1)}% (vs ${baselineCacheHitPercent.toFixed(1)}%) | ${unravelSpeedup.toFixed(2)}x | ${overallSpeedup.toFixed(2)}x |`,
+    `| keyboard4   | keyboard5      | N/A | ${unravelSpeedup.toFixed(2)}x | ${overallSpeedup.toFixed(2)}x |`,
   )
 }
 

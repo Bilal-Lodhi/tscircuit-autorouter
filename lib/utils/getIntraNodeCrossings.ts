@@ -1,7 +1,9 @@
 import { doSegmentsIntersect } from "@tscircuit/math-utils"
 import { NodeWithPortPoints } from "lib/types/high-density-types"
+import { getNamedPortPoints } from "./getNamedPortPoints"
 
 export const getIntraNodeCrossings = (node: NodeWithPortPoints) => {
+  const portPoints = getNamedPortPoints(node.portPoints)
   // Count the number of crossings
   let numSameLayerCrossings = 0
   let pointPairs: {
@@ -17,7 +19,7 @@ export const getIntraNodeCrossings = (node: NodeWithPortPoints) => {
 
   let numEntryExitLayerChanges = 0
 
-  for (const A of node.portPoints) {
+  for (const A of portPoints) {
     if (pointPairs.some((p) => p.connectionName === A.connectionName)) {
       continue
     }
@@ -31,7 +33,7 @@ export const getIntraNodeCrossings = (node: NodeWithPortPoints) => {
       z: A.z,
       points: [{ x: A.x, y: A.y, z: A.z }],
     }
-    for (const B of node.portPoints) {
+    for (const B of portPoints) {
       if (A.connectionName !== B.connectionName) continue
       if (A.x === B.x && A.y === B.y) continue
       pointPair.points.push({ x: B.x, y: B.y, z: B.z })

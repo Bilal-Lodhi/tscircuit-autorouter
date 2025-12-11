@@ -12,6 +12,7 @@ import { cloneAndShuffleArray } from "lib/utils/cloneAndShuffleArray"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import { getBoundsFromNodeWithPortPoints } from "lib/utils/getBoundsFromNodeWithPortPoints"
 import { getMinDistBetweenEnteringPoints } from "lib/utils/getMinDistBetweenEnteringPoints"
+import { getNamedPortPoints } from "lib/utils/getNamedPortPoints"
 
 export class IntraNodeRouteSolver extends BaseSolver {
   nodeWithPortPoints: NodeWithPortPoints
@@ -64,7 +65,9 @@ export class IntraNodeRouteSolver extends BaseSolver {
       string,
       { x: number; y: number; z: number }[]
     > = new Map()
-    for (const { connectionName, x, y, z } of nodeWithPortPoints.portPoints) {
+    for (const { connectionName, x, y, z } of getNamedPortPoints(
+      nodeWithPortPoints.portPoints,
+    )) {
       unsolvedConnectionsMap.set(connectionName, [
         ...(unsolvedConnectionsMap.get(connectionName) ?? []),
         { x, y, z: z ?? 0 },
@@ -230,7 +233,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
     // })
 
     // Visualize input nodeWithPortPoints
-    for (const pt of this.nodeWithPortPoints.portPoints) {
+    for (const pt of getNamedPortPoints(this.nodeWithPortPoints.portPoints)) {
       graphics.points!.push({
         x: pt.x,
         y: pt.y,

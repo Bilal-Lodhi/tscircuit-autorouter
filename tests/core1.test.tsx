@@ -28,7 +28,7 @@ test("core1 - simple circuit", async () => {
 
   const circuitJson = circuit.getCircuitJson()
 
-  expect(convertCircuitJsonToPcbSvg(circuitJson)).toMatchSvgSnapshot(
+  expect(convertCircuitJsonToPcbSvg(circuitJson as any)).toMatchSvgSnapshot(
     import.meta.path,
   )
 })

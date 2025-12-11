@@ -734,13 +734,14 @@ export const AutoroutingPipelineDebugger = ({
 
                           // Get the node with port points from the segmentToPointOptimizer
                           let nodeWithPortPoints = null
-                          if (
-                            solver.unravelMultiSectionSolver
-                              ?.getNodesWithPortPoints
-                          ) {
-                            nodeWithPortPoints = solver
-                              .unravelMultiSectionSolver!.getNodesWithPortPoints()
-                              .find((n) => n.capacityMeshNodeId === nodeId)
+                          const nodesWithPortPoints = solver
+                            .portPointPathingSolver?.solved
+                            ? solver.portPointPathingSolver.getNodesWithPortPoints()
+                            : null
+                          if (nodesWithPortPoints) {
+                            nodeWithPortPoints = nodesWithPortPoints.find(
+                              (n) => n.capacityMeshNodeId === nodeId,
+                            )
                           }
 
                           const dataToDownload = {
@@ -776,37 +777,21 @@ export const AutoroutingPipelineDebugger = ({
                     onClick={() => {
                       const match = dialogObject.label!.match(/cn(\d+)/)
                       const nodeId = `cn${parseInt(match![1], 10)}`
-                      const umss = solver.unravelMultiSectionSolver
-                      if (!umss) return
+                      const portPointSolver = solver.portPointPathingSolver
+                      if (!portPointSolver?.solved) return
                       const verboseInput = {
-                        dedupedSegments: umss.dedupedSegments,
-                        dedupedSegmentMap: umss.dedupedSegmentMap,
-                        nodeMap: umss.nodeMap,
-                        nodeIdToSegmentIds: umss.nodeIdToSegmentIds,
-                        segmentIdToNodeIds: umss.segmentIdToNodeIds,
-                        colorMap: umss.colorMap,
-                        rootNodeId: nodeId,
-                        MUTABLE_HOPS: umss.MUTABLE_HOPS,
-                        segmentPointMap: umss.segmentPointMap,
-                        nodeToSegmentPointMap: umss.nodeToSegmentPointMap,
-                        segmentToSegmentPointMap: umss.segmentToSegmentPointMap,
+                        nodeWithPortPoints:
+                          portPointSolver
+                            .getNodesWithPortPoints()
+                            .find((n) => n.capacityMeshNodeId === nodeId) ??
+                          null,
+                        availablePortPoints:
+                          portPointSolver.availablePortPointsByNode.get(
+                            nodeId,
+                          ) ?? [],
                       }
 
-                      const relevantNodeIds = new Set(
-                        getNodesNearNode({
-                          nodeId,
-                          nodeIdToSegmentIds: umss.nodeIdToSegmentIds,
-                          segmentIdToNodeIds: umss.segmentIdToNodeIds,
-                          hops: 8,
-                        }),
-                      )
-
-                      // Filter the verbose input to only include content related to relevant nodes
-                      const filteredVerboseInput =
-                        filterUnravelMultiSectionInput(
-                          verboseInput,
-                          relevantNodeIds,
-                        )
+                      const filteredVerboseInput = verboseInput
 
                       // Create a JSON string with proper formatting
                       const filteredInputJson = JSON.stringify(

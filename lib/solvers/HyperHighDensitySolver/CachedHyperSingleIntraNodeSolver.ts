@@ -12,6 +12,7 @@ import type {
 import type { HighDensityHyperParameters } from "../HighDensitySolver/HighDensityHyperParameters"
 import type { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import objectHash from "object-hash"
+import { getNamedPortPoints } from "lib/utils/getNamedPortPoints"
 
 // Define the structure of the cached data
 type CachedSolvedHyperSingleIntraNode =
@@ -81,7 +82,7 @@ export class CachedHyperSingleIntraNodeSolver
     // 1. Normalize NodeWithPortPoints
     const node = this.nodeWithPortPoints
     const center = node.center
-    const normalizedPortPoints = [...node.portPoints]
+    const normalizedPortPoints = getNamedPortPoints([...node.portPoints])
       .sort((a, b) => {
         if (a.connectionName !== b.connectionName)
           return a.connectionName.localeCompare(b.connectionName)

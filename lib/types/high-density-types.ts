@@ -1,9 +1,15 @@
 export type PortPoint = {
-  connectionName: string
+  connectionName?: string
   rootConnectionName?: string
   x: number
   y: number
   z: number
+  /**
+   * Optional identifier for the neighboring capacity mesh node this port point
+   * connects to. When provided, it can be used to build an inter-node routing
+   * graph from precomputed port points.
+   */
+  neighborNodeId?: string
 }
 
 export type NodeWithPortPoints = {

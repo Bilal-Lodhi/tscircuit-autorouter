@@ -12,6 +12,7 @@ import type { GraphicsObject } from "graphics-debug"
 import { getIntraNodeCrossings } from "lib/utils/getIntraNodeCrossings"
 import { findCircleLineIntersections } from "./findCircleLineIntersections"
 import { computeDumbbellPaths } from "./computeDumbbellPaths"
+import { getNamedPortPoints } from "lib/utils/getNamedPortPoints"
 
 type Point = { x: number; y: number; z?: number }
 type Route = {
@@ -106,7 +107,9 @@ export class TwoCrossingRoutesHighDensitySolver extends BaseSolver {
    */
   private extractRoutesFromNode(): Route[] {
     const routes: Route[] = []
-    const connectedPorts = this.nodeWithPortPoints.portPoints!
+    const connectedPorts = getNamedPortPoints(
+      this.nodeWithPortPoints.portPoints!,
+    )
 
     // Group ports by connection name
     const connectionGroups = new Map<string, Point[]>()

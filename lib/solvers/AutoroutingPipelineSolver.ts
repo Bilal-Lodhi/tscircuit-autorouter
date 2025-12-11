@@ -13,11 +13,8 @@ import { CapacityMeshEdgeSolver } from "./CapacityMeshSolver/CapacityMeshEdgeSol
 import { CapacityMeshNodeSolver } from "./CapacityMeshSolver/CapacityMeshNodeSolver1"
 import { CapacityMeshNodeSolver2_NodeUnderObstacle } from "./CapacityMeshSolver/CapacityMeshNodeSolver2_NodesUnderObstacles"
 import { CapacityPathingSolver } from "./CapacityPathingSolver/CapacityPathingSolver"
-import { CapacityEdgeToPortSegmentSolver } from "./CapacityMeshSolver/CapacityEdgeToPortSegmentSolver"
 import { getColorMap } from "./colors"
-import { CapacitySegmentToPointSolver } from "./CapacityMeshSolver/CapacitySegmentToPointSolver"
 import { HighDensitySolver } from "./HighDensitySolver/HighDensitySolver"
-import type { NodePortSegment } from "../types/capacity-edges-to-port-segments-types"
 import { CapacityPathingSolver2_AvoidLowCapacity } from "./CapacityPathingSolver/CapacityPathingSolver2_AvoidLowCapacity"
 import { CapacityPathingSolver3_FlexibleNegativeCapacity_AvoidLowCapacity } from "./CapacityPathingSolver/CapacityPathingSolver3_FlexibleNegativeCapacity_AvoidLowCapacity"
 import { CapacityPathingSolver4_FlexibleNegativeCapacity } from "./CapacityPathingSolver/CapacityPathingSolver4_FlexibleNegativeCapacity_AvoidLowCapacity_FixedDistanceCost"
@@ -53,6 +50,8 @@ import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
 import { NetToPointPairsSolver2_OffBoardConnection } from "./NetToPointPairsSolver2_OffBoardConnection/NetToPointPairsSolver2_OffBoardConnection"
 import { RectDiffSolver } from "@tscircuit/rectdiff"
 import { TraceSimplificationSolver } from "./TraceSimplificationSolver/TraceSimplificationSolver"
+import { AvailableSegmentPointSolver } from "./AvailableSegmentPointSolver/AvailableSegmentPointSolver"
+import { PortPointPathingSolver } from "./PortPointPathingSolver/PortPointPathingSolver"
 
 interface CapacityMeshSolverOptions {
   capacityDepth?: number
@@ -96,12 +95,9 @@ export class AutoroutingPipelineSolver extends BaseSolver {
   nodeSolver?: RectDiffSolver
   nodeTargetMerger?: CapacityNodeTargetMerger
   edgeSolver?: CapacityMeshEdgeSolver
-  initialPathingSolver?: CapacityPathingGreedySolver
-  pathingOptimizer?: CapacityPathingMultiSectionSolver
-  edgeToPortSegmentSolver?: CapacityEdgeToPortSegmentSolver
+  availableSegmentPointSolver?: AvailableSegmentPointSolver
+  portPointPathingSolver?: PortPointPathingSolver
   colorMap: Record<string, string>
-  segmentToPointSolver?: CapacitySegmentToPointSolver
-  unravelMultiSectionSolver?: UnravelMultiSectionSolver
   segmentToPointOptimizer?: CapacitySegmentPointOptimizer
   highDensityRouteSolver?: HighDensitySolver
   highDensityStitchSolver?: MultipleHighDensityRouteStitchSolver
@@ -202,100 +198,37 @@ export class AutoroutingPipelineSolver extends BaseSolver {
       },
     ),
     definePipelineStep(
-      "initialPathingSolver",
-      CapacityPathingGreedySolver,
+      "availableSegmentPointSolver",
+      AvailableSegmentPointSolver,
+      (cms) => [
+        {
+          nodes: cms.capacityNodes!,
+          edges: cms.capacityEdges || [],
+          traceWidth: cms.minTraceWidth,
+        },
+      ],
+    ),
+    definePipelineStep(
+      "portPointPathingSolver",
+      PortPointPathingSolver,
       (cms) => [
         {
           simpleRouteJson: cms.srjWithPointPairs!,
           nodes: cms.capacityNodes!,
           edges: cms.capacityEdges || [],
+          portPointPairs:
+            cms.availableSegmentPointSolver?.getPortPointPairs() ?? [],
+          availablePortPointsByNode:
+            cms.availableSegmentPointSolver?.availablePortPointsByNode ??
+            new Map(),
           colorMap: cms.colorMap,
-          hyperParameters: {
-            MAX_CAPACITY_FACTOR: 1,
-          },
-        },
-      ],
-    ),
-    definePipelineStep(
-      "pathingOptimizer",
-      // CapacityPathingSolver5,
-      CapacityPathingMultiSectionSolver,
-      (cms) => [
-        // Replaced solver class
-        {
-          initialPathingSolver: cms.initialPathingSolver,
-          simpleRouteJson: cms.srjWithPointPairs!,
-          nodes: cms.capacityNodes!,
-          edges: cms.capacityEdges || [],
-          colorMap: cms.colorMap,
-          cacheProvider: cms.cacheProvider,
-          hyperParameters: {
-            MAX_CAPACITY_FACTOR: 1,
-          },
-        },
-      ],
-    ),
-    definePipelineStep(
-      "edgeToPortSegmentSolver",
-      CapacityEdgeToPortSegmentSolver,
-      (cms) => [
-        {
-          nodes: cms.capacityNodes!,
-          edges: cms.capacityEdges || [],
-          capacityPaths: cms.pathingOptimizer?.getCapacityPaths() || [],
-          colorMap: cms.colorMap,
-        },
-      ],
-    ),
-    definePipelineStep(
-      "segmentToPointSolver",
-      CapacitySegmentToPointSolver,
-      (cms) => {
-        const allSegments: NodePortSegment[] = []
-        if (cms.edgeToPortSegmentSolver?.nodePortSegments) {
-          cms.edgeToPortSegmentSolver.nodePortSegments.forEach((segs) => {
-            allSegments.push(...segs)
-          })
-        }
-        return [
-          {
-            segments: allSegments,
-            colorMap: cms.colorMap,
-            nodes: cms.capacityNodes!,
-          },
-        ]
-      },
-    ),
-    // definePipelineStep(
-    //   "segmentToPointOptimizer",
-    //   CapacitySegmentPointOptimizer,
-    //   (cms) => [
-    //     {
-    //       assignedSegments: cms.segmentToPointSolver?.solvedSegments || [],
-    //       colorMap: cms.colorMap,
-    //       nodes: cms.nodeTargetMerger?.newNodes || [],
-    //       viaDiameter: cms.viaDiameter,
-    //     },
-    //   ],
-    // ),
-    definePipelineStep(
-      "unravelMultiSectionSolver",
-      UnravelMultiSectionSolver,
-      (cms) => [
-        {
-          assignedSegments: cms.segmentToPointSolver?.solvedSegments || [],
-          colorMap: cms.colorMap,
-          nodes: cms.capacityNodes!,
-          cacheProvider: this.cacheProvider,
         },
       ],
     ),
     definePipelineStep("highDensityRouteSolver", HighDensitySolver, (cms) => [
       {
         nodePortPoints:
-          cms.unravelMultiSectionSolver?.getNodesWithPortPoints() ??
-          cms.segmentToPointOptimizer?.getNodesWithPortPoints() ??
-          [],
+          cms.portPointPathingSolver?.getNodesWithPortPoints() ?? [],
         colorMap: cms.colorMap,
         connMap: cms.connMap,
         viaDiameter: cms.viaDiameter,
@@ -424,13 +357,10 @@ export class AutoroutingPipelineSolver extends BaseSolver {
     const strawSolverViz = this.strawSolver?.visualize()
     const edgeViz = this.edgeSolver?.visualize()
     const deadEndViz = this.deadEndSolver?.visualize()
-    const initialPathingViz = this.initialPathingSolver?.visualize()
-    const pathingOptimizerViz = this.pathingOptimizer?.visualize()
-    const edgeToPortSegmentViz = this.edgeToPortSegmentSolver?.visualize()
-    const segmentToPointViz = this.segmentToPointSolver?.visualize()
-    const segmentOptimizationViz =
-      this.unravelMultiSectionSolver?.visualize() ??
-      this.segmentToPointOptimizer?.visualize()
+    const availableSegmentPointsViz =
+      this.availableSegmentPointSolver?.visualize()
+    const portPointPathingViz = this.portPointPathingSolver?.visualize()
+    const segmentOptimizationViz = this.segmentToPointOptimizer?.visualize()
     const highDensityViz = this.highDensityRouteSolver?.visualize()
     const highDensityStitchViz = this.highDensityStitchSolver?.visualize()
     const traceSimplificationViz = this.traceSimplificationSolver?.visualize()
@@ -502,10 +432,8 @@ export class AutoroutingPipelineSolver extends BaseSolver {
       strawSolverViz,
       edgeViz,
       deadEndViz,
-      initialPathingViz,
-      pathingOptimizerViz,
-      edgeToPortSegmentViz,
-      segmentToPointViz,
+      availableSegmentPointsViz,
+      portPointPathingViz,
       segmentOptimizationViz,
       highDensityViz ? combineVisualizations(problemViz, highDensityViz) : null,
       highDensityStitchViz,
@@ -547,16 +475,12 @@ export class AutoroutingPipelineSolver extends BaseSolver {
       return { lines }
     }
 
-    if (this.pathingOptimizer) {
+    if (this.portPointPathingSolver?.solved) {
       const lines: Line[] = []
-      for (const connection of this.pathingOptimizer.connectionsWithNodes) {
-        if (!connection.path) continue
+      for (const node of this.portPointPathingSolver.getNodesWithPortPoints()) {
         lines.push({
-          points: connection.path.map((n) => ({
-            x: n.center.x,
-            y: n.center.y,
-          })),
-          strokeColor: this.colorMap[connection.connection.name],
+          points: node.portPoints.map((p) => ({ x: p.x, y: p.y })),
+          strokeColor: "rgba(0,0,0,0.25)",
         })
       }
       return { lines }

@@ -27,6 +27,7 @@ import { computeViaCountVariants } from "./computeViaCountVariants"
 import { MHPoint2, PolyLine2 } from "./types2"
 import { withinBounds } from "./withinBounds"
 import { detectMultiConnectionClosedFacesWithoutVias } from "./detectMultiConnectionClosedFacesWithoutVias"
+import { getNamedPortPoints } from "lib/utils/getNamedPortPoints"
 
 export class MultiHeadPolyLineIntraNodeSolver extends BaseSolver {
   nodeWithPortPoints: NodeWithPortPoints
@@ -103,7 +104,9 @@ export class MultiHeadPolyLineIntraNodeSolver extends BaseSolver {
       (this.viaDiameter + this.obstacleMargin * 2 + this.traceWidth / 2) ** 2
 
     const uniqueConnections = new Set(
-      this.nodeWithPortPoints.portPoints.map((pp) => pp.connectionName),
+      getNamedPortPoints(this.nodeWithPortPoints.portPoints).map(
+        (pp) => pp.connectionName,
+      ),
     ).size
     this.uniqueConnections = uniqueConnections
 
@@ -266,24 +269,26 @@ export class MultiHeadPolyLineIntraNodeSolver extends BaseSolver {
    */
   setupInitialPolyLines() {
     const portPairs: Map<string, { start: MHPoint; end: MHPoint }> = new Map()
-    this.nodeWithPortPoints.portPoints.forEach((portPoint) => {
-      if (!portPairs.has(portPoint.connectionName)) {
-        portPairs.set(portPoint.connectionName, {
-          start: {
+    getNamedPortPoints(this.nodeWithPortPoints.portPoints).forEach(
+      (portPoint) => {
+        if (!portPairs.has(portPoint.connectionName)) {
+          portPairs.set(portPoint.connectionName, {
+            start: {
+              ...portPoint,
+              z1: portPoint.z ?? 0,
+              z2: portPoint.z ?? 0,
+            },
+            end: null as any,
+          })
+        } else {
+          portPairs.get(portPoint.connectionName)!.end = {
             ...portPoint,
             z1: portPoint.z ?? 0,
             z2: portPoint.z ?? 0,
-          },
-          end: null as any,
-        })
-      } else {
-        portPairs.get(portPoint.connectionName)!.end = {
-          ...portPoint,
-          z1: portPoint.z ?? 0,
-          z2: portPoint.z ?? 0,
+          }
         }
-      }
-    })
+      },
+    )
 
     // Remove port pairs with only one point
     for (const [connectionName, portPair] of portPairs.entries()) {
@@ -1173,7 +1178,7 @@ export class MultiHeadPolyLineIntraNodeSolver extends BaseSolver {
     }
 
     // Draw input port points
-    for (const pt of this.nodeWithPortPoints.portPoints) {
+    for (const pt of getNamedPortPoints(this.nodeWithPortPoints.portPoints)) {
       graphicsObject.points.push({
         x: pt.x,
         y: pt.y,

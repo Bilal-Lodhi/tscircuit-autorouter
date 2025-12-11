@@ -11,6 +11,7 @@ import { combineVisualizations } from "lib/utils/combineVisualizations"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import { mergeRouteSegments } from "lib/utils/mergeRouteSegments"
 import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
+import { getNamedPortPoints } from "lib/utils/getNamedPortPoints"
 
 export class HighDensitySolver extends BaseSolver {
   unsolvedNodePortPoints: NodeWithPortPoints[]
@@ -164,7 +165,7 @@ export class HighDensitySolver extends BaseSolver {
         string,
         { x: number; y: number; z: number }[]
       > = {}
-      for (const pt of node.portPoints) {
+      for (const pt of getNamedPortPoints(node.portPoints)) {
         if (!connectionGroups[pt.connectionName]) {
           connectionGroups[pt.connectionName] = []
         }
