@@ -28,7 +28,7 @@ test("bugreport23 - should not fail with null z property in port points", async 
           )
         }
         // Check for connections with != 2 port points
-        for (const [connName, count] of connCounts) {
+        for (const [, count] of connCounts) {
           if (count !== 2) {
             hasInvalidPortPoints = true
           }

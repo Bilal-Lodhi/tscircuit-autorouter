@@ -46,6 +46,7 @@ export class AvailableSegmentPointSolver extends BaseSolver {
   nodes: CapacityMeshNode[]
   edges: CapacityMeshEdge[]
   traceWidth: number
+  obstacleMargin: number
   minPortSpacing: number
 
   nodeMap: Map<CapacityMeshNodeId, CapacityMeshNode>
@@ -66,24 +67,26 @@ export class AvailableSegmentPointSolver extends BaseSolver {
     nodes,
     edges,
     traceWidth,
+    obstacleMargin,
     colorMap,
   }: {
     nodes: CapacityMeshNode[]
     edges: CapacityMeshEdge[]
     traceWidth: number
+    obstacleMargin?: number
     colorMap?: Record<string, string>
   }) {
     super()
     this.nodes = nodes
     this.edges = edges
     this.traceWidth = traceWidth
-    // Port spacing should be at least 2x trace width for clearance
-    this.minPortSpacing = traceWidth * 2.5
+    this.obstacleMargin = obstacleMargin ?? 0.15
+    // Port spacing: each trace extends traceWidth/2 from center, plus obstacleMargin clearance
+    // Center-to-center distance = traceWidth + obstacleMargin
+    this.minPortSpacing = this.traceWidth + this.obstacleMargin
     this.colorMap = colorMap ?? {}
 
-    this.nodeMap = new Map(
-      nodes.map((node) => [node.capacityMeshNodeId, node]),
-    )
+    this.nodeMap = new Map(nodes.map((node) => [node.capacityMeshNodeId, node]))
     this.nodeEdgeMap = getNodeEdgeMap(edges)
 
     // This solver completes in a single step
@@ -322,16 +325,17 @@ export class AvailableSegmentPointSolver extends BaseSolver {
       // Draw port points
       for (const portPoint of segment.portPoints) {
         const color = portPoint.connectionName
-          ? this.colorMap[portPoint.connectionName] ?? "blue"
+          ? (this.colorMap[portPoint.connectionName] ?? "blue")
           : "rgba(0, 200, 0, 0.7)"
 
         graphics.circles!.push({
           center: { x: portPoint.x, y: portPoint.y },
           radius: this.traceWidth / 2,
           fill: color,
+          layer: `z${portPoint.availableZ.join(",")}`,
           label: portPoint.connectionName
-            ? `${portPoint.segmentPortPointId}\n${portPoint.connectionName}`
-            : portPoint.segmentPortPointId,
+            ? `${portPoint.segmentPortPointId}\n${portPoint.connectionName}\n${portPoint.availableZ.join(",")}`
+            : `${portPoint.segmentPortPointId}\n${portPoint.availableZ.join(",")}`,
         })
       }
     }
