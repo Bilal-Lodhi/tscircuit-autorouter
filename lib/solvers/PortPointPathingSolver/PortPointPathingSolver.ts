@@ -198,8 +198,7 @@ export class PortPointPathingSolver extends BaseSolver {
 
     // Calculate estimated via count
     const estNumVias =
-      estimatedSameLayerCrossings * 0.82 +
-      estimatedLayerChanges * 0.41
+      estimatedSameLayerCrossings * 0.82 + estimatedLayerChanges * 0.41
 
     const estUsedCapacity = (estNumVias / 2) ** 1.1
     return estUsedCapacity / totalCapacity
@@ -226,11 +225,10 @@ export class PortPointPathingSolver extends BaseSolver {
     fromNode: CapacityMeshNode,
     toNode: CapacityMeshNode,
   ): number {
-    const availableCount =
-      this.segmentPointSolver.getAvailablePortCountForEdge(
-        fromNode.capacityMeshNodeId,
-        toNode.capacityMeshNodeId,
-      )
+    const availableCount = this.segmentPointSolver.getAvailablePortCountForEdge(
+      fromNode.capacityMeshNodeId,
+      toNode.capacityMeshNodeId,
+    )
 
     if (availableCount === 0) return 1000 // No ports available
     if (availableCount === 1) return 5 // Last port available
@@ -248,10 +246,7 @@ export class PortPointPathingSolver extends BaseSolver {
     prevCandidate: PathingCandidate,
     node: CapacityMeshNode,
   ): number {
-    const distanceCost = this.getDistanceBetweenNodes(
-      prevCandidate.node,
-      node,
-    )
+    const distanceCost = this.getDistanceBetweenNodes(prevCandidate.node, node)
     const pfPenalty = this.getNodePfPenalty(node)
     const edgePenalty = this.getEdgeCapacityPenalty(prevCandidate.node, node)
 
@@ -705,6 +700,48 @@ export class PortPointPathingSolver extends BaseSolver {
     const segmentViz = this.segmentPointSolver.visualize()
     if (segmentViz.circles) graphics.circles!.push(...segmentViz.circles)
     if (segmentViz.lines) graphics.lines!.push(...segmentViz.lines)
+
+    // While actively solving, draw the top 10 most promising candidates
+    if (!this.solved && this.candidates && this.candidates.length > 0) {
+      const currentConnection =
+        this.connectionsWithResults[this.currentConnectionIndex]
+      const connectionColor = currentConnection
+        ? (this.colorMap[currentConnection.connection.name] ?? "blue")
+        : "blue"
+
+      // Sort candidates by f value and take top 10
+      const sortedCandidates = [...this.candidates]
+        .sort((a, b) => a.f - b.f)
+        .slice(0, 10)
+
+      for (const candidate of sortedCandidates) {
+        // Build the path from this candidate back to start
+        const candidatePath: Array<{ x: number; y: number }> = []
+        let current: PathingCandidate | null = candidate
+        while (current) {
+          candidatePath.unshift({
+            x: current.node.center.x,
+            y: current.node.center.y,
+          })
+          current = current.prevCandidate
+        }
+
+        if (candidatePath.length >= 1) {
+          graphics.lines!.push({
+            points: candidatePath,
+            strokeColor: safeTransparentize(connectionColor, 0.25),
+          })
+
+          // Draw a circle at the head of each candidate to show where exploration is
+          const head = candidatePath[candidatePath.length - 1]
+          graphics.circles!.push({
+            center: head,
+            radius: Math.min(candidate.node.height, candidate.node.width) * 0.1,
+            fill: safeTransparentize(connectionColor, 0.25),
+          })
+        }
+      }
+    }
 
     return graphics
   }
