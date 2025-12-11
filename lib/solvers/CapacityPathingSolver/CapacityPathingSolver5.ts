@@ -3,6 +3,7 @@ import { CapacityPathingSolver, type Candidate } from "./CapacityPathingSolver"
 import { getTunedTotalCapacity1 } from "lib/utils/getTunedTotalCapacity1"
 
 export class CapacityPathingSolver5 extends CapacityPathingSolver {
+  enableDensityHeatmap = true
   NEGATIVE_CAPACITY_PENALTY_FACTOR = 1
   REDUCED_CAPACITY_PENALTY_FACTOR = 1
 
@@ -116,7 +117,8 @@ export class CapacityPathingSolver5 extends CapacityPathingSolver {
     return (
       prevCandidate.g +
       this.getDistanceBetweenNodes(prevCandidate.node, node) +
-      this.getNodeCapacityPenalty(node)
+      this.getNodeCapacityPenalty(node) +
+      this.getHeatmapPenalty(node)
     )
   }
 
@@ -127,7 +129,8 @@ export class CapacityPathingSolver5 extends CapacityPathingSolver {
   ) {
     return (
       this.getDistanceBetweenNodes(node, endGoal) +
-      this.getNodeCapacityPenalty(node)
+      this.getNodeCapacityPenalty(node) +
+      this.getHeatmapPenalty(node)
     )
   }
 }

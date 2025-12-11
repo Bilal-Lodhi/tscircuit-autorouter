@@ -59,6 +59,9 @@ export class CapacityPathingSolver extends BaseSolver {
 
   hyperParameters: Partial<CapacityHyperParameters>
 
+  enableDensityHeatmap = false
+  heatmapPenaltyMap?: Map<CapacityMeshNodeId, number>
+
   constructor({
     simpleRouteJson,
     nodes,
@@ -198,6 +201,66 @@ export class CapacityPathingSolver extends BaseSolver {
       .map((n) => this.nodeMap.get(n)!)
   }
 
+  getHeatmapNeighborWeight() {
+    return this.hyperParameters.INITIAL_HEATMAP_NEIGHBOR_WEIGHT ?? 0.65
+  }
+
+  getHeatmapPenaltyMultiplier() {
+    return this.hyperParameters.INITIAL_HEATMAP_PENALTY_MULTIPLIER ?? 6
+  }
+
+  computeNodeBaseHeat(node: CapacityMeshNode) {
+    const totalCapacity = this.getTotalCapacity(node)
+    if (totalCapacity <= 0) return 0
+
+    const usedCapacity =
+      this.usedNodeCapacityMap.get(node.capacityMeshNodeId) ?? 0
+    return Math.max(0, usedCapacity / totalCapacity)
+  }
+
+  computeHeatmapPenaltyMap() {
+    if (!this.enableDensityHeatmap) return
+
+    const baseHeatMap = new Map<CapacityMeshNodeId, number>()
+    for (const node of this.nodes) {
+      baseHeatMap.set(node.capacityMeshNodeId, this.computeNodeBaseHeat(node))
+    }
+
+    const neighborWeight = this.getHeatmapNeighborWeight()
+    const penaltyMultiplier = this.getHeatmapPenaltyMultiplier()
+    const penaltyMap = new Map<CapacityMeshNodeId, number>()
+
+    for (const node of this.nodes) {
+      const neighborNodes = this.getNeighboringNodes(node)
+      const baseHeat = baseHeatMap.get(node.capacityMeshNodeId) ?? 0
+
+      const neighborHeat =
+        neighborNodes.length === 0
+          ? baseHeat
+          : neighborNodes.reduce(
+              (sum, n) => sum + (baseHeatMap.get(n.capacityMeshNodeId) ?? 0),
+              0,
+            ) / neighborNodes.length
+
+      const combinedHeat =
+        baseHeat * (1 - neighborWeight) + neighborHeat * neighborWeight
+
+      penaltyMap.set(
+        node.capacityMeshNodeId,
+        Math.max(0, combinedHeat) * penaltyMultiplier,
+      )
+    }
+
+    this.heatmapPenaltyMap = penaltyMap
+  }
+
+  getHeatmapPenalty(node: CapacityMeshNode) {
+    if (!this.enableDensityHeatmap) return 0
+    if (!this.heatmapPenaltyMap) this.computeHeatmapPenaltyMap()
+
+    return this.heatmapPenaltyMap?.get(node.capacityMeshNodeId) ?? 0
+  }
+
   getCapacityPaths() {
     const capacityPaths: CapacityPath[] = []
     for (const connection of this.connectionsWithNodes) {
@@ -282,6 +345,10 @@ export class CapacityPathingSolver extends BaseSolver {
         start.center,
         end.center,
       )
+
+      if (this.enableDensityHeatmap) {
+        this.computeHeatmapPenaltyMap()
+      }
     }
 
     this.candidates.sort((a, b) => a.f - b.f)
