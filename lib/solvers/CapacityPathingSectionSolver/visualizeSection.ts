@@ -94,11 +94,11 @@ export function visualizeSection({
       const used = usedNodeCapacityMap.get(node.capacityMeshNodeId) ?? 0
       const total = totalCapacityMap.get(node.capacityMeshNodeId) ?? 0
       const percent = total > 0 ? ((used / total) * 100).toFixed(1) : "N/A"
-      const probabilityOfFailure = calculateNodeProbabilityOfFailure(
-        used,
-        total,
-        node.availableZ.length,
-      )
+      const probabilityOfFailure = calculateNodeProbabilityOfFailure({
+        usedCapacity: used,
+        totalCapacity: total,
+        layerCount: node.availableZ.length,
+      })
       graphics.rects![rectIndex].label += `\n${used.toFixed(
         1,
       )} / ${total.toFixed(1)}\n${percent}% (Pf: ${(
