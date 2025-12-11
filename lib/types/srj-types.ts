@@ -41,6 +41,12 @@ export interface Obstacle {
   center: { x: number; y: number }
   width: number
   height: number
+  /**
+   * Optional corner radius for rounded-rect obstacles.
+   * A large enough radius on a square approximates a circle and
+   * non-square dimensions with a radius allow representing slots.
+   */
+  corner_radius?: number
   connectedTo: Array<TraceId | NetId>
   netIsAssignable?: boolean
   offBoardConnectsTo?: Array<OffBoardConnectionId>

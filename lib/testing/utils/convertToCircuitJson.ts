@@ -213,20 +213,31 @@ function createPcbSmtPads(srj: SimpleRouteJson): AnyCircuitElement[] {
     // Default to rectangular pads; SRJ obstacles generally provide width/height
     const width = obstacle.width ?? 0
     const height = obstacle.height ?? 0
+    const cornerRadius = obstacle.corner_radius ?? 0
     const x = obstacle.center?.x ?? obstacle.x
     const y = obstacle.center?.y ?? obstacle.y
 
     if (typeof x !== "number" || typeof y !== "number") continue
 
+    const shape: "rect" | "circle" | "roundrect" =
+      cornerRadius <= 0
+        ? "rect"
+        : cornerRadius >= Math.min(width, height) / 2 && Math.abs(width - height) < 1e-9
+          ? "circle"
+          : "roundrect"
+
     pads.push({
       type: "pcb_smtpad",
       pcb_smtpad_id: id,
       layer,
-      shape: "rect",
+      shape,
       width,
       height,
       x,
       y,
+      ...(cornerRadius > 0 && shape !== "circle"
+        ? { corner_radius: cornerRadius }
+        : {}),
       ...(pcbPortId ? { pcb_port_id: pcbPortId } : {}),
     } as any)
   }
