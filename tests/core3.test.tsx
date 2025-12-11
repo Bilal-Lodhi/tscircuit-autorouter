@@ -9,7 +9,7 @@ test("core3 - 0402 columns", async () => {
   const circuit = new RootCircuit()
   circuit.render = RootCircuit.prototype.render
 
-  circuit.add(
+  const boardElement = (
     <board
       width="10mm"
       height="100mm"
@@ -39,12 +39,14 @@ test("core3 - 0402 columns", async () => {
           <trace from={`.R${i} > .pin1`} to={`.C${i} > .pin1`} />
         </Fragment>
       ))}
-    </board>,
+    </board>
   )
+
+  circuit.add(boardElement as any)
 
   await circuit.renderUntilSettled()
 
-  const circuitJson = circuit.getCircuitJson()
+  const circuitJson = circuit.getCircuitJson() as any
 
   expect(convertCircuitJsonToPcbSvg(circuitJson)).toMatchSvgSnapshot(
     import.meta.path,

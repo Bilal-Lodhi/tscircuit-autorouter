@@ -63,7 +63,7 @@ if (!(RootCircuit as any).__extensibilityPatched) {
     this._hasRenderedAtleastOnce = true
   }
 
-  RootCircuit.prototype._hasIncompleteAsyncEffects = function () {
+  ;(RootCircuit.prototype as any)._hasIncompleteAsyncEffects = function () {
     return (this.children ?? []).some((child: any) => {
       const childIncomplete =
         typeof child._hasIncompleteAsyncEffects === "function"

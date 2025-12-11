@@ -8,7 +8,7 @@ test("core2 - two traces", async () => {
   const circuit = new RootCircuit()
   circuit.render = RootCircuit.prototype.render
 
-  circuit.add(
+  const boardElement = (
     <board
       width="10mm"
       height="10mm"
@@ -31,12 +31,14 @@ test("core2 - two traces", async () => {
       <capacitor name="C1" capacitance="1000pF" pcbX={3} footprint="0402" />
       <trace from={sel.R1.pin1} to={sel.C1.pos} />
       <trace from={sel.R2.pin1} to={sel.C1.pos} />
-    </board>,
+    </board>
   )
+
+  circuit.add(boardElement as any)
 
   await circuit.renderUntilSettled()
 
-  const circuitJson = circuit.getCircuitJson()
+  const circuitJson = circuit.getCircuitJson() as any
 
   expect(convertCircuitJsonToPcbSvg(circuitJson)).toMatchSvgSnapshot(
     import.meta.path,
