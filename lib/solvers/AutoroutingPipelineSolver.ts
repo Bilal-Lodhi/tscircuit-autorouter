@@ -36,6 +36,7 @@ import { UnravelMultiSectionSolver } from "./UnravelSolver/UnravelMultiSectionSo
 import { CapacityPathingMultiSectionSolver } from "./CapacityPathingSectionSolver/CapacityPathingMultiSectionSolver" // Added import
 import { StrawSolver } from "./StrawSolver/StrawSolver"
 import { SingleLayerNodeMergerSolver } from "./SingleLayerNodeMerger/SingleLayerNodeMergerSolver"
+import { SingleLayerNodeSplitterSolver } from "./SingleLayerNodeSplitter/SingleLayerNodeSplitterSolver"
 import { CapacityNodeTargetMerger2 } from "./CapacityNodeTargetMerger/CapacityNodeTargetMerger2"
 import { SingleSimplifiedPathSolver } from "./SimplifiedPathSolver/SingleSimplifiedPathSolver"
 import { MultiSimplifiedPathSolver } from "./SimplifiedPathSolver/MultiSimplifiedPathSolver"
@@ -106,11 +107,15 @@ export class AutoroutingPipelineSolver extends BaseSolver {
   highDensityRouteSolver?: HighDensitySolver
   highDensityStitchSolver?: MultipleHighDensityRouteStitchSolver
   singleLayerNodeMerger?: SingleLayerNodeMergerSolver
+  singleLayerNodeSplitter?: SingleLayerNodeSplitterSolver
   strawSolver?: StrawSolver
   deadEndSolver?: DeadEndSolver
   traceSimplificationSolver?: TraceSimplificationSolver
   viaDiameter: number
   minTraceWidth: number
+  obstacleMargin: number
+  minSingleLayerNodeSize: number
+  maxSingleLayerNodeSize: number
 
   startTimeOfPhase: Record<string, number>
   endTimeOfPhase: Record<string, number>
@@ -149,6 +154,22 @@ export class AutoroutingPipelineSolver extends BaseSolver {
       {
         onSolved: (cms) => {
           cms.capacityNodes = cms.nodeSolver?.getOutput().meshNodes ?? []
+        },
+      },
+    ),
+    definePipelineStep(
+      "singleLayerNodeSplitter",
+      SingleLayerNodeSplitterSolver,
+      (cms) => [
+        {
+          nodes: cms.capacityNodes!,
+          minSingleLayerNodeSize: cms.minSingleLayerNodeSize,
+          maxSingleLayerNodeSize: cms.maxSingleLayerNodeSize,
+        },
+      ],
+      {
+        onSolved: (cms) => {
+          cms.capacityNodes = cms.singleLayerNodeSplitter?.newNodes ?? []
         },
       },
     ),
@@ -341,6 +362,9 @@ export class AutoroutingPipelineSolver extends BaseSolver {
     this.MAX_ITERATIONS = 100e6
     this.viaDiameter = srj.minViaDiameter ?? 0.6
     this.minTraceWidth = srj.minTraceWidth
+    this.obstacleMargin = srj.obstacleMargin ?? 0.2
+    this.minSingleLayerNodeSize = this.minTraceWidth + this.obstacleMargin
+    this.maxSingleLayerNodeSize = this.minSingleLayerNodeSize * 2
 
     // If capacityDepth is not provided, calculate it automatically
     if (opts.capacityDepth === undefined) {
