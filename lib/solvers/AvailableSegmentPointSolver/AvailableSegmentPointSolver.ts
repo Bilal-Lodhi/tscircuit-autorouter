@@ -138,33 +138,51 @@ export class AvailableSegmentPointSolver extends BaseSolver {
         (overlap.end.y - overlap.start.y) ** 2,
     )
 
+    // Apply edge margin to avoid placing points too close to corners
+    // The margin is half the port spacing to ensure points are at least that far from edges
+    const edgeMargin = this.minPortSpacing / 2
+    const effectiveLength = Math.max(0, segmentLength - 2 * edgeMargin)
+
     // At minimum we need 1 port point, at maximum we space them minPortSpacing apart
     const maxPortPoints = Math.max(
       1,
-      Math.floor(segmentLength / this.minPortSpacing),
+      Math.floor(effectiveLength / this.minPortSpacing) + 1,
     )
 
     // Create port points evenly spaced along the segment
+    // Each port point is created for a single layer (not multiple layers)
     const portPoints: SegmentPortPoint[] = []
     const dx = overlap.end.x - overlap.start.x
     const dy = overlap.end.y - overlap.start.y
 
-    for (let i = 0; i < maxPortPoints; i++) {
-      // Position at evenly spaced intervals, centered on the segment
-      const fraction = (i + 0.5) / maxPortPoints
-      const x = overlap.start.x + dx * fraction
-      const y = overlap.start.y + dy * fraction
+    // Normalize direction vector
+    const len = Math.sqrt(dx * dx + dy * dy)
+    const ndx = len > 0 ? dx / len : 0
+    const ndy = len > 0 ? dy / len : 0
 
-      const portPoint: SegmentPortPoint = {
-        segmentPortPointId: `${edge.capacityMeshEdgeId}_pp${i}`,
-        x,
-        y,
-        availableZ,
-        nodeIds: [node1.capacityMeshNodeId, node2.capacityMeshNodeId],
-        edgeId: edge.capacityMeshEdgeId,
-        connectionName: null,
+    // Calculate start position with margin
+    const startX = overlap.start.x + ndx * edgeMargin
+    const startY = overlap.start.y + ndy * edgeMargin
+
+    for (let i = 0; i < maxPortPoints; i++) {
+      // Position at evenly spaced intervals within the effective segment (after margins)
+      const fraction = maxPortPoints === 1 ? 0.5 : i / (maxPortPoints - 1)
+      const x = startX + ndx * effectiveLength * fraction
+      const y = startY + ndy * effectiveLength * fraction
+
+      // Create a separate port point for each available layer
+      for (const z of availableZ) {
+        const portPoint: SegmentPortPoint = {
+          segmentPortPointId: `${edge.capacityMeshEdgeId}_pp${i}_z${z}`,
+          x,
+          y,
+          availableZ: [z],
+          nodeIds: [node1.capacityMeshNodeId, node2.capacityMeshNodeId],
+          edgeId: edge.capacityMeshEdgeId,
+          connectionName: null,
+        }
+        portPoints.push(portPoint)
       }
-      portPoints.push(portPoint)
     }
 
     return {

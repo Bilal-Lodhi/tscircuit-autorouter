@@ -309,6 +309,7 @@ export class PortPointPathingSolver extends BaseSolver {
    * Assign port points along a path and record which connections use them.
    * Returns an array with one entry per edge (path.length - 1 entries).
    * If no port point is available on an edge, generates a synthetic one at the edge center.
+   * Prefers port points on the same layer as previously assigned points for consistency.
    */
   private assignPortPointsForPath(
     path: CapacityMeshNode[],
@@ -316,6 +317,7 @@ export class PortPointPathingSolver extends BaseSolver {
     rootConnectionName?: string,
   ): SegmentPortPoint[] {
     const assignedPortPoints: SegmentPortPoint[] = []
+    let preferredZ: number | null = null
 
     for (let i = 0; i < path.length - 1; i++) {
       const fromNode = path[i]
@@ -328,14 +330,28 @@ export class PortPointPathingSolver extends BaseSolver {
         )
 
       if (availablePoints.length > 0) {
-        // Pick the first available port point
-        const portPoint = availablePoints[0]
+        // Prefer port points on the same layer as previously assigned points
+        let portPoint = availablePoints[0]
+        if (preferredZ !== null) {
+          const sameLayerPoint = availablePoints.find(
+            (pp) => pp.availableZ[0] === preferredZ,
+          )
+          if (sameLayerPoint) {
+            portPoint = sameLayerPoint
+          }
+        }
+
         this.segmentPointSolver.assignPortPoint(
           portPoint.segmentPortPointId,
           connectionName,
           rootConnectionName,
         )
         assignedPortPoints.push(portPoint)
+
+        // Update preferred layer for next edge
+        if (portPoint.availableZ.length > 0) {
+          preferredZ = portPoint.availableZ[0]
+        }
       } else {
         // No available port points - create a synthetic one at the edge midpoint
         // This ensures we always have a port point for each edge
@@ -346,30 +362,52 @@ export class PortPointPathingSolver extends BaseSolver {
 
         if (allPortPoints.length > 0) {
           // Reuse an existing port point location (may be used by another connection)
-          const portPoint = allPortPoints[0]
+          // Prefer one on the same layer
+          let portPoint = allPortPoints[0]
+          if (preferredZ !== null) {
+            const sameLayerPoint = allPortPoints.find(
+              (pp) => pp.availableZ[0] === preferredZ,
+            )
+            if (sameLayerPoint) {
+              portPoint = sameLayerPoint
+            }
+          }
           assignedPortPoints.push({
             ...portPoint,
             connectionName,
             rootConnectionName,
           })
+
+          if (portPoint.availableZ.length > 0) {
+            preferredZ = portPoint.availableZ[0]
+          }
         } else {
           // No port points at all for this edge - compute a synthetic midpoint
           const midX = (fromNode.center.x + toNode.center.x) / 2
           const midY = (fromNode.center.y + toNode.center.y) / 2
-          const availableZ = fromNode.availableZ.filter((z) =>
+          const mutualZ = fromNode.availableZ.filter((z) =>
             toNode.availableZ.includes(z),
           )
+          // Use preferred layer if available, otherwise first mutual layer
+          const singleZ =
+            preferredZ !== null && mutualZ.includes(preferredZ)
+              ? preferredZ
+              : mutualZ.length > 0
+                ? mutualZ[0]
+                : 0
 
           assignedPortPoints.push({
             segmentPortPointId: `synthetic_${fromNode.capacityMeshNodeId}_${toNode.capacityMeshNodeId}_${connectionName}`,
             x: midX,
             y: midY,
-            availableZ: availableZ.length > 0 ? availableZ : [0],
+            availableZ: [singleZ],
             nodeIds: [fromNode.capacityMeshNodeId, toNode.capacityMeshNodeId],
             edgeId: `synthetic_edge_${fromNode.capacityMeshNodeId}_${toNode.capacityMeshNodeId}`,
             connectionName,
             rootConnectionName,
           })
+
+          preferredZ = singleZ
         }
       }
     }
