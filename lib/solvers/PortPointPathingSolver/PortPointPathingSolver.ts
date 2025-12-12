@@ -70,10 +70,13 @@ export class PortPointPathingSolver extends BaseSolver {
   NODE_REUSE_FACTOR = 2
 
   /** Multiplied by Pf**2 to get node probability penalty */
-  NODE_PF_FACTOR = 1
+  NODE_PF_FACTOR = 100
 
   /** Cost of adding a candidate to the path (penalizes long paths or useless candidates) */
   BASE_CANDIDATE_COST = 0.25
+
+  /** Cost penalty for changing layers (any z difference > 0 incurs this constant cost) */
+  Z_DIFF_COST = 0
 
   colorMap: Record<string, string>
   maxDepthOfNodes: number
@@ -222,12 +225,9 @@ export class PortPointPathingSolver extends BaseSolver {
     )
     const crossings = getIntraNodeCrossings(nodeWithPortPoints)
 
-    if (
-      crossings.numEntryExitLayerChanges > 0 &&
-      getTunedTotalCapacity1(node) < 0.5
-    ) {
-      return 1
-    }
+    // if (crossings.numEntryExitLayerChanges > 0 && getTunedTotalCapacity1(node) < 0.5) {
+    //   return
+    // }
 
     return calculateNodeProbabilityOfFailure(
       node,
@@ -375,8 +375,16 @@ export class PortPointPathingSolver extends BaseSolver {
   private computeH(
     exitPoint: { x: number; y: number },
     endGoal: CapacityMeshNode,
+    currentZ: number,
   ): number {
-    return this.getDistanceBetweenPoints(exitPoint, endGoal.center)
+    const distanceToGoal = this.getDistanceBetweenPoints(
+      exitPoint,
+      endGoal.center,
+    )
+    // Add layer change cost if current z is not available at the goal
+    const needsLayerChange = !endGoal.availableZ.includes(currentZ)
+    const zChangeCost = needsLayerChange ? this.Z_DIFF_COST : 0
+    return distanceToGoal + zChangeCost
   }
 
   private getNeighboringNodes(node: CapacityMeshNode): CapacityMeshNode[] {
@@ -662,6 +670,9 @@ export class PortPointPathingSolver extends BaseSolver {
 
     // Expand neighbors
     const neighbors = this.getNeighboringNodes(currentCandidate.node)
+    // Filter to z layers that are also available at the end node
+    const endAvailableZ = new Set(end.availableZ)
+
     for (const neighbor of neighbors) {
       if (!this.doesNodeHaveCapacity(neighbor, currentCandidate.node)) continue
 
@@ -686,8 +697,11 @@ export class PortPointPathingSolver extends BaseSolver {
         neighbor,
       )
 
-      // Explore each available z layer for this neighbor
+      // Explore each available z layer for this neighbor (that is also available at end)
       for (const targetZ of neighbor.availableZ) {
+        // Skip z layers not available at the end node
+        if (!endAvailableZ.has(targetZ)) continue
+
         const visitedKey = this.getVisitedKey(
           neighbor.capacityMeshNodeId,
           targetZ,
@@ -701,7 +715,7 @@ export class PortPointPathingSolver extends BaseSolver {
           connectionName,
           targetZ,
         )
-        const h = this.computeH(exitPoint, end)
+        const h = this.computeH(exitPoint, end, targetZ)
         const f = g + h * this.GREEDY_MULTIPLIER
 
         this.candidates!.push({
@@ -1020,6 +1034,7 @@ export class PortPointPathingSolver extends BaseSolver {
           const edgePenalty = candidate.prevCandidate
             ? this.getReusePenalty(candidate.prevCandidate.node, candidate.node)
             : 0
+          const zChangeCost = prevZ !== candidate.z ? this.Z_DIFF_COST : 0
 
           // Draw a circle at the head of each candidate (at the port point location)
           const head = candidatePath[candidatePath.length - 1]
@@ -1027,7 +1042,7 @@ export class PortPointPathingSolver extends BaseSolver {
             center: head,
             radius: Math.min(candidate.node.height, candidate.node.width) * 0.1,
             fill: safeTransparentize(connectionColor, 0.25),
-            label: `f: ${candidate.f.toFixed(2)}\ng: ${candidate.g.toFixed(2)}\nh: ${candidate.h.toFixed(2)}\nz: ${candidate.z}\ndist: ${distanceCost.toFixed(2)}\npf: ${currentPf.toFixed(3)} -> ${pfWithTrace.toFixed(3)}\nCost(pf): ${pfPenalty.toFixed(2)}\nedge: ${edgePenalty.toFixed(2)}`,
+            label: `f: ${candidate.f.toFixed(2)}\ng: ${candidate.g.toFixed(2)}\nh: ${candidate.h.toFixed(2)}\nz: ${candidate.z}\ndist: ${distanceCost.toFixed(2)}\npf: ${currentPf.toFixed(3)} -> ${pfWithTrace.toFixed(3)}\nCost(pf): ${pfPenalty.toFixed(2)}\nedge: ${edgePenalty.toFixed(2)}\nzCost: ${zChangeCost.toFixed(2)}`,
           })
         }
       }
