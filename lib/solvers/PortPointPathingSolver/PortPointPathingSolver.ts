@@ -26,6 +26,8 @@ export interface InputPortPoint {
   z: number
   /** The node IDs that this port point connects (on the shared edge) */
   connectionNodeIds: [CapacityMeshNodeId, CapacityMeshNodeId]
+  /** XY distance from the center of the shared edge segment */
+  distToCenterOfSegment: number
 }
 
 /**
@@ -112,13 +114,16 @@ export class PortPointPathingSolver extends BaseSolver {
   PORT_POINT_REUSE_FACTOR = 4
 
   /** Multiplied by Pf**2 to get node probability penalty */
-  NODE_PF_FACTOR = 100
+  NODE_PF_FACTOR = 10
 
   /** Cost of adding a candidate to the path */
   BASE_CANDIDATE_COST = 0.4
 
   /** Cost penalty for changing layers */
   Z_DIST_COST = 0
+
+  /** Penalty factor for port points that are far from the center of the segment */
+  CENTER_OFFSET_DIST_PENALTY_FACTOR = 100
 
   colorMap: Record<string, string>
 
@@ -356,13 +361,17 @@ export class PortPointPathingSolver extends BaseSolver {
       exitPortPoint,
     ])
     const reusePenalty = this.getPortPointReusePenalty(portPoint.portPointId)
+    const centerOffsetPenalty =
+      portPoint.distToCenterOfSegment ** 2 *
+      this.CENTER_OFFSET_DIST_PENALTY_FACTOR
 
     return (
       prevCandidate.g +
       this.BASE_CANDIDATE_COST +
       distanceCost +
       pfPenalty +
-      reusePenalty
+      reusePenalty +
+      centerOffsetPenalty
     )
   }
 
@@ -370,6 +379,7 @@ export class PortPointPathingSolver extends BaseSolver {
     point: { x: number; y: number },
     endGoalNodeId: CapacityMeshNodeId,
     currentZ: number,
+    distToCenterOfSegment: number,
   ): number {
     const endNode = this.nodeMap.get(endGoalNodeId)
     if (!endNode) return 0
@@ -377,7 +387,9 @@ export class PortPointPathingSolver extends BaseSolver {
     const distanceToGoal = distance(point, endNode.center)
     const needsLayerChange = !endNode.availableZ.includes(currentZ)
     const zChangeCost = needsLayerChange ? this.Z_DIST_COST : 0
-    return distanceToGoal + zChangeCost
+    const centerOffsetPenalty =
+      distToCenterOfSegment ** 2 * this.CENTER_OFFSET_DIST_PENALTY_FACTOR
+    return distanceToGoal + zChangeCost + centerOffsetPenalty
   }
 
   /**
@@ -667,6 +679,7 @@ export class PortPointPathingSolver extends BaseSolver {
         { x: portPoint.x, y: portPoint.y },
         endNodeId,
         portPoint.z,
+        portPoint.distToCenterOfSegment,
       )
       const f = g + h * this.GREEDY_MULTIPLIER
 

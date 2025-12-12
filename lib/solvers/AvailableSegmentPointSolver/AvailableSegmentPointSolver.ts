@@ -18,6 +18,8 @@ export interface SegmentPortPoint {
   /** The connection name currently using this port point, or null if unused */
   connectionName: string | null
   rootConnectionName?: string
+  /** XY distance from the center of the shared edge segment */
+  distToCenterOfSegment: number
 }
 
 export interface SharedEdgeSegment {
@@ -155,6 +157,10 @@ export class AvailableSegmentPointSolver extends BaseSolver {
     const dx = overlap.end.x - overlap.start.x
     const dy = overlap.end.y - overlap.start.y
 
+    // Center of the segment
+    const centerX = (overlap.start.x + overlap.end.x) / 2
+    const centerY = (overlap.start.y + overlap.end.y) / 2
+
     for (let i = 0; i < maxPortPoints; i++) {
       // Position at evenly spaced intervals, centered on the segment
       // For a single point, place it at the center; for multiple points, distribute evenly with margins
@@ -171,6 +177,11 @@ export class AvailableSegmentPointSolver extends BaseSolver {
       const x = overlap.start.x + dx * fraction
       const y = overlap.start.y + dy * fraction
 
+      // Calculate XY distance from center of the segment
+      const distToCenterOfSegment = Math.sqrt(
+        (x - centerX) ** 2 + (y - centerY) ** 2,
+      )
+
       // Create a separate port point for each available layer
       for (const z of availableZ) {
         const portPoint: SegmentPortPoint = {
@@ -181,6 +192,7 @@ export class AvailableSegmentPointSolver extends BaseSolver {
           nodeIds: [node1.capacityMeshNodeId, node2.capacityMeshNodeId],
           edgeId: edge.capacityMeshEdgeId,
           connectionName: null,
+          distToCenterOfSegment,
         }
         portPoints.push(portPoint)
       }
@@ -354,9 +366,14 @@ export class AvailableSegmentPointSolver extends BaseSolver {
           radius: this.traceWidth / 2,
           fill: color,
           layer: `z${portPoint.availableZ.join(",")}`,
-          label: portPoint.connectionName
-            ? `${portPoint.segmentPortPointId}\n${portPoint.connectionName}\n${portPoint.availableZ.join(",")}`
-            : `${portPoint.segmentPortPointId}\n${portPoint.availableZ.join(",")}`,
+          label: [
+            portPoint.segmentPortPointId,
+            portPoint.connectionName,
+            portPoint.availableZ.join(","),
+            `cd: ${portPoint.distToCenterOfSegment}`,
+          ]
+            .filter(Boolean)
+            .join("\n"),
         })
       }
     }

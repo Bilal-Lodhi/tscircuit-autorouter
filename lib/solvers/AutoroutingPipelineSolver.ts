@@ -229,6 +229,7 @@ export class AutoroutingPipelineSolver extends BaseSolver {
               y: segmentPortPoint.y,
               z: segmentPortPoint.availableZ[0] ?? 0,
               connectionNodeIds: [nodeId1, nodeId2],
+              distToCenterOfSegment: segmentPortPoint.distToCenterOfSegment,
             }
 
             // Add to first node
