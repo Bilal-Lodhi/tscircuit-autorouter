@@ -65,7 +65,12 @@ export class PortPointPathingSolver extends BaseSolver {
 
   /** Factor applied to port point reuse penalty */
   NODE_REUSE_FACTOR = 1.0
+
+  /** Multiplied by Pf**2 to get node probability penalty */
   NODE_PF_FACTOR = 100.0
+
+  /** Cost of adding a candidate to the path (penalizes long paths or useless candidates) */
+  BASE_CANDIDATE_COST = 0.25
 
   colorMap: Record<string, string>
   maxDepthOfNodes: number
@@ -352,7 +357,13 @@ export class PortPointPathingSolver extends BaseSolver {
     ])
     const edgePenalty = this.getReusePenalty(prevCandidate.node, node)
 
-    return prevCandidate.g + 0.25 + distanceCost + pfPenalty + edgePenalty
+    return (
+      prevCandidate.g +
+      this.BASE_CANDIDATE_COST +
+      distanceCost +
+      pfPenalty +
+      edgePenalty
+    )
   }
 
   private computeH(
