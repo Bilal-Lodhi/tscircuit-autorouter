@@ -175,8 +175,8 @@ export function visualizePointPathSolver(
 
         graphics.lines!.push({
           points: [
-            { x: pointA.x, y: pointA.y },
-            { x: pointB.x, y: pointB.y },
+            { x: pointA.x + pointA.z * 0.02, y: pointA.y + pointA.z * 0.02 },
+            { x: pointB.x + pointB.z * 0.02, y: pointB.y + pointB.z * 0.02 },
           ],
           strokeColor: safeTransparentize(connectionColor, 0.25),
           strokeDash,
@@ -193,7 +193,9 @@ export function visualizePointPathSolver(
         let xTransition = 0
         let xLC = 0
 
-        const targetNode = solver.nodeMap.get(candidate.currentNodeId)
+        const targetNode = solver.nodeMap.get(
+          candidate.prevCandidate?.currentNodeId!,
+        )
         if (targetNode && candidate.prevCandidate && candidate.portPoint) {
           const connectionName = currentConnection.connection.name
 

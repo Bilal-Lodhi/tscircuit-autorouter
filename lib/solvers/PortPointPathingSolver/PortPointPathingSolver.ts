@@ -112,10 +112,10 @@ export class PortPointPathingSolver extends BaseSolver {
   PORT_POINT_REUSE_FACTOR = 4
 
   /** Multiplied by Pf**2 to get node probability penalty */
-  NODE_PF_FACTOR = 10000
+  NODE_PF_FACTOR = 100
 
   /** Cost of adding a candidate to the path */
-  BASE_CANDIDATE_COST = 0.00001
+  BASE_CANDIDATE_COST = 0.4
 
   /** Cost penalty for changing layers */
   Z_DIST_COST = 0
