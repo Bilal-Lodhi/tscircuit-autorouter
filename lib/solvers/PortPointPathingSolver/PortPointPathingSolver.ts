@@ -64,7 +64,7 @@ export class PortPointPathingSolver extends BaseSolver {
   portPointUsageCount: Map<string, number> = new Map()
 
   /** Factor applied to port point reuse penalty */
-  NODE_REUSE_FACTOR = 1.0
+  NODE_REUSE_FACTOR = 1e6
 
   /** Multiplied by Pf**2 to get node probability penalty */
   NODE_PF_FACTOR = 1e6
@@ -826,12 +826,15 @@ export class PortPointPathingSolver extends BaseSolver {
       const green = Math.max(0, 255 - Math.floor(pf * 512))
       const color = `rgba(${red}, ${green}, 0, 0.3)`
 
+      const nodeWithPortPoints = this.buildNodeWithPortPoints(node)
+      const crossings = getIntraNodeCrossings(nodeWithPortPoints)
+
       graphics.rects!.push({
         center: node.center,
         width: node.width * 0.9,
         height: node.height * 0.9,
         fill: color,
-        label: `${node.capacityMeshNodeId}\npf: ${pf.toFixed(3)}`,
+        label: `${node.capacityMeshNodeId}\npf: ${pf.toFixed(3)}\nxSame: ${crossings.numSameLayerCrossings}, xLC: ${crossings.numEntryExitLayerChanges}, xTransition: ${crossings.numTransitionPairCrossings}`,
       })
     }
 
