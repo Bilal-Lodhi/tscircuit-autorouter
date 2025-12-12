@@ -199,7 +199,6 @@ export class AutoroutingPipelineSolver extends BaseSolver {
           simpleRouteJson: cms.srjWithPointPairs!,
           nodes: cms.capacityNodes!,
           edges: cms.capacityEdges || [],
-          segmentPointSolver: cms.availableSegmentPointSolver!,
           colorMap: cms.colorMap,
         },
       ],
