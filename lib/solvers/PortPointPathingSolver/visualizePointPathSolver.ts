@@ -48,9 +48,14 @@ export function visualizePointPathSolver(
       radius: 0.05,
       fill: color,
       layer: `z${portPoint.z}`,
-      label: assignment
-        ? `${portPointId}\n${assignment.connectionName}`
-        : portPointId,
+      label: [
+        portPointId,
+        `conn: ${assignment?.connectionName}`,
+        `cd: ${portPoint.distToCenterOfSegment}`,
+        `connects: ${portPoint.connectionNodeIds.join(",")}`,
+      ]
+        .filter(Boolean)
+        .join("\n"),
     })
   }
 

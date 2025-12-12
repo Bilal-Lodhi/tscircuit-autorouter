@@ -39,6 +39,7 @@ import {
   InputNodeWithPortPoints,
   InputPortPoint,
 } from "./PortPointPathingSolver/PortPointPathingSolver"
+import { CapacityMeshNodeSolver2_NodeUnderObstacle } from "./CapacityMeshSolver/CapacityMeshNodeSolver2_NodesUnderObstacles"
 
 interface CapacityMeshSolverOptions {
   capacityDepth?: number
@@ -79,7 +80,7 @@ function definePipelineStep<
 
 export class AutoroutingPipelineSolver extends BaseSolver {
   netToPointPairsSolver?: NetToPointPairsSolver
-  nodeSolver?: RectDiffSolver
+  nodeSolver?: CapacityMeshNodeSolver2_NodeUnderObstacle
   nodeTargetMerger?: CapacityNodeTargetMerger
   edgeSolver?: CapacityMeshEdgeSolver
   colorMap: Record<string, string>
@@ -122,15 +123,28 @@ export class AutoroutingPipelineSolver extends BaseSolver {
         },
       },
     ),
+    // definePipelineStep(
+    //   "nodeSolver",
+    //   RectDiffSolver,
+    //   // Cast to any because RectDiffSolver uses an older SimpleRouteJson type
+    //   // that doesn't support MultiLayerConnectionPoint yet
+    //   (cms) => [{ simpleRouteJson: cms.srjWithPointPairs! as any }],
+    //   {
+    //     onSolved: (cms) => {
+    //       cms.capacityNodes = cms.nodeSolver?.getOutput().meshNodes ?? []
+    //     },
+    //   },
+    // ),
     definePipelineStep(
       "nodeSolver",
-      RectDiffSolver,
-      // Cast to any because RectDiffSolver uses an older SimpleRouteJson type
-      // that doesn't support MultiLayerConnectionPoint yet
-      (cms) => [{ simpleRouteJson: cms.srjWithPointPairs! as any }],
+      CapacityMeshNodeSolver2_NodeUnderObstacle,
+      (cms) => [
+        cms.netToPointPairsSolver?.getNewSimpleRouteJson() || cms.srj,
+        cms.opts,
+      ],
       {
         onSolved: (cms) => {
-          cms.capacityNodes = cms.nodeSolver?.getOutput().meshNodes ?? []
+          cms.capacityNodes = cms.nodeSolver?.finishedNodes!
         },
       },
     ),
@@ -146,6 +160,16 @@ export class AutoroutingPipelineSolver extends BaseSolver {
     //   cms.colorMap,
     //   cms.srj.connections,
     // ]),
+    definePipelineStep(
+      "singleLayerNodeMerger",
+      SingleLayerNodeMergerSolver,
+      (cms) => [cms.nodeSolver?.finishedNodes!],
+      {
+        onSolved: (cms) => {
+          cms.capacityNodes = cms.singleLayerNodeMerger?.newNodes!
+        },
+      },
+    ),
     definePipelineStep(
       "strawSolver",
       StrawSolver,

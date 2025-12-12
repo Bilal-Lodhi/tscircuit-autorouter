@@ -371,6 +371,7 @@ export class AvailableSegmentPointSolver extends BaseSolver {
             portPoint.connectionName,
             portPoint.availableZ.join(","),
             `cd: ${portPoint.distToCenterOfSegment}`,
+            `connects: ${portPoint.nodeIds.join(",")}`,
           ]
             .filter(Boolean)
             .join("\n"),
