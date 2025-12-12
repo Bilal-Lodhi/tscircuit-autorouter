@@ -122,7 +122,7 @@ export class PortPointPathingSolver extends BaseSolver {
 
   colorMap: Record<string, string>
 
-  GREEDY_MULTIPLIER = 1.1
+  GREEDY_MULTIPLIER = 1.5
   MAX_CANDIDATES_IN_MEMORY = 50_000
 
   // Current pathing state
