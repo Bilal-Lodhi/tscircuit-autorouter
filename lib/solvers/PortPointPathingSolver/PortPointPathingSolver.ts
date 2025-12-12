@@ -118,7 +118,7 @@ export class PortPointPathingSolver extends BaseSolver {
   BASE_CANDIDATE_COST = 0.05
 
   /** Cost penalty for changing layers */
-  Z_DIST_COST = 0.125
+  Z_DIST_COST = 0
 
   colorMap: Record<string, string>
 
@@ -394,8 +394,6 @@ export class PortPointPathingSolver extends BaseSolver {
     return portPoints.filter((pp) => {
       // Skip if already visited in this path
       if (this.visitedPortPoints?.has(pp.portPointId)) return false
-      // Skip if z not available at end goal
-      if (!endAvailableZ.has(pp.z)) return false
       return true
     })
   }
