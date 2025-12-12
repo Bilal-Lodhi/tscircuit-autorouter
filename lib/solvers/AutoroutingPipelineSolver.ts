@@ -244,6 +244,7 @@ export class AutoroutingPipelineSolver extends BaseSolver {
           {
             simpleRouteJson: cms.srjWithPointPairs!,
             inputNodes,
+            capacityMeshNodes: cms.capacityNodes!,
             colorMap: cms.colorMap,
           },
         ]

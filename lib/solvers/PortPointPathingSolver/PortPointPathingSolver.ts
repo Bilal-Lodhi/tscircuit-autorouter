@@ -109,16 +109,16 @@ export class PortPointPathingSolver extends BaseSolver {
   nodeAssignedPortPoints: Map<CapacityMeshNodeId, PortPoint[]> = new Map()
 
   /** Factor applied to port point reuse penalty */
-  PORT_POINT_REUSE_FACTOR = 10
+  PORT_POINT_REUSE_FACTOR = 4
 
   /** Multiplied by Pf**2 to get node probability penalty */
-  NODE_PF_FACTOR = 100000
+  NODE_PF_FACTOR = 10
 
   /** Cost of adding a candidate to the path */
-  BASE_CANDIDATE_COST = 0.25
+  BASE_CANDIDATE_COST = 0.05
 
   /** Cost penalty for changing layers */
-  Z_DIFF_COST = 0
+  Z_DIST_COST = 0.125
 
   colorMap: Record<string, string>
 
@@ -132,12 +132,16 @@ export class PortPointPathingSolver extends BaseSolver {
   visitedPortPoints?: Set<string> | null
   connectionNameToGoalNodeIds: Map<string, CapacityMeshNodeId[]>
 
+  capacityMeshNodeMap: Map<CapacityMeshNodeId, CapacityMeshNode>
+
   constructor({
     simpleRouteJson,
     inputNodes,
+    capacityMeshNodes,
     colorMap,
   }: {
     simpleRouteJson: SimpleRouteJson
+    capacityMeshNodes: CapacityMeshNode[]
     inputNodes: InputNodeWithPortPoints[]
     colorMap?: Record<string, string>
   }) {
@@ -146,6 +150,9 @@ export class PortPointPathingSolver extends BaseSolver {
     this.simpleRouteJson = simpleRouteJson
     this.inputNodes = inputNodes
     this.colorMap = colorMap ?? {}
+    this.capacityMeshNodeMap = new Map(
+      capacityMeshNodes.map((n) => [n.capacityMeshNodeId, n]),
+    )
 
     this.nodeMap = new Map(inputNodes.map((n) => [n.capacityMeshNodeId, n]))
 
@@ -276,7 +283,7 @@ export class PortPointPathingSolver extends BaseSolver {
     const crossings = getIntraNodeCrossings(nodeWithPortPoints)
 
     return calculateNodeProbabilityOfFailure(
-      { availableZ: node.availableZ } as CapacityMeshNode,
+      this.capacityMeshNodeMap.get(node.capacityMeshNodeId)!,
       crossings.numSameLayerCrossings,
       crossings.numEntryExitLayerChanges,
       crossings.numTransitionPairCrossings,
@@ -350,16 +357,12 @@ export class PortPointPathingSolver extends BaseSolver {
     ])
     const reusePenalty = this.getPortPointReusePenalty(portPoint.portPointId)
 
-    // Layer change cost
-    const zDiffCost = prevCandidate.z !== portPoint.z ? this.Z_DIFF_COST : 0
-
     return (
       prevCandidate.g +
       this.BASE_CANDIDATE_COST +
       distanceCost +
       pfPenalty +
-      reusePenalty +
-      zDiffCost
+      reusePenalty
     )
   }
 
@@ -373,7 +376,7 @@ export class PortPointPathingSolver extends BaseSolver {
 
     const distanceToGoal = distance(point, endNode.center)
     const needsLayerChange = !endNode.availableZ.includes(currentZ)
-    const zChangeCost = needsLayerChange ? this.Z_DIFF_COST : 0
+    const zChangeCost = needsLayerChange ? this.Z_DIST_COST : 0
     return distanceToGoal + zChangeCost
   }
 
