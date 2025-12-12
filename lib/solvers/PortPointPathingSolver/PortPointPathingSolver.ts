@@ -759,14 +759,13 @@ export class PortPointPathingSolver extends BaseSolver {
         .slice(0, 10)
 
       for (const candidate of sortedCandidates) {
-        // Build the path from this candidate back to start
+        // Build the path from this candidate back to start using entry points (port points)
         const candidatePath: Array<{ x: number; y: number }> = []
         let current: PathingCandidate | null = candidate
         while (current) {
-          candidatePath.unshift({
-            x: current.node.center.x,
-            y: current.node.center.y,
-          })
+          // Use entryPoint (port point location) instead of node center
+          const point = current.entryPoint ?? current.node.center
+          candidatePath.unshift({ x: point.x, y: point.y })
           current = current.prevCandidate
         }
 
@@ -789,7 +788,7 @@ export class PortPointPathingSolver extends BaseSolver {
             ? this.getEdgeCapacityPenalty(candidate.prevCandidate.node, candidate.node)
             : 0
 
-          // Draw a circle at the head of each candidate to show where exploration is
+          // Draw a circle at the head of each candidate (at the port point location)
           const head = candidatePath[candidatePath.length - 1]
           graphics.circles!.push({
             center: head,
