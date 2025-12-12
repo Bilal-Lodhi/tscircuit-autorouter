@@ -630,7 +630,15 @@ export const AutoroutingPipelineDebugger = ({
         <div className="border p-2 rounded">
           Active Stage:{" "}
           <span className="font-bold">
-            {solver.activeSubSolver?.constructor.name ?? "None"}
+            {(() => {
+              const chain: string[] = []
+              let current = solver.activeSubSolver
+              while (current) {
+                chain.push(current.constructor.name)
+                current = current.activeSubSolver
+              }
+              return chain.length > 0 ? chain.join(" -> ") : "None"
+            })()}
           </span>
         </div>
         {solver.error && (
