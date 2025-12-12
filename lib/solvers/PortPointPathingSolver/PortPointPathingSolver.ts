@@ -67,7 +67,7 @@ export class PortPointPathingSolver extends BaseSolver {
   NODE_REUSE_FACTOR = 1.0
 
   /** Multiplied by Pf**2 to get node probability penalty */
-  NODE_PF_FACTOR = 0.0
+  NODE_PF_FACTOR = 1e6
 
   /** Cost of adding a candidate to the path (penalizes long paths or useless candidates) */
   BASE_CANDIDATE_COST = 0.25
@@ -841,32 +841,59 @@ export class PortPointPathingSolver extends BaseSolver {
 
       const connection = result.connection
       const color = this.colorMap[connection.name] ?? "blue"
-
-      // Build path points: start point -> port points -> end point
-      const pathPoints: Array<{ x: number; y: number }> = []
-
-      // Add start point (first connection point)
       const startPoint = connection.pointsToConnect[0]
+
+      // Build segment points with z values for proper dash styling
+      interface PointWithZ {
+        x: number
+        y: number
+        z: number
+      }
+      const segmentPoints: PointWithZ[] = []
+
+      // Add start point with z
       if (startPoint) {
-        pathPoints.push({ x: startPoint.x, y: startPoint.y })
+        const startZ = result.path[0]?.availableZ[0] ?? 0
+        segmentPoints.push({ x: startPoint.x, y: startPoint.y, z: startZ })
       }
 
-      // Add port points in order
+      // Add port points with z values
       for (const portPoint of result.portPoints) {
-        pathPoints.push({ x: portPoint.x, y: portPoint.y })
+        const z = portPoint.availableZ[0] ?? 0
+        segmentPoints.push({ x: portPoint.x, y: portPoint.y, z })
       }
 
-      // Add end point (last connection point)
+      // Add end point with z
       const endPoint =
         connection.pointsToConnect[connection.pointsToConnect.length - 1]
       if (endPoint) {
-        pathPoints.push({ x: endPoint.x, y: endPoint.y })
+        const endZ = result.path[result.path.length - 1]?.availableZ[0] ?? 0
+        segmentPoints.push({ x: endPoint.x, y: endPoint.y, z: endZ })
       }
 
-      if (pathPoints.length >= 2) {
+      // Draw segments between consecutive points with dash style based on z
+      for (let i = 0; i < segmentPoints.length - 1; i++) {
+        const pointA = segmentPoints[i]
+        const pointB = segmentPoints[i + 1]
+
+        // Determine line style based on layer (z) values
+        const sameLayer = pointA.z === pointB.z
+        const commonLayer = pointA.z
+
+        let strokeDash: string | undefined
+        if (sameLayer) {
+          strokeDash = commonLayer === 0 ? undefined : "10 5" // top layer: solid, bottom layer: long dash
+        } else {
+          strokeDash = "3 3 10" // transition between layers: mixed dash pattern
+        }
+
         graphics.lines!.push({
-          points: pathPoints,
+          points: [
+            { x: pointA.x, y: pointA.y },
+            { x: pointB.x, y: pointB.y },
+          ],
           strokeColor: color,
+          strokeDash,
         })
       }
     }
