@@ -70,7 +70,7 @@ export class PortPointPathingSolver extends BaseSolver {
   NODE_REUSE_FACTOR = 2
 
   /** Multiplied by Pf**2 to get node probability penalty */
-  NODE_PF_FACTOR = 100
+  NODE_PF_FACTOR = 100000
 
   /** Cost of adding a candidate to the path (penalizes long paths or useless candidates) */
   BASE_CANDIDATE_COST = 0.25
@@ -894,6 +894,7 @@ export class PortPointPathingSolver extends BaseSolver {
         center: node.center,
         width: node.width * 0.9,
         height: node.height * 0.9,
+        layer: `z${node.availableZ.join(",")}`,
         fill: color,
         label: `${node.capacityMeshNodeId}\npf: ${pf.toFixed(3)}\nxSame: ${crossings.numSameLayerCrossings}, xLC: ${crossings.numEntryExitLayerChanges}, xTransition: ${crossings.numTransitionPairCrossings}`,
       })
@@ -1034,7 +1035,6 @@ export class PortPointPathingSolver extends BaseSolver {
           const edgePenalty = candidate.prevCandidate
             ? this.getReusePenalty(candidate.prevCandidate.node, candidate.node)
             : 0
-          const zChangeCost = prevZ !== candidate.z ? this.Z_DIFF_COST : 0
 
           // Draw a circle at the head of each candidate (at the port point location)
           const head = candidatePath[candidatePath.length - 1]
@@ -1042,7 +1042,17 @@ export class PortPointPathingSolver extends BaseSolver {
             center: head,
             radius: Math.min(candidate.node.height, candidate.node.width) * 0.1,
             fill: safeTransparentize(connectionColor, 0.25),
-            label: `f: ${candidate.f.toFixed(2)}\ng: ${candidate.g.toFixed(2)}\nh: ${candidate.h.toFixed(2)}\nz: ${candidate.z}\ndist: ${distanceCost.toFixed(2)}\npf: ${currentPf.toFixed(3)} -> ${pfWithTrace.toFixed(3)}\nCost(pf): ${pfPenalty.toFixed(2)}\nedge: ${edgePenalty.toFixed(2)}\nzCost: ${zChangeCost.toFixed(2)}`,
+            layer: `z${candidate.z}`,
+            label: [
+              `f: ${candidate.f.toFixed(2)}`,
+              `g: ${candidate.g.toFixed(2)}`,
+              `h: ${candidate.h.toFixed(2)}`,
+              `z: ${candidate.z}`,
+              `dist: ${distanceCost.toFixed(2)}`,
+              `pf: ${currentPf.toFixed(3)} -> ${pfWithTrace.toFixed(3)}`,
+              `Cost(pf): ${pfPenalty.toFixed(2)}`,
+              `edge: ${edgePenalty.toFixed(2)}`,
+            ].join("\n"),
           })
         }
       }
