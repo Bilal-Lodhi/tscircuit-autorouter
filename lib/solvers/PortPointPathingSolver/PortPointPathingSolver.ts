@@ -11,6 +11,9 @@ import { getNodeEdgeMap } from "../CapacityMeshSolver/getNodeEdgeMap"
 import { distance } from "@tscircuit/math-utils"
 import type { SegmentPortPoint } from "../AvailableSegmentPointSolver/AvailableSegmentPointSolver"
 import { getTunedTotalCapacity1 } from "../../utils/getTunedTotalCapacity1"
+import { calculateNodeProbabilityOfFailure } from "../UnravelSolver/calculateCrossingProbabilityOfFailure"
+import { getIntraNodeCrossings } from "../../utils/getIntraNodeCrossings"
+import type { PortPoint } from "../../types/high-density-types"
 import { NodeWithPortPoints } from "../../types/high-density-types"
 import { safeTransparentize } from "../colors"
 
@@ -54,22 +57,20 @@ export class PortPointPathingSolver extends BaseSolver {
 
   connectionsWithResults: ConnectionPathResult[] = []
 
-  /** Tracks how many traces pass through each node */
-  nodeTraceCountMap: Map<CapacityMeshNodeId, number>
-
-  /** Tracks traces by layer for each node to estimate crossings */
-  nodeLayerTraceCount: Map<CapacityMeshNodeId, Map<number, number>>
+  /** Tracks port points assigned to each node for crossing calculations */
+  nodePortPointsMap: Map<CapacityMeshNodeId, PortPoint[]> = new Map()
 
   /** Tracks how many times each port point has been used */
   portPointUsageCount: Map<string, number> = new Map()
 
   /** Factor applied to port point reuse penalty */
   NODE_REUSE_FACTOR = 1.0
+  NODE_PF_FACTOR = 100.0
 
   colorMap: Record<string, string>
   maxDepthOfNodes: number
 
-  GREEDY_MULTIPLIER = 2.5
+  GREEDY_MULTIPLIER = 1
   MAX_CANDIDATES_IN_MEMORY = 50_000
 
   // Current pathing state
@@ -99,11 +100,9 @@ export class PortPointPathingSolver extends BaseSolver {
     this.nodeMap = new Map(nodes.map((n) => [n.capacityMeshNodeId, n]))
     this.nodeEdgeMap = getNodeEdgeMap(edges)
 
-    this.nodeTraceCountMap = new Map(
-      nodes.map((n) => [n.capacityMeshNodeId, 0]),
-    )
-    this.nodeLayerTraceCount = new Map(
-      nodes.map((n) => [n.capacityMeshNodeId, new Map()]),
+    // Initialize empty port points array for each node
+    this.nodePortPointsMap = new Map(
+      nodes.map((n) => [n.capacityMeshNodeId, []]),
     )
 
     this.maxDepthOfNodes = Math.max(...nodes.map((n) => n._depth ?? 0))
@@ -172,57 +171,77 @@ export class PortPointPathingSolver extends BaseSolver {
   }
 
   /**
-   * Compute probability of failure for a node based on trace counts.
-   * Similar to calculateNodeProbabilityOfFailure in UnravelSolver.
+   * Build a NodeWithPortPoints structure for crossing calculation.
+   * Optionally includes additional port points for "what if" scenario.
    */
-  private computeNodePf(node: CapacityMeshNode): number {
-    if (node._containsTarget) return 0
+  private buildNodeWithPortPoints(
+    node: CapacityMeshNode,
+    additionalPortPoints?: PortPoint[],
+  ): NodeWithPortPoints {
+    const existingPortPoints =
+      this.nodePortPointsMap.get(node.capacityMeshNodeId) ?? []
+    const allPortPoints = additionalPortPoints
+      ? [...existingPortPoints, ...additionalPortPoints]
+      : existingPortPoints
 
-    const totalCapacity = this.getTotalCapacity(node)
-    const traceCount = this.nodeTraceCountMap.get(node.capacityMeshNodeId) ?? 0
-    const layerCounts =
-      this.nodeLayerTraceCount.get(node.capacityMeshNodeId) ?? new Map()
-
-    // Estimate crossings based on trace distribution across layers
-    let estimatedSameLayerCrossings = 0
-    for (const [_layer, count] of layerCounts) {
-      // Crossings scale roughly quadratically with traces on same layer
-      if (count > 1) {
-        estimatedSameLayerCrossings += (count * (count - 1)) / 4
-      }
+    return {
+      capacityMeshNodeId: node.capacityMeshNodeId,
+      center: node.center,
+      width: node.width,
+      height: node.height,
+      portPoints: allPortPoints,
+      availableZ: node.availableZ,
     }
-
-    // Estimate layer transitions - traces that need to change layers
-    const numLayers = node.availableZ.length
-    const estimatedLayerChanges =
-      numLayers > 1 ? traceCount * 0.3 : traceCount * 0.8
-
-    // Calculate estimated via count
-    const estNumVias =
-      estimatedSameLayerCrossings * 0.82 + estimatedLayerChanges * 0.41
-
-    const estUsedCapacity = (estNumVias / 2) ** 1.1
-    return estUsedCapacity / totalCapacity
   }
 
   /**
-   * Cost penalty based on node probability of failure
+   * Compute probability of failure for a node using getIntraNodeCrossings.
+   * Uses calculateNodeProbabilityOfFailure from UnravelSolver.
+   *
+   * @param node The node to compute pf for
+   * @param additionalPortPoints Optional port points for "what if" scenario (entry and exit points for a new trace)
    */
-  private getNodePfPenalty(node: CapacityMeshNode): number {
-    const pf = this.computeNodePf(node)
-    const basePenalty = 0.05
+  private computeNodePf(
+    node: CapacityMeshNode,
+    additionalPortPoints?: PortPoint[],
+  ): number {
+    if (node._containsTarget) return 0
 
-    // Exponential penalty as pf increases
-    if (pf < 0.1) return basePenalty
-    if (pf < 0.3) return basePenalty + pf * (node.width + node.height) * 0.5
-    if (pf < 0.6) return basePenalty + pf * (node.width + node.height) * 1.5
-    return basePenalty + pf * (node.width + node.height) * 4
+    const nodeWithPortPoints = this.buildNodeWithPortPoints(
+      node,
+      additionalPortPoints,
+    )
+    const crossings = getIntraNodeCrossings(nodeWithPortPoints)
+
+    return calculateNodeProbabilityOfFailure(
+      node,
+      crossings.numSameLayerCrossings,
+      crossings.numEntryExitLayerChanges,
+      crossings.numTransitionPairCrossings,
+    )
+  }
+
+  /**
+   * Cost penalty based on node probability of failure.
+   *
+   * @param node The node to compute penalty for
+   * @param additionalPortPoints Optional port points for "what if" scenario
+   */
+  private getNodePfPenalty(
+    node: CapacityMeshNode,
+    additionalPortPoints?: PortPoint[],
+  ): number {
+    const pf = this.computeNodePf(node, additionalPortPoints)
+    return pf ** 2 * this.NODE_PF_FACTOR
   }
 
   /**
    * Get a unique key for an edge between two nodes (order-independent)
    */
-  private getEdgeKey(nodeId1: CapacityMeshNodeId, nodeId2: CapacityMeshNodeId): string {
+  private getEdgeKey(
+    nodeId1: CapacityMeshNodeId,
+    nodeId2: CapacityMeshNodeId,
+  ): string {
     return nodeId1 < nodeId2 ? `${nodeId1}:${nodeId2}` : `${nodeId2}:${nodeId1}`
   }
 
@@ -234,9 +253,12 @@ export class PortPointPathingSolver extends BaseSolver {
     fromNode: CapacityMeshNode,
     toNode: CapacityMeshNode,
   ): number {
-    const edgeKey = this.getEdgeKey(fromNode.capacityMeshNodeId, toNode.capacityMeshNodeId)
+    const edgeKey = this.getEdgeKey(
+      fromNode.capacityMeshNodeId,
+      toNode.capacityMeshNodeId,
+    )
     const usageCount = this.portPointUsageCount.get(edgeKey) ?? 0
-    return (usageCount ** 2) * this.NODE_REUSE_FACTOR
+    return usageCount ** 2 * this.NODE_REUSE_FACTOR
   }
 
   private getDistanceBetweenPoints(
@@ -300,11 +322,38 @@ export class PortPointPathingSolver extends BaseSolver {
     prevCandidate: PathingCandidate,
     node: CapacityMeshNode,
     exitPoint: { x: number; y: number },
+    connectionName: string,
   ): number {
     // Use point-to-point distance from the previous entry point to the new exit point
     const prevPoint = prevCandidate.entryPoint ?? prevCandidate.node.center
     const distanceCost = this.getDistanceBetweenPoints(prevPoint, exitPoint)
-    const pfPenalty = this.getNodePfPenalty(node)
+
+    // Determine the Z layer for the new trace (use mutual available Z, prefer first)
+    const mutualZ = prevCandidate.node.availableZ.filter((z: number) =>
+      node.availableZ.includes(z),
+    )
+    const traceZ = mutualZ.length > 0 ? mutualZ[0] : (node.availableZ[0] ?? 0)
+
+    // Create hypothetical port points for this trace passing through the node
+    // Entry point is the exitPoint from the previous node, exit point is the exitPoint to the next node
+    const entryPortPoint: PortPoint = {
+      x: prevPoint.x,
+      y: prevPoint.y,
+      z: traceZ,
+      connectionName,
+    }
+    const exitPortPoint: PortPoint = {
+      x: exitPoint.x,
+      y: exitPoint.y,
+      z: traceZ,
+      connectionName,
+    }
+
+    // Compute pf penalty considering adding this new trace with its port points
+    const pfPenalty = this.getNodePfPenalty(node, [
+      entryPortPoint,
+      exitPortPoint,
+    ])
     const edgePenalty = this.getEdgeCapacityPenalty(prevCandidate.node, node)
 
     return prevCandidate.g + distanceCost + pfPenalty + edgePenalty
@@ -369,6 +418,7 @@ export class PortPointPathingSolver extends BaseSolver {
    * Assign port points along a path and record which connections use them.
    * Returns an array with one entry per edge (path.length - 1 entries).
    * Creates port points at the midpoint of each shared edge.
+   * Also adds port points to nodePortPointsMap for crossing calculations.
    */
   private assignPortPointsForPath(
     path: CapacityMeshNode[],
@@ -383,7 +433,10 @@ export class PortPointPathingSolver extends BaseSolver {
       const toNode = path[i + 1]
 
       // Get the edge key and increment usage count
-      const edgeKey = this.getEdgeKey(fromNode.capacityMeshNodeId, toNode.capacityMeshNodeId)
+      const edgeKey = this.getEdgeKey(
+        fromNode.capacityMeshNodeId,
+        toNode.capacityMeshNodeId,
+      )
       const currentUsage = this.portPointUsageCount.get(edgeKey) ?? 0
       this.portPointUsageCount.set(edgeKey, currentUsage + 1)
 
@@ -414,6 +467,30 @@ export class PortPointPathingSolver extends BaseSolver {
         rootConnectionName,
       })
 
+      // Add port point to both nodes for crossing calculations
+      const portPoint: PortPoint = {
+        x: exitPoint.x,
+        y: exitPoint.y,
+        z: singleZ,
+        connectionName,
+        rootConnectionName,
+      }
+
+      // Add to fromNode (this is an exit point for fromNode)
+      const fromNodePortPoints =
+        this.nodePortPointsMap.get(fromNode.capacityMeshNodeId) ?? []
+      fromNodePortPoints.push(portPoint)
+      this.nodePortPointsMap.set(
+        fromNode.capacityMeshNodeId,
+        fromNodePortPoints,
+      )
+
+      // Add to toNode (this is an entry point for toNode)
+      const toNodePortPoints =
+        this.nodePortPointsMap.get(toNode.capacityMeshNodeId) ?? []
+      toNodePortPoints.push(portPoint)
+      this.nodePortPointsMap.set(toNode.capacityMeshNodeId, toNodePortPoints)
+
       preferredZ = singleZ
     }
 
@@ -421,22 +498,44 @@ export class PortPointPathingSolver extends BaseSolver {
   }
 
   /**
-   * Update trace counts for nodes in a path
+   * Add start/end target points to nodes for crossing calculations.
+   * Called after path is assigned to add the connection's target points.
    */
-  private updateTraceCountsForPath(
+  private addTargetPointsToNodes(
     path: CapacityMeshNode[],
-    preferredZ?: number,
+    connection: SimpleRouteConnection,
+    preferredZ: number,
   ) {
-    const z = preferredZ ?? 0
+    const startNode = path[0]
+    const endNode = path[path.length - 1]
+    const startPoint = connection.pointsToConnect[0]
+    const endPoint =
+      connection.pointsToConnect[connection.pointsToConnect.length - 1]
 
-    for (const node of path) {
-      const currentCount =
-        this.nodeTraceCountMap.get(node.capacityMeshNodeId) ?? 0
-      this.nodeTraceCountMap.set(node.capacityMeshNodeId, currentCount + 1)
+    if (startNode && startPoint) {
+      const startPortPoints =
+        this.nodePortPointsMap.get(startNode.capacityMeshNodeId) ?? []
+      startPortPoints.push({
+        x: startPoint.x,
+        y: startPoint.y,
+        z: preferredZ,
+        connectionName: connection.name,
+        rootConnectionName: connection.rootConnectionName,
+      })
+      this.nodePortPointsMap.set(startNode.capacityMeshNodeId, startPortPoints)
+    }
 
-      const layerCounts =
-        this.nodeLayerTraceCount.get(node.capacityMeshNodeId) ?? new Map()
-      layerCounts.set(z, (layerCounts.get(z) ?? 0) + 1)
+    if (endNode && endPoint) {
+      const endPortPoints =
+        this.nodePortPointsMap.get(endNode.capacityMeshNodeId) ?? []
+      endPortPoints.push({
+        x: endPoint.x,
+        y: endPoint.y,
+        z: preferredZ,
+        connectionName: connection.name,
+        rootConnectionName: connection.rootConnectionName,
+      })
+      this.nodePortPointsMap.set(endNode.capacityMeshNodeId, endPortPoints)
     }
   }
 
@@ -457,7 +556,9 @@ export class PortPointPathingSolver extends BaseSolver {
           prevCandidate: null,
           node: start,
           entryPortPoint: null,
-          entryPoint: startPoint ? { x: startPoint.x, y: startPoint.y } : start.center,
+          entryPoint: startPoint
+            ? { x: startPoint.x, y: startPoint.y }
+            : start.center,
           f: 0,
           g: 0,
           h: 0,
@@ -491,7 +592,10 @@ export class PortPointPathingSolver extends BaseSolver {
 
     // Check if we reached the goal
     if (this.isConnectedToEndGoal(currentCandidate.node, end)) {
-      const endPoint = nextConnection.connection.pointsToConnect[nextConnection.connection.pointsToConnect.length - 1]
+      const endPoint =
+        nextConnection.connection.pointsToConnect[
+          nextConnection.connection.pointsToConnect.length - 1
+        ]
       const path = this.getBacktrackedPath({
         prevCandidate: currentCandidate,
         node: end,
@@ -509,7 +613,14 @@ export class PortPointPathingSolver extends BaseSolver {
         nextConnection.connection.rootConnectionName,
       )
 
-      this.updateTraceCountsForPath(path)
+      // Get the preferred Z layer from assigned port points
+      const preferredZ =
+        nextConnection.portPoints.length > 0
+          ? (nextConnection.portPoints[0].availableZ[0] ?? 0)
+          : 0
+
+      // Add target points (start/end of connection) to nodes for crossing calculations
+      this.addTargetPointsToNodes(path, nextConnection.connection, preferredZ)
 
       this.currentConnectionIndex++
       this.candidates = null
@@ -531,8 +642,16 @@ export class PortPointPathingSolver extends BaseSolver {
         continue
       }
 
-      const exitPoint = this.getExitPointToNeighbor(currentCandidate.node, neighbor)
-      const g = this.computeG(currentCandidate, neighbor, exitPoint)
+      const exitPoint = this.getExitPointToNeighbor(
+        currentCandidate.node,
+        neighbor,
+      )
+      const g = this.computeG(
+        currentCandidate,
+        neighbor,
+        exitPoint,
+        connectionName,
+      )
       const h = this.computeH(exitPoint, end)
       const f = g + h * this.GREEDY_MULTIPLIER
 
@@ -779,13 +898,56 @@ export class PortPointPathingSolver extends BaseSolver {
           const exitPoint = candidate.entryPoint ?? candidate.node.center
           const distanceCost = candidate.prevCandidate
             ? this.getDistanceBetweenPoints(
-                candidate.prevCandidate.entryPoint ?? candidate.prevCandidate.node.center,
+                candidate.prevCandidate.entryPoint ??
+                  candidate.prevCandidate.node.center,
                 exitPoint,
               )
             : 0
-          const pfPenalty = this.getNodePfPenalty(candidate.node)
+
+          // Determine the Z layer that would be used for this trace
+          const mutualZ = candidate.prevCandidate
+            ? candidate.prevCandidate.node.availableZ.filter((z: number) =>
+                candidate.node.availableZ.includes(z),
+              )
+            : candidate.node.availableZ
+          const traceZ =
+            mutualZ.length > 0
+              ? mutualZ[0]
+              : (candidate.node.availableZ[0] ?? 0)
+
+          // Create hypothetical port points for this trace
+          const prevPoint =
+            candidate.prevCandidate?.entryPoint ?? candidate.node.center
+          const hypotheticalPortPoints: PortPoint[] = [
+            {
+              x: prevPoint.x,
+              y: prevPoint.y,
+              z: traceZ,
+              connectionName: currentConnection?.connection.name ?? "",
+            },
+            {
+              x: exitPoint.x,
+              y: exitPoint.y,
+              z: traceZ,
+              connectionName: currentConnection?.connection.name ?? "",
+            },
+          ]
+
+          // Show current pf (without this trace) and what it would be with this trace
+          const currentPf = this.computeNodePf(candidate.node)
+          const pfWithTrace = this.computeNodePf(
+            candidate.node,
+            hypotheticalPortPoints,
+          )
+          const pfPenalty = this.getNodePfPenalty(
+            candidate.node,
+            hypotheticalPortPoints,
+          )
           const edgePenalty = candidate.prevCandidate
-            ? this.getEdgeCapacityPenalty(candidate.prevCandidate.node, candidate.node)
+            ? this.getEdgeCapacityPenalty(
+                candidate.prevCandidate.node,
+                candidate.node,
+              )
             : 0
 
           // Draw a circle at the head of each candidate (at the port point location)
@@ -794,7 +956,7 @@ export class PortPointPathingSolver extends BaseSolver {
             center: head,
             radius: Math.min(candidate.node.height, candidate.node.width) * 0.1,
             fill: safeTransparentize(connectionColor, 0.25),
-            label: `f: ${candidate.f.toFixed(2)}\ng: ${candidate.g.toFixed(2)}\nh: ${candidate.h.toFixed(2)}\ndist: ${distanceCost.toFixed(2)}\npf: ${pfPenalty.toFixed(2)}\nedge: ${edgePenalty.toFixed(2)}`,
+            label: `f: ${candidate.f.toFixed(2)}\ng: ${candidate.g.toFixed(2)}\nh: ${candidate.h.toFixed(2)}\ndist: ${distanceCost.toFixed(2)}\npf: ${currentPf.toFixed(3)} -> ${pfWithTrace.toFixed(3)}\nCost(pf): ${pfPenalty.toFixed(2)}\nedge: ${edgePenalty.toFixed(2)}`,
           })
         }
       }
