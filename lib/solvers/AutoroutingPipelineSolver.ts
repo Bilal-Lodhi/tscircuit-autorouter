@@ -457,9 +457,9 @@ export class AutoroutingPipelineSolver extends BaseSolver {
         .connectionsWithResults) {
         if (!connection.path) continue
         lines.push({
-          points: connection.path.map((n) => ({
-            x: n.center.x,
-            y: n.center.y,
+          points: connection.path.map((candidate) => ({
+            x: candidate.node.center.x,
+            y: candidate.node.center.y,
           })),
           strokeColor: this.colorMap[connection.connection.name],
         })

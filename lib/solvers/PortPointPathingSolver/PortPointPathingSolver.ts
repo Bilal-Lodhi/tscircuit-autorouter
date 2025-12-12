@@ -67,10 +67,10 @@ export class PortPointPathingSolver extends BaseSolver {
   portPointUsageCount: Map<string, number> = new Map()
 
   /** Factor applied to port point reuse penalty */
-  NODE_REUSE_FACTOR = 1e6
+  NODE_REUSE_FACTOR = 2
 
   /** Multiplied by Pf**2 to get node probability penalty */
-  NODE_PF_FACTOR = 1e3
+  NODE_PF_FACTOR = 1
 
   /** Cost of adding a candidate to the path (penalizes long paths or useless candidates) */
   BASE_CANDIDATE_COST = 0.25
@@ -221,6 +221,13 @@ export class PortPointPathingSolver extends BaseSolver {
       additionalPortPoints,
     )
     const crossings = getIntraNodeCrossings(nodeWithPortPoints)
+
+    if (
+      crossings.numEntryExitLayerChanges > 0 &&
+      getTunedTotalCapacity1(node) < 0.5
+    ) {
+      return 1
+    }
 
     return calculateNodeProbabilityOfFailure(
       node,
@@ -517,7 +524,10 @@ export class PortPointPathingSolver extends BaseSolver {
         connectionName: connection.name,
         rootConnectionName: connection.rootConnectionName,
       })
-      this.nodePortPointsMap.set(startCandidate.node.capacityMeshNodeId, startPortPoints)
+      this.nodePortPointsMap.set(
+        startCandidate.node.capacityMeshNodeId,
+        startPortPoints,
+      )
     }
 
     if (endCandidate && endPoint) {
@@ -530,7 +540,10 @@ export class PortPointPathingSolver extends BaseSolver {
         connectionName: connection.name,
         rootConnectionName: connection.rootConnectionName,
       })
-      this.nodePortPointsMap.set(endCandidate.node.capacityMeshNodeId, endPortPoints)
+      this.nodePortPointsMap.set(
+        endCandidate.node.capacityMeshNodeId,
+        endPortPoints,
+      )
     }
   }
 
@@ -539,6 +552,23 @@ export class PortPointPathingSolver extends BaseSolver {
    */
   private getVisitedKey(nodeId: CapacityMeshNodeId, z: number): string {
     return `${nodeId}:${z}`
+  }
+
+  /**
+   * Check if a nodeId is already in the candidate's path chain.
+   * This prevents revisiting the same physical node in a single path,
+   * which would create a node with only one connection side.
+   */
+  private isNodeInPathChain(
+    candidate: PathingCandidate | null,
+    nodeId: CapacityMeshNodeId,
+  ): boolean {
+    let current = candidate
+    while (current) {
+      if (current.node.capacityMeshNodeId === nodeId) return true
+      current = current.prevCandidate
+    }
+    return false
   }
 
   _step() {
@@ -635,6 +665,14 @@ export class PortPointPathingSolver extends BaseSolver {
     for (const neighbor of neighbors) {
       if (!this.doesNodeHaveCapacity(neighbor, currentCandidate.node)) continue
 
+      // Don't revisit the same physical node in this path chain
+      // This prevents creating nodes with only one connection side
+      if (
+        this.isNodeInPathChain(currentCandidate, neighbor.capacityMeshNodeId)
+      ) {
+        continue
+      }
+
       const connectionName = nextConnection.connection.name
       if (
         neighbor._containsObstacle &&
@@ -650,7 +688,10 @@ export class PortPointPathingSolver extends BaseSolver {
 
       // Explore each available z layer for this neighbor
       for (const targetZ of neighbor.availableZ) {
-        const visitedKey = this.getVisitedKey(neighbor.capacityMeshNodeId, targetZ)
+        const visitedKey = this.getVisitedKey(
+          neighbor.capacityMeshNodeId,
+          targetZ,
+        )
         if (this.visitedNodes?.has(visitedKey)) continue
 
         const g = this.computeG(
@@ -676,7 +717,12 @@ export class PortPointPathingSolver extends BaseSolver {
       }
     }
 
-    this.visitedNodes!.add(this.getVisitedKey(currentCandidate.node.capacityMeshNodeId, currentCandidate.z))
+    this.visitedNodes!.add(
+      this.getVisitedKey(
+        currentCandidate.node.capacityMeshNodeId,
+        currentCandidate.z,
+      ),
+    )
   }
 
   /**
