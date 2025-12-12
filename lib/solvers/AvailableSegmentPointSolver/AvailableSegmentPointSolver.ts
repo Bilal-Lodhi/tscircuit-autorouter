@@ -227,7 +227,9 @@ export class AvailableSegmentPointSolver extends BaseSolver {
     const yRange = yOverlap.end - yOverlap.start
 
     // If there's no overlap, return null
-    if (xRange < 0 || yRange < 0) return null
+    // Use small epsilon to handle floating-point precision issues at node boundaries
+    const epsilon = 0.0001
+    if (xRange < -epsilon || yRange < -epsilon) return null
 
     // If the x-range is smaller then the nodes touch vertically (common vertical edge).
     if (xRange < yRange) {
