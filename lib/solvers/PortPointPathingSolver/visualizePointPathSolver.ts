@@ -107,6 +107,39 @@ export function visualizePointPathSolver(
       ? (solver.colorMap[currentConnection.connection.name] ?? "blue")
       : "blue"
 
+    // Draw dashed line from start to end goal
+    if (currentConnection) {
+      const [startNodeId, endNodeId] = currentConnection.nodeIds
+      const startNode = solver.nodeMap.get(startNodeId)
+      const endNode = solver.nodeMap.get(endNodeId)
+      const startPoint = currentConnection.connection.pointsToConnect[0]
+      const endPoint =
+        currentConnection.connection.pointsToConnect[
+          currentConnection.connection.pointsToConnect.length - 1
+        ]
+
+      if (startNode && endNode) {
+        const start = startPoint
+          ? { x: startPoint.x, y: startPoint.y }
+          : startNode.center
+        const end = endPoint ? { x: endPoint.x, y: endPoint.y } : endNode.center
+
+        graphics.lines!.push({
+          points: [start, end],
+          strokeColor: safeTransparentize(connectionColor, 0.5),
+          strokeDash: "5 5",
+        })
+
+        // Draw goal marker
+        graphics.circles!.push({
+          center: end,
+          radius: 0.08,
+          stroke: connectionColor,
+          label: `Goal: ${currentConnection.connection.name}`,
+        })
+      }
+    }
+
     const sortedCandidates = [...solver.candidates]
       .sort((a, b) => a.f - b.f)
       .slice(0, 10)
