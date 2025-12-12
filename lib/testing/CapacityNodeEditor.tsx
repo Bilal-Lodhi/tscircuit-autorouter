@@ -3,119 +3,24 @@ import type { NodeWithPortPoints } from "lib/types/high-density-types"
 import type { HyperSingleIntraNodeSolver } from "lib/solvers/HyperHighDensitySolver/HyperSingleIntraNodeSolver"
 import { getTunedTotalCapacity1 } from "lib/utils/getTunedTotalCapacity1"
 import { calculateNodeProbabilityOfFailure } from "lib/solvers/UnravelSolver/calculateCrossingProbabilityOfFailure"
-
-const LAYER_COLORS: Record<number, string> = {
-  0: "#ef4444",
-  1: "#3b82f6",
-  2: "#22c55e",
-  3: "#f97316",
-}
-const LAYER_RADII: Record<number, number> = { 0: 6, 1: 10, 2: 14, 3: 18 }
-const SCALE = 150 // pixels per mm
-
-interface Rect {
-  x: number
-  y: number
-  width: number
-  height: number
-}
-
-type Edge = "top" | "bottom" | "left" | "right"
-
-interface PointDef {
-  edge: Edge
-  t: number
-  layers: number[]
-}
-
-interface PairDef {
-  entry: PointDef
-  exit: PointDef
-}
-
-type DraggingState =
-  | { type: "resize"; data: { handle: string } }
-  | { type: "point"; data: { pairIndex: number; pointType: "entry" | "exit" } }
-  | { type: "pan"; data: {} }
-
-interface DragStartState {
-  mx: number
-  my: number
-  rect: Rect
-  x?: number
-  y?: number
-}
-
-interface SelectionState {
-  pairIndex: number
-  pointType: "entry" | "exit"
-}
-
-function getPointOnEdge(edge: Edge, t: number, rect: Rect) {
-  const { x, y, width, height } = rect
-  switch (edge) {
-    case "top":
-      return { x: x + t * width, y }
-    case "bottom":
-      return { x: x + t * width, y: y + height }
-    case "left":
-      return { x, y: y + t * height }
-    case "right":
-      return { x: x + width, y: y + t * height }
-    default:
-      return { x: 0, y: 0 }
-  }
-}
-
-function getTFromMouseOnEdge(mx: number, my: number, edge: Edge, rect: Rect) {
-  const { x, y, width, height } = rect
-  let t = 0.5
-  switch (edge) {
-    case "top":
-    case "bottom":
-      t = (mx - x) / width
-      break
-    case "left":
-    case "right":
-      t = (my - y) / height
-      break
-  }
-  return Math.max(0.05, Math.min(0.95, t))
-}
-
-function findEdgeAndT(
-  px: number,
-  py: number,
-  rect: Rect,
-): { edge: Edge; t: number } | null {
-  const { x, y, width, height } = rect
-  const threshold = 15
-  if (Math.abs(py - y) < threshold && px >= x && px <= x + width)
-    return { edge: "top", t: Math.max(0.05, Math.min(0.95, (px - x) / width)) }
-  if (Math.abs(py - (y + height)) < threshold && px >= x && px <= x + width)
-    return {
-      edge: "bottom",
-      t: Math.max(0.05, Math.min(0.95, (px - x) / width)),
-    }
-  if (Math.abs(px - x) < threshold && py >= y && py <= y + height)
-    return {
-      edge: "left",
-      t: Math.max(0.05, Math.min(0.95, (py - y) / height)),
-    }
-  if (Math.abs(px - (x + width)) < threshold && py >= y && py <= y + height)
-    return {
-      edge: "right",
-      t: Math.max(0.05, Math.min(0.95, (py - y) / height)),
-    }
-  return null
-}
-
-function parseLayers(str: string): number[] {
-  return str
-    .split(",")
-    .map((s) => parseInt(s.trim()))
-    .filter((n) => !isNaN(n) && n >= 0 && n <= 3)
-}
+import { LAYER_COLORS, SCALE } from "./capacity-node-editor/constants"
+import type {
+  Rect,
+  Edge,
+  PointDef,
+  PairDef,
+  DraggingState,
+  DragStartState,
+  SelectionState,
+} from "./capacity-node-editor/types"
+import {
+  getPointOnEdge,
+  getTFromMouseOnEdge,
+  findEdgeAndT,
+  parseLayers,
+} from "./capacity-node-editor/helpers"
+import { MetricsCard } from "./capacity-node-editor/MetricsCard"
+import { PortPoint } from "./capacity-node-editor/PortPoint"
 
 export interface CapacityNodeEditorProps {
   onNodeChange?: (node: NodeWithPortPoints) => void
@@ -151,7 +56,6 @@ export default function CapacityNodeEditor({
   const [selected, setSelected] = useState<SelectionState | null>(null)
   const [layerInput, setLayerInput] = useState("")
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
-  const [svgWidth, setSvgWidth] = useState(1000)
   const svgRef = useRef<SVGSVGElement>(null)
 
   // Initialize from initialNode
@@ -328,18 +232,6 @@ export default function CapacityNodeEditor({
     }
   }, [selected, pairs])
 
-  // Track SVG width for positioning metrics card
-  useEffect(() => {
-    const updateWidth = () => {
-      if (svgRef.current) {
-        setSvgWidth(svgRef.current.clientWidth)
-      }
-    }
-    updateWidth()
-    window.addEventListener("resize", updateWidth)
-    return () => window.removeEventListener("resize", updateWidth)
-  }, [])
-
   const handleMouseDown = useCallback(
     (e: React.MouseEvent, type: "resize", data: any) => {
       e.stopPropagation()
@@ -488,55 +380,6 @@ export default function CapacityNodeEditor({
     },
     [selected],
   )
-
-  const renderPoint = (
-    point: PointDef,
-    pairIndex: number,
-    pointType: "entry" | "exit",
-  ) => {
-    const pos = getPointOnEdge(point.edge, point.t, rect)
-    const isSelected =
-      selected?.pairIndex === pairIndex && selected?.pointType === pointType
-    const maxLayer = Math.max(...point.layers)
-
-    return (
-      <g
-        key={`${pairIndex}-${pointType}`}
-        style={{ cursor: "grab" }}
-        onMouseDown={(e) => handlePointMouseDown(e, pairIndex, pointType)}
-        onClick={(e) => handlePointClick(e, pairIndex, pointType)}
-      >
-        {isSelected && (
-          <circle
-            cx={pos.x}
-            cy={pos.y}
-            r={LAYER_RADII[3] + 4}
-            fill="none"
-            stroke="#fff"
-            strokeWidth={2}
-            strokeDasharray="4,2"
-          />
-        )}
-        {[3, 2, 1, 0].map((layer) => (
-          <circle
-            key={layer}
-            cx={pos.x}
-            cy={pos.y}
-            r={LAYER_RADII[layer]}
-            fill={
-              point.layers.includes(layer)
-                ? LAYER_COLORS[layer]
-                : layer <= maxLayer
-                  ? "#4b5563"
-                  : "transparent"
-            }
-            stroke={layer === maxLayer ? "#000" : "none"}
-            strokeWidth={layer === maxLayer ? 1.5 : 0}
-          />
-        ))}
-      </g>
-    )
-  }
 
   const handles = [
     { name: "top-left", x: rect.x, y: rect.y },
@@ -809,8 +652,24 @@ export default function CapacityNodeEditor({
 
             {pairs.map((pair, i) => (
               <g key={`pair-${i}`}>
-                {renderPoint(pair.entry, i, "entry")}
-                {renderPoint(pair.exit, i, "exit")}
+                <PortPoint
+                  pointDef={pair.entry}
+                  rect={rect}
+                  pairIndex={i}
+                  pointType="entry"
+                  selected={selected}
+                  onMouseDown={handlePointMouseDown}
+                  onClick={handlePointClick}
+                />
+                <PortPoint
+                  pointDef={pair.exit}
+                  rect={rect}
+                  pairIndex={i}
+                  pointType="exit"
+                  selected={selected}
+                  onMouseDown={handlePointMouseDown}
+                  onClick={handlePointClick}
+                />
               </g>
             ))}
 
@@ -832,66 +691,13 @@ export default function CapacityNodeEditor({
             ))}
           </g>
 
-          {/* Metrics Card - Fixed position at top-right */}
-          <foreignObject x={svgWidth - 240} y="20" width="220" height="140">
-            <div
-              style={{
-                backgroundColor: "rgba(30, 41, 59, 0.95)",
-                border: "1px solid #60a5fa",
-                borderRadius: "8px",
-                padding: "12px",
-                color: "white",
-                fontFamily: "monospace",
-                fontSize: "12px",
-              }}
-            >
-              <div
-                style={{
-                  fontWeight: "bold",
-                  marginBottom: "8px",
-                  color: "#60a5fa",
-                }}
-              >
-                Node Metrics
-              </div>
-              <div
-                style={{ display: "flex", flexDirection: "column", gap: "6px" }}
-              >
-                <div>
-                  <span style={{ color: "#94a3b8" }}>Connections:</span>{" "}
-                  <span style={{ fontWeight: "bold" }}>
-                    {metrics.totalConnections}
-                  </span>
-                </div>
-                <div>
-                  <span style={{ color: "#94a3b8" }}>Layer Changes:</span>{" "}
-                  <span style={{ fontWeight: "bold" }}>
-                    {metrics.layerChanges}
-                  </span>
-                </div>
-                <div>
-                  <span style={{ color: "#94a3b8" }}>Capacity:</span>{" "}
-                  <span style={{ fontWeight: "bold" }}>{metrics.capacity}</span>
-                </div>
-                <div>
-                  <span style={{ color: "#94a3b8" }}>Fail Prob:</span>{" "}
-                  <span
-                    style={{
-                      fontWeight: "bold",
-                      color:
-                        Number(metrics.probabilityOfFailure) > 80
-                          ? "#ef4444"
-                          : Number(metrics.probabilityOfFailure) > 50
-                            ? "#f97316"
-                            : "#22c55e",
-                    }}
-                  >
-                    {metrics.probabilityOfFailure}%
-                  </span>
-                </div>
-              </div>
-            </div>
-          </foreignObject>
+          {/* Metrics Card - Fixed position at top-left */}
+          <MetricsCard
+            totalConnections={metrics.totalConnections}
+            layerChanges={metrics.layerChanges}
+            capacity={metrics.capacity}
+            probabilityOfFailure={metrics.probabilityOfFailure}
+          />
         </svg>
 
         {selectedPoint && selected && (
