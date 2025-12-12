@@ -34,7 +34,11 @@ import { NetToPointPairsSolver2_OffBoardConnection } from "./NetToPointPairsSolv
 import { RectDiffSolver } from "@tscircuit/rectdiff"
 import { TraceSimplificationSolver } from "./TraceSimplificationSolver/TraceSimplificationSolver"
 import { AvailableSegmentPointSolver } from "./AvailableSegmentPointSolver/AvailableSegmentPointSolver"
-import { PortPointPathingSolver } from "./PortPointPathingSolver/PortPointPathingSolver"
+import {
+  PortPointPathingSolver,
+  InputNodeWithPortPoints,
+  InputPortPoint,
+} from "./PortPointPathingSolver/PortPointPathingSolver"
 
 interface CapacityMeshSolverOptions {
   capacityDepth?: number
@@ -194,14 +198,56 @@ export class AutoroutingPipelineSolver extends BaseSolver {
     definePipelineStep(
       "portPointPathingSolver",
       PortPointPathingSolver,
-      (cms) => [
-        {
-          simpleRouteJson: cms.srjWithPointPairs!,
-          nodes: cms.capacityNodes!,
-          edges: cms.capacityEdges || [],
-          colorMap: cms.colorMap,
-        },
-      ],
+      (cms) => {
+        // Convert capacity nodes and segment points to InputNodeWithPortPoints
+        const inputNodes: InputNodeWithPortPoints[] = cms.capacityNodes!.map(
+          (node) => ({
+            capacityMeshNodeId: node.capacityMeshNodeId,
+            center: node.center,
+            width: node.width,
+            height: node.height,
+            portPoints: [] as InputPortPoint[],
+            availableZ: node.availableZ,
+            _containsTarget: node._containsTarget,
+            _containsObstacle: node._containsObstacle,
+          }),
+        )
+
+        // Build a map for quick lookup
+        const nodeMap = new Map(
+          inputNodes.map((n) => [n.capacityMeshNodeId, n]),
+        )
+
+        // Add port points from the available segment point solver
+        const segmentPointSolver = cms.availableSegmentPointSolver!
+        for (const segment of segmentPointSolver.sharedEdgeSegments) {
+          for (const segmentPortPoint of segment.portPoints) {
+            const [nodeId1, nodeId2] = segmentPortPoint.nodeIds
+            const inputPortPoint: InputPortPoint = {
+              portPointId: segmentPortPoint.segmentPortPointId,
+              x: segmentPortPoint.x,
+              y: segmentPortPoint.y,
+              z: segmentPortPoint.availableZ[0] ?? 0,
+              connectionNodeIds: [nodeId1, nodeId2],
+            }
+
+            // Add to first node
+            const node1 = nodeMap.get(nodeId1)
+            if (node1) {
+              node1.portPoints.push(inputPortPoint)
+            }
+            // Note: Don't add to second node - the solver will handle the shared edge
+          }
+        }
+
+        return [
+          {
+            simpleRouteJson: cms.srjWithPointPairs!,
+            inputNodes,
+            colorMap: cms.colorMap,
+          },
+        ]
+      },
     ),
     definePipelineStep("highDensityRouteSolver", HighDensitySolver, (cms) => [
       {
@@ -458,8 +504,8 @@ export class AutoroutingPipelineSolver extends BaseSolver {
         if (!connection.path) continue
         lines.push({
           points: connection.path.map((candidate) => ({
-            x: candidate.node.center.x,
-            y: candidate.node.center.y,
+            x: candidate.point.x,
+            y: candidate.point.y,
           })),
           strokeColor: this.colorMap[connection.connection.name],
         })
