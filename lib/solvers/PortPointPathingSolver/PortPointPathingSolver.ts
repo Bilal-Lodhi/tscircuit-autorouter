@@ -245,11 +245,7 @@ export class PortPointPathingSolver extends BaseSolver {
     return nodeId1 < nodeId2 ? `${nodeId1}:${nodeId2}` : `${nodeId2}:${nodeId1}`
   }
 
-  /**
-   * Penalty for using an edge based on port point usage count.
-   * Returns (X**2) * NODE_REUSE_FACTOR where X is the number of times this port point has been used.
-   */
-  private getEdgeCapacityPenalty(
+  private getReusePenalty(
     fromNode: CapacityMeshNode,
     toNode: CapacityMeshNode,
   ): number {
@@ -354,9 +350,9 @@ export class PortPointPathingSolver extends BaseSolver {
       entryPortPoint,
       exitPortPoint,
     ])
-    const edgePenalty = this.getEdgeCapacityPenalty(prevCandidate.node, node)
+    const edgePenalty = this.getReusePenalty(prevCandidate.node, node)
 
-    return prevCandidate.g + distanceCost + pfPenalty + edgePenalty
+    return prevCandidate.g + 0.25 + distanceCost + pfPenalty + edgePenalty
   }
 
   private computeH(
@@ -944,10 +940,7 @@ export class PortPointPathingSolver extends BaseSolver {
             hypotheticalPortPoints,
           )
           const edgePenalty = candidate.prevCandidate
-            ? this.getEdgeCapacityPenalty(
-                candidate.prevCandidate.node,
-                candidate.node,
-              )
+            ? this.getReusePenalty(candidate.prevCandidate.node, candidate.node)
             : 0
 
           // Draw a circle at the head of each candidate (at the port point location)
