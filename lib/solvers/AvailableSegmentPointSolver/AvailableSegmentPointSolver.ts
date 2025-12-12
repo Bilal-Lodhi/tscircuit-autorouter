@@ -155,20 +155,21 @@ export class AvailableSegmentPointSolver extends BaseSolver {
     const dx = overlap.end.x - overlap.start.x
     const dy = overlap.end.y - overlap.start.y
 
-    // Normalize direction vector
-    const len = Math.sqrt(dx * dx + dy * dy)
-    const ndx = len > 0 ? dx / len : 0
-    const ndy = len > 0 ? dy / len : 0
-
-    // Calculate start position with margin
-    const startX = overlap.start.x + ndx * edgeMargin
-    const startY = overlap.start.y + ndy * edgeMargin
-
     for (let i = 0; i < maxPortPoints; i++) {
-      // Position at evenly spaced intervals within the effective segment (after margins)
-      const fraction = maxPortPoints === 1 ? 0.5 : i / (maxPortPoints - 1)
-      const x = startX + ndx * effectiveLength * fraction
-      const y = startY + ndy * effectiveLength * fraction
+      // Position at evenly spaced intervals, centered on the segment
+      // For a single point, place it at the center; for multiple points, distribute evenly with margins
+      let fraction: number
+      if (segmentLength === 0) {
+        fraction = 0.5
+      } else if (maxPortPoints === 1) {
+        fraction = 0.5
+      } else {
+        fraction =
+          (edgeMargin + (effectiveLength * i) / (maxPortPoints - 1)) /
+          segmentLength
+      }
+      const x = overlap.start.x + dx * fraction
+      const y = overlap.start.y + dy * fraction
 
       // Create a separate port point for each available layer
       for (const z of availableZ) {
