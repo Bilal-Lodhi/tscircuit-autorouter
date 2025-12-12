@@ -20,8 +20,8 @@ export function visualizePointPathSolver(
   for (const node of solver.inputNodes) {
     const pf = solver.computeNodePf(node)
     const red = Math.min(255, Math.floor(pf * 512))
-    const green = Math.max(0, 255 - Math.floor(pf * 512))
-    const color = `rgba(${red}, ${green}, 0, 0.3)`
+    const greenAndBlue = Math.max(0, 255 - Math.floor(pf * 512))
+    const color = `rgba(${red}, ${greenAndBlue}, ${greenAndBlue}, 0.3)`
 
     const nodeWithPortPoints = solver.buildNodeWithPortPointsForCrossing(node)
     const crossings = getIntraNodeCrossings(nodeWithPortPoints)

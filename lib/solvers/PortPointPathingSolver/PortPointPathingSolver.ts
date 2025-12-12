@@ -112,17 +112,17 @@ export class PortPointPathingSolver extends BaseSolver {
   PORT_POINT_REUSE_FACTOR = 4
 
   /** Multiplied by Pf**2 to get node probability penalty */
-  NODE_PF_FACTOR = 10
+  NODE_PF_FACTOR = 10000
 
   /** Cost of adding a candidate to the path */
-  BASE_CANDIDATE_COST = 0.05
+  BASE_CANDIDATE_COST = 0.00001
 
   /** Cost penalty for changing layers */
   Z_DIST_COST = 0
 
   colorMap: Record<string, string>
 
-  GREEDY_MULTIPLIER = 1
+  GREEDY_MULTIPLIER = 1.1
   MAX_CANDIDATES_IN_MEMORY = 50_000
 
   // Current pathing state
