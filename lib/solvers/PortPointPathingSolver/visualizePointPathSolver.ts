@@ -3,6 +3,8 @@ import type { PortPointPathingSolver } from "./PortPointPathingSolver"
 import { getIntraNodeCrossings } from "../../utils/getIntraNodeCrossings"
 import { safeTransparentize } from "../colors"
 import type { PortPointCandidate } from "./PortPointPathingSolver"
+import type { PortPoint } from "../../types/high-density-types"
+import { calculateNodeProbabilityOfFailure } from "../UnravelSolver/calculateCrossingProbabilityOfFailure"
 
 export function visualizePointPathSolver(
   solver: PortPointPathingSolver,
@@ -183,6 +185,56 @@ export function visualizePointPathSolver(
 
       if (candidatePath.length >= 1) {
         const head = candidatePath[candidatePath.length - 1]
+
+        // Compute the candidate's cost breakdown (what would happen if accepted)
+        let costPf = 0
+        let pf = 0
+        let xSame = 0
+        let xTransition = 0
+        let xLC = 0
+
+        const targetNode = solver.nodeMap.get(candidate.currentNodeId)
+        if (targetNode && candidate.prevCandidate && candidate.portPoint) {
+          const connectionName = currentConnection.connection.name
+
+          // Create hypothetical port points for crossing calculation
+          const entryPortPoint: PortPoint = {
+            x: candidate.prevCandidate.point.x,
+            y: candidate.prevCandidate.point.y,
+            z: candidate.prevCandidate.z,
+            connectionName,
+          }
+          const exitPortPoint: PortPoint = {
+            x: candidate.portPoint.x,
+            y: candidate.portPoint.y,
+            z: candidate.portPoint.z,
+            connectionName,
+          }
+
+          const nodeWithPortPoints = solver.buildNodeWithPortPointsForCrossing(
+            targetNode,
+            [entryPortPoint, exitPortPoint],
+          )
+          const crossings = getIntraNodeCrossings(nodeWithPortPoints)
+
+          xSame = crossings.numSameLayerCrossings
+          xTransition = crossings.numTransitionPairCrossings
+          xLC = crossings.numEntryExitLayerChanges
+
+          const capacityMeshNode = solver.capacityMeshNodeMap.get(
+            targetNode.capacityMeshNodeId,
+          )
+          if (capacityMeshNode) {
+            pf = calculateNodeProbabilityOfFailure(
+              capacityMeshNode,
+              xSame,
+              xLC,
+              xTransition,
+            )
+            costPf = pf ** 2 * solver.NODE_PF_FACTOR
+          }
+        }
+
         graphics.circles!.push({
           center: head,
           radius: 0.03,
@@ -194,6 +246,9 @@ export function visualizePointPathSolver(
             `h: ${candidate.h.toFixed(2)}`,
             `z: ${candidate.z}`,
             `node: ${candidate.currentNodeId}`,
+            `Cost(Pf): ${costPf.toFixed(3)}`,
+            `Pf: ${pf.toFixed(3)}`,
+            `xSame: ${xSame}, xTrans: ${xTransition}, xLC: ${xLC}`,
           ].join("\n"),
         })
       }
