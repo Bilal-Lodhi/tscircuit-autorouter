@@ -162,23 +162,23 @@ export class AutoroutingPipelineSolver extends BaseSolver {
         },
       },
     ),
-    definePipelineStep(
-      "deadEndSolver",
-      DeadEndSolver,
-      (cms) => [{ nodes: cms.capacityNodes!, edges: cms.capacityEdges! }],
-      {
-        onSolved: (cms) => {
-          const removedNodeIds = cms.deadEndSolver?.removedNodeIds!
+    // definePipelineStep(
+    //   "deadEndSolver",
+    //   DeadEndSolver,
+    //   (cms) => [{ nodes: cms.capacityNodes!, edges: cms.capacityEdges! }],
+    //   {
+    //     onSolved: (cms) => {
+    //       const removedNodeIds = cms.deadEndSolver?.removedNodeIds!
 
-          cms.capacityNodes = cms.capacityNodes!.filter(
-            (n) => !removedNodeIds.has(n.capacityMeshNodeId),
-          )
-          cms.capacityEdges = cms.capacityEdges!.filter((e) =>
-            e.nodeIds.every((nodeId) => !removedNodeIds.has(nodeId)),
-          )
-        },
-      },
-    ),
+    //       cms.capacityNodes = cms.capacityNodes!.filter(
+    //         (n) => !removedNodeIds.has(n.capacityMeshNodeId),
+    //       )
+    //       cms.capacityEdges = cms.capacityEdges!.filter((e) =>
+    //         e.nodeIds.every((nodeId) => !removedNodeIds.has(nodeId)),
+    //       )
+    //     },
+    //   },
+    // ),
     definePipelineStep(
       "availableSegmentPointSolver",
       AvailableSegmentPointSolver,
