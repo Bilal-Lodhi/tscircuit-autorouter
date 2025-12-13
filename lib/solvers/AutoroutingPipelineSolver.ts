@@ -161,16 +161,16 @@ export class AutoroutingPipelineSolver extends BaseSolver {
     //     },
     //   },
     // ),
-    definePipelineStep(
-      "strawSolver",
-      StrawSolver,
-      (cms) => [{ nodes: cms.capacityNodes! }],
-      {
-        onSolved: (cms) => {
-          cms.capacityNodes = cms.strawSolver?.getResultNodes()!
-        },
-      },
-    ),
+    // definePipelineStep(
+    //   "strawSolver",
+    //   StrawSolver,
+    //   (cms) => [{ nodes: cms.capacityNodes! }],
+    //   {
+    //     onSolved: (cms) => {
+    //       cms.capacityNodes = cms.strawSolver?.getResultNodes()!
+    //     },
+    //   },
+    // ),
     definePipelineStep(
       "edgeSolver",
       CapacityMeshEdgeSolver2_NodeTreeOptimization,
