@@ -49,13 +49,31 @@ export interface MultiSectionPortPointOptimizerParams {
 const OPTIMIZATION_SCHEDULE: (PortPointPathingHyperParameters & {
   EXPANSION_DEGREES: number
 })[] = [
+  // {
+  //   SHUFFLE_SEED: 1,
+  //   CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+  //   EXPANSION_DEGREES: 3,
+  //   MEMORY_PF_FACTOR: 20,
+  //   NODE_PF_FACTOR: 5,
+  //   // GREEDY_MULTIPLIER: 10,
+  // },
   {
-    SHUFFLE_SEED: 1,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
-    EXPANSION_DEGREES: 5,
-    MEMORY_PF_FACTOR: 20,
-    NODE_PF_FACTOR: 30,
-    // GREEDY_MULTIPLIER: 3,
+    SHUFFLE_SEED: 2,
+    CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
+    EXPANSION_DEGREES: 6,
+    MEMORY_PF_FACTOR: 1,
+    NODE_PF_FACTOR: 0,
+    GREEDY_MULTIPLIER: 5,
+    // GREEDY_MULTIPLIER: 10,
+  },
+  {
+    SHUFFLE_SEED: 3,
+    CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
+    EXPANSION_DEGREES: 6,
+    MEMORY_PF_FACTOR: 0,
+    NODE_PF_FACTOR: 1,
+    GREEDY_MULTIPLIER: 5,
+    // GREEDY_MULTIPLIER: 10,
   },
   // {
   //   SHUFFLE_SEED: 1,
@@ -126,10 +144,10 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
   sectionAttempts: number = 0
 
   /** Maximum number of attempts per node */
-  MAX_NODE_ATTEMPTS = OPTIMIZATION_SCHEDULE.length
+  MAX_ATTEMPTS_PER_NODE = 50
 
   /** Maximum total number of section optimization attempts */
-  MAX_SECTION_ATTEMPTS = 1000
+  MAX_SECTION_ATTEMPTS = 10000
 
   /** Acceptable probability of failure threshold */
   ACCEPTABLE_PF = 0.01
@@ -320,7 +338,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     for (const [nodeId, pf] of this.nodePfMap.entries()) {
       // Reduce effective Pf based on number of attempts
       const attempts = this.attemptsToFixNode.get(nodeId) ?? 0
-      const pfReduced = pf * (1 - attempts / this.MAX_NODE_ATTEMPTS)
+      const pfReduced = pf * (1 - attempts / this.MAX_ATTEMPTS_PER_NODE)
 
       if (pfReduced > highestPf) {
         highestPf = pf
