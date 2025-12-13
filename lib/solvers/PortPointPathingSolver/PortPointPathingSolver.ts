@@ -133,7 +133,7 @@ export class PortPointPathingSolver extends BaseSolver {
   Z_DIST_COST = 0
 
   /** Penalty factor for port points that are far from the center of the segment */
-  CENTER_OFFSET_DIST_PENALTY_FACTOR = 100
+  CENTER_OFFSET_DIST_PENALTY_FACTOR = 10
 
   colorMap: Record<string, string>
 
