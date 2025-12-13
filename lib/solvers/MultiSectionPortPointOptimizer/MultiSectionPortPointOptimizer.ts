@@ -50,7 +50,16 @@ interface OptimizationParams {
 
 const OPTIMIZATION_SCHEDULE: OptimizationParams[] = [
   { SHUFFLE_SEED: 0, EXPANSION_DEGREES: 3 },
-  { SHUFFLE_SEED: 1, EXPANSION_DEGREES: 7 },
+  { SHUFFLE_SEED: 1, EXPANSION_DEGREES: 3 },
+  { SHUFFLE_SEED: 2, EXPANSION_DEGREES: 3 },
+  { SHUFFLE_SEED: 3, EXPANSION_DEGREES: 3 },
+  { SHUFFLE_SEED: 4, EXPANSION_DEGREES: 3 },
+  { SHUFFLE_SEED: 5, EXPANSION_DEGREES: 3 },
+  { SHUFFLE_SEED: 6, EXPANSION_DEGREES: 5 },
+  { SHUFFLE_SEED: 7, EXPANSION_DEGREES: 5 },
+  { SHUFFLE_SEED: 8, EXPANSION_DEGREES: 5 },
+  { SHUFFLE_SEED: 9, EXPANSION_DEGREES: 7 },
+  { SHUFFLE_SEED: 10, EXPANSION_DEGREES: 7 },
 ]
 
 /**
@@ -140,11 +149,17 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     // Initialize Pf map
     this.nodePfMap = this.computeInitialPfMap()
 
+    // Compute initial board score
+    const initialBoardScore = this.computeBoardScore()
+
     // Initialize stats
     this.stats.successfulOptimizations = 0
     this.stats.failedOptimizations = 0
     this.stats.nodesExamined = 0
     this.stats.sectionAttempts = 0
+    this.stats.initialBoardScore = initialBoardScore
+    this.stats.currentBoardScore = initialBoardScore
+    this.stats.sectionScores = {} as Record<string, number>
   }
 
   /**
@@ -172,6 +187,15 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     }
 
     return pfMap
+  }
+
+  /**
+   * Compute the score for the ENTIRE board (all nodes with port points).
+   * Lower scores are better.
+   */
+  computeBoardScore(): number {
+    const allNodesWithPortPoints = this.getNodesWithPortPoints()
+    return computeSectionScore(allNodesWithPortPoints, this.capacityMeshNodeMap)
   }
 
   /**
@@ -418,7 +442,8 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
               capacityMeshNodes: this.currentSection.capacityMeshNodes,
               colorMap: this.colorMap,
             })
-            this.activeSubSolver.hyperParameters.SHUFFLE_SEED = params.SHUFFLE_SEED
+            this.activeSubSolver.hyperParameters.SHUFFLE_SEED =
+              params.SHUFFLE_SEED
           } else {
             // All schedule params exhausted, move on
             this.stats.failedOptimizations++
@@ -430,19 +455,20 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
           return
         }
 
-        // Sub-solver succeeded - compute new score
+        // Sub-solver succeeded - compute new section score (for quick comparison)
         const newNodesWithPortPoints =
           this.activeSubSolver.getNodesWithPortPoints()
-        const newScore = computeSectionScore(
+        const newSectionScore = computeSectionScore(
           newNodesWithPortPoints,
           this.capacityMeshNodeMap,
         )
 
-        // Compare with original score (lower is better)
-        if (newScore < this.sectionScoreBeforeOptimization) {
-          // Found better solution - reattach
-          this.stats.successfulOptimizations++
+        // Compare section scores first (lower is better)
+        if (newSectionScore < this.sectionScoreBeforeOptimization) {
+          // Section score improved - tentatively apply and check board score
+          const previousBoardScore = this.stats.currentBoardScore as number
 
+          // Apply the section changes
           this.reattachSection(
             this.currentSection!,
             this.activeSubSolver.connectionsWithResults,
@@ -452,6 +478,24 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
 
           // Recompute Pf for affected nodes
           this.recomputePfForNodes(this.currentSection!.nodeIds)
+
+          // Compute the new board score AFTER applying the section
+          const newBoardScore = this.computeBoardScore()
+
+          // Only count as successful if the BOARD score actually improved
+          if (newBoardScore < previousBoardScore) {
+            this.stats.successfulOptimizations++
+            this.stats.currentBoardScore = newBoardScore
+
+            // Record the board score after this section optimization
+            const sectionKey = `section${this.stats.successfulOptimizations}`
+            ;(this.stats.sectionScores as Record<string, number>)[sectionKey] =
+              newBoardScore
+          } else {
+            // Board score didn't improve - this is actually a failed optimization
+            // Note: We've already applied the changes, but they didn't help overall
+            this.stats.failedOptimizations++
+          }
 
           // Reset and move on
           this.activeSubSolver = null
@@ -483,7 +527,8 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
               capacityMeshNodes: this.currentSection.capacityMeshNodes,
               colorMap: this.colorMap,
             })
-            this.activeSubSolver.hyperParameters.SHUFFLE_SEED = params.SHUFFLE_SEED
+            this.activeSubSolver.hyperParameters.SHUFFLE_SEED =
+              params.SHUFFLE_SEED
           } else {
             // All schedule params exhausted without improvement
             this.stats.failedOptimizations++

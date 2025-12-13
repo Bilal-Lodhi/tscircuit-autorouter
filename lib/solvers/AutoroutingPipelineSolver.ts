@@ -280,7 +280,8 @@ export class AutoroutingPipelineSolver extends BaseSolver {
             colorMap: cms.colorMap,
             initialConnectionResults: portPointSolver.connectionsWithResults,
             initialAssignedPortPoints: portPointSolver.assignedPortPoints,
-            initialNodeAssignedPortPoints: portPointSolver.nodeAssignedPortPoints,
+            initialNodeAssignedPortPoints:
+              portPointSolver.nodeAssignedPortPoints,
           },
         ]
       },
@@ -288,7 +289,9 @@ export class AutoroutingPipelineSolver extends BaseSolver {
     definePipelineStep("highDensityRouteSolver", HighDensitySolver, (cms) => [
       {
         nodePortPoints:
-          cms.multiSectionPortPointOptimizer?.getNodesWithPortPoints() ?? [],
+          cms.portPointPathingSolver?.getNodesWithPortPoints() ??
+          cms.multiSectionPortPointOptimizer?.getNodesWithPortPoints() ??
+          [],
         colorMap: cms.colorMap,
         connMap: cms.connMap,
         viaDiameter: cms.viaDiameter,
