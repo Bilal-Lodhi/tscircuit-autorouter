@@ -27,7 +27,7 @@ test("bugreport23 - should not fail with null z property in port points", async 
 
   console.log(solver.multiSectionPortPointOptimizer?.stats)
 
-  // -16.821964493704193 is best score seen so far
+  // -15.708515138607329 is best score seen so far
   expect(
     stackGraphicsVertically([
       ogViz,
