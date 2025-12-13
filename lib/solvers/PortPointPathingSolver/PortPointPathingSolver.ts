@@ -14,6 +14,14 @@ import type {
   NodeWithPortPoints,
 } from "../../types/high-density-types"
 import { visualizePointPathSolver } from "./visualizePointPathSolver"
+import {
+  cloneAndShuffleArray,
+  seededRandom,
+} from "lib/utils/cloneAndShuffleArray"
+
+export interface PortPointPathingHyperParameters {
+  SHUFFLE_SEED?: number
+}
 
 /**
  * An input port point without connectionName assigned yet.
@@ -90,6 +98,9 @@ export interface ConnectionPathResult {
  * 4. Uses pf-based cost function that considers crossings
  */
 export class PortPointPathingSolver extends BaseSolver {
+  hyperParameters: Partial<PortPointPathingHyperParameters> = {
+    SHUFFLE_SEED: 0,
+  }
   simpleRouteJson: SimpleRouteJson
   inputNodes: InputNodeWithPortPoints[]
 
@@ -242,8 +253,12 @@ export class PortPointPathingSolver extends BaseSolver {
     }
 
     // Sort by straight-line distance (shorter first)
-    connectionsWithResults.sort(
-      (a, b) => a.straightLineDistance - b.straightLineDistance,
+    // connectionsWithResults.sort(
+    //   (a, b) => a.straightLineDistance - b.straightLineDistance,
+    // )
+    cloneAndShuffleArray(
+      connectionsWithResults,
+      this.hyperParameters.SHUFFLE_SEED ?? 0,
     )
 
     return { connectionsWithResults, connectionNameToGoalNodeIds }
