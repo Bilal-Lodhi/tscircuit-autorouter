@@ -104,8 +104,14 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
   /** Number of attempts to fix each node */
   attemptsToFixNode: Map<CapacityMeshNodeId, number> = new Map()
 
+  /** Total number of section optimization attempts made */
+  sectionAttempts: number = 0
+
   /** Maximum number of attempts per node */
   MAX_NODE_ATTEMPTS = 2
+
+  /** Maximum total number of section optimization attempts */
+  MAX_SECTION_ATTEMPTS = 100
 
   /** Acceptable probability of failure threshold */
   ACCEPTABLE_PF = 0.05
@@ -138,6 +144,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     this.stats.successfulOptimizations = 0
     this.stats.failedOptimizations = 0
     this.stats.nodesExamined = 0
+    this.stats.sectionAttempts = 0
   }
 
   /**
@@ -296,30 +303,42 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
   }
 
   /**
-   * Create a SimpleRouteJson for just the section's connections
+   * Create a SimpleRouteJson for just the section's connections.
+   * IMPORTANT: Only includes connections where BOTH start and end target nodes
+   * are within the section. This ensures PortPointPathingSolver can route them correctly.
    */
   createSectionSimpleRouteJson(section: PortPointSection): SimpleRouteJson {
-    // Get connection names that pass through this section
-    const sectionConnectionNames = new Set(
-      section.sectionPaths.map((p) => p.connectionName),
-    )
+    // Find connections that are FULLY contained in the section
+    // (both start and end target nodes must be in the section)
+    const fullyContainedConnections: typeof this.simpleRouteJson.connections =
+      []
 
-    // Filter connections to only those in the section
-    const sectionConnections = this.simpleRouteJson.connections.filter((c) =>
-      sectionConnectionNames.has(c.name),
-    )
+    for (const result of this.connectionResults) {
+      if (!result.path || result.path.length === 0) continue
+
+      const [startNodeId, endNodeId] = result.nodeIds
+
+      // Check if both start and end nodes are in the section
+      const startInSection = section.nodeIds.has(startNodeId)
+      const endInSection = section.nodeIds.has(endNodeId)
+
+      if (startInSection && endInSection) {
+        fullyContainedConnections.push(result.connection)
+      }
+    }
 
     return {
       ...this.simpleRouteJson,
-      connections: sectionConnections,
+      connections: fullyContainedConnections,
     }
   }
 
   /**
-   * Reattach the optimized section results back to the main state
+   * Reattach the optimized section results back to the main state.
+   * Only called for connections that are FULLY contained in the section.
    */
   reattachSection(
-    section: PortPointSection,
+    _section: PortPointSection,
     newConnectionResults: ConnectionPathResult[],
     newAssignedPortPoints: Map<
       string,
@@ -340,11 +359,10 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     // Add new results
     this.connectionResults.push(...newConnectionResults)
 
-    // Update assigned port points for section nodes
-    for (const nodeId of section.nodeIds) {
-      // Clear old port points for this node
-      const oldPortPoints = this.nodeAssignedPortPoints.get(nodeId) ?? []
-      const remainingPortPoints = oldPortPoints.filter(
+    // Clear ALL port points for re-routed connections from ALL nodes
+    // (since we're replacing entire connections that are fully contained in the section)
+    for (const [nodeId, portPoints] of this.nodeAssignedPortPoints.entries()) {
+      const remainingPortPoints = portPoints.filter(
         (pp) => !reRoutedConnectionNames.has(pp.connectionName),
       )
       this.nodeAssignedPortPoints.set(nodeId, remainingPortPoints)
@@ -480,6 +498,13 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     }
 
     // No active sub-solver - find highest Pf node and start new optimization
+
+    // Check if we've exceeded the maximum number of section attempts
+    if (this.sectionAttempts >= this.MAX_SECTION_ATTEMPTS) {
+      this.solved = true
+      return
+    }
+
     const highestPfNodeId = this.findHighestPfNode()
 
     if (!highestPfNodeId) {
@@ -488,6 +513,8 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
       return
     }
 
+    this.sectionAttempts++
+    this.stats.sectionAttempts = this.sectionAttempts
     this.stats.nodesExamined++
 
     // Increment attempt counter
