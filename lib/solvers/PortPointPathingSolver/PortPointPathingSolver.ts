@@ -394,7 +394,6 @@ export class PortPointPathingSolver extends BaseSolver {
     point: { x: number; y: number },
     endGoalNodeId: CapacityMeshNodeId,
     currentZ: number,
-    distToCentermostPortOnZ: number,
   ): number {
     const endNode = this.nodeMap.get(endGoalNodeId)
     if (!endNode) return 0
@@ -402,9 +401,7 @@ export class PortPointPathingSolver extends BaseSolver {
     const distanceToGoal = distance(point, endNode.center)
     const needsLayerChange = !endNode.availableZ.includes(currentZ)
     const zChangeCost = needsLayerChange ? this.Z_DIST_COST : 0
-    const centerOffsetPenalty =
-      distToCentermostPortOnZ ** 2 * this.CENTER_OFFSET_DIST_PENALTY_FACTOR
-    return distanceToGoal + zChangeCost + centerOffsetPenalty
+    return distanceToGoal + zChangeCost
   }
 
   /**
@@ -694,7 +691,6 @@ export class PortPointPathingSolver extends BaseSolver {
         { x: portPoint.x, y: portPoint.y },
         endNodeId,
         portPoint.z,
-        portPoint.distToCentermostPortOnZ,
       )
       const f = g + h * this.GREEDY_MULTIPLIER
 
