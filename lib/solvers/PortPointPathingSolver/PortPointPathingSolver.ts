@@ -22,6 +22,7 @@ import {
 export interface PortPointPathingHyperParameters {
   SHUFFLE_SEED?: number
   CENTER_OFFSET_DIST_PENALTY_FACTOR_2?: number
+  GREEDY_MULTIPLIER?: number
 }
 
 /**
@@ -138,7 +139,9 @@ export class PortPointPathingSolver extends BaseSolver {
 
   colorMap: Record<string, string>
 
-  GREEDY_MULTIPLIER = 5
+  get GREEDY_MULTIPLIER() {
+    return this.hyperParameters.GREEDY_MULTIPLIER ?? 5
+  }
   MAX_CANDIDATES_IN_MEMORY = 50_000
 
   // Current pathing state

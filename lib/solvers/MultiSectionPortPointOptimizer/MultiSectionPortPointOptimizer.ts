@@ -47,6 +47,7 @@ interface OptimizationParams {
   SHUFFLE_SEED: number
   CENTER_OFFSET_DIST_PENALTY_FACTOR_2?: number
   EXPANSION_DEGREES: number
+  GREEDY_MULTIPLIER?: number
 }
 
 const OPTIMIZATION_SCHEDULE: OptimizationParams[] = [
@@ -83,7 +84,12 @@ const OPTIMIZATION_SCHEDULE: OptimizationParams[] = [
   // { SHUFFLE_SEED: 6, EXPANSION_DEGREES: 5 },
   // { SHUFFLE_SEED: 7, EXPANSION_DEGREES: 5 },
   // { SHUFFLE_SEED: 8, EXPANSION_DEGREES: 5 },
-  // { SHUFFLE_SEED: 9, EXPANSION_DEGREES: 7 },
+  {
+    SHUFFLE_SEED: 10,
+    EXPANSION_DEGREES: 8,
+    GREEDY_MULTIPLIER: 1.1,
+    CENTER_OFFSET_DIST_PENALTY_FACTOR_2: 0,
+  },
   // {
   //   SHUFFLE_SEED: 10,
   //   EXPANSION_DEGREES: 1000,
@@ -162,7 +168,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
   MAX_SECTION_ATTEMPTS = 1000
 
   /** Acceptable probability of failure threshold */
-  ACCEPTABLE_PF = 0.05
+  ACCEPTABLE_PF = 0.01
 
   constructor(params: MultiSectionPortPointOptimizerParams) {
     super()
@@ -196,9 +202,11 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     this.stats.failedOptimizations = 0
     this.stats.nodesExamined = 0
     this.stats.sectionAttempts = 0
+    this.stats.sectionScores = {
+      initial: initialBoardScore,
+    } as Record<string, number>
     this.stats.initialBoardScore = initialBoardScore
     this.stats.currentBoardScore = initialBoardScore
-    this.stats.sectionScores = {} as Record<string, number>
   }
 
   /**
@@ -500,6 +508,14 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
           newNodesWithPortPoints,
           this.capacityMeshNodeMap,
         )
+
+        // Record the section scores for this attempt (even if optimization fails)
+        const attemptKey = `attempt${this.sectionAttempts}`
+        ;(this.stats.sectionScores as Record<string, number>)[
+          `${attemptKey}_before`
+        ] = this.sectionScoreBeforeOptimization
+        ;(this.stats.sectionScores as Record<string, number>)[attemptKey] =
+          newSectionScore
 
         // Compare section scores first (lower is better)
         if (newSectionScore < this.sectionScoreBeforeOptimization) {
