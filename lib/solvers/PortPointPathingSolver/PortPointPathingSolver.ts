@@ -209,7 +209,7 @@ export class PortPointPathingSolver extends BaseSolver {
   }
 
   getConnectionsWithNodes() {
-    const connectionsWithResults: ConnectionPathResult[] = []
+    let connectionsWithResults: ConnectionPathResult[] = []
     const nodesWithTargets = this.inputNodes.filter((n) => n._containsTarget)
     const connectionNameToGoalNodeIds = new Map<string, CapacityMeshNodeId[]>()
 
@@ -260,7 +260,7 @@ export class PortPointPathingSolver extends BaseSolver {
     // connectionsWithResults.sort(
     //   (a, b) => a.straightLineDistance - b.straightLineDistance,
     // )
-    cloneAndShuffleArray(
+    connectionsWithResults = cloneAndShuffleArray(
       connectionsWithResults,
       this.hyperParameters.SHUFFLE_SEED ?? 0,
     )
