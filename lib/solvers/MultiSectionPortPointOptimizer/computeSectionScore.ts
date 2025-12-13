@@ -6,16 +6,16 @@ import { calculateNodeProbabilityOfFailure } from "../UnravelSolver/calculateCro
 /**
  * Computes a log-based score for a section of nodes with port points.
  *
- * The score is -logSuccess where logSuccess = sum(log(1 - Pf)) for all contributing nodes.
- * This represents the negative log probability of all nodes succeeding.
- * Lower scores are better (closer to 0 means higher probability of success).
+ * The score is logSuccess = sum(log(1 - Pf)) for all contributing nodes.
+ * This represents the log probability of all nodes succeeding.
+ * Higher scores are better (closer to 0 means higher probability of success).
  *
- * Note: We use -logSuccess directly instead of computing log(1 - exp(logSuccess)) to avoid
+ * Note: We return logSuccess directly instead of computing log(1 - exp(logSuccess)) to avoid
  * numerical precision issues when logSuccess is very negative (where exp(logSuccess) underflows to 0).
  *
  * @param nodesWithPortPoints - Nodes in the section with their assigned port points
  * @param capacityMeshNodeMap - Map from node ID to capacity mesh node for Pf calculation
- * @returns Score where lower is better (0 = perfect, higher = more failures expected)
+ * @returns Score where higher is better (0 = perfect, more negative = more failures expected)
  */
 export function computeSectionScore(
   nodesWithPortPoints: NodeWithPortPoints[],
@@ -50,10 +50,10 @@ export function computeSectionScore(
     logSuccess += log1mPf
   }
 
-  // Return -logSuccess so that lower scores are better
+  // Return logSuccess directly (higher is better)
   // When logSuccess is 0 (all Pf=0 or no contributing nodes), score is 0 (perfect)
-  // When logSuccess is negative (some failures possible), score is positive (worse)
-  return -logSuccess
+  // When logSuccess is negative (some failures possible), score is worse
+  return logSuccess
 }
 
 /**

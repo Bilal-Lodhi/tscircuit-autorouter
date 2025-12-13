@@ -524,8 +524,8 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
 
         const attemptKey = `attempt${this.sectionAttempts}`
 
-        // Compare section scores first (lower is better)
-        if (newSectionScore < this.sectionScoreBeforeOptimization) {
+        // Compare section scores first (higher is better)
+        if (newSectionScore > this.sectionScoreBeforeOptimization) {
           // Section score improved - tentatively apply and check board score
           const previousBoardScore = this.stats.currentBoardScore as number
 
@@ -556,8 +556,8 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
           ;(this.stats.sectionScores as Record<string, number>)[attemptKey] =
             newBoardScore
 
-          // Only count as successful if the BOARD score actually improved
-          if (newBoardScore < previousBoardScore) {
+          // Only count as successful if the BOARD score actually improved (higher is better)
+          if (newBoardScore > previousBoardScore) {
             this.stats.successfulOptimizations++
             this.stats.currentBoardScore = newBoardScore
           } else {
