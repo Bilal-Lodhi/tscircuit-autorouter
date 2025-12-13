@@ -51,7 +51,7 @@ export function visualizePointPathSolver(
       label: [
         portPointId,
         `conn: ${assignment?.connectionName}`,
-        `cd: ${portPoint.distToCenterOfSegment}`,
+        `cd: ${portPoint.distToCentermostPortOnZ}`,
         `connects: ${portPoint.connectionNodeIds.join(",")}`,
       ]
         .filter(Boolean)

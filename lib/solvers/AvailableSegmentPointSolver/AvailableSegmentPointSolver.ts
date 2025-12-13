@@ -18,8 +18,8 @@ export interface SegmentPortPoint {
   /** The connection name currently using this port point, or null if unused */
   connectionName: string | null
   rootConnectionName?: string
-  /** XY distance from the center of the shared edge segment */
-  distToCenterOfSegment: number
+  /** XY distance to the centermost port on this Z level (centermost port has distance 0) */
+  distToCentermostPortOnZ: number
 }
 
 export interface SharedEdgeSegment {
@@ -161,9 +161,10 @@ export class AvailableSegmentPointSolver extends BaseSolver {
     const centerX = (overlap.start.x + overlap.end.x) / 2
     const centerY = (overlap.start.y + overlap.end.y) / 2
 
+    // First pass: compute all XY positions and find which is closest to segment center
+    const xyPositions: Array<{ x: number; y: number; distToCenter: number }> =
+      []
     for (let i = 0; i < maxPortPoints; i++) {
-      // Position at evenly spaced intervals, centered on the segment
-      // For a single point, place it at the center; for multiple points, distribute evenly with margins
       let fraction: number
       if (segmentLength === 0) {
         fraction = 0.5
@@ -176,10 +177,22 @@ export class AvailableSegmentPointSolver extends BaseSolver {
       }
       const x = overlap.start.x + dx * fraction
       const y = overlap.start.y + dy * fraction
+      const distToCenter = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2)
+      xyPositions.push({ x, y, distToCenter })
+    }
 
-      // Calculate XY distance from center of the segment
-      const distToCenterOfSegment = Math.sqrt(
-        (x - centerX) ** 2 + (y - centerY) ** 2,
+    // Find the centermost port position (smallest distance to segment center)
+    const centermostPos = xyPositions.reduce((best, pos) =>
+      pos.distToCenter < best.distToCenter ? pos : best,
+    )
+
+    // Second pass: create port points with distance to centermost port
+    for (let i = 0; i < maxPortPoints; i++) {
+      const { x, y } = xyPositions[i]
+
+      // Calculate XY distance to the centermost port position
+      const distToCentermostPortOnZ = Math.sqrt(
+        (x - centermostPos.x) ** 2 + (y - centermostPos.y) ** 2,
       )
 
       // Create a separate port point for each available layer
@@ -192,7 +205,7 @@ export class AvailableSegmentPointSolver extends BaseSolver {
           nodeIds: [node1.capacityMeshNodeId, node2.capacityMeshNodeId],
           edgeId: edge.capacityMeshEdgeId,
           connectionName: null,
-          distToCenterOfSegment,
+          distToCentermostPortOnZ,
         }
         portPoints.push(portPoint)
       }
@@ -370,7 +383,7 @@ export class AvailableSegmentPointSolver extends BaseSolver {
             portPoint.segmentPortPointId,
             portPoint.connectionName,
             portPoint.availableZ.join(","),
-            `cd: ${portPoint.distToCenterOfSegment}`,
+            `cd: ${portPoint.distToCentermostPortOnZ}`,
             `connects: ${portPoint.nodeIds.join(",")}`,
           ]
             .filter(Boolean)
