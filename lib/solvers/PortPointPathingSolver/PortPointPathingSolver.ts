@@ -162,7 +162,7 @@ export class PortPointPathingSolver extends BaseSolver {
   MAX_CANDIDATES_IN_MEMORY = 50_000
 
   get MAX_ITERATIONS_PER_PATH() {
-    return this.hyperParameters.MAX_ITERATIONS_PER_PATH ?? 5e3
+    return this.hyperParameters.MAX_ITERATIONS_PER_PATH ?? 500
   }
 
   nodeMemoryPfMap: Map<CapacityMeshNodeId, number>
@@ -420,12 +420,8 @@ export class PortPointPathingSolver extends BaseSolver {
       portPoint.portPointId,
       rootConnectionName,
     )
-    let distToCentermostPortWithFocusShift =
+    const distToCentermostPortWithFocusShift =
       portPoint.distToCentermostPortOnZ - this.CENTER_OFFSET_FOCUS_SHIFT
-    if (distToCentermostPortWithFocusShift < 0) {
-      distToCentermostPortWithFocusShift =
-        1 - distToCentermostPortWithFocusShift
-    }
     const centerOffsetPenalty =
       distToCentermostPortWithFocusShift ** 2 *
       this.CENTER_OFFSET_DIST_PENALTY_FACTOR
