@@ -26,6 +26,7 @@ export interface PortPointPathingHyperParameters {
   NODE_PF_FACTOR?: number
 
   MEMORY_PF_FACTOR?: number
+  MAX_ITERATIONS_PER_PATH?: number
 }
 
 /**
@@ -155,10 +156,15 @@ export class PortPointPathingSolver extends BaseSolver {
   }
   MAX_CANDIDATES_IN_MEMORY = 50_000
 
+  get MAX_ITERATIONS_PER_PATH() {
+    return this.hyperParameters.MAX_ITERATIONS_PER_PATH ?? 5e3
+  }
+
   nodeMemoryPfMap: Map<CapacityMeshNodeId, number>
 
   // Current pathing state
   currentConnectionIndex = 0
+  currentPathIterations = 0
   candidates?: PortPointCandidate[] | null
   /** Tracks visited port point IDs to avoid revisiting */
   visitedPortPoints?: Set<string> | null
@@ -182,7 +188,7 @@ export class PortPointPathingSolver extends BaseSolver {
     hyperParameters?: Partial<PortPointPathingHyperParameters>
   }) {
     super()
-    this.MAX_ITERATIONS = 10e3
+    this.MAX_ITERATIONS = 20e3
     this.simpleRouteJson = simpleRouteJson
     this.inputNodes = inputNodes
     this.colorMap = colorMap ?? {}
@@ -592,11 +598,26 @@ export class PortPointPathingSolver extends BaseSolver {
       return
     }
 
+    // Check if we've exceeded max iterations for this path
+    this.currentPathIterations++
+    if (this.currentPathIterations > this.MAX_ITERATIONS_PER_PATH) {
+      console.error(
+        `Exceeded MAX_ITERATIONS_PER_PATH (${this.MAX_ITERATIONS_PER_PATH}) on connection ${nextConnection.connection.name}`,
+      )
+      this.currentConnectionIndex++
+      this.candidates = null
+      this.visitedPortPoints = null
+      this.currentPathIterations = 0
+      this.failed = true
+      return
+    }
+
     const [startNodeId, endNodeId] = nextConnection.nodeIds
     const startNode = this.nodeMap.get(startNodeId)
     const endNode = this.nodeMap.get(endNodeId)
     if (!startNode || !endNode) {
       this.currentConnectionIndex++
+      this.currentPathIterations = 0
       return
     }
 
@@ -642,6 +663,7 @@ export class PortPointPathingSolver extends BaseSolver {
       this.currentConnectionIndex++
       this.candidates = null
       this.visitedPortPoints = null
+      this.currentPathIterations = 0
       this.failed = true
       return
     }
@@ -679,6 +701,7 @@ export class PortPointPathingSolver extends BaseSolver {
       this.currentConnectionIndex++
       this.candidates = null
       this.visitedPortPoints = null
+      this.currentPathIterations = 0
       return
     }
 
