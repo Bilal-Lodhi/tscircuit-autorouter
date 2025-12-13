@@ -24,6 +24,8 @@ export interface PortPointPathingHyperParameters {
   CENTER_OFFSET_DIST_PENALTY_FACTOR?: number
   GREEDY_MULTIPLIER?: number
   NODE_PF_FACTOR?: number
+
+  MEMORY_PF_FACTOR?: number
 }
 
 /**
@@ -131,6 +133,10 @@ export class PortPointPathingSolver extends BaseSolver {
     return this.hyperParameters.NODE_PF_FACTOR ?? 50
   }
 
+  get MEMORY_PF_FACTOR() {
+    return this.hyperParameters.MEMORY_PF_FACTOR ?? 0
+  }
+
   /** Cost of adding a candidate to the path */
   BASE_CANDIDATE_COST = 0.4
 
@@ -149,6 +155,8 @@ export class PortPointPathingSolver extends BaseSolver {
   }
   MAX_CANDIDATES_IN_MEMORY = 50_000
 
+  nodeMemoryPfMap: Map<CapacityMeshNodeId, number>
+
   // Current pathing state
   currentConnectionIndex = 0
   candidates?: PortPointCandidate[] | null
@@ -163,12 +171,14 @@ export class PortPointPathingSolver extends BaseSolver {
     inputNodes,
     capacityMeshNodes,
     colorMap,
+    nodeMemoryPfMap,
     hyperParameters,
   }: {
     simpleRouteJson: SimpleRouteJson
     capacityMeshNodes: CapacityMeshNode[]
     inputNodes: InputNodeWithPortPoints[]
     colorMap?: Record<string, string>
+    nodeMemoryPfMap?: Map<CapacityMeshNodeId, number>
     hyperParameters?: Partial<PortPointPathingHyperParameters>
   }) {
     super()
@@ -179,6 +189,7 @@ export class PortPointPathingSolver extends BaseSolver {
     this.capacityMeshNodeMap = new Map(
       capacityMeshNodes.map((n) => [n.capacityMeshNodeId, n]),
     )
+    this.nodeMemoryPfMap = nodeMemoryPfMap ?? new Map()
     this.hyperParameters = hyperParameters ?? {
       SHUFFLE_SEED: 0,
     }

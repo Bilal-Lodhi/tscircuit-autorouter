@@ -50,10 +50,10 @@ const OPTIMIZATION_SCHEDULE: (PortPointPathingHyperParameters & {
   EXPANSION_DEGREES: number
 })[] = [
   {
-    SHUFFLE_SEED: 0,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
-    EXPANSION_DEGREES: 3,
-    GREEDY_MULTIPLIER: 3,
+    SHUFFLE_SEED: 1,
+    CENTER_OFFSET_DIST_PENALTY_FACTOR: 10,
+    EXPANSION_DEGREES: 5,
+    // GREEDY_MULTIPLIER: 3,
   },
   // {
   //   SHUFFLE_SEED: 1,
@@ -468,8 +468,8 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     return {
       ...OPTIMIZATION_SCHEDULE[attempt % OPTIMIZATION_SCHEDULE.length],
       SHUFFLE_SEED:
-        OPTIMIZATION_SCHEDULE[attempt % OPTIMIZATION_SCHEDULE.length]
-          .SHUFFLE_SEED +
+        (OPTIMIZATION_SCHEDULE[attempt % OPTIMIZATION_SCHEDULE.length]
+          .SHUFFLE_SEED ?? 0) +
         attempt * 1700,
     }
   }
