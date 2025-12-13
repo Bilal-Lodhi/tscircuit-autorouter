@@ -40,6 +40,7 @@ import {
   InputPortPoint,
 } from "./PortPointPathingSolver/PortPointPathingSolver"
 import { CapacityMeshNodeSolver2_NodeUnderObstacle } from "./CapacityMeshSolver/CapacityMeshNodeSolver2_NodesUnderObstacles"
+import { MultiSectionPortPointOptimizer } from "./MultiSectionPortPointOptimizer"
 
 interface CapacityMeshSolverOptions {
   capacityDepth?: number
@@ -93,6 +94,7 @@ export class AutoroutingPipelineSolver extends BaseSolver {
   traceSimplificationSolver?: TraceSimplificationSolver
   availableSegmentPointSolver?: AvailableSegmentPointSolver
   portPointPathingSolver?: PortPointPathingSolver
+  multiSectionPortPointOptimizer?: MultiSectionPortPointOptimizer
   viaDiameter: number
   minTraceWidth: number
 
@@ -264,10 +266,29 @@ export class AutoroutingPipelineSolver extends BaseSolver {
         ]
       },
     ),
+    definePipelineStep(
+      "multiSectionPortPointOptimizer",
+      MultiSectionPortPointOptimizer,
+      (cms) => {
+        const portPointSolver = cms.portPointPathingSolver!
+        return [
+          {
+            simpleRouteJson: cms.srjWithPointPairs!,
+            inputNodes: portPointSolver.inputNodes,
+            capacityMeshNodes: cms.capacityNodes!,
+            capacityMeshEdges: cms.capacityEdges!,
+            colorMap: cms.colorMap,
+            initialConnectionResults: portPointSolver.connectionsWithResults,
+            initialAssignedPortPoints: portPointSolver.assignedPortPoints,
+            initialNodeAssignedPortPoints: portPointSolver.nodeAssignedPortPoints,
+          },
+        ]
+      },
+    ),
     definePipelineStep("highDensityRouteSolver", HighDensitySolver, (cms) => [
       {
         nodePortPoints:
-          cms.portPointPathingSolver?.getNodesWithPortPoints() ?? [],
+          cms.multiSectionPortPointOptimizer?.getNodesWithPortPoints() ?? [],
         colorMap: cms.colorMap,
         connMap: cms.connMap,
         viaDiameter: cms.viaDiameter,
@@ -399,6 +420,7 @@ export class AutoroutingPipelineSolver extends BaseSolver {
     const availableSegmentPointViz =
       this.availableSegmentPointSolver?.visualize()
     const portPointPathingViz = this.portPointPathingSolver?.visualize()
+    const multiSectionOptViz = this.multiSectionPortPointOptimizer?.visualize()
     const highDensityViz = this.highDensityRouteSolver?.visualize()
     const highDensityStitchViz = this.highDensityStitchSolver?.visualize()
     const traceSimplificationViz = this.traceSimplificationSolver?.visualize()
@@ -472,6 +494,7 @@ export class AutoroutingPipelineSolver extends BaseSolver {
       deadEndViz,
       availableSegmentPointViz,
       portPointPathingViz,
+      multiSectionOptViz,
       highDensityViz ? combineVisualizations(problemViz, highDensityViz) : null,
       highDensityStitchViz,
       traceSimplificationViz,
