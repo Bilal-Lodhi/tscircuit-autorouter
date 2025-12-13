@@ -1,6 +1,7 @@
 export { MultiSectionPortPointOptimizer } from "./MultiSectionPortPointOptimizer"
 export { createPortPointSection } from "./createPortPointSection"
 export { visualizeSection } from "./visualizeSection"
+export { computeSectionScore, computeNodePf } from "./computeSectionScore"
 export type {
   PortPointSection,
   PortPointSectionParams,
