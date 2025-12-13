@@ -59,6 +59,12 @@ export function computeSectionScore(
   // Convert back to log probability of failure
   const logPf = log1mexp(logSuccess)
 
+  // Handle edge case where logPf is -Infinity (no contributing nodes or all have 0% failure)
+  // Return 0 (worst score) so this won't be considered an improvement over valid scores
+  if (!Number.isFinite(logPf)) {
+    return 0
+  }
+
   return logPf
 }
 

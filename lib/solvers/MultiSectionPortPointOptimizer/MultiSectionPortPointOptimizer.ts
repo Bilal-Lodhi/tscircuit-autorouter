@@ -10,6 +10,7 @@ import type {
   InputNodeWithPortPoints,
   InputPortPoint,
   ConnectionPathResult,
+  PortPointPathingHyperParameters,
 } from "../PortPointPathingSolver/PortPointPathingSolver"
 import { PortPointPathingSolver } from "../PortPointPathingSolver/PortPointPathingSolver"
 import {
@@ -53,18 +54,18 @@ interface OptimizationParams {
 const OPTIMIZATION_SCHEDULE: OptimizationParams[] = [
   {
     SHUFFLE_SEED: 0,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR_2: 0,
+    CENTER_OFFSET_DIST_PENALTY_FACTOR_2: 0.1,
     EXPANSION_DEGREES: 3,
   },
   {
     SHUFFLE_SEED: 1,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR_2: 0,
+    CENTER_OFFSET_DIST_PENALTY_FACTOR_2: 0.1,
     EXPANSION_DEGREES: 3,
   },
   {
     SHUFFLE_SEED: 2,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR_2: 0,
-    EXPANSION_DEGREES: 3,
+    CENTER_OFFSET_DIST_PENALTY_FACTOR_2: 0.1,
+    EXPANSION_DEGREES: 4,
   },
   // {
   //   SHUFFLE_SEED: 3,
@@ -84,12 +85,12 @@ const OPTIMIZATION_SCHEDULE: OptimizationParams[] = [
   // { SHUFFLE_SEED: 6, EXPANSION_DEGREES: 5 },
   // { SHUFFLE_SEED: 7, EXPANSION_DEGREES: 5 },
   // { SHUFFLE_SEED: 8, EXPANSION_DEGREES: 5 },
-  {
-    SHUFFLE_SEED: 10,
-    EXPANSION_DEGREES: 8,
-    GREEDY_MULTIPLIER: 1.1,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR_2: 0,
-  },
+  // {
+  //   SHUFFLE_SEED: 10,
+  //   EXPANSION_DEGREES: 8,
+  //   GREEDY_MULTIPLIER: 1.1,
+  //   CENTER_OFFSET_DIST_PENALTY_FACTOR_2: 0,
+  // },
   // {
   //   SHUFFLE_SEED: 10,
   //   EXPANSION_DEGREES: 1000,
@@ -202,9 +203,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     this.stats.failedOptimizations = 0
     this.stats.nodesExamined = 0
     this.stats.sectionAttempts = 0
-    this.stats.sectionScores = {
-      initial: initialBoardScore,
-    } as Record<string, number>
+    this.stats.sectionScores = {} as Record<string, number>
     this.stats.initialBoardScore = initialBoardScore
     this.stats.currentBoardScore = initialBoardScore
   }
@@ -404,6 +403,18 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     }
   }
 
+  getHyperParametersForAttempt(
+    attempt: number,
+  ): PortPointPathingHyperParameters {
+    return {
+      ...OPTIMIZATION_SCHEDULE[attempt % OPTIMIZATION_SCHEDULE.length],
+      SHUFFLE_SEED:
+        OPTIMIZATION_SCHEDULE[attempt % OPTIMIZATION_SCHEDULE.length]
+          .SHUFFLE_SEED +
+        attempt * 1700,
+    }
+  }
+
   /**
    * Reattach the optimized section results back to the main state.
    * Only called for connections that are FULLY contained in the section.
@@ -488,7 +499,9 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
               inputNodes: this.currentSection.inputNodes,
               capacityMeshNodes: this.currentSection.capacityMeshNodes,
               colorMap: this.colorMap,
-              hyperParameters: params,
+              hyperParameters: this.getHyperParametersForAttempt(
+                this.sectionAttempts,
+              ),
             })
           } else {
             // All schedule params exhausted, move on
@@ -509,18 +522,21 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
           this.capacityMeshNodeMap,
         )
 
-        // Record the section scores for this attempt (even if optimization fails)
         const attemptKey = `attempt${this.sectionAttempts}`
-        ;(this.stats.sectionScores as Record<string, number>)[
-          `${attemptKey}_before`
-        ] = this.sectionScoreBeforeOptimization
-        ;(this.stats.sectionScores as Record<string, number>)[attemptKey] =
-          newSectionScore
 
         // Compare section scores first (lower is better)
         if (newSectionScore < this.sectionScoreBeforeOptimization) {
           // Section score improved - tentatively apply and check board score
           const previousBoardScore = this.stats.currentBoardScore as number
+
+          // Save state before applying changes (for potential revert)
+          const savedConnectionResults = [...this.connectionResults]
+          const savedAssignedPortPoints = new Map(this.assignedPortPoints)
+          const savedNodeAssignedPortPoints = new Map(
+            Array.from(this.nodeAssignedPortPoints.entries()).map(
+              ([k, v]) => [k, [...v]] as [string, PortPoint[]],
+            ),
+          )
 
           // Apply the section changes
           this.reattachSection(
@@ -536,18 +552,20 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
           // Compute the new board score AFTER applying the section
           const newBoardScore = this.computeBoardScore()
 
+          // Record the board score after this attempt
+          ;(this.stats.sectionScores as Record<string, number>)[attemptKey] =
+            newBoardScore
+
           // Only count as successful if the BOARD score actually improved
           if (newBoardScore < previousBoardScore) {
             this.stats.successfulOptimizations++
             this.stats.currentBoardScore = newBoardScore
-
-            // Record the board score after this section optimization
-            const sectionKey = `section${this.stats.successfulOptimizations}`
-            ;(this.stats.sectionScores as Record<string, number>)[sectionKey] =
-              newBoardScore
           } else {
-            // Board score didn't improve - this is actually a failed optimization
-            // Note: We've already applied the changes, but they didn't help overall
+            // Board score didn't improve - revert the changes
+            this.connectionResults = savedConnectionResults
+            this.assignedPortPoints = savedAssignedPortPoints
+            this.nodeAssignedPortPoints = savedNodeAssignedPortPoints
+            this.recomputePfForNodes(this.currentSection!.nodeIds)
             this.stats.failedOptimizations++
           }
 
@@ -580,7 +598,9 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
               inputNodes: this.currentSection.inputNodes,
               capacityMeshNodes: this.currentSection.capacityMeshNodes,
               colorMap: this.colorMap,
-              hyperParameters: params,
+              hyperParameters: this.getHyperParametersForAttempt(
+                this.sectionAttempts,
+              ),
             })
           } else {
             // All schedule params exhausted without improvement
@@ -656,7 +676,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
       inputNodes: this.currentSection.inputNodes,
       capacityMeshNodes: this.currentSection.capacityMeshNodes,
       colorMap: this.colorMap,
-      hyperParameters: params,
+      hyperParameters: this.getHyperParametersForAttempt(this.sectionAttempts),
     })
   }
 
