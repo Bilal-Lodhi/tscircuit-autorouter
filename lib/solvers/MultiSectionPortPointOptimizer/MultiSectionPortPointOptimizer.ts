@@ -53,6 +53,7 @@ const OPTIMIZATION_SCHEDULE: (PortPointPathingHyperParameters & {
     SHUFFLE_SEED: 1,
     CENTER_OFFSET_DIST_PENALTY_FACTOR: 10,
     EXPANSION_DEGREES: 5,
+    MEMORY_PF_FACTOR: 10,
     // GREEDY_MULTIPLIER: 3,
   },
   // {
@@ -679,6 +680,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
               inputNodes: preparedInputNodes,
               capacityMeshNodes: this.currentSection.capacityMeshNodes,
               colorMap: this.colorMap,
+              nodeMemoryPfMap: this.nodePfMap,
               hyperParameters: this.getHyperParametersForAttempt(
                 this.sectionAttempts,
               ),
@@ -781,6 +783,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
               inputNodes: preparedInputNodes,
               capacityMeshNodes: this.currentSection.capacityMeshNodes,
               colorMap: this.colorMap,
+              nodeMemoryPfMap: this.nodePfMap,
               hyperParameters: this.getHyperParametersForAttempt(
                 this.sectionAttempts,
               ),
@@ -864,6 +867,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
       inputNodes: preparedInputNodes,
       capacityMeshNodes: this.currentSection.capacityMeshNodes,
       colorMap: this.colorMap,
+      nodeMemoryPfMap: this.nodePfMap,
       hyperParameters: this.getHyperParametersForAttempt(this.sectionAttempts),
     })
   }

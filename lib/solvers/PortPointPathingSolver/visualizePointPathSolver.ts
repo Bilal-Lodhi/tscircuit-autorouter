@@ -19,6 +19,7 @@ export function visualizePointPathSolver(
   // Draw nodes with pf coloring
   for (const node of solver.inputNodes) {
     const pf = solver.computeNodePf(node)
+    const memPf = solver.nodeMemoryPfMap.get(node.capacityMeshNodeId) ?? 0
     const red = Math.min(255, Math.floor(pf * 512))
     const greenAndBlue = Math.max(0, 255 - Math.floor(pf * 512))
     const color = `rgba(${red}, ${greenAndBlue}, ${greenAndBlue}, 0.3)`
@@ -32,7 +33,7 @@ export function visualizePointPathSolver(
       height: node.height * 0.9,
       layer: `z${node.availableZ.join(",")}`,
       fill: color,
-      label: `${node.capacityMeshNodeId}\npf: ${pf.toFixed(3)}\nxSame: ${crossings.numSameLayerCrossings}, xLC: ${crossings.numEntryExitLayerChanges}, xTransition: ${crossings.numTransitionPairCrossings}`,
+      label: `${node.capacityMeshNodeId}\npf: ${pf.toFixed(3)}, memPf: ${memPf.toFixed(3)}\nxSame: ${crossings.numSameLayerCrossings}, xLC: ${crossings.numEntryExitLayerChanges}, xTransition: ${crossings.numTransitionPairCrossings}`,
     })
   }
 
