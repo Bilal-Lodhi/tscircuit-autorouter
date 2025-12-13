@@ -4,6 +4,7 @@ import type {
   CapacityMeshNode,
   CapacityMeshNodeId,
   SimpleRouteJson,
+  SimpleRouteConnection,
 } from "../../types"
 import type { GraphicsObject } from "graphics-debug"
 import type {
@@ -11,6 +12,7 @@ import type {
   InputPortPoint,
   ConnectionPathResult,
   PortPointPathingHyperParameters,
+  PortPointCandidate,
 } from "../PortPointPathingSolver/PortPointPathingSolver"
 import { PortPointPathingSolver } from "../PortPointPathingSolver/PortPointPathingSolver"
 import {
@@ -18,6 +20,7 @@ import {
   type CreatePortPointSectionInput,
   type PortPointSection,
   type PortPointSectionParams,
+  type SectionPath,
 } from "./createPortPointSection"
 import type {
   PortPoint,
@@ -330,17 +333,26 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     return highestPfNodeId
   }
 
+  /** Cut path info for tracking during reattachment */
+  currentSectionCutPathInfo: Map<
+    string,
+    {
+      sectionPath: SectionPath
+      originalConnectionResult: ConnectionPathResult
+    }
+  > = new Map()
+
   /**
    * Create a SimpleRouteJson for just the section's connections.
-   * IMPORTANT: Only includes connections where BOTH start and end target nodes
-   * are within the section. This ensures PortPointPathingSolver can route them correctly.
+   * Includes both fully contained connections AND cut paths (partial connections
+   * that pass through the section).
    */
   createSectionSimpleRouteJson(section: PortPointSection): SimpleRouteJson {
+    const connections: SimpleRouteConnection[] = []
+    this.currentSectionCutPathInfo.clear()
+
     // Find connections that are FULLY contained in the section
     // (both start and end target nodes must be in the section)
-    const fullyContainedConnections: typeof this.simpleRouteJson.connections =
-      []
-
     for (const result of this.connectionResults) {
       if (!result.path || result.path.length === 0) continue
 
@@ -351,14 +363,103 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
       const endInSection = section.nodeIds.has(endNodeId)
 
       if (startInSection && endInSection) {
-        fullyContainedConnections.push(result.connection)
+        connections.push(result.connection)
       }
+    }
+
+    // Add cut paths as synthetic connections
+    for (const sectionPath of section.sectionPaths) {
+      // Skip paths that are fully contained (they're already handled above
+      // via the original connection)
+      if (!sectionPath.hasEntryFromOutside && !sectionPath.hasExitToOutside) {
+        continue
+      }
+
+      // Skip very short cut paths (less than 2 points)
+      if (sectionPath.points.length < 2) {
+        continue
+      }
+
+      // Find the original connection result for this path
+      const originalResult = this.connectionResults.find(
+        (r) => r.connection.name === sectionPath.connectionName,
+      )
+      if (!originalResult) continue
+
+      // Create synthetic connection for this cut path
+      const cutConnectionName = `__cut__${sectionPath.connectionName}__${sectionPath.originalStartIndex}`
+      this.colorMap[cutConnectionName] =
+        this.colorMap[sectionPath.connectionName]
+      const startPoint = sectionPath.points[0]
+      const endPoint = sectionPath.points[sectionPath.points.length - 1]
+
+      const syntheticConnection: SimpleRouteConnection = {
+        name: cutConnectionName,
+        rootConnectionName:
+          sectionPath.rootConnectionName ?? sectionPath.connectionName,
+        pointsToConnect: [
+          {
+            x: startPoint.x,
+            y: startPoint.y,
+            layers: [`layer${startPoint.z + 1}`],
+          },
+          {
+            x: endPoint.x,
+            y: endPoint.y,
+            layers: [`layer${endPoint.z + 1}`],
+          },
+        ],
+      }
+
+      connections.push(syntheticConnection)
+
+      // Track the cut path info for reattachment
+      this.currentSectionCutPathInfo.set(cutConnectionName, {
+        sectionPath,
+        originalConnectionResult: originalResult,
+      })
     }
 
     return {
       ...this.simpleRouteJson,
-      connections: fullyContainedConnections,
+      connections,
     }
+  }
+
+  /**
+   * Prepare section input nodes for routing cut paths.
+   * Marks nodes containing cut path endpoints as targets so the solver can route to/from them.
+   */
+  prepareSectionInputNodesForCutPaths(
+    section: PortPointSection,
+  ): InputNodeWithPortPoints[] {
+    // Create a set of node IDs that contain cut path endpoints
+    const cutPathEndpointNodeIds = new Set<CapacityMeshNodeId>()
+
+    for (const [, cutInfo] of this.currentSectionCutPathInfo.entries()) {
+      const { sectionPath } = cutInfo
+      if (sectionPath.points.length === 0) continue
+
+      // Entry point node
+      const entryNodeId = sectionPath.points[0].nodeId
+      cutPathEndpointNodeIds.add(entryNodeId)
+
+      // Exit point node
+      const exitNodeId =
+        sectionPath.points[sectionPath.points.length - 1].nodeId
+      cutPathEndpointNodeIds.add(exitNodeId)
+    }
+
+    // Update input nodes to mark cut path endpoint nodes as targets
+    return section.inputNodes.map((node) => {
+      if (cutPathEndpointNodeIds.has(node.capacityMeshNodeId)) {
+        return {
+          ...node,
+          _containsTarget: true,
+        }
+      }
+      return node
+    })
   }
 
   getHyperParametersForAttempt(
@@ -375,7 +476,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
 
   /**
    * Reattach the optimized section results back to the main state.
-   * Only called for connections that are FULLY contained in the section.
+   * Handles both fully contained connections AND cut paths.
    */
   reattachSection(
     _section: PortPointSection,
@@ -386,21 +487,32 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     >,
     newNodeAssignedPortPoints: Map<CapacityMeshNodeId, PortPoint[]>,
   ) {
-    // Get the connection names that were re-routed in this section
+    // Separate fully contained connections from cut paths
+    const fullyContainedResults: ConnectionPathResult[] = []
+    const cutPathResults: ConnectionPathResult[] = []
+
+    for (const result of newConnectionResults) {
+      if (result.connection.name.startsWith("__cut__")) {
+        cutPathResults.push(result)
+      } else {
+        fullyContainedResults.push(result)
+      }
+    }
+
+    // Handle fully contained connections (replace entirely)
     const reRoutedConnectionNames = new Set(
-      newConnectionResults.map((r) => r.connection.name),
+      fullyContainedResults.map((r) => r.connection.name),
     )
 
-    // Remove old results for these connections
+    // Remove old results for fully contained connections
     this.connectionResults = this.connectionResults.filter(
       (r) => !reRoutedConnectionNames.has(r.connection.name),
     )
 
-    // Add new results
-    this.connectionResults.push(...newConnectionResults)
+    // Add new results for fully contained connections
+    this.connectionResults.push(...fullyContainedResults)
 
-    // Clear ALL port points for re-routed connections from ALL nodes
-    // (since we're replacing entire connections that are fully contained in the section)
+    // Clear port points for fully re-routed connections from all nodes
     for (const [nodeId, portPoints] of this.nodeAssignedPortPoints.entries()) {
       const remainingPortPoints = portPoints.filter(
         (pp) => !reRoutedConnectionNames.has(pp.connectionName),
@@ -408,22 +520,129 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
       this.nodeAssignedPortPoints.set(nodeId, remainingPortPoints)
     }
 
-    // Remove old assigned port points for re-routed connections
+    // Remove old assigned port points for fully re-routed connections
     for (const [portPointId, info] of this.assignedPortPoints.entries()) {
       if (reRoutedConnectionNames.has(info.connectionName)) {
         this.assignedPortPoints.delete(portPointId)
       }
     }
 
-    // Add new assigned port points
-    for (const [portPointId, info] of newAssignedPortPoints.entries()) {
-      this.assignedPortPoints.set(portPointId, info)
+    // Handle cut paths (splice back into original paths)
+    for (const cutResult of cutPathResults) {
+      const cutInfo = this.currentSectionCutPathInfo.get(
+        cutResult.connection.name,
+      )
+      if (!cutInfo || !cutResult.path) continue
+
+      const { sectionPath, originalConnectionResult } = cutInfo
+      const originalPath = originalConnectionResult.path
+      if (!originalPath) continue
+
+      // Get the original connection name (without the __cut__ prefix)
+      const originalConnectionName = sectionPath.connectionName
+
+      // Clear old port points for the portion being replaced
+      // We need to remove port points that were in the original cut section
+      for (const [
+        nodeId,
+        portPoints,
+      ] of this.nodeAssignedPortPoints.entries()) {
+        const filtered = portPoints.filter((pp) => {
+          if (pp.connectionName !== originalConnectionName) return true
+          // Keep port points outside the section (we only remove the cut portion)
+          return !_section.nodeIds.has(nodeId)
+        })
+        this.nodeAssignedPortPoints.set(nodeId, filtered)
+      }
+
+      // Build the new path by splicing in the rerouted portion
+      // Original path: [...before cut...][cut portion][...after cut...]
+      // New path: [...before cut...][new rerouted portion][...after cut...]
+      const beforeCut = originalPath.slice(0, sectionPath.originalStartIndex)
+      const afterCut = originalPath.slice(sectionPath.originalEndIndex + 1)
+
+      // Convert the new result path to match PortPointCandidate format
+      // We need to update connectionName in the path and link prevCandidate correctly
+      const newMiddlePath: PortPointCandidate[] = []
+      let prevCandidate: PortPointCandidate | null =
+        beforeCut.length > 0 ? beforeCut[beforeCut.length - 1] : null
+
+      for (const candidate of cutResult.path) {
+        const newCandidate: PortPointCandidate = {
+          ...candidate,
+          prevCandidate,
+        }
+        newMiddlePath.push(newCandidate)
+        prevCandidate = newCandidate
+      }
+
+      // Link afterCut to the last of the new middle path
+      if (afterCut.length > 0 && newMiddlePath.length > 0) {
+        afterCut[0] = {
+          ...afterCut[0],
+          prevCandidate: newMiddlePath[newMiddlePath.length - 1],
+        }
+      }
+
+      // Update the original connection result with the spliced path
+      originalConnectionResult.path = [
+        ...beforeCut,
+        ...newMiddlePath,
+        ...afterCut,
+      ]
+
+      // Add port points from the new route to the nodes
+      if (cutResult.portPoints) {
+        for (const pp of cutResult.portPoints) {
+          // Update connectionName to original (not the __cut__ name)
+          const correctedPortPoint: PortPoint = {
+            ...pp,
+            connectionName: originalConnectionName,
+            rootConnectionName:
+              sectionPath.rootConnectionName ?? originalConnectionName,
+          }
+
+          // Find which nodes this port point belongs to and add it
+          for (const node of _section.inputNodes) {
+            for (const inputPp of node.portPoints) {
+              if (
+                Math.abs(inputPp.x - pp.x) < 0.001 &&
+                Math.abs(inputPp.y - pp.y) < 0.001 &&
+                inputPp.z === pp.z
+              ) {
+                for (const nodeId of inputPp.connectionNodeIds) {
+                  const existing = this.nodeAssignedPortPoints.get(nodeId) ?? []
+                  existing.push(correctedPortPoint)
+                  this.nodeAssignedPortPoints.set(nodeId, existing)
+                }
+                break
+              }
+            }
+          }
+        }
+      }
     }
 
-    // Add new node assigned port points
+    // Add new assigned port points for fully contained (but not for cut paths
+    // since we handled them above with corrected names)
+    for (const [portPointId, info] of newAssignedPortPoints.entries()) {
+      if (!info.connectionName.startsWith("__cut__")) {
+        this.assignedPortPoints.set(portPointId, info)
+      }
+    }
+
+    // Add new node assigned port points for fully contained connections
     for (const [nodeId, portPoints] of newNodeAssignedPortPoints.entries()) {
-      const existing = this.nodeAssignedPortPoints.get(nodeId) ?? []
-      this.nodeAssignedPortPoints.set(nodeId, [...existing, ...portPoints])
+      const filteredPortPoints = portPoints.filter(
+        (pp) => !pp.connectionName.startsWith("__cut__"),
+      )
+      if (filteredPortPoints.length > 0) {
+        const existing = this.nodeAssignedPortPoints.get(nodeId) ?? []
+        this.nodeAssignedPortPoints.set(nodeId, [
+          ...existing,
+          ...filteredPortPoints,
+        ])
+      }
     }
   }
 
@@ -451,10 +670,13 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
             const sectionSrj = this.createSectionSimpleRouteJson(
               this.currentSection,
             )
+            const preparedInputNodes = this.prepareSectionInputNodesForCutPaths(
+              this.currentSection,
+            )
 
             this.activeSubSolver = new PortPointPathingSolver({
               simpleRouteJson: sectionSrj,
-              inputNodes: this.currentSection.inputNodes,
+              inputNodes: preparedInputNodes,
               capacityMeshNodes: this.currentSection.capacityMeshNodes,
               colorMap: this.colorMap,
               hyperParameters: this.getHyperParametersForAttempt(
@@ -550,10 +772,13 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
             const sectionSrj = this.createSectionSimpleRouteJson(
               this.currentSection,
             )
+            const preparedInputNodes = this.prepareSectionInputNodesForCutPaths(
+              this.currentSection,
+            )
 
             this.activeSubSolver = new PortPointPathingSolver({
               simpleRouteJson: sectionSrj,
-              inputNodes: this.currentSection.inputNodes,
+              inputNodes: preparedInputNodes,
               capacityMeshNodes: this.currentSection.capacityMeshNodes,
               colorMap: this.colorMap,
               hyperParameters: this.getHyperParametersForAttempt(
@@ -628,10 +853,15 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
       return
     }
 
+    // Prepare input nodes for cut paths (marks cut path endpoint nodes as targets)
+    const preparedInputNodes = this.prepareSectionInputNodesForCutPaths(
+      this.currentSection,
+    )
+
     // Create and start PortPointPathingSolver for this section
     this.activeSubSolver = new PortPointPathingSolver({
       simpleRouteJson: sectionSrj,
-      inputNodes: this.currentSection.inputNodes,
+      inputNodes: preparedInputNodes,
       capacityMeshNodes: this.currentSection.capacityMeshNodes,
       colorMap: this.colorMap,
       hyperParameters: this.getHyperParametersForAttempt(this.sectionAttempts),

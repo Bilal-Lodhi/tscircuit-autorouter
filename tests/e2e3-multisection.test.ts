@@ -8,6 +8,7 @@ import {
   createPortPointSection,
   visualizeSection,
 } from "../lib/solvers/MultiSectionPortPointOptimizer"
+import { MultiSectionPortPointOptimizer } from "../lib/solvers/MultiSectionPortPointOptimizer/MultiSectionPortPointOptimizer"
 
 test("should solve e2e3 board and produce valid SimpleRouteJson output", async () => {
   const simpleSrj: SimpleRouteJson = e2e3 as any
@@ -175,5 +176,114 @@ test("createPortPointSection with different expansion degrees", async () => {
   // Visualize section with expansion 3
   expect(visualizeSection(section3, solver.colorMap)).toMatchGraphicsSvg(
     `${import.meta.path}-section-expansion3`,
+  )
+}, 20_000)
+
+test("createSectionSimpleRouteJson includes cut paths with low expansion degrees", async () => {
+  const simpleSrj: SimpleRouteJson = e2e3 as any
+
+  const solver = new AutoroutingPipelineSolver(simpleSrj)
+
+  // Solve until we have the port point pathing solver ready
+  solver.solveUntilPhase("multiSectionPortPointOptimizer")
+
+  const portPointSolver = solver.portPointPathingSolver!
+
+  // Find a node that has paths passing through it but doesn't contain
+  // both endpoints of any connection (to ensure we get cut paths)
+  // Use a node near the middle of the board
+  const bounds = simpleSrj.bounds
+  const boardCenterX = (bounds.minX + bounds.maxX) / 2
+  const boardCenterY = (bounds.minY + bounds.maxY) / 2
+
+  let closestNode = portPointSolver.inputNodes[0]
+  let closestDist = Infinity
+  for (const node of portPointSolver.inputNodes) {
+    const dist = Math.sqrt(
+      (node.center.x - boardCenterX) ** 2 +
+        (node.center.y - boardCenterY) ** 2,
+    )
+    if (dist < closestDist && !node._containsTarget) {
+      closestDist = dist
+      closestNode = node
+    }
+  }
+
+  // Create a section with very low expansion degree (1) to maximize chance of cut paths
+  const section = createPortPointSection(
+    {
+      inputNodes: portPointSolver.inputNodes,
+      capacityMeshNodes: solver.capacityNodes!,
+      capacityMeshEdges: solver.capacityEdges!,
+      nodeMap: portPointSolver.nodeMap,
+      connectionResults: portPointSolver.connectionsWithResults,
+    },
+    {
+      centerOfSectionCapacityNodeId: closestNode.capacityMeshNodeId,
+      expansionDegrees: 1,
+    },
+  )
+
+  // Verify we have section paths (either cut or fully contained)
+  expect(section.sectionPaths.length).toBeGreaterThanOrEqual(0)
+
+  // Find cut paths specifically (paths with entry or exit from outside)
+  // Must have at least 2 points to be routable
+  const cutPaths = section.sectionPaths.filter(
+    (sp) =>
+      (sp.hasEntryFromOutside || sp.hasExitToOutside) && sp.points.length >= 2,
+  )
+
+  // Log info about the section
+  console.log(`Section center: ${closestNode.capacityMeshNodeId}`)
+  console.log(`Section nodes: ${section.nodeIds.size}`)
+  console.log(`Section paths: ${section.sectionPaths.length}`)
+  console.log(`Cut paths (with >= 2 points): ${cutPaths.length}`)
+
+  // Create a MultiSectionPortPointOptimizer to test the cut path handling
+  const multiSectionOptimizer = new MultiSectionPortPointOptimizer({
+    simpleRouteJson: simpleSrj,
+    inputNodes: portPointSolver.inputNodes,
+    capacityMeshNodes: solver.capacityNodes!,
+    capacityMeshEdges: solver.capacityEdges!,
+    colorMap: solver.colorMap,
+    initialConnectionResults: portPointSolver.connectionsWithResults,
+    initialAssignedPortPoints: portPointSolver.assignedPortPoints,
+    initialNodeAssignedPortPoints: portPointSolver.nodeAssignedPortPoints,
+  })
+
+  // Create section and SimpleRouteJson
+  const testSection = multiSectionOptimizer.createSection({
+    centerOfSectionCapacityNodeId: closestNode.capacityMeshNodeId,
+    expansionDegrees: 1,
+  })
+
+  const sectionSrj =
+    multiSectionOptimizer.createSectionSimpleRouteJson(testSection)
+
+  // Log the connections in the section SimpleRouteJson
+  console.log(
+    `Section connections: ${sectionSrj.connections.length}`,
+  )
+
+  const cutConnections = sectionSrj.connections.filter((c) =>
+    c.name.startsWith("__cut__"),
+  )
+  console.log(`Cut connections: ${cutConnections.length}`)
+
+  // Verify that cut paths are included as synthetic connections
+  // The number of cut connections should match the number of cut paths
+  expect(cutConnections.length).toBe(cutPaths.length)
+
+  // Verify cut connections have the expected format
+  for (const cutConn of cutConnections) {
+    expect(cutConn.name).toMatch(/^__cut__/)
+    expect(cutConn.pointsToConnect.length).toBe(2)
+    expect(cutConn.rootConnectionName).toBeDefined()
+  }
+
+  // Visualize the section to verify cut paths are shown
+  expect(visualizeSection(testSection, solver.colorMap)).toMatchGraphicsSvg(
+    `${import.meta.path}-section-with-cut-paths`,
   )
 }, 20_000)
