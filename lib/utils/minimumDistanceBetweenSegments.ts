@@ -3,6 +3,8 @@ interface Point {
   y: number
 }
 
+import { doSegmentsIntersect } from "@tscircuit/math-utils"
+
 /**
  * Calculates the minimum distance between two line segments.
  * @param A1 First point of the first line segment
@@ -18,7 +20,7 @@ export function minimumDistanceBetweenSegments(
   B2: Point,
 ): number {
   // Check if segments intersect
-  if (segmentsIntersect(A1, A2, B1, B2)) {
+  if (doSegmentsIntersect(A1, A2, B1, B2)) {
     return 0
   }
 
@@ -82,60 +84,4 @@ function distance(p1: Point, p2: Point): number {
   const dx = p2.x - p1.x
   const dy = p2.y - p1.y
   return Math.sqrt(dx * dx + dy * dy)
-}
-
-/**
- * Determines the orientation of triplet (p, q, r).
- * @returns 0 if collinear, 1 if clockwise, 2 if counterclockwise
- */
-function orientation(p: Point, q: Point, r: Point): number {
-  const val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y)
-  if (val === 0) return 0 // collinear
-  return val > 0 ? 1 : 2 // clockwise or counterclockwise
-}
-
-/**
- * Checks if point q lies on segment pr.
- */
-function onSegment(p: Point, q: Point, r: Point): boolean {
-  return (
-    q.x <= Math.max(p.x, r.x) &&
-    q.x >= Math.min(p.x, r.x) &&
-    q.y <= Math.max(p.y, r.y) &&
-    q.y >= Math.min(p.y, r.y)
-  )
-}
-
-/**
- * Checks if two line segments intersect.
- */
-function segmentsIntersect(
-  A1: Point,
-  A2: Point,
-  B1: Point,
-  B2: Point,
-): boolean {
-  // Find the four orientations needed for general case
-  const o1 = orientation(A1, A2, B1)
-  const o2 = orientation(A1, A2, B2)
-  const o3 = orientation(B1, B2, A1)
-  const o4 = orientation(B1, B2, A2)
-
-  // General case
-  if (o1 !== o2 && o3 !== o4) return true
-
-  // Special Cases
-  // A1, A2 and B1 are collinear and B1 lies on segment A1A2
-  if (o1 === 0 && onSegment(A1, B1, A2)) return true
-
-  // A1, A2 and B2 are collinear and B2 lies on segment A1A2
-  if (o2 === 0 && onSegment(A1, B2, A2)) return true
-
-  // B1, B2 and A1 are collinear and A1 lies on segment B1B2
-  if (o3 === 0 && onSegment(B1, A1, B2)) return true
-
-  // B1, B2 and A2 are collinear and A2 lies on segment B1B2
-  if (o4 === 0 && onSegment(B1, A2, B2)) return true
-
-  return false // Doesn't fall in any of the above cases
 }

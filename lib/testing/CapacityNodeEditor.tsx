@@ -21,6 +21,7 @@ import {
 } from "./capacity-node-editor/helpers"
 import { MetricsCard } from "./capacity-node-editor/MetricsCard"
 import { PortPoint } from "./capacity-node-editor/PortPoint"
+import { isHighDensityNodeSolvable } from "lib/utils/isHighDensityNodeSolvable"
 
 export interface CapacityNodeEditorProps {
   onNodeChange?: (node: NodeWithPortPoints) => void
@@ -57,6 +58,14 @@ export default function CapacityNodeEditor({
   const [layerInput, setLayerInput] = useState("")
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
   const svgRef = useRef<SVGSVGElement>(null)
+  // Via state: UI-only for visualization/diagnostics. Not fed into actual solver.
+  // These allow manual via placement to verify solvability predictions visually.
+  const [viaMode, setViaMode] = useState(false)
+  const [vias, setVias] = useState<Array<{ x: number; y: number }>>([])
+  // viaDiameter: used for both visualization AND isHighDensityNodeSolvable diagnostics
+  const [viaDiameter, setViaDiameter] = useState(0.6)
+  // traceWidth: default from HighDensitySolver (0.15mm)
+  const traceWidth = 0.15
 
   // Initialize from initialNode
   useEffect(() => {
@@ -270,7 +279,7 @@ export default function CapacityNodeEditor({
         const dy = my - dragStart.my
         const { rect: startRect } = dragStart
         const { handle } = dragging.data
-        let newRect = { ...startRect }
+        const newRect = { ...startRect }
         const minSize = 0.2 * SCALE
 
         if (handle.includes("left")) {
@@ -321,7 +330,19 @@ export default function CapacityNodeEditor({
   )
 
   const handleSvgClick = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.MouseEvent<SVGSVGElement>) => {
+      if (viaMode) {
+        const svgRect = e.currentTarget.getBoundingClientRect()
+        const mx = e.clientX - svgRect.left
+        const my = e.clientY - svgRect.top
+        // Store via in absolute SVG coordinates (affected by pan)
+        setVias((prev) => [
+          ...prev,
+          { x: mx - panOffset.x, y: my - panOffset.y },
+        ])
+        return
+      }
+
       if (addMode) {
         const svgRect = e.currentTarget.getBoundingClientRect()
         const mx = e.clientX - svgRect.left
@@ -347,7 +368,7 @@ export default function CapacityNodeEditor({
         setSelected(null)
       }
     },
-    [addMode, pendingEntry, rect, panOffset],
+    [addMode, pendingEntry, rect, panOffset, viaMode],
   )
 
   const handlePointClick = useCallback(
@@ -442,13 +463,54 @@ export default function CapacityNodeEditor({
       numTransitionCrossings,
     )
 
+    // Build NodeWithPortPoints for solvability check
+    // Convert SVG pixel coordinates to node-centered mm coordinates.
+    // SCALE converts px→mm, centering makes coordinates relative to node center (0,0).
+    // This matches the coordinate system expected by isHighDensityNodeSolvable.
+    const svgCenterX = rect.x + rect.width / 2
+    const svgCenterY = rect.y + rect.height / 2
+    const portPoints = pairs.flatMap((pair, i) => {
+      const entryPos = getPointOnEdge(pair.entry.edge, pair.entry.t, rect)
+      const exitPos = getPointOnEdge(pair.exit.edge, pair.exit.t, rect)
+      const entryX = (entryPos.x - svgCenterX) / SCALE
+      const entryY = (entryPos.y - svgCenterY) / SCALE
+      const exitX = (exitPos.x - svgCenterX) / SCALE
+      const exitY = (exitPos.y - svgCenterY) / SCALE
+      const entryPorts = pair.entry.layers.map((layer) => ({
+        x: entryX,
+        y: entryY,
+        z: layer,
+        connectionName: `pair_${i}`,
+      }))
+      const exitPorts = pair.exit.layers.map((layer) => ({
+        x: exitX,
+        y: exitY,
+        z: layer,
+        connectionName: `pair_${i}`,
+      }))
+      return [...entryPorts, ...exitPorts]
+    })
+    const nodeForCheck: NodeWithPortPoints = {
+      capacityMeshNodeId: "interactive-node",
+      center: { x: 0, y: 0 },
+      width: widthMm,
+      height: heightMm,
+      portPoints,
+    }
+    const diagnostics = isHighDensityNodeSolvable({
+      node: nodeForCheck,
+      viaDiameter,
+      traceWidth,
+    })
+
     return {
       totalConnections,
       layerChanges,
       capacity: capacity.toFixed(2),
       probabilityOfFailure: (probabilityOfFailure * 100).toFixed(1),
+      diagnostics,
     }
-  }, [pairs, rect])
+  }, [pairs, rect, viaDiameter])
 
   // Transform solver coordinates to SVG coordinates
   const svgCenterX = rect.x + rect.width / 2
@@ -466,6 +528,7 @@ export default function CapacityNodeEditor({
             setAddMode(addMode ? null : "entry")
             setPendingEntry(null)
             setSelected(null)
+            setViaMode(false)
           }}
           className={`px-4 py-2 rounded font-medium ${addMode ? "bg-green-600" : "bg-blue-600 hover:bg-blue-700"}`}
         >
@@ -475,16 +538,42 @@ export default function CapacityNodeEditor({
               ? "Click edge for EXIT"
               : "Add Pair"}
         </button>
-        {addMode && (
+        <button
+          onClick={() => {
+            setViaMode(!viaMode)
+            setAddMode(null)
+            setPendingEntry(null)
+            setSelected(null)
+          }}
+          className={`px-4 py-2 rounded font-medium ${viaMode ? "bg-green-600" : "bg-purple-600 hover:bg-purple-700"}`}
+        >
+          {viaMode ? "Click inside rect to place via" : "Place Via"}{" "}
+          <span className="text-xs opacity-70">(purely visual)</span>
+        </button>
+        {(addMode || viaMode) && (
           <button
             onClick={() => {
               setAddMode(null)
               setPendingEntry(null)
+              setViaMode(false)
             }}
             className="px-4 py-2 rounded bg-red-600 hover:bg-red-700"
           >
             Cancel
           </button>
+        )}
+        {viaMode && (
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-400">Via Diameter (mm):</label>
+            <input
+              type="number"
+              step="0.1"
+              min="0.1"
+              value={viaDiameter}
+              onChange={(e) => setViaDiameter(Number(e.target.value))}
+              className="w-20 px-2 py-1 rounded bg-gray-700 border border-gray-600 text-sm"
+            />
+          </div>
         )}
         <div className="text-sm text-gray-400">
           Drag points along edges • Click to select • Drag handles to resize
@@ -510,6 +599,11 @@ export default function CapacityNodeEditor({
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
           onClick={handleSvgClick}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              handleSvgClick(e as unknown as React.MouseEvent<SVGSVGElement>)
+            }
+          }}
           onMouseDown={(e) => {
             if (e.button === 1) {
               e.preventDefault()
@@ -521,6 +615,7 @@ export default function CapacityNodeEditor({
             }
           }}
         >
+          <title>Capacity Node Editor Canvas</title>
           <defs>
             <pattern
               id="grid"
@@ -673,6 +768,20 @@ export default function CapacityNodeEditor({
               </g>
             ))}
 
+            {/* Render placed vias - independent of rect */}
+            {vias.map((via, i) => (
+              <circle
+                key={`via-${i}`}
+                cx={via.x}
+                cy={via.y}
+                r={(viaDiameter / 2) * SCALE}
+                fill="silver"
+                stroke="#fff"
+                strokeWidth={1}
+                opacity={0.7}
+              />
+            ))}
+
             {handles.map((handle) => (
               <rect
                 key={handle.name}
@@ -697,6 +806,7 @@ export default function CapacityNodeEditor({
             layerChanges={metrics.layerChanges}
             capacity={metrics.capacity}
             probabilityOfFailure={metrics.probabilityOfFailure}
+            diagnostics={metrics.diagnostics}
           />
         </svg>
 
@@ -755,7 +865,10 @@ export default function CapacityNodeEditor({
       </div>
 
       <div className="p-3 bg-gray-800 max-h-32 overflow-auto border-t border-gray-700">
-        <div className="text-sm font-medium mb-2">Pairs ({pairs.length})</div>
+        <div className="flex justify-between items-center mb-2">
+          <div className="text-sm font-medium">Pairs ({pairs.length})</div>
+          <div className="text-sm font-medium">Vias ({vias.length})</div>
+        </div>
         <div className="flex flex-wrap gap-2">
           {pairs.map((pair, i) => (
             <div
