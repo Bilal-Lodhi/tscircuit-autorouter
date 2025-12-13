@@ -208,6 +208,46 @@ export const AutoroutingPipelineDebugger = ({
     isSolvingToBreakpointRef.current = false // Stop breakpoint solving on next stage
   }
 
+  // Solve Sub function - steps until activeSubSolver of current phase changes or is solved
+  const handleSolveSub = () => {
+    if (!solver.solved && !solver.failed) {
+      const currentPhase = solver.activeSubSolver
+      if (!currentPhase) {
+        // No active phase, just step once
+        solver.step()
+        setForceUpdate((prev) => prev + 1)
+        return
+      }
+
+      const initialSubSolver = currentPhase.activeSubSolver
+
+      // Step until the sub-solver changes or becomes solved
+      while (!solver.solved && !solver.failed) {
+        const currentSubSolver = solver.activeSubSolver?.activeSubSolver
+
+        // Stop if sub-solver changed
+        if (currentSubSolver !== initialSubSolver) {
+          break
+        }
+
+        // Stop if sub-solver is now solved
+        if (currentSubSolver?.solved) {
+          break
+        }
+
+        // Stop if the phase itself changed
+        if (solver.activeSubSolver !== currentPhase) {
+          break
+        }
+
+        solver.step()
+      }
+
+      setForceUpdate((prev) => prev + 1)
+    }
+    isSolvingToBreakpointRef.current = false // Stop breakpoint solving on solve sub
+  }
+
   // Solve completely
   const handleSolveCompletely = () => {
     if (!solver.solved && !solver.failed) {
@@ -561,6 +601,13 @@ export const AutoroutingPipelineDebugger = ({
           disabled={solver.solved || solver.failed}
         >
           Next Stage
+        </button>
+        <button
+          className="border rounded-md p-2 hover:bg-gray-100"
+          onClick={handleSolveSub}
+          disabled={solver.solved || solver.failed}
+        >
+          Solve Sub
         </button>
         <button
           className="border rounded-md p-2 hover:bg-gray-100"
