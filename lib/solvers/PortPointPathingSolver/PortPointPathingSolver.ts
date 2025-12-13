@@ -25,6 +25,7 @@ export interface PortPointPathingHyperParameters {
   CENTER_OFFSET_FOCUS_SHIFT?: number
   GREEDY_MULTIPLIER?: number
   NODE_PF_FACTOR?: number
+  RANDOM_COST_MAGNITUDE?: number
 
   MEMORY_PF_FACTOR?: number
   MAX_ITERATIONS_PER_PATH?: number
@@ -141,6 +142,10 @@ export class PortPointPathingSolver extends BaseSolver {
 
   get CENTER_OFFSET_FOCUS_SHIFT() {
     return this.hyperParameters.CENTER_OFFSET_FOCUS_SHIFT ?? 0
+  }
+
+  get RANDOM_COST_MAGNITUDE() {
+    return this.hyperParameters.RANDOM_COST_MAGNITUDE ?? 0
   }
 
   /** Cost of adding a candidate to the path */
@@ -426,9 +431,13 @@ export class PortPointPathingSolver extends BaseSolver {
       distToCentermostPortWithFocusShift ** 2 *
       this.CENTER_OFFSET_DIST_PENALTY_FACTOR
 
+    const randomCost =
+      this.RANDOM_COST_MAGNITUDE * seededRandom(this.iterations)()
+
     return (
       prevCandidate.g +
       this.BASE_CANDIDATE_COST +
+      randomCost +
       distanceCost +
       pfPenalty +
       reusePenalty +
