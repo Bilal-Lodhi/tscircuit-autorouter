@@ -5,28 +5,22 @@ import { calculateNodeProbabilityOfFailure } from "../UnravelSolver/calculateCro
 
 /**
  * Computes a log-based score for a section of nodes with port points.
- * Uses the same algorithm as UnravelSectionSolver.computeG.
  *
- * The score is the log probability of failure across all nodes.
- * Lower (more negative) scores are better.
+ * The score is -logSuccess where logSuccess = sum(log(1 - Pf)) for all contributing nodes.
+ * This represents the negative log probability of all nodes succeeding.
+ * Lower scores are better (closer to 0 means higher probability of success).
+ *
+ * Note: We use -logSuccess directly instead of computing log(1 - exp(logSuccess)) to avoid
+ * numerical precision issues when logSuccess is very negative (where exp(logSuccess) underflows to 0).
  *
  * @param nodesWithPortPoints - Nodes in the section with their assigned port points
  * @param capacityMeshNodeMap - Map from node ID to capacity mesh node for Pf calculation
- * @returns Log probability of failure (lower is better)
+ * @returns Score where lower is better (0 = perfect, higher = more failures expected)
  */
 export function computeSectionScore(
   nodesWithPortPoints: NodeWithPortPoints[],
   capacityMeshNodeMap: Map<CapacityMeshNodeId, CapacityMeshNode>,
 ): number {
-  /**
-   * Numerically stable computation of log(1 - exp(x)).
-   * Uses expm1 for better accuracy when x is close to 0.
-   */
-  function log1mexp(x: number): number {
-    if (x < -Math.LN2) return Math.log(1 - Math.exp(x))
-    return Math.log(-Math.expm1(x))
-  }
-
   let logSuccess = 0 // log(probability all nodes succeed)
 
   for (const nodeWithPortPoints of nodesWithPortPoints) {
@@ -56,16 +50,10 @@ export function computeSectionScore(
     logSuccess += log1mPf
   }
 
-  // Convert back to log probability of failure
-  const logPf = log1mexp(logSuccess)
-
-  // Handle edge case where logPf is -Infinity (no contributing nodes or all have 0% failure)
-  // Return 0 (worst score) so this won't be considered an improvement over valid scores
-  if (!Number.isFinite(logPf)) {
-    return 0
-  }
-
-  return logPf
+  // Return -logSuccess so that lower scores are better
+  // When logSuccess is 0 (all Pf=0 or no contributing nodes), score is 0 (perfect)
+  // When logSuccess is negative (some failures possible), score is positive (worse)
+  return -logSuccess
 }
 
 /**
