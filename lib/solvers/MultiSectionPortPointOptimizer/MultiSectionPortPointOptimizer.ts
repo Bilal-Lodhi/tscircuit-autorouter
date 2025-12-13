@@ -441,9 +441,10 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
               inputNodes: this.currentSection.inputNodes,
               capacityMeshNodes: this.currentSection.capacityMeshNodes,
               colorMap: this.colorMap,
+              hyperParameters: {
+                SHUFFLE_SEED: params.SHUFFLE_SEED,
+              },
             })
-            this.activeSubSolver.hyperParameters.SHUFFLE_SEED =
-              params.SHUFFLE_SEED
           } else {
             // All schedule params exhausted, move on
             this.stats.failedOptimizations++

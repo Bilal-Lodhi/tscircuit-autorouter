@@ -53,6 +53,7 @@ export function visualizePointPathSolver(
         `conn: ${assignment?.connectionName}`,
         `cd: ${portPoint.distToCentermostPortOnZ}`,
         `connects: ${portPoint.connectionNodeIds.join(",")}`,
+        `rootConn: ${assignment?.rootConnectionName}`,
       ]
         .filter(Boolean)
         .join("\n"),
@@ -137,6 +138,26 @@ export function visualizePointPathSolver(
           strokeDash: "5 5",
         })
 
+        graphics.points!.push({
+          x: start.x,
+          y: start.y,
+          color: connectionColor,
+          label: [
+            `Start: ${currentConnection.connection.name}`,
+            `${currentConnection.connection.rootConnectionName}`,
+          ].join("\n"),
+        })
+
+        graphics.points!.push({
+          x: end.x,
+          y: end.y,
+          color: connectionColor,
+          label: [
+            `End: ${currentConnection.connection.name}`,
+            `${currentConnection.connection.rootConnectionName}`,
+          ].join("\n"),
+        })
+
         // Draw goal marker
         graphics.circles!.push({
           center: end,
@@ -147,9 +168,8 @@ export function visualizePointPathSolver(
       }
     }
 
-    const sortedCandidates = [...solver.candidates]
-      .sort((a, b) => a.f - b.f)
-      .slice(0, 10)
+    const sortedCandidates = [...solver.candidates].sort((a, b) => a.f - b.f)
+    // .slice(0, 10)
 
     for (const candidate of sortedCandidates) {
       const candidatePath: Array<{ x: number; y: number; z: number }> = []

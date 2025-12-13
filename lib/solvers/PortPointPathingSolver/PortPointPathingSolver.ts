@@ -98,9 +98,8 @@ export interface ConnectionPathResult {
  * 4. Uses pf-based cost function that considers crossings
  */
 export class PortPointPathingSolver extends BaseSolver {
-  hyperParameters: Partial<PortPointPathingHyperParameters> = {
-    SHUFFLE_SEED: 0,
-  }
+  hyperParameters: Partial<PortPointPathingHyperParameters>
+
   simpleRouteJson: SimpleRouteJson
   inputNodes: InputNodeWithPortPoints[]
 
@@ -155,11 +154,13 @@ export class PortPointPathingSolver extends BaseSolver {
     inputNodes,
     capacityMeshNodes,
     colorMap,
+    hyperParameters,
   }: {
     simpleRouteJson: SimpleRouteJson
     capacityMeshNodes: CapacityMeshNode[]
     inputNodes: InputNodeWithPortPoints[]
     colorMap?: Record<string, string>
+    hyperParameters?: Partial<PortPointPathingHyperParameters>
   }) {
     super()
     this.MAX_ITERATIONS = 1e6
@@ -169,7 +170,9 @@ export class PortPointPathingSolver extends BaseSolver {
     this.capacityMeshNodeMap = new Map(
       capacityMeshNodes.map((n) => [n.capacityMeshNodeId, n]),
     )
-
+    this.hyperParameters = hyperParameters ?? {
+      SHUFFLE_SEED: 0,
+    }
     this.nodeMap = new Map(inputNodes.map((n) => [n.capacityMeshNodeId, n]))
 
     // Build port point maps
@@ -322,13 +325,18 @@ export class PortPointPathingSolver extends BaseSolver {
   }
 
   /**
-   * Get penalty for reusing a port point that's already assigned
+   * Get penalty for reusing a port point that's already assigned.
+   * No penalty if the port point is assigned to a connection with the same rootConnectionName.
    */
-  getPortPointReusePenalty(portPointId: string): number {
-    if (this.assignedPortPoints.has(portPointId)) {
-      return this.PORT_POINT_REUSE_FACTOR
-    }
-    return 0
+  getPortPointReusePenalty(
+    portPointId: string,
+    rootConnectionName?: string,
+  ): number {
+    const assigned = this.assignedPortPoints.get(portPointId)
+    if (!assigned) return 0
+    if (rootConnectionName === assigned.rootConnectionName) return 0
+
+    return this.PORT_POINT_REUSE_FACTOR
   }
 
   /**
@@ -349,6 +357,7 @@ export class PortPointPathingSolver extends BaseSolver {
     portPoint: InputPortPoint,
     targetNodeId: CapacityMeshNodeId,
     connectionName: string,
+    rootConnectionName?: string,
   ): number {
     const prevPoint = prevCandidate.point
     const distanceCost = distance(prevPoint, { x: portPoint.x, y: portPoint.y })
@@ -375,7 +384,10 @@ export class PortPointPathingSolver extends BaseSolver {
       entryPortPoint,
       exitPortPoint,
     ])
-    const reusePenalty = this.getPortPointReusePenalty(portPoint.portPointId)
+    const reusePenalty = this.getPortPointReusePenalty(
+      portPoint.portPointId,
+      rootConnectionName,
+    )
     const centerOffsetPenalty =
       portPoint.distToCentermostPortOnZ ** 2 *
       this.CENTER_OFFSET_DIST_PENALTY_FACTOR
@@ -686,6 +698,7 @@ export class PortPointPathingSolver extends BaseSolver {
         portPoint,
         targetNodeId,
         connectionName,
+        nextConnection.connection.rootConnectionName,
       )
       const h = this.computeH(
         { x: portPoint.x, y: portPoint.y },
