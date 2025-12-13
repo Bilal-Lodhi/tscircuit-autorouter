@@ -43,29 +43,25 @@ export interface MultiSectionPortPointOptimizerParams {
   initialNodeAssignedPortPoints: Map<CapacityMeshNodeId, PortPoint[]>
 }
 
-/** Parameter schedule for optimization attempts */
-interface OptimizationParams {
-  SHUFFLE_SEED: number
-  CENTER_OFFSET_DIST_PENALTY_FACTOR_2?: number
+const OPTIMIZATION_SCHEDULE: (PortPointPathingHyperParameters & {
   EXPANSION_DEGREES: number
-  GREEDY_MULTIPLIER?: number
-}
-
-const OPTIMIZATION_SCHEDULE: OptimizationParams[] = [
+})[] = [
   {
     SHUFFLE_SEED: 0,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR_2: 0.1,
+    CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
     EXPANSION_DEGREES: 3,
   },
   {
     SHUFFLE_SEED: 1,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR_2: 0.1,
+    CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
     EXPANSION_DEGREES: 3,
   },
   {
     SHUFFLE_SEED: 2,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR_2: 0.1,
+    CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
     EXPANSION_DEGREES: 4,
+    NODE_PF_FACTOR: 20,
+    GREEDY_MULTIPLIER: 2,
   },
   // {
   //   SHUFFLE_SEED: 3,

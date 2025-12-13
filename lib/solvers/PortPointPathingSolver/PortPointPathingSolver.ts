@@ -21,8 +21,9 @@ import {
 
 export interface PortPointPathingHyperParameters {
   SHUFFLE_SEED?: number
-  CENTER_OFFSET_DIST_PENALTY_FACTOR_2?: number
+  CENTER_OFFSET_DIST_PENALTY_FACTOR?: number
   GREEDY_MULTIPLIER?: number
+  NODE_PF_FACTOR?: number
 }
 
 /**
@@ -126,7 +127,9 @@ export class PortPointPathingSolver extends BaseSolver {
   PORT_POINT_REUSE_FACTOR = 1000
 
   /** Multiplied by Pf**2 to get node probability penalty */
-  NODE_PF_FACTOR = 50
+  get NODE_PF_FACTOR() {
+    return this.hyperParameters.NODE_PF_FACTOR ?? 50
+  }
 
   /** Cost of adding a candidate to the path */
   BASE_CANDIDATE_COST = 0.4
@@ -135,7 +138,9 @@ export class PortPointPathingSolver extends BaseSolver {
   Z_DIST_COST = 0
 
   /** Penalty factor for port points that are far from the center of the segment */
-  CENTER_OFFSET_DIST_PENALTY_FACTOR_1 = 10
+  get CENTER_OFFSET_DIST_PENALTY_FACTOR() {
+    return this.hyperParameters.CENTER_OFFSET_DIST_PENALTY_FACTOR ?? 10
+  }
 
   colorMap: Record<string, string>
 
@@ -394,8 +399,8 @@ export class PortPointPathingSolver extends BaseSolver {
     )
     const centerOffsetPenalty =
       portPoint.distToCentermostPortOnZ ** 2 *
-      this.CENTER_OFFSET_DIST_PENALTY_FACTOR_1 *
-      (this.hyperParameters.CENTER_OFFSET_DIST_PENALTY_FACTOR_2 ?? 1)
+      this.CENTER_OFFSET_DIST_PENALTY_FACTOR *
+      (this.hyperParameters.CENTER_OFFSET_DIST_PENALTY_FACTOR ?? 1)
 
     return (
       prevCandidate.g +
