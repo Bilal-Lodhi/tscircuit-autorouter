@@ -22,6 +22,7 @@ import {
 export interface PortPointPathingHyperParameters {
   SHUFFLE_SEED?: number
   CENTER_OFFSET_DIST_PENALTY_FACTOR?: number
+  CENTER_OFFSET_FOCUS_SHIFT?: number
   GREEDY_MULTIPLIER?: number
   NODE_PF_FACTOR?: number
 
@@ -136,6 +137,10 @@ export class PortPointPathingSolver extends BaseSolver {
 
   get MEMORY_PF_FACTOR() {
     return this.hyperParameters.MEMORY_PF_FACTOR ?? 0
+  }
+
+  get CENTER_OFFSET_FOCUS_SHIFT() {
+    return this.hyperParameters.CENTER_OFFSET_FOCUS_SHIFT ?? 0
   }
 
   /** Cost of adding a candidate to the path */
@@ -415,10 +420,15 @@ export class PortPointPathingSolver extends BaseSolver {
       portPoint.portPointId,
       rootConnectionName,
     )
+    let distToCentermostPortWithFocusShift =
+      portPoint.distToCentermostPortOnZ - this.CENTER_OFFSET_FOCUS_SHIFT
+    if (distToCentermostPortWithFocusShift < 0) {
+      distToCentermostPortWithFocusShift =
+        1 - distToCentermostPortWithFocusShift
+    }
     const centerOffsetPenalty =
-      portPoint.distToCentermostPortOnZ ** 2 *
-      this.CENTER_OFFSET_DIST_PENALTY_FACTOR *
-      (this.hyperParameters.CENTER_OFFSET_DIST_PENALTY_FACTOR ?? 1)
+      distToCentermostPortWithFocusShift ** 2 *
+      this.CENTER_OFFSET_DIST_PENALTY_FACTOR
 
     return (
       prevCandidate.g +
