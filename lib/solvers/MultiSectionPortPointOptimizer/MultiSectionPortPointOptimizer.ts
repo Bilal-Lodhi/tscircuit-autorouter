@@ -441,9 +441,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
               inputNodes: this.currentSection.inputNodes,
               capacityMeshNodes: this.currentSection.capacityMeshNodes,
               colorMap: this.colorMap,
-              hyperParameters: {
-                SHUFFLE_SEED: params.SHUFFLE_SEED,
-              },
+              hyperParameters: params,
             })
           } else {
             // All schedule params exhausted, move on
@@ -527,9 +525,8 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
               inputNodes: this.currentSection.inputNodes,
               capacityMeshNodes: this.currentSection.capacityMeshNodes,
               colorMap: this.colorMap,
+              hyperParameters: params,
             })
-            this.activeSubSolver.hyperParameters.SHUFFLE_SEED =
-              params.SHUFFLE_SEED
           } else {
             // All schedule params exhausted without improvement
             this.stats.failedOptimizations++
@@ -604,8 +601,8 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
       inputNodes: this.currentSection.inputNodes,
       capacityMeshNodes: this.currentSection.capacityMeshNodes,
       colorMap: this.colorMap,
+      hyperParameters: params,
     })
-    this.activeSubSolver.hyperParameters.SHUFFLE_SEED = params.SHUFFLE_SEED
   }
 
   visualize(): GraphicsObject {
