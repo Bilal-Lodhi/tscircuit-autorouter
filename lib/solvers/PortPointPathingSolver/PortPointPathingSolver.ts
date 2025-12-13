@@ -164,7 +164,7 @@ export class PortPointPathingSolver extends BaseSolver {
     hyperParameters?: Partial<PortPointPathingHyperParameters>
   }) {
     super()
-    this.MAX_ITERATIONS = 1e6
+    this.MAX_ITERATIONS = 10e3
     this.simpleRouteJson = simpleRouteJson
     this.inputNodes = inputNodes
     this.colorMap = colorMap ?? {}

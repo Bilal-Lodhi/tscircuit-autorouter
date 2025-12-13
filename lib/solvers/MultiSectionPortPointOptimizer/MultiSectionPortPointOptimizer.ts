@@ -65,26 +65,40 @@ const OPTIMIZATION_SCHEDULE: OptimizationParams[] = [
     CENTER_OFFSET_DIST_PENALTY_FACTOR_2: 0,
     EXPANSION_DEGREES: 3,
   },
-  {
-    SHUFFLE_SEED: 3,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR_2: 0,
-    EXPANSION_DEGREES: 3,
-  },
-  {
-    SHUFFLE_SEED: 4,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR_2: 0,
-    EXPANSION_DEGREES: 3,
-  },
-  {
-    SHUFFLE_SEED: 5,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR_2: 0,
-    EXPANSION_DEGREES: 3,
-  },
-  { SHUFFLE_SEED: 6, EXPANSION_DEGREES: 5 },
-  { SHUFFLE_SEED: 7, EXPANSION_DEGREES: 5 },
-  { SHUFFLE_SEED: 8, EXPANSION_DEGREES: 5 },
-  { SHUFFLE_SEED: 9, EXPANSION_DEGREES: 7 },
-  { SHUFFLE_SEED: 10, EXPANSION_DEGREES: 7 },
+  // {
+  //   SHUFFLE_SEED: 3,
+  //   CENTER_OFFSET_DIST_PENALTY_FACTOR_2: 0,
+  //   EXPANSION_DEGREES: 3,
+  // },
+  // {
+  //   SHUFFLE_SEED: 4,
+  //   CENTER_OFFSET_DIST_PENALTY_FACTOR_2: 0,
+  //   EXPANSION_DEGREES: 3,
+  // },
+  // {
+  //   SHUFFLE_SEED: 5,
+  //   CENTER_OFFSET_DIST_PENALTY_FACTOR_2: 0,
+  //   EXPANSION_DEGREES: 3,
+  // },
+  // { SHUFFLE_SEED: 6, EXPANSION_DEGREES: 5 },
+  // { SHUFFLE_SEED: 7, EXPANSION_DEGREES: 5 },
+  // { SHUFFLE_SEED: 8, EXPANSION_DEGREES: 5 },
+  // { SHUFFLE_SEED: 9, EXPANSION_DEGREES: 7 },
+  // {
+  //   SHUFFLE_SEED: 10,
+  //   EXPANSION_DEGREES: 1000,
+  //   // CENTER_OFFSET_DIST_PENALTY_FACTOR_2: 0,
+  // },
+  // {
+  //   SHUFFLE_SEED: 11,
+  //   EXPANSION_DEGREES: 1000,
+  //   // CENTER_OFFSET_DIST_PENALTY_FACTOR_2: 0,
+  // },
+  // {
+  //   SHUFFLE_SEED: 12,
+  //   EXPANSION_DEGREES: 1000,
+  //   // CENTER_OFFSET_DIST_PENALTY_FACTOR_2: 0,
+  // },
 ]
 
 /**
@@ -142,10 +156,10 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
   sectionAttempts: number = 0
 
   /** Maximum number of attempts per node */
-  MAX_NODE_ATTEMPTS = 2
+  MAX_NODE_ATTEMPTS = OPTIMIZATION_SCHEDULE.length
 
   /** Maximum total number of section optimization attempts */
-  MAX_SECTION_ATTEMPTS = 100
+  MAX_SECTION_ATTEMPTS = 1000
 
   /** Acceptable probability of failure threshold */
   ACCEPTABLE_PF = 0.05
