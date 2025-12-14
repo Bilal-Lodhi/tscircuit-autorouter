@@ -15,13 +15,17 @@ test("bugreport23 - should not fail with null z property in port points", async 
   // Print the board score after each activeSubSolver finishes
   const msppo = solver.multiSectionPortPointOptimizer
   const ogViz = structuredClone(solver.portPointPathingSolver!.visualize())
-  console.log(msppo?.computeBoardScore())
+  let bestScore = msppo!.computeBoardScore()
+  console.log(0, bestScore)
   while (solver.getCurrentPhase() !== "highDensityRouteSolver") {
     solver.step()
     if (msppo?.activeSubSolver) {
       msppo.activeSubSolver.solve()
       solver.step()
-      console.log(msppo.sectionAttempts, msppo.stats.currentBoardScore)
+      if (msppo.stats.currentBoardScore > bestScore) {
+        bestScore = msppo.stats.currentBoardScore
+        console.log(msppo.sectionAttempts, msppo.stats.currentBoardScore)
+      }
     }
   }
 
