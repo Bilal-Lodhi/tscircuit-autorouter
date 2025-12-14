@@ -532,17 +532,20 @@ export class PortPointPathingSolver extends BaseSolver {
       const center = group[0]
       if (!center) continue
 
-      result.push(center)
-
       // If center is already assigned, add adjacent offsets (next closest ones)
       const centerAssigned = this.assignedPortPoints.has(center.portPointId)
-      if (centerAssigned) {
-        // const k = this.MAX_ADJACENT_OFFSETS_WHEN_CENTER_ASSIGNED
-        const k = 1
-        for (let i = 1; i < group.length && i <= k; i++) {
-          result.push(group[i])
-        }
+
+      if (!centerAssigned) {
+        result.push(center)
+        continue
       }
+
+      const unassignedOnSide = []
+      for (let i = 1; i < group.length; i++) {
+        if (this.assignedPortPoints.has(group[i].portPointId)) continue
+        unassignedOnSide.push(group[i])
+      }
+      result.push(...unassignedOnSide)
     }
 
     return result
