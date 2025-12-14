@@ -49,92 +49,24 @@ export interface MultiSectionPortPointOptimizerParams {
 const OPTIMIZATION_SCHEDULE: (PortPointPathingHyperParameters & {
   EXPANSION_DEGREES: number
 })[] = [
-  // {
-  //   SHUFFLE_SEED: 1,
-  //   CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
-  //   EXPANSION_DEGREES: 3,
-  //   MEMORY_PF_FACTOR: 20,
-  //   NODE_PF_FACTOR: 5,
-  //   // GREEDY_MULTIPLIER: 10,
-  // },
   {
-    SHUFFLE_SEED: 2,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
-    EXPANSION_DEGREES: 7,
-    MEMORY_PF_FACTOR: 1,
-    NODE_PF_FACTOR: 0,
-    GREEDY_MULTIPLIER: 5,
-    // GREEDY_MULTIPLIER: 10,
-  },
-  {
-    SHUFFLE_SEED: 3,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
-    EXPANSION_DEGREES: 7,
-    MEMORY_PF_FACTOR: 0,
-    NODE_PF_FACTOR: 1,
-    GREEDY_MULTIPLIER: 5,
-    // GREEDY_MULTIPLIER: 10,
-  },
-  {
-    SHUFFLE_SEED: 2,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
     EXPANSION_DEGREES: 5,
-    MEMORY_PF_FACTOR: 1,
-    NODE_PF_FACTOR: 0,
-    GREEDY_MULTIPLIER: 5,
-    RANDOM_COST_MAGNITUDE: 0.1,
-    // GREEDY_MULTIPLIER: 10,
+    MEMORY_PF_FACTOR: 20,
+    MAX_ITERATIONS_PER_PATH: 10000,
+    CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
+    NODE_PF_FACTOR: 30,
+    BASE_CANDIDATE_COST: 0,
+    GREEDY_MULTIPLIER: 1.4,
   },
   {
-    SHUFFLE_SEED: 3,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
     EXPANSION_DEGREES: 5,
     MEMORY_PF_FACTOR: 0,
-    NODE_PF_FACTOR: 1,
-    GREEDY_MULTIPLIER: 5,
-    RANDOM_COST_MAGNITUDE: 0.1,
-    // GREEDY_MULTIPLIER: 10,
+    MAX_ITERATIONS_PER_PATH: 10000,
+    CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
+    NODE_PF_FACTOR: 50,
+    BASE_CANDIDATE_COST: 0,
+    GREEDY_MULTIPLIER: 1.4,
   },
-  {
-    SHUFFLE_SEED: 2,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR: 5,
-    CENTER_OFFSET_FOCUS_SHIFT: 0.5,
-    EXPANSION_DEGREES: 3,
-    MEMORY_PF_FACTOR: 1,
-    NODE_PF_FACTOR: 0,
-    GREEDY_MULTIPLIER: 5,
-    // GREEDY_MULTIPLIER: 10,
-  },
-  {
-    SHUFFLE_SEED: 3,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR: 5,
-    CENTER_OFFSET_FOCUS_SHIFT: 0.5,
-    EXPANSION_DEGREES: 3,
-    MEMORY_PF_FACTOR: 0,
-    NODE_PF_FACTOR: 1,
-    GREEDY_MULTIPLIER: 5,
-    // GREEDY_MULTIPLIER: 10,
-  },
-  // {
-  //   SHUFFLE_SEED: 4,
-  //   CENTER_OFFSET_DIST_PENALTY_FACTOR: 2,
-  //   EXPANSION_DEGREES: 7,
-  //   MEMORY_PF_FACTOR: 0,
-  //   NODE_PF_FACTOR: 1,
-  //   GREEDY_MULTIPLIER: 5,
-  //   CENTER_OFFSET_FOCUS_SHIFT: 0.4,
-  //   // GREEDY_MULTIPLIER: 10,
-  // },
-  // {
-  //   SHUFFLE_SEED: 5,
-  //   CENTER_OFFSET_DIST_PENALTY_FACTOR: 2,
-  //   EXPANSION_DEGREES: 7,
-  //   MEMORY_PF_FACTOR: 1,
-  //   NODE_PF_FACTOR: 0,
-  //   GREEDY_MULTIPLIER: 5,
-  //   CENTER_OFFSET_FOCUS_SHIFT: 0.4,
-  //   // GREEDY_MULTIPLIER: 10,
-  // },
 ]
 
 /**
@@ -192,10 +124,10 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
   sectionAttempts: number = 0
 
   /** Maximum number of attempts per node */
-  MAX_ATTEMPTS_PER_NODE = 100
+  MAX_ATTEMPTS_PER_NODE = 200
 
   /** Maximum total number of section optimization attempts */
-  MAX_SECTION_ATTEMPTS = 10000
+  MAX_SECTION_ATTEMPTS = 3000
 
   /** Acceptable probability of failure threshold */
   ACCEPTABLE_PF = 0.01
@@ -235,6 +167,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     this.stats.sectionScores = {} as Record<string, number>
     this.stats.initialBoardScore = initialBoardScore
     this.stats.currentBoardScore = initialBoardScore
+    this.stats.errors = 0
   }
 
   /**
@@ -266,7 +199,6 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
 
   /**
    * Compute the score for the ENTIRE board (all nodes with port points).
-   * Lower scores are better.
    */
   computeBoardScore(): number {
     const allNodesWithPortPoints = this.getNodesWithPortPoints()
@@ -386,7 +318,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     for (const [nodeId, pf] of this.nodePfMap.entries()) {
       // Reduce effective Pf based on number of attempts
       const attempts = this.attemptsToFixNode.get(nodeId) ?? 0
-      const pfReduced = pf * (1 - attempts / this.MAX_ATTEMPTS_PER_NODE)
+      const pfReduced = pf * (1 - attempts / this.MAX_ATTEMPTS_PER_NODE) ** 2
 
       if (pfReduced > highestPf) {
         highestPf = pf
@@ -723,6 +655,9 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
         if (this.activeSubSolver.failed) {
           // Sub-solver failed, try next schedule params or move on
           this.currentScheduleIndex++
+          if (this.activeSubSolver.error) {
+            this.stats.errors++
+          }
 
           if (
             this.currentScheduleIndex < OPTIMIZATION_SCHEDULE.length &&

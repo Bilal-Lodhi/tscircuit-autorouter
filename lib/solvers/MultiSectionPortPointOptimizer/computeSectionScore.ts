@@ -1,5 +1,5 @@
 import type { CapacityMeshNode, CapacityMeshNodeId } from "../../types"
-import type { NodeWithPortPoints, PortPoint } from "../../types/high-density-types"
+import type { NodeWithPortPoints } from "../../types/high-density-types"
 import { getIntraNodeCrossings } from "../../utils/getIntraNodeCrossings"
 import { calculateNodeProbabilityOfFailure } from "../UnravelSolver/calculateCrossingProbabilityOfFailure"
 

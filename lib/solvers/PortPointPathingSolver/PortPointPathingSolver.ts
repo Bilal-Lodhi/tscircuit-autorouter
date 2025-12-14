@@ -208,7 +208,7 @@ export class PortPointPathingSolver extends BaseSolver {
     hyperParameters?: Partial<PortPointPathingHyperParameters>
   }) {
     super()
-    this.MAX_ITERATIONS = 20e3
+    this.MAX_ITERATIONS = 50e3
     this.simpleRouteJson = simpleRouteJson
     this.inputNodes = inputNodes
     this.colorMap = colorMap ?? {}
@@ -747,9 +747,7 @@ export class PortPointPathingSolver extends BaseSolver {
     }
 
     if (!currentCandidate) {
-      console.error(
-        `Ran out of candidates on connection ${nextConnection.connection.name}`,
-      )
+      this.error = `Ran out of candidates on connection ${nextConnection.connection.name}`
       this.currentConnectionIndex++
       this.candidates = null
       this.visitedPortPoints = null
