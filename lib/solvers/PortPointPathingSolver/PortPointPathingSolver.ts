@@ -690,14 +690,15 @@ export class PortPointPathingSolver extends BaseSolver {
     // Check if we've exceeded max iterations for this path
     this.currentPathIterations++
     if (this.currentPathIterations > this.MAX_ITERATIONS_PER_PATH) {
-      console.error(
-        `Exceeded MAX_ITERATIONS_PER_PATH (${this.MAX_ITERATIONS_PER_PATH}) on connection ${nextConnection.connection.name}`,
-      )
+      // console.error(
+      //   `Exceeded MAX_ITERATIONS_PER_PATH (${this.MAX_ITERATIONS_PER_PATH}) on connection ${nextConnection.connection.name}`,
+      // )
       this.currentConnectionIndex++
       this.candidates = null
       this.visitedPortPoints = null
       this.currentPathIterations = 0
       this.failed = true
+      this.error = `Exceeded MAX_ITERATIONS_PER_PATH (${this.MAX_ITERATIONS_PER_PATH}) on connection ${nextConnection.connection.name}`
       return
     }
 

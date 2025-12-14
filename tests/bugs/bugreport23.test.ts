@@ -4,6 +4,7 @@ import type { SimpleRouteJson } from "lib/types"
 import bugreport23 from "../../examples/bug-reports/bugreport23-LGA15x4/bugreport23-LGA15x4.srj.json"
 import { convertSrjToGraphicsObject } from "lib/index"
 import { stackGraphicsVertically } from "graphics-debug"
+import kluer from "kleur"
 
 test("bugreport23 - should not fail with null z property in port points", async () => {
   const solver = new AutoroutingPipelineSolver(
@@ -16,7 +17,7 @@ test("bugreport23 - should not fail with null z property in port points", async 
   const msppo = solver.multiSectionPortPointOptimizer
   const ogViz = structuredClone(solver.portPointPathingSolver!.visualize())
   let bestScore = msppo!.computeBoardScore()
-  console.log(0, bestScore)
+  console.log(0, bestScore.toFixed(2), kluer.red(msppo?.stats.errors))
   while (solver.getCurrentPhase() !== "highDensityRouteSolver") {
     solver.step()
     if (msppo?.activeSubSolver) {
@@ -24,7 +25,11 @@ test("bugreport23 - should not fail with null z property in port points", async 
       solver.step()
       if (msppo.stats.currentBoardScore > bestScore) {
         bestScore = msppo.stats.currentBoardScore
-        console.log(msppo.sectionAttempts, msppo.stats.currentBoardScore)
+        console.log(
+          msppo.sectionAttempts,
+          msppo.stats.currentBoardScore.toFixed(2),
+          kluer.red(msppo?.stats.errors),
+        )
       }
     }
   }
