@@ -28,6 +28,7 @@ export interface PortPointPathingHyperParameters {
   RANDOM_COST_MAGNITUDE?: number
 
   MEMORY_PF_FACTOR?: number
+  BASE_CANDIDATE_COST?: number
 
   REWARD_LOW_TRAVEL_PF_MAGNITUDE?: number
 
@@ -156,7 +157,9 @@ export class PortPointPathingSolver extends BaseSolver {
   }
 
   /** Cost of adding a candidate to the path */
-  BASE_CANDIDATE_COST = 0.4
+  get BASE_CANDIDATE_COST() {
+    return this.hyperParameters.BASE_CANDIDATE_COST ?? 0.4
+  }
 
   /** Cost penalty for changing layers */
   Z_DIST_COST = 0
@@ -174,7 +177,7 @@ export class PortPointPathingSolver extends BaseSolver {
   MAX_CANDIDATES_IN_MEMORY = 50_000
 
   get MAX_ITERATIONS_PER_PATH() {
-    return this.hyperParameters.MAX_ITERATIONS_PER_PATH ?? 500
+    return this.hyperParameters.MAX_ITERATIONS_PER_PATH ?? 4000
   }
 
   nodeMemoryPfMap: Map<CapacityMeshNodeId, number>
@@ -489,6 +492,62 @@ export class PortPointPathingSolver extends BaseSolver {
     })
   }
 
+  /**
+   * Get available port points to exit from a node, but *do not* return all.
+   *
+   * Rule:
+   * - For each (neighborNodeId, z) group, return the centermost (smallest dist).
+   * - If that centermost port point is already assigned, also return a few next-closest
+   *   "adjacent offsets" as backups.
+   */
+  getAvailableExitPortPointsWithOmissions(
+    nodeId: CapacityMeshNodeId,
+    endGoalNodeId: CapacityMeshNodeId,
+  ): InputPortPoint[] {
+    const portPoints = this.nodePortPointsMap.get(nodeId) ?? []
+
+    // Group by "other side node" + z
+    const groups = new Map<string, InputPortPoint[]>()
+
+    for (const pp of portPoints) {
+      if (this.visitedPortPoints?.has(pp.portPointId)) continue
+
+      const otherNodeId = this.getOtherNodeId(pp, nodeId)
+      if (!otherNodeId) continue
+
+      const key = `${otherNodeId}|${pp.z}`
+      const arr = groups.get(key) ?? []
+      arr.push(pp)
+      groups.set(key, arr)
+    }
+
+    const result: InputPortPoint[] = []
+
+    for (const [, group] of groups) {
+      // Sort by "center offset distance" (0 first)
+      group.sort(
+        (a, b) => a.distToCentermostPortOnZ - b.distToCentermostPortOnZ,
+      )
+
+      const center = group[0]
+      if (!center) continue
+
+      result.push(center)
+
+      // If center is already assigned, add adjacent offsets (next closest ones)
+      const centerAssigned = this.assignedPortPoints.has(center.portPointId)
+      if (centerAssigned) {
+        // const k = this.MAX_ADJACENT_OFFSETS_WHEN_CENTER_ASSIGNED
+        const k = 1
+        for (let i = 1; i < group.length && i <= k; i++) {
+          result.push(group[i])
+        }
+      }
+    }
+
+    return result
+  }
+
   canTravelThroughObstacle(
     node: InputNodeWithPortPoints,
     connectionName: string,
@@ -734,7 +793,7 @@ export class PortPointPathingSolver extends BaseSolver {
 
     // Expand to available port points from current node
     const connectionName = nextConnection.connection.name
-    const availablePortPoints = this.getAvailableExitPortPoints(
+    const availablePortPoints = this.getAvailableExitPortPointsWithOmissions(
       currentCandidate.currentNodeId,
       endNodeId,
     )
