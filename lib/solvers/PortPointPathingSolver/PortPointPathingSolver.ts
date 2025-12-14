@@ -366,9 +366,16 @@ export class PortPointPathingSolver extends BaseSolver {
     node: InputNodeWithPortPoints,
     additionalPortPoints?: PortPoint[],
   ): number {
+    // const pfBefore = this.computeNodePf(node)
+    // const pfAfter = this.computeNodePf(node, additionalPortPoints)
+    // const pfChange = Math.max(0, pfAfter - pfBefore)
     const pf = this.computeNodePf(node, additionalPortPoints)
     const memoryPf = this.nodeMemoryPfMap.get(node.capacityMeshNodeId) ?? 0
-    return pf ** 2 * this.NODE_PF_FACTOR + memoryPf ** 2 * this.MEMORY_PF_FACTOR
+    return (
+      pf ** 2 * this.NODE_PF_FACTOR +
+      // pfChange ** 2 * this.NODE_PF_FACTOR +
+      memoryPf ** 2 * this.MEMORY_PF_FACTOR
+    )
   }
 
   /**
