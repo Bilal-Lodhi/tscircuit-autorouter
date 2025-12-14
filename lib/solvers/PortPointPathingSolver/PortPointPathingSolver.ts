@@ -28,6 +28,9 @@ export interface PortPointPathingHyperParameters {
   RANDOM_COST_MAGNITUDE?: number
 
   MEMORY_PF_FACTOR?: number
+
+  REWARD_LOW_TRAVEL_PF_MAGNITUDE?: number
+
   MAX_ITERATIONS_PER_PATH?: number
 }
 
@@ -146,6 +149,10 @@ export class PortPointPathingSolver extends BaseSolver {
 
   get RANDOM_COST_MAGNITUDE() {
     return this.hyperParameters.RANDOM_COST_MAGNITUDE ?? 0
+  }
+
+  get REWARD_LOW_TRAVEL_PF_MAGNITUDE() {
+    return this.hyperParameters.REWARD_LOW_TRAVEL_PF_MAGNITUDE ?? 0
   }
 
   /** Cost of adding a candidate to the path */
@@ -434,9 +441,14 @@ export class PortPointPathingSolver extends BaseSolver {
     const randomCost =
       this.RANDOM_COST_MAGNITUDE * seededRandom(this.iterations)()
 
+    const memPf = this.nodeMemoryPfMap.get(targetNodeId) ?? 0
+    const rewardLowTravelPf =
+      memPf < 0.15 ? -this.REWARD_LOW_TRAVEL_PF_MAGNITUDE : 0
+
     return (
       prevCandidate.g +
       this.BASE_CANDIDATE_COST +
+      rewardLowTravelPf +
       randomCost +
       distanceCost +
       pfPenalty +
