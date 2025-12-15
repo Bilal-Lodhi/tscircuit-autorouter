@@ -50,21 +50,15 @@ const OPTIMIZATION_SCHEDULE: (PortPointPathingHyperParameters & {
   EXPANSION_DEGREES: number
 })[] = [
   {
+    SHUFFLE_SEED: 1,
+    EXPANSION_DEGREES: 8,
     CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
-    EXPANSION_DEGREES: 5,
-    MEMORY_PF_FACTOR: 1,
-    NODE_PF_FACTOR: 0.01,
-    GREEDY_MULTIPLIER: 5,
-    MAX_ITERATIONS_PER_PATH: 1000,
-    // GREEDY_MULTIPLIER: 10,
-  },
-  {
-    CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
-    EXPANSION_DEGREES: 5,
-    MEMORY_PF_FACTOR: 0.01,
-    NODE_PF_FACTOR: 1,
-    GREEDY_MULTIPLIER: 5,
-    MAX_ITERATIONS_PER_PATH: 1000,
+    // CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
+    // EXPANSION_DEGREES: 5,
+    // MEMORY_PF_FACTOR: 1,
+    // NODE_PF_FACTOR: 0.01,
+    // GREEDY_MULTIPLIER: 5,
+    // MAX_ITERATIONS_PER_PATH: 1000,
     // GREEDY_MULTIPLIER: 10,
   },
 ]
@@ -124,10 +118,10 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
   sectionAttempts: number = 0
 
   /** Maximum number of attempts per node */
-  MAX_ATTEMPTS_PER_NODE = 200
+  MAX_ATTEMPTS_PER_NODE = 10
 
   /** Maximum total number of section optimization attempts */
-  MAX_SECTION_ATTEMPTS = 3000
+  MAX_SECTION_ATTEMPTS = 100
 
   /** Acceptable probability of failure threshold */
   ACCEPTABLE_PF = 0.01
