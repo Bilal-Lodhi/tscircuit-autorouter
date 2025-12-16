@@ -106,13 +106,20 @@ function* generateSchedules(): Generator<{
   }
 
   // 1. NODE_PF_FACTOR variations (key parameter we're exploring)
-  for (const npf of [0, 0.5, 1, 2, 5, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 500]) {
+  for (const npf of [
+    0, 0.5, 1, 2, 5, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 500,
+  ]) {
     yield {
       name: `npf_${npf}`,
       schedule: [
         { ...baseConfig, SHUFFLE_SEED: 0, NODE_PF_FACTOR: npf },
         { ...baseConfig, SHUFFLE_SEED: 1, NODE_PF_FACTOR: npf },
-        { ...baseConfig, SHUFFLE_SEED: 2, EXPANSION_DEGREES: 4, NODE_PF_FACTOR: npf },
+        {
+          ...baseConfig,
+          SHUFFLE_SEED: 2,
+          EXPANSION_DEGREES: 4,
+          NODE_PF_FACTOR: npf,
+        },
       ],
     }
   }
@@ -123,9 +130,27 @@ function* generateSchedules(): Generator<{
       yield {
         name: `npf${npf}_gm${gm}`,
         schedule: [
-          { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: gm, NODE_PF_FACTOR: npf },
-          { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: gm, NODE_PF_FACTOR: npf },
-          { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: gm, NODE_PF_FACTOR: npf },
+          {
+            SHUFFLE_SEED: 0,
+            CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+            EXPANSION_DEGREES: 3,
+            GREEDY_MULTIPLIER: gm,
+            NODE_PF_FACTOR: npf,
+          },
+          {
+            SHUFFLE_SEED: 1,
+            CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+            EXPANSION_DEGREES: 3,
+            GREEDY_MULTIPLIER: gm,
+            NODE_PF_FACTOR: npf,
+          },
+          {
+            SHUFFLE_SEED: 2,
+            CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+            EXPANSION_DEGREES: 4,
+            GREEDY_MULTIPLIER: gm,
+            NODE_PF_FACTOR: npf,
+          },
         ],
       }
     }
@@ -137,9 +162,27 @@ function* generateSchedules(): Generator<{
       yield {
         name: `npf${npf}_cof${cof}`,
         schedule: [
-          { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: cof, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 3, NODE_PF_FACTOR: npf },
-          { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: cof, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 3, NODE_PF_FACTOR: npf },
-          { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: cof, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: 3, NODE_PF_FACTOR: npf },
+          {
+            SHUFFLE_SEED: 0,
+            CENTER_OFFSET_DIST_PENALTY_FACTOR: cof,
+            EXPANSION_DEGREES: 3,
+            GREEDY_MULTIPLIER: 3,
+            NODE_PF_FACTOR: npf,
+          },
+          {
+            SHUFFLE_SEED: 1,
+            CENTER_OFFSET_DIST_PENALTY_FACTOR: cof,
+            EXPANSION_DEGREES: 3,
+            GREEDY_MULTIPLIER: 3,
+            NODE_PF_FACTOR: npf,
+          },
+          {
+            SHUFFLE_SEED: 2,
+            CENTER_OFFSET_DIST_PENALTY_FACTOR: cof,
+            EXPANSION_DEGREES: 4,
+            GREEDY_MULTIPLIER: 3,
+            NODE_PF_FACTOR: npf,
+          },
         ],
       }
     }
@@ -150,9 +193,24 @@ function* generateSchedules(): Generator<{
     yield {
       name: `fineGm_${gm}`,
       schedule: [
-        { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: gm },
-        { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: gm },
-        { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: gm },
+        {
+          SHUFFLE_SEED: 0,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: gm,
+        },
+        {
+          SHUFFLE_SEED: 1,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: gm,
+        },
+        {
+          SHUFFLE_SEED: 2,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 4,
+          GREEDY_MULTIPLIER: gm,
+        },
       ],
     }
   }
@@ -164,9 +222,24 @@ function* generateSchedules(): Generator<{
         yield {
           name: `exp_${exp1}_${exp2}_${exp3}`,
           schedule: [
-            { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: exp1, GREEDY_MULTIPLIER: 3 },
-            { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: exp2, GREEDY_MULTIPLIER: 3 },
-            { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: exp3, GREEDY_MULTIPLIER: 3 },
+            {
+              SHUFFLE_SEED: 0,
+              CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+              EXPANSION_DEGREES: exp1,
+              GREEDY_MULTIPLIER: 3,
+            },
+            {
+              SHUFFLE_SEED: 1,
+              CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+              EXPANSION_DEGREES: exp2,
+              GREEDY_MULTIPLIER: 3,
+            },
+            {
+              SHUFFLE_SEED: 2,
+              CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+              EXPANSION_DEGREES: exp3,
+              GREEDY_MULTIPLIER: 3,
+            },
           ],
         }
       }
@@ -178,9 +251,27 @@ function* generateSchedules(): Generator<{
     yield {
       name: `best_npf${npf}`,
       schedule: [
-        { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 3, NODE_PF_FACTOR: npf },
-        { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 3, NODE_PF_FACTOR: npf },
-        { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: 3, NODE_PF_FACTOR: npf },
+        {
+          SHUFFLE_SEED: 0,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: 3,
+          NODE_PF_FACTOR: npf,
+        },
+        {
+          SHUFFLE_SEED: 1,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: 3,
+          NODE_PF_FACTOR: npf,
+        },
+        {
+          SHUFFLE_SEED: 2,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 4,
+          GREEDY_MULTIPLIER: 3,
+          NODE_PF_FACTOR: npf,
+        },
       ],
     }
   }
@@ -203,9 +294,27 @@ function* generateSchedules(): Generator<{
   yield {
     name: "varied_npf",
     schedule: [
-      { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 3, NODE_PF_FACTOR: 10 },
-      { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 3, NODE_PF_FACTOR: 50 },
-      { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: 3, NODE_PF_FACTOR: 100 },
+      {
+        SHUFFLE_SEED: 0,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 3,
+        GREEDY_MULTIPLIER: 3,
+        NODE_PF_FACTOR: 10,
+      },
+      {
+        SHUFFLE_SEED: 1,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 3,
+        GREEDY_MULTIPLIER: 3,
+        NODE_PF_FACTOR: 50,
+      },
+      {
+        SHUFFLE_SEED: 2,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 4,
+        GREEDY_MULTIPLIER: 3,
+        NODE_PF_FACTOR: 100,
+      },
     ],
   }
 
@@ -214,9 +323,27 @@ function* generateSchedules(): Generator<{
     yield {
       name: `lowNpf_${npf}`,
       schedule: [
-        { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 3, NODE_PF_FACTOR: npf },
-        { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 3, NODE_PF_FACTOR: npf },
-        { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: 3, NODE_PF_FACTOR: npf },
+        {
+          SHUFFLE_SEED: 0,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: 3,
+          NODE_PF_FACTOR: npf,
+        },
+        {
+          SHUFFLE_SEED: 1,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: 3,
+          NODE_PF_FACTOR: npf,
+        },
+        {
+          SHUFFLE_SEED: 2,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 4,
+          GREEDY_MULTIPLIER: 3,
+          NODE_PF_FACTOR: npf,
+        },
       ],
     }
   }
@@ -227,9 +354,27 @@ function* generateSchedules(): Generator<{
       yield {
         name: `highGm${gm}_npf${npf}`,
         schedule: [
-          { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: gm, NODE_PF_FACTOR: npf },
-          { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: gm, NODE_PF_FACTOR: npf },
-          { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: gm, NODE_PF_FACTOR: npf },
+          {
+            SHUFFLE_SEED: 0,
+            CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+            EXPANSION_DEGREES: 3,
+            GREEDY_MULTIPLIER: gm,
+            NODE_PF_FACTOR: npf,
+          },
+          {
+            SHUFFLE_SEED: 1,
+            CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+            EXPANSION_DEGREES: 3,
+            GREEDY_MULTIPLIER: gm,
+            NODE_PF_FACTOR: npf,
+          },
+          {
+            SHUFFLE_SEED: 2,
+            CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+            EXPANSION_DEGREES: 4,
+            GREEDY_MULTIPLIER: gm,
+            NODE_PF_FACTOR: npf,
+          },
         ],
       }
     }

@@ -57,8 +57,7 @@ test("createPortPointSection creates valid section from center node", async () =
   let closestDist = Infinity
   for (const node of nodes) {
     const dist = Math.sqrt(
-      (node.center.x - boardCenterX) ** 2 +
-        (node.center.y - boardCenterY) ** 2,
+      (node.center.x - boardCenterX) ** 2 + (node.center.y - boardCenterY) ** 2,
     )
     if (dist < closestDist) {
       closestDist = dist
@@ -200,8 +199,7 @@ test("createSectionSimpleRouteJson includes cut paths with low expansion degrees
   let closestDist = Infinity
   for (const node of portPointSolver.inputNodes) {
     const dist = Math.sqrt(
-      (node.center.x - boardCenterX) ** 2 +
-        (node.center.y - boardCenterY) ** 2,
+      (node.center.x - boardCenterX) ** 2 + (node.center.y - boardCenterY) ** 2,
     )
     if (dist < closestDist && !node._containsTarget) {
       closestDist = dist
@@ -262,9 +260,7 @@ test("createSectionSimpleRouteJson includes cut paths with low expansion degrees
     multiSectionOptimizer.createSectionSimpleRouteJson(testSection)
 
   // Log the connections in the section SimpleRouteJson
-  console.log(
-    `Section connections: ${sectionSrj.connections.length}`,
-  )
+  console.log(`Section connections: ${sectionSrj.connections.length}`)
 
   const cutConnections = sectionSrj.connections.filter((c) =>
     c.name.startsWith("__cut__"),

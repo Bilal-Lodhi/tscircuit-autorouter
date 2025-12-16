@@ -1,8 +1,15 @@
 import { expect, test } from "bun:test"
 import { MultiSectionPortPointOptimizer } from "../lib/solvers/MultiSectionPortPointOptimizer"
 import { PortPointPathingSolver } from "../lib/solvers/PortPointPathingSolver/PortPointPathingSolver"
-import type { SimpleRouteJson, CapacityMeshNode, CapacityMeshEdge } from "../lib/types"
-import type { InputNodeWithPortPoints, InputPortPoint } from "../lib/solvers/PortPointPathingSolver/PortPointPathingSolver"
+import type {
+  SimpleRouteJson,
+  CapacityMeshNode,
+  CapacityMeshEdge,
+} from "../lib/types"
+import type {
+  InputNodeWithPortPoints,
+  InputPortPoint,
+} from "../lib/solvers/PortPointPathingSolver/PortPointPathingSolver"
 
 /**
  * Create a simple 3x3 grid of nodes for testing.
@@ -88,8 +95,12 @@ function createSimple3x3Grid(): {
     for (const edge of capacityMeshEdges) {
       if (!edge.nodeIds.includes(node.capacityMeshNodeId)) continue
 
-      const otherNodeId = edge.nodeIds.find((id) => id !== node.capacityMeshNodeId)!
-      const otherNode = capacityMeshNodes.find((n) => n.capacityMeshNodeId === otherNodeId)!
+      const otherNodeId = edge.nodeIds.find(
+        (id) => id !== node.capacityMeshNodeId,
+      )!
+      const otherNode = capacityMeshNodes.find(
+        (n) => n.capacityMeshNodeId === otherNodeId,
+      )!
 
       // Calculate port point position on shared edge
       const dx = otherNode.center.x - node.center.x
@@ -98,9 +109,11 @@ function createSimple3x3Grid(): {
       let ppX = node.center.x
       let ppY = node.center.y
 
-      if (dx > 0) ppX += nodeSize / 2 // right edge
+      if (dx > 0)
+        ppX += nodeSize / 2 // right edge
       else if (dx < 0) ppX -= nodeSize / 2 // left edge
-      if (dy > 0) ppY += nodeSize / 2 // bottom edge
+      if (dy > 0)
+        ppY += nodeSize / 2 // bottom edge
       else if (dy < 0) ppY -= nodeSize / 2 // top edge
 
       // Create port points for each z layer
@@ -111,7 +124,10 @@ function createSimple3x3Grid(): {
           x: ppX,
           y: ppY,
           z,
-          connectionNodeIds: [node.capacityMeshNodeId, otherNodeId] as [string, string],
+          connectionNodeIds: [node.capacityMeshNodeId, otherNodeId] as [
+            string,
+            string,
+          ],
           distToCentermostPortOnZ: 0,
         })
       }

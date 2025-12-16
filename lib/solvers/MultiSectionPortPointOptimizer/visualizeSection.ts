@@ -20,9 +20,7 @@ export function visualizeSection(
   for (const node of section.inputNodes) {
     const isCenter = node.capacityMeshNodeId === section.centerNodeId
     // Use green for center node, gray for others (no pf calculation in section view)
-    const color = isCenter
-      ? "rgba(0, 200, 0, 0.3)"
-      : "rgba(200, 200, 200, 0.3)"
+    const color = isCenter ? "rgba(0, 200, 0, 0.3)" : "rgba(200, 200, 200, 0.3)"
 
     graphics.rects!.push({
       center: node.center,

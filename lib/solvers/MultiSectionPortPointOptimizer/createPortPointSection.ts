@@ -1,4 +1,8 @@
-import type { CapacityMeshEdge, CapacityMeshNode, CapacityMeshNodeId } from "../../types"
+import type {
+  CapacityMeshEdge,
+  CapacityMeshNode,
+  CapacityMeshNodeId,
+} from "../../types"
 import type {
   InputNodeWithPortPoints,
   InputPortPoint,
@@ -80,7 +84,12 @@ export function createPortPointSection(
   input: CreatePortPointSectionInput,
   params: PortPointSectionParams,
 ): PortPointSection {
-  const { inputNodes, capacityMeshNodes, capacityMeshEdges, connectionResults } = input
+  const {
+    inputNodes,
+    capacityMeshNodes,
+    capacityMeshEdges,
+    connectionResults,
+  } = input
   const { centerOfSectionCapacityNodeId, expansionDegrees } = params
 
   // Build adjacency map from edges

@@ -120,9 +120,24 @@ function* generateSchedules(): Generator<{
     yield {
       name: `baseSeed_${baseSeed}`,
       schedule: [
-        { SHUFFLE_SEED: baseSeed, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 3 },
-        { SHUFFLE_SEED: baseSeed + 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 3 },
-        { SHUFFLE_SEED: baseSeed + 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: 3 },
+        {
+          SHUFFLE_SEED: baseSeed,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: 3,
+        },
+        {
+          SHUFFLE_SEED: baseSeed + 1,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: 3,
+        },
+        {
+          SHUFFLE_SEED: baseSeed + 2,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 4,
+          GREEDY_MULTIPLIER: 3,
+        },
       ],
     }
   }
@@ -132,10 +147,30 @@ function* generateSchedules(): Generator<{
     yield {
       name: `prog_gm${gm}`,
       schedule: [
-        { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 2, GREEDY_MULTIPLIER: gm },
-        { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: gm },
-        { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: gm },
-        { SHUFFLE_SEED: 3, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 5, GREEDY_MULTIPLIER: gm },
+        {
+          SHUFFLE_SEED: 0,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 2,
+          GREEDY_MULTIPLIER: gm,
+        },
+        {
+          SHUFFLE_SEED: 1,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: gm,
+        },
+        {
+          SHUFFLE_SEED: 2,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 4,
+          GREEDY_MULTIPLIER: gm,
+        },
+        {
+          SHUFFLE_SEED: 3,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 5,
+          GREEDY_MULTIPLIER: gm,
+        },
       ],
     }
   }
@@ -144,20 +179,60 @@ function* generateSchedules(): Generator<{
   yield {
     name: "mixed_gm_ascending",
     schedule: [
-      { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 2 },
-      { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 3 },
-      { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: 4 },
-      { SHUFFLE_SEED: 3, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: 5 },
+      {
+        SHUFFLE_SEED: 0,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 3,
+        GREEDY_MULTIPLIER: 2,
+      },
+      {
+        SHUFFLE_SEED: 1,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 3,
+        GREEDY_MULTIPLIER: 3,
+      },
+      {
+        SHUFFLE_SEED: 2,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 4,
+        GREEDY_MULTIPLIER: 4,
+      },
+      {
+        SHUFFLE_SEED: 3,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 4,
+        GREEDY_MULTIPLIER: 5,
+      },
     ],
   }
 
   yield {
     name: "mixed_gm_descending",
     schedule: [
-      { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 5 },
-      { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 4 },
-      { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: 3 },
-      { SHUFFLE_SEED: 3, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: 2 },
+      {
+        SHUFFLE_SEED: 0,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 3,
+        GREEDY_MULTIPLIER: 5,
+      },
+      {
+        SHUFFLE_SEED: 1,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 3,
+        GREEDY_MULTIPLIER: 4,
+      },
+      {
+        SHUFFLE_SEED: 2,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 4,
+        GREEDY_MULTIPLIER: 3,
+      },
+      {
+        SHUFFLE_SEED: 3,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 4,
+        GREEDY_MULTIPLIER: 2,
+      },
     ],
   }
 
@@ -166,9 +241,24 @@ function* generateSchedules(): Generator<{
     yield {
       name: `highGreedy_${gm}`,
       schedule: [
-        { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: gm },
-        { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: gm },
-        { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: gm },
+        {
+          SHUFFLE_SEED: 0,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: gm,
+        },
+        {
+          SHUFFLE_SEED: 1,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: gm,
+        },
+        {
+          SHUFFLE_SEED: 2,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 4,
+          GREEDY_MULTIPLIER: gm,
+        },
       ],
     }
   }
@@ -178,9 +268,24 @@ function* generateSchedules(): Generator<{
     yield {
       name: `lowGreedy_${gm}`,
       schedule: [
-        { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: gm },
-        { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: gm },
-        { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: gm },
+        {
+          SHUFFLE_SEED: 0,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: gm,
+        },
+        {
+          SHUFFLE_SEED: 1,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: gm,
+        },
+        {
+          SHUFFLE_SEED: 2,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 4,
+          GREEDY_MULTIPLIER: gm,
+        },
       ],
     }
   }
@@ -190,9 +295,27 @@ function* generateSchedules(): Generator<{
     yield {
       name: `npf_${npf}`,
       schedule: [
-        { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 3, NODE_PF_FACTOR: npf },
-        { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 3, NODE_PF_FACTOR: npf },
-        { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: 3, NODE_PF_FACTOR: npf },
+        {
+          SHUFFLE_SEED: 0,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: 3,
+          NODE_PF_FACTOR: npf,
+        },
+        {
+          SHUFFLE_SEED: 1,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: 3,
+          NODE_PF_FACTOR: npf,
+        },
+        {
+          SHUFFLE_SEED: 2,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 4,
+          GREEDY_MULTIPLIER: 3,
+          NODE_PF_FACTOR: npf,
+        },
       ],
     }
   }
@@ -202,9 +325,24 @@ function* generateSchedules(): Generator<{
     yield {
       name: `bigExp_${maxExp}`,
       schedule: [
-        { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 3 },
-        { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: Math.ceil(maxExp / 2), GREEDY_MULTIPLIER: 3 },
-        { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: maxExp, GREEDY_MULTIPLIER: 3 },
+        {
+          SHUFFLE_SEED: 0,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: 3,
+        },
+        {
+          SHUFFLE_SEED: 1,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: Math.ceil(maxExp / 2),
+          GREEDY_MULTIPLIER: 3,
+        },
+        {
+          SHUFFLE_SEED: 2,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: maxExp,
+          GREEDY_MULTIPLIER: 3,
+        },
       ],
     }
   }
@@ -214,9 +352,24 @@ function* generateSchedules(): Generator<{
     yield {
       name: `sameExp_${exp}`,
       schedule: [
-        { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: exp, GREEDY_MULTIPLIER: 3 },
-        { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: exp, GREEDY_MULTIPLIER: 3 },
-        { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: exp, GREEDY_MULTIPLIER: 3 },
+        {
+          SHUFFLE_SEED: 0,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: exp,
+          GREEDY_MULTIPLIER: 3,
+        },
+        {
+          SHUFFLE_SEED: 1,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: exp,
+          GREEDY_MULTIPLIER: 3,
+        },
+        {
+          SHUFFLE_SEED: 2,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: exp,
+          GREEDY_MULTIPLIER: 3,
+        },
       ],
     }
   }
@@ -239,11 +392,36 @@ function* generateSchedules(): Generator<{
   yield {
     name: "varied_exp_wide",
     schedule: [
-      { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 2, GREEDY_MULTIPLIER: 3 },
-      { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: 3 },
-      { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 6, GREEDY_MULTIPLIER: 3 },
-      { SHUFFLE_SEED: 3, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 8, GREEDY_MULTIPLIER: 3 },
-      { SHUFFLE_SEED: 4, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 10, GREEDY_MULTIPLIER: 3 },
+      {
+        SHUFFLE_SEED: 0,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 2,
+        GREEDY_MULTIPLIER: 3,
+      },
+      {
+        SHUFFLE_SEED: 1,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 4,
+        GREEDY_MULTIPLIER: 3,
+      },
+      {
+        SHUFFLE_SEED: 2,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 6,
+        GREEDY_MULTIPLIER: 3,
+      },
+      {
+        SHUFFLE_SEED: 3,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 8,
+        GREEDY_MULTIPLIER: 3,
+      },
+      {
+        SHUFFLE_SEED: 4,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 10,
+        GREEDY_MULTIPLIER: 3,
+      },
     ],
   }
 
@@ -252,9 +430,24 @@ function* generateSchedules(): Generator<{
     yield {
       name: `zeroCof_gm${gm}`,
       schedule: [
-        { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 0, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: gm },
-        { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 0, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: gm },
-        { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 0, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: gm },
+        {
+          SHUFFLE_SEED: 0,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: gm,
+        },
+        {
+          SHUFFLE_SEED: 1,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: gm,
+        },
+        {
+          SHUFFLE_SEED: 2,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
+          EXPANSION_DEGREES: 4,
+          GREEDY_MULTIPLIER: gm,
+        },
       ],
     }
   }
@@ -265,7 +458,12 @@ function* generateSchedules(): Generator<{
       yield {
         name: `single_exp${exp}_gm${gm}`,
         schedule: [
-          { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: exp, GREEDY_MULTIPLIER: gm },
+          {
+            SHUFFLE_SEED: 0,
+            CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+            EXPANSION_DEGREES: exp,
+            GREEDY_MULTIPLIER: gm,
+          },
         ],
       }
     }
@@ -277,8 +475,18 @@ function* generateSchedules(): Generator<{
       yield {
         name: `two_gm${gm}_exp3_${exp2}`,
         schedule: [
-          { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: gm },
-          { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: exp2, GREEDY_MULTIPLIER: gm },
+          {
+            SHUFFLE_SEED: 0,
+            CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+            EXPANSION_DEGREES: 3,
+            GREEDY_MULTIPLIER: gm,
+          },
+          {
+            SHUFFLE_SEED: 1,
+            CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+            EXPANSION_DEGREES: exp2,
+            GREEDY_MULTIPLIER: gm,
+          },
         ],
       }
     }
@@ -289,9 +497,24 @@ function* generateSchedules(): Generator<{
     yield {
       name: `highCof_${cof}`,
       schedule: [
-        { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: cof, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 3 },
-        { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: cof, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 3 },
-        { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: cof, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: 3 },
+        {
+          SHUFFLE_SEED: 0,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: cof,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: 3,
+        },
+        {
+          SHUFFLE_SEED: 1,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: cof,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: 3,
+        },
+        {
+          SHUFFLE_SEED: 2,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: cof,
+          EXPANSION_DEGREES: 4,
+          GREEDY_MULTIPLIER: 3,
+        },
       ],
     }
   }
@@ -300,9 +523,24 @@ function* generateSchedules(): Generator<{
   yield {
     name: "mixed_cof",
     schedule: [
-      { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 0, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 3 },
-      { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 3 },
-      { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 2, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: 3 },
+      {
+        SHUFFLE_SEED: 0,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
+        EXPANSION_DEGREES: 3,
+        GREEDY_MULTIPLIER: 3,
+      },
+      {
+        SHUFFLE_SEED: 1,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 3,
+        GREEDY_MULTIPLIER: 3,
+      },
+      {
+        SHUFFLE_SEED: 2,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 2,
+        EXPANSION_DEGREES: 4,
+        GREEDY_MULTIPLIER: 3,
+      },
     ],
   }
 
@@ -311,9 +549,24 @@ function* generateSchedules(): Generator<{
     yield {
       name: `fineGm_${gm}`,
       schedule: [
-        { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: gm },
-        { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: gm },
-        { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: gm },
+        {
+          SHUFFLE_SEED: 0,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: gm,
+        },
+        {
+          SHUFFLE_SEED: 1,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: gm,
+        },
+        {
+          SHUFFLE_SEED: 2,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 4,
+          GREEDY_MULTIPLIER: gm,
+        },
       ],
     }
   }
@@ -334,9 +587,24 @@ function* generateSchedules(): Generator<{
     yield {
       name: `bestWithSeed_${startSeed}`,
       schedule: [
-        { SHUFFLE_SEED: startSeed, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 3 },
-        { SHUFFLE_SEED: startSeed + 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 3 },
-        { SHUFFLE_SEED: startSeed + 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: 3 },
+        {
+          SHUFFLE_SEED: startSeed,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: 3,
+        },
+        {
+          SHUFFLE_SEED: startSeed + 1,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 3,
+          GREEDY_MULTIPLIER: 3,
+        },
+        {
+          SHUFFLE_SEED: startSeed + 2,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 4,
+          GREEDY_MULTIPLIER: 3,
+        },
       ],
     }
   }
@@ -345,16 +613,39 @@ function* generateSchedules(): Generator<{
   yield {
     name: "extreme_greedy",
     schedule: [
-      { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 100 },
+      {
+        SHUFFLE_SEED: 0,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 3,
+        GREEDY_MULTIPLIER: 100,
+      },
     ],
   }
 
   yield {
     name: "extreme_npf",
     schedule: [
-      { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 3, NODE_PF_FACTOR: 1000 },
-      { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 3, GREEDY_MULTIPLIER: 3, NODE_PF_FACTOR: 1000 },
-      { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 4, GREEDY_MULTIPLIER: 3, NODE_PF_FACTOR: 1000 },
+      {
+        SHUFFLE_SEED: 0,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 3,
+        GREEDY_MULTIPLIER: 3,
+        NODE_PF_FACTOR: 1000,
+      },
+      {
+        SHUFFLE_SEED: 1,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 3,
+        GREEDY_MULTIPLIER: 3,
+        NODE_PF_FACTOR: 1000,
+      },
+      {
+        SHUFFLE_SEED: 2,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 4,
+        GREEDY_MULTIPLIER: 3,
+        NODE_PF_FACTOR: 1000,
+      },
     ],
   }
 }

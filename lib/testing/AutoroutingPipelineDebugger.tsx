@@ -121,7 +121,10 @@ export const AutoroutingPipelineDebugger = ({
   }
 
   const createNewSolver = (
-    opts: { cacheProvider?: CacheProvider | null; pipelineId?: PipelineId } = {},
+    opts: {
+      cacheProvider?: CacheProvider | null
+      pipelineId?: PipelineId
+    } = {},
   ) => {
     if (createSolverProp) {
       return createSolverProp(srj, { cacheProvider, ...opts })
@@ -141,7 +144,8 @@ export const AutoroutingPipelineDebugger = ({
       "AutoroutingPipelineSolver2_PortPointPathing"
     const initialCacheName =
       (localStorage.getItem("cacheProviderName") as CacheProviderName) ?? "None"
-    const initialCacheProvider = getGlobalCacheProviderFromName(initialCacheName)
+    const initialCacheProvider =
+      getGlobalCacheProviderFromName(initialCacheName)
     const SolverClass = PIPELINE_SOLVERS[initialPipelineId]
     return createSolverProp
       ? createSolverProp(srj, { cacheProvider: initialCacheProvider })

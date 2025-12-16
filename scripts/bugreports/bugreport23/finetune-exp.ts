@@ -126,7 +126,11 @@ for (const startExp of [3, 4, 5]) {
       name: `grow_${startExp}_to_${endExp}`,
       schedule: [
         { SHUFFLE_SEED: 0, ...base, EXPANSION_DEGREES: startExp },
-        { SHUFFLE_SEED: 1, ...base, EXPANSION_DEGREES: Math.ceil((startExp + endExp) / 2) },
+        {
+          SHUFFLE_SEED: 1,
+          ...base,
+          EXPANSION_DEGREES: Math.ceil((startExp + endExp) / 2),
+        },
         { SHUFFLE_SEED: 2, ...base, EXPANSION_DEGREES: endExp },
       ],
     })
@@ -153,9 +157,24 @@ for (const gm of [2.5, 3, 3.5, 4, 5]) {
   schedules.push({
     name: `exp6_gm${gm}`,
     schedule: [
-      { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 6, GREEDY_MULTIPLIER: gm },
-      { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 6, GREEDY_MULTIPLIER: gm },
-      { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 7, GREEDY_MULTIPLIER: gm },
+      {
+        SHUFFLE_SEED: 0,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 6,
+        GREEDY_MULTIPLIER: gm,
+      },
+      {
+        SHUFFLE_SEED: 1,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 6,
+        GREEDY_MULTIPLIER: gm,
+      },
+      {
+        SHUFFLE_SEED: 2,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+        EXPANSION_DEGREES: 7,
+        GREEDY_MULTIPLIER: gm,
+      },
     ],
   })
 }
@@ -165,9 +184,24 @@ for (const cof of [0, 0.5, 1, 1.5, 2]) {
   schedules.push({
     name: `exp6_cof${cof}`,
     schedule: [
-      { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: cof, EXPANSION_DEGREES: 6, GREEDY_MULTIPLIER: 3 },
-      { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: cof, EXPANSION_DEGREES: 6, GREEDY_MULTIPLIER: 3 },
-      { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: cof, EXPANSION_DEGREES: 7, GREEDY_MULTIPLIER: 3 },
+      {
+        SHUFFLE_SEED: 0,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: cof,
+        EXPANSION_DEGREES: 6,
+        GREEDY_MULTIPLIER: 3,
+      },
+      {
+        SHUFFLE_SEED: 1,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: cof,
+        EXPANSION_DEGREES: 6,
+        GREEDY_MULTIPLIER: 3,
+      },
+      {
+        SHUFFLE_SEED: 2,
+        CENTER_OFFSET_DIST_PENALTY_FACTOR: cof,
+        EXPANSION_DEGREES: 7,
+        GREEDY_MULTIPLIER: 3,
+      },
     ],
   })
 }
@@ -190,9 +224,27 @@ for (const npf of [30, 50]) {
     schedules.push({
       name: `exp6_npf${npf}_gm${gm}`,
       schedule: [
-        { SHUFFLE_SEED: 0, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 6, GREEDY_MULTIPLIER: gm, NODE_PF_FACTOR: npf },
-        { SHUFFLE_SEED: 1, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 6, GREEDY_MULTIPLIER: gm, NODE_PF_FACTOR: npf },
-        { SHUFFLE_SEED: 2, CENTER_OFFSET_DIST_PENALTY_FACTOR: 1, EXPANSION_DEGREES: 7, GREEDY_MULTIPLIER: gm, NODE_PF_FACTOR: npf },
+        {
+          SHUFFLE_SEED: 0,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 6,
+          GREEDY_MULTIPLIER: gm,
+          NODE_PF_FACTOR: npf,
+        },
+        {
+          SHUFFLE_SEED: 1,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 6,
+          GREEDY_MULTIPLIER: gm,
+          NODE_PF_FACTOR: npf,
+        },
+        {
+          SHUFFLE_SEED: 2,
+          CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+          EXPANSION_DEGREES: 7,
+          GREEDY_MULTIPLIER: gm,
+          NODE_PF_FACTOR: npf,
+        },
       ],
     })
   }
