@@ -23,6 +23,23 @@ const cacheProviders: CacheProviderName[] = [
   "Local Storage",
 ]
 
+export const PIPELINE_OPTIONS = [
+  {
+    id: "AutoroutingPipeline1_OriginalUnravel",
+    label: "Pipeline1 Original Unravel (Legacy)",
+  },
+  {
+    id: "AutoroutingPipelineSolver2_PortPointPathing",
+    label: "Pipeline2 Port Point Pathing (Default)",
+  },
+  {
+    id: "AssignableViaAutoroutingPipelineSolver",
+    label: "Assignable Pipeline",
+  },
+] as const
+
+export type PipelineId = (typeof PIPELINE_OPTIONS)[number]["id"]
+
 interface AutoroutingPipelineMenuBarProps {
   renderer: "canvas" | "vector"
   onSetRenderer: (renderer: "canvas" | "vector") => void
@@ -37,6 +54,8 @@ interface AutoroutingPipelineMenuBarProps {
   cacheProvider: CacheProvider | null
   onSetCacheProviderName: (provider: CacheProviderName) => void
   onClearCache: () => void
+  selectedPipelineId: PipelineId
+  onSetPipelineId: (pipelineId: PipelineId) => void
 }
 
 export const AutoroutingPipelineMenuBar = ({
@@ -53,9 +72,28 @@ export const AutoroutingPipelineMenuBar = ({
   cacheProvider,
   onSetCacheProviderName,
   onClearCache,
+  selectedPipelineId,
+  onSetPipelineId,
 }: AutoroutingPipelineMenuBarProps) => {
   return (
     <Menubar className="rounded-none border-b border-none px-2 lg:px-4 mb-4 light">
+      <MenubarMenu>
+        <MenubarTrigger>Pipeline</MenubarTrigger>
+        <MenubarContent>
+          {PIPELINE_OPTIONS.map((option) => (
+            <MenubarItem
+              key={option.id}
+              onClick={() => onSetPipelineId(option.id)}
+              disabled={selectedPipelineId === option.id}
+            >
+              {option.label}{" "}
+              {selectedPipelineId === option.id && (
+                <MenubarShortcut>✓</MenubarShortcut>
+              )}
+            </MenubarItem>
+          ))}
+        </MenubarContent>
+      </MenubarMenu>
       <MenubarMenu>
         <MenubarTrigger>Renderer</MenubarTrigger>
         <MenubarContent>

@@ -10,6 +10,8 @@ import {
   AutoroutingPipelineSolver2_PortPointPathing,
   CapacityMeshSolver,
 } from "lib/autorouter-pipelines/AutoroutingPipeline2_PortPointPathing/AutoroutingPipelineSolver2_PortPointPathing"
+import { AssignableViaAutoroutingPipelineSolver } from "lib/autorouter-pipelines/AssignableAutoroutingPipeline/AssignableAutoroutingPipelineSolver"
+import { AutoroutingPipeline1_OriginalUnravel } from "lib/autorouter-pipelines/AutoroutingPipeline1_OriginalUnravel/AutoroutingPipeline1_OriginalUnravel"
 import { GraphicsObject, Line, Point, Rect } from "graphics-debug"
 import { limitVisualizations } from "lib/utils/limitVisualizations"
 import { getNodesNearNode } from "lib/solvers/UnravelSolver/getNodesNearNode"
@@ -24,7 +26,19 @@ import {
   getGlobalLocalStorageCache,
 } from "lib/cache/setupGlobalCaches"
 import { CacheProvider } from "lib/cache/types"
-import { AutoroutingPipelineMenuBar } from "./AutoroutingPipelineMenuBar"
+import {
+  AutoroutingPipelineMenuBar,
+  PIPELINE_OPTIONS,
+  type PipelineId,
+} from "./AutoroutingPipelineMenuBar"
+
+const PIPELINE_SOLVERS = {
+  AutoroutingPipelineSolver2_PortPointPathing,
+  AssignableViaAutoroutingPipelineSolver,
+  AutoroutingPipeline1_OriginalUnravel,
+} as const
+
+const PIPELINE_STORAGE_KEY = "selectedPipeline"
 
 interface CapacityMeshPipelineDebuggerProps {
   srj: SimpleRouteJson
@@ -78,7 +92,11 @@ export const AutoroutingPipelineDebugger = ({
 
   const setCacheProviderName = (newName: CacheProviderName) => {
     setCacheProviderNameState(newName)
-    localStorage.setItem("cacheProviderName", newName)
+    try {
+      localStorage.setItem("cacheProviderName", newName)
+    } catch (e) {
+      console.warn("Could not save cache provider to localStorage:", e)
+    }
   }
 
   const cacheProvider = useMemo(
@@ -86,19 +104,49 @@ export const AutoroutingPipelineDebugger = ({
     [cacheProviderName],
   )
 
-  const createNewSolver = (
-    opts: { cacheProvider?: CacheProvider | null } = {},
-  ) =>
-    createSolverProp
-      ? createSolverProp(srj, { cacheProvider, ...opts })
-      : new AutoroutingPipelineSolver2_PortPointPathing(srj, {
-          cacheProvider,
-          ...opts,
-        })
-
-  const [solver, setSolver] = useState<CapacityMeshSolver>(() =>
-    createNewSolver(),
+  const [selectedPipelineId, setSelectedPipelineIdState] = useState<PipelineId>(
+    () =>
+      (localStorage.getItem(PIPELINE_STORAGE_KEY) as PipelineId) ||
+      "AutoroutingPipelineSolver2_PortPointPathing",
   )
+
+  const setSelectedPipelineId = (newPipelineId: PipelineId) => {
+    setSelectedPipelineIdState(newPipelineId)
+    try {
+      localStorage.setItem(PIPELINE_STORAGE_KEY, newPipelineId)
+    } catch (e) {
+      // localStorage might be full, ignore the error
+      console.warn("Could not save pipeline selection to localStorage:", e)
+    }
+  }
+
+  const createNewSolver = (
+    opts: { cacheProvider?: CacheProvider | null; pipelineId?: PipelineId } = {},
+  ) => {
+    if (createSolverProp) {
+      return createSolverProp(srj, { cacheProvider, ...opts })
+    }
+    const pipelineToUse = opts.pipelineId ?? selectedPipelineId
+    const SolverClass = PIPELINE_SOLVERS[pipelineToUse]
+    return new SolverClass(srj, {
+      cacheProvider,
+      ...opts,
+    })
+  }
+
+  const [solver, setSolver] = useState<any>(() => {
+    // Read directly from localStorage for initial render to avoid closure issues
+    const initialPipelineId =
+      (localStorage.getItem(PIPELINE_STORAGE_KEY) as PipelineId) ||
+      "AutoroutingPipelineSolver2_PortPointPathing"
+    const initialCacheName =
+      (localStorage.getItem("cacheProviderName") as CacheProviderName) ?? "None"
+    const initialCacheProvider = getGlobalCacheProviderFromName(initialCacheName)
+    const SolverClass = PIPELINE_SOLVERS[initialPipelineId]
+    return createSolverProp
+      ? createSolverProp(srj, { cacheProvider: initialCacheProvider })
+      : new SolverClass(srj, { cacheProvider: initialCacheProvider })
+  })
   const [previewMode, setPreviewMode] = useState(false)
   const [renderer, setRenderer] = useState<"canvas" | "vector">(
     (window.localStorage.getItem("lastSelectedRenderer") as
@@ -590,6 +638,14 @@ export const AutoroutingPipelineDebugger = ({
         onClearCache={() => {
           cacheProvider?.clearCache()
         }}
+        selectedPipelineId={selectedPipelineId}
+        onSetPipelineId={(pipelineId: PipelineId) => {
+          setSelectedPipelineId(pipelineId)
+          const SolverClass = PIPELINE_SOLVERS[pipelineId]
+          setSolver(new SolverClass(srj, { cacheProvider }))
+          setDrcErrors(null)
+          setDrcErrorCount(0)
+        }}
       />
       <div className="flex gap-2 mb-4 text-xs">
         <button
@@ -853,7 +909,7 @@ export const AutoroutingPipelineDebugger = ({
 
               // Calculate total time spent across all stages that have started
               const totalTimeMs =
-                solver.pipelineDef?.reduce((total, step) => {
+                solver.pipelineDef?.reduce((total: number, step: any) => {
                   const startTime = solver.startTimeOfPhase[step.solverName]
                   if (startTime === undefined) return total // Stage hasn't started
                   const endTime =
@@ -861,7 +917,7 @@ export const AutoroutingPipelineDebugger = ({
                   return total + (endTime - startTime)
                 }, 0) ?? 0
 
-              return solver.pipelineDef?.map((step, index) => {
+              return solver.pipelineDef?.map((step: any, index: number) => {
                 const stepSolver = solver[
                   step.solverName as keyof CapacityMeshSolver
                 ] as BaseSolver | undefined
