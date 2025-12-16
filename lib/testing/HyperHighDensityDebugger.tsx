@@ -12,12 +12,18 @@ interface HyperHighDensityDebuggerProps {
   nodeWithPortPoints: NodeWithPortPoints
   connMap?: ConnectivityMap
   colorMap?: Record<string, string>
+  solverAction?: "reset" | "step" | "animate" | "solve" | null
+  animationSpeed?: number
+  onActionComplete?: () => void
 }
 
 export const HyperHighDensityDebugger = ({
   nodeWithPortPoints,
   connMap,
   colorMap,
+  solverAction,
+  animationSpeed = 10,
+  onActionComplete,
 }: HyperHighDensityDebuggerProps) => {
   const solver = useMemo(() => {
     return new HyperSingleIntraNodeSolver({
@@ -32,9 +38,40 @@ export const HyperHighDensityDebugger = ({
   const [iters, setIters] = useState(0)
 
   useEffect(() => {
+    if (solverAction === "step") {
+      if (!solver.solved && !solver.failed) {
+        solver.step()
+        if (solver.iterations % 100 === 0) {
+          const bestFitnessSolver = solver.getSupervisedSolverWithBestFitness()
+          if (bestFitnessSolver) {
+            setTab(solver.supervisedSolvers?.indexOf(bestFitnessSolver) ?? 0)
+          }
+        }
+        setIters(solver.iterations)
+      }
+      onActionComplete?.()
+      return
+    }
+
+    if (solverAction === "solve") {
+      while (!solver.solved && !solver.failed) {
+        solver.step()
+      }
+      const bestFitnessSolver = solver.getSupervisedSolverWithBestFitness()
+      if (bestFitnessSolver) {
+        setTab(solver.supervisedSolvers?.indexOf(bestFitnessSolver) ?? 0)
+      }
+      setIters(solver.iterations)
+      onActionComplete?.()
+      return
+    }
+
+    if (solverAction !== "animate") return
+
     const interval = setInterval(() => {
       if (solver.solved || solver.failed) {
         clearInterval(interval)
+        onActionComplete?.()
         return
       }
       solver.step()
@@ -45,9 +82,9 @@ export const HyperHighDensityDebugger = ({
         }
       }
       setIters(solver.iterations)
-    }, 10)
+    }, animationSpeed)
     return () => clearInterval(interval)
-  }, [solver])
+  }, [solver, solverAction, animationSpeed, onActionComplete])
 
   useEffect(() => {
     if (!solver.solved) return

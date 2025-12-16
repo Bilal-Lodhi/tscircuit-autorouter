@@ -1,11 +1,13 @@
 import { CapacityMeshNode, CapacityMeshNodeId } from "lib/types"
 import { ConnectionPathWithNodes } from "../CapacityPathingSolver/CapacityPathingSolver"
 
-export const calculateNodeProbabilityOfFailure = (
-  usedCapacity: number,
-  totalCapacity: number,
-  layerCount: number,
-) => {
+export const calculateNodeProbabilityOfFailure = (params: {
+  usedCapacity: number
+  totalCapacity: number
+  layerCount: number
+}) => {
+  const { usedCapacity, totalCapacity, layerCount } = params
+
   if (usedCapacity < totalCapacity) return 0
   if (totalCapacity < 1 && usedCapacity <= 1) return 0
 
@@ -43,11 +45,11 @@ export const calculateSingleNodeLogSuccessProbability = (
   // log(1) = 0, so it doesn't negatively impact the sum.
   if (usedCapacity <= totalCapacity) return 0
 
-  const probabilityOfFailure = calculateNodeProbabilityOfFailure(
+  const probabilityOfFailure = calculateNodeProbabilityOfFailure({
     usedCapacity,
     totalCapacity,
-    node.availableZ.length,
-  )
+    layerCount: node.availableZ.length,
+  })
   const probabilityOfSuccess = 1 - probabilityOfFailure
 
   // Avoid log(0) or log(<0) if probabilityOfFailure results in non-positive success probability

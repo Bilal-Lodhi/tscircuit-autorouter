@@ -206,11 +206,12 @@ export class CapacityPathingMultiSectionSolver extends BaseSolver {
       const totalCapacity = this.totalNodeCapacityMap.get(
         node.capacityMeshNodeId,
       )!
-      const nodePf = calculateNodeProbabilityOfFailure(
-        this.usedNodeCapacityMap.get(node.capacityMeshNodeId) ?? 0,
+      const nodePf = calculateNodeProbabilityOfFailure({
+        usedCapacity:
+          this.usedNodeCapacityMap.get(node.capacityMeshNodeId) ?? 0,
         totalCapacity,
-        node.availableZ.length,
-      )
+        layerCount: node.availableZ.length,
+      })
       const nodePfDivAttempts = nodePf / (attemptCount + 1)
       if (
         attemptCount < this.currentSchedule.MAX_ATTEMPTS_PER_NODE &&
@@ -233,11 +234,12 @@ export class CapacityPathingMultiSectionSolver extends BaseSolver {
       const totalCapacity = this.totalNodeCapacityMap.get(
         node.capacityMeshNodeId,
       )!
-      const nodePf = calculateNodeProbabilityOfFailure(
-        this.usedNodeCapacityMap.get(node.capacityMeshNodeId) ?? 0,
+      const nodePf = calculateNodeProbabilityOfFailure({
+        usedCapacity:
+          this.usedNodeCapacityMap.get(node.capacityMeshNodeId) ?? 0,
         totalCapacity,
-        node.availableZ.length,
-      )
+        layerCount: node.availableZ.length,
+      })
 
       if (nodePf > highestNodePf) {
         highestNodePf = nodePf
