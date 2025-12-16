@@ -7,9 +7,9 @@ import { BaseSolver } from "lib/solvers/BaseSolver"
 import { combineVisualizations } from "lib/utils/combineVisualizations"
 import { SimpleRouteJson } from "lib/types"
 import {
-  AutoroutingPipelineSolver,
+  AutoroutingPipelineSolver2_PortPointPathing,
   CapacityMeshSolver,
-} from "lib/solvers/AutoroutingPipelineSolver"
+} from "lib/autorouter-pipelines/AutoroutingPipeline2_PortPointPathing/AutoroutingPipelineSolver2_PortPointPathing"
 import { GraphicsObject, Line, Point, Rect } from "graphics-debug"
 import { limitVisualizations } from "lib/utils/limitVisualizations"
 import { getNodesNearNode } from "lib/solvers/UnravelSolver/getNodesNearNode"
@@ -91,7 +91,7 @@ export const AutoroutingPipelineDebugger = ({
   ) =>
     createSolverProp
       ? createSolverProp(srj, { cacheProvider, ...opts })
-      : new AutoroutingPipelineSolver(srj, {
+      : new AutoroutingPipelineSolver2_PortPointPathing(srj, {
           cacheProvider,
           ...opts,
         })
@@ -496,7 +496,11 @@ export const AutoroutingPipelineDebugger = ({
     ) {
       solver.step()
       // Check if the target solver became active *after* the step
-      if (solver?.[targetSolverStageKey as keyof AutoroutingPipelineSolver]) {
+      if (
+        solver?.[
+          targetSolverStageKey as keyof AutoroutingPipelineSolver2_PortPointPathing
+        ]
+      ) {
         break
       }
     }
@@ -782,13 +786,12 @@ export const AutoroutingPipelineDebugger = ({
                           // Get the node with port points from the portPointPathingSolver
                           let nodeWithPortPoints = null
                           if (
-                            solver.portPointPathingSolver?.getNodesWithPortPoints
+                            solver.portPointPathingSolver
+                              ?.getNodesWithPortPoints
                           ) {
                             nodeWithPortPoints = solver
                               .portPointPathingSolver!.getNodesWithPortPoints()
-                              .find(
-                                (n: any) => n.capacityMeshNodeId === nodeId,
-                              )
+                              .find((n: any) => n.capacityMeshNodeId === nodeId)
                           }
 
                           const dataToDownload = {

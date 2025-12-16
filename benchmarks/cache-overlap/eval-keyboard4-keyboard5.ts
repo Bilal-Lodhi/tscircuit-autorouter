@@ -1,4 +1,4 @@
-import { AutoroutingPipelineSolver } from "lib/solvers/AutoroutingPipelineSolver"
+import { AutoroutingPipelineSolver2_PortPointPathing } from "lib/autorouter-pipelines/AutoroutingPipeline2_PortPointPathing/AutoroutingPipelineSolver2_PortPointPathing"
 import type { SimpleRouteJson } from "lib/types"
 import type { CacheProvider } from "lib/cache/types"
 import keyboard4 from "examples/legacy/assets/keyboard4.json"
@@ -14,7 +14,7 @@ async function runSolver(
   srj: SimpleRouteJson,
   cache: CacheProvider,
 ): Promise<RunResult> {
-  const solver = new AutoroutingPipelineSolver(srj, {
+  const solver = new AutoroutingPipelineSolver2_PortPointPathing(srj, {
     cacheProvider: cache,
   })
 
@@ -23,8 +23,7 @@ async function runSolver(
   const endTime = performance.now()
 
   const totalTimeMs = endTime - startTime
-  const pathingTimeMs =
-    solver.timeSpentOnPhase["portPointPathingSolver"] ?? 0
+  const pathingTimeMs = solver.timeSpentOnPhase["portPointPathingSolver"] ?? 0
 
   return {
     totalTimeMs,

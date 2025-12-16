@@ -2,7 +2,7 @@ import { InteractiveGraphics } from "graphics-debug/react"
 import { CapacityMeshNodeSolver } from "lib/solvers/CapacityMeshSolver/CapacityMeshNodeSolver1"
 import { CapacityMeshEdgeSolver } from "lib/solvers/CapacityMeshSolver/CapacityMeshEdgeSolver"
 import type { SimpleRouteJson } from "lib/types"
-import { CapacityMeshSolver } from "lib/solvers/AutoroutingPipelineSolver"
+import { CapacityMeshSolver } from "lib/autorouter-pipelines/AutoroutingPipeline2_PortPointPathing/AutoroutingPipelineSolver2_PortPointPathing"
 
 const simpleSrj: SimpleRouteJson = {
   bounds: {

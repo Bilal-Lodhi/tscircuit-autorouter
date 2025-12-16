@@ -1,4 +1,4 @@
-import { AutoroutingPipelineSolver } from "lib/solvers/AutoroutingPipelineSolver"
+import { AutoroutingPipelineSolver2_PortPointPathing } from "lib/autorouter-pipelines/AutoroutingPipeline2_PortPointPathing/AutoroutingPipelineSolver2_PortPointPathing"
 import { CapacityPathingMultiSectionSolver } from "lib/solvers/CapacityPathingSectionSolver/CapacityPathingMultiSectionSolver"
 import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"
 import pathingInput from "../assets/multisectioncapacitypathing2.json"

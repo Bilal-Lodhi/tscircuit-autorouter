@@ -1,7 +1,7 @@
 export {
   CapacityMeshSolver,
-  AutoroutingPipelineSolver,
-} from "./solvers/AutoroutingPipelineSolver"
+  AutoroutingPipelineSolver2_PortPointPathing as AutoroutingPipelineSolver,
+} from "./autorouter-pipelines/AutoroutingPipeline2_PortPointPathing/AutoroutingPipelineSolver2_PortPointPathing"
 export {
   getTunedTotalCapacity1,
   calculateOptimalCapacityDepth,

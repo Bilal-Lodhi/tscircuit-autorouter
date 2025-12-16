@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node"
-import { CapacityMeshSolver } from "../../lib/solvers/AutoroutingPipelineSolver"
+import { CapacityMeshSolver } from "../../lib/autorouter-pipelines/AutoroutingPipeline2_PortPointPathing/AutoroutingPipelineSolver2_PortPointPathing"
 import type { SimpleRouteJson } from "../../lib/types"
 
 export default async function handler(
