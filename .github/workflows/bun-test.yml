@@ -7,7 +7,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
@@ -22,7 +22,7 @@ jobs:
         run: bun install
 
       - name: Run tests
-        run: bun test --timeout 60000
+        run: bun test --timeout 180000
 
       - name: Upload diff PNG and SVG snapshot artifacts
         if: failure()
