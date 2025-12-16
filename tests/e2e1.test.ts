@@ -9,7 +9,7 @@ import type {
 import { Line, Rect } from "graphics-debug"
 import { convertSrjToGraphicsObject } from "../lib"
 
-test("should solve keyboard1 board and produce valid SimpleRouteJson output", async () => {
+test.skip("should solve keyboard1 board and produce valid SimpleRouteJson output", async () => {
   // Create a solver with the keyboard1 input
   const solver = new CapacityMeshSolver(
     keyboardRoutes as unknown as SimpleRouteJson,

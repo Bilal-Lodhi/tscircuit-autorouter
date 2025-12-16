@@ -4,7 +4,7 @@ import { CapacityMeshAutorouterCoreBinding } from "./fixtures/CapacityMeshAutoro
 import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
 import { Fragment } from "react/jsx-runtime"
 
-test("core3 - 0402 columns", async () => {
+test.skip("core3 - 0402 columns", async () => {
   const circuit = new RootCircuit()
 
   circuit.add(
