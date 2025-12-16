@@ -1,7 +1,7 @@
 import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"
 // @ts-ignore
 import constructorInput from "./AssignableViaCapacityPathingSolver_DirectiveSubOptimal01.json"
-import { AssignableViaCapacityPathingSolver_DirectiveSubOptimal } from "lib/solvers/AssignableViaAutoroutingPipeline/AssignableViaCapacityPathing/AssignableViaCapacityPathingSolver_DirectiveSubOptimal"
+import { AssignableViaCapacityPathingSolver_DirectiveSubOptimal } from "lib/autorouter-pipelines/AssignableAutoroutingPipeline/AssignableViaCapacityPathing/AssignableViaCapacityPathingSolver_DirectiveSubOptimal"
 
 const createSolver = () => {
   return new AssignableViaCapacityPathingSolver_DirectiveSubOptimal({

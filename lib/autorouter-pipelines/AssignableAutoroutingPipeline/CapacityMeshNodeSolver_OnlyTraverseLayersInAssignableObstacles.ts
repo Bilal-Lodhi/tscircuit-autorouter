@@ -1,5 +1,5 @@
-import type { SimpleRouteJson, Obstacle, CapacityMeshNode } from "../../types"
-import { CapacityMeshNodeSolver2_NodeUnderObstacle } from "../CapacityMeshSolver/CapacityMeshNodeSolver2_NodesUnderObstacles"
+import type { SimpleRouteJson, Obstacle, CapacityMeshNode } from "lib/types"
+import { CapacityMeshNodeSolver2_NodeUnderObstacle } from "lib/solvers/CapacityMeshSolver/CapacityMeshNodeSolver2_NodesUnderObstacles"
 
 interface CapacityMeshNodeSolverOptions {
   capacityDepth?: number

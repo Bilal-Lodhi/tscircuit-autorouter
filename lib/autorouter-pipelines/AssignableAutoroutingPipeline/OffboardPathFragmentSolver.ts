@@ -1,4 +1,4 @@
-import { BaseSolver } from "../BaseSolver"
+import { BaseSolver } from "lib/solvers/BaseSolver"
 import { GraphicsObject } from "graphics-debug"
 import type {
   CapacityMeshEdge,

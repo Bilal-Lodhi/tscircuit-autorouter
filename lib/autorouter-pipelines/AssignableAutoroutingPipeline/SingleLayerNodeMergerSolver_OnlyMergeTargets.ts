@@ -1,5 +1,5 @@
 import { CapacityMeshNode, CapacityMeshNodeId } from "lib/types"
-import { BaseSolver } from "../BaseSolver"
+import { BaseSolver } from "lib/solvers/BaseSolver"
 import { areNodesBordering } from "lib/utils/areNodesBordering"
 import { GraphicsObject } from "graphics-debug"
 import { createRectFromCapacityNode } from "lib/utils/createRectFromCapacityNode"

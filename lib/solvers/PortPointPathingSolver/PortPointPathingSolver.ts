@@ -1046,7 +1046,7 @@ export class PortPointPathingSolver extends BaseSolver {
     }
 
     // Mark current port point as visited (if any)
-    if (currentCandidate.portPoint) {
+    if (currentCandidate.portPoint && this.visitedPortPoints) {
       this.visitedPortPoints.add(currentCandidate.portPoint.portPointId)
     }
   }

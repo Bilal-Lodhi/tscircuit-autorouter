@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { AssignableViaAutoroutingPipelineSolver } from "lib/solvers/AssignableViaAutoroutingPipeline/AssignableViaAutoroutingPipelineSolver"
+import { AssignableViaAutoroutingPipelineSolver } from "lib/autorouter-pipelines/AssignableAutoroutingPipeline/AssignableAutoroutingPipelineSolver"
 import type { SimpleRouteJson } from "lib/types"
 import { simpleRouteJson } from "../../../examples/unassigned-obstacles/AssignableViaAutoroutingPipelineSolver/AssignableViaAutoroutingPipelineSolver03.fixture"
 import { getSvgFromGraphicsObject } from "graphics-debug"
