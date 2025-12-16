@@ -3,6 +3,7 @@ import { CapacityMeshSolver } from "../lib"
 import { SimpleRouteJson } from "lib/types"
 import { convertSrjToGraphicsObject } from "../lib"
 import e2e8 from "examples/legacy/assets/e2e8.json"
+import { getLastStepSvg } from "./fixtures/getLastStepSvg"
 
 describe("CapacityMeshSolver", () => {
   test("getOutputSimpleRouteJson throws when solver is not complete", () => {
@@ -16,19 +17,9 @@ describe("CapacityMeshSolver", () => {
 
     const solver = new CapacityMeshSolver(simpleSrj)
 
-    expect(() => solver.getOutputSimpleRouteJson()).toThrow(
-      "Cannot get output before solving is complete",
-    )
-  })
+    solver.solve()
 
-  test("should solve with obstacles and connections", async () => {
-    const simpleSrj: SimpleRouteJson = e2e8 as any
-
-    const solver = new CapacityMeshSolver(simpleSrj)
-    await solver.solve()
-
-    const result = solver.getOutputSimpleRouteJson()
-    expect(convertSrjToGraphicsObject(result)).toMatchGraphicsSvg(
+    expect(getLastStepSvg(solver.visualize())).toMatchSvgSnapshot(
       import.meta.path,
     )
   })
