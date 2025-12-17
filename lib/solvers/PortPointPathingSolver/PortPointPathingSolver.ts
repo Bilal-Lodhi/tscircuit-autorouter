@@ -646,14 +646,25 @@ export class PortPointPathingSolver extends BaseSolver {
    *
    * Rule:
    * - For each (neighborNodeId, z) group, return the centermost (smallest dist).
-   * - If that centermost port point is already assigned, also return some next-closest
-   *   unassigned offsets as backups.
+   * - If that centermost port point is already assigned to a different rootConnection,
+   *   also return some next-closest unassigned offsets as backups.
+   * - Port points assigned to the same rootConnectionName are considered "available"
+   *   since connections on the same net can share port points.
    */
   getAvailableExitPortPointsWithOmissions(
     nodeId: CapacityMeshNodeId,
     _endGoalNodeId: CapacityMeshNodeId,
+    rootConnectionName?: string,
   ): InputPortPoint[] {
     const portPoints = this.nodePortPointsMap.get(nodeId) ?? []
+
+    // Helper to check if a port point is available for this connection
+    const isAvailableForConnection = (portPointId: string): boolean => {
+      const assignment = this.assignedPortPoints.get(portPointId)
+      if (!assignment) return true // Not assigned, available
+      // Available if assigned to the same rootConnectionName
+      return assignment.rootConnectionName === rootConnectionName
+    }
 
     // Group by "other side node" + z
     const groups = new Map<string, InputPortPoint[]>()
@@ -681,20 +692,21 @@ export class PortPointPathingSolver extends BaseSolver {
       const center = group[0]
       if (!center) continue
 
-      // If center is already assigned, add adjacent offsets (next closest ones)
-      const centerAssigned = this.assignedPortPoints.has(center.portPointId)
+      // Check if center is available (unassigned or same rootConnection)
+      const centerAvailable = isAvailableForConnection(center.portPointId)
 
-      if (!centerAssigned) {
+      if (centerAvailable) {
         result.push(center)
         continue
       }
 
-      const unassignedOnSide: InputPortPoint[] = []
+      // Center is assigned to a different rootConnection, return other available ports
+      const availableOnSide: InputPortPoint[] = []
       for (let i = 1; i < group.length; i++) {
-        if (this.assignedPortPoints.has(group[i].portPointId)) continue
-        unassignedOnSide.push(group[i])
+        if (!isAvailableForConnection(group[i].portPointId)) continue
+        availableOnSide.push(group[i])
       }
-      result.push(...unassignedOnSide)
+      result.push(...availableOnSide)
     }
 
     return result
@@ -981,6 +993,7 @@ export class PortPointPathingSolver extends BaseSolver {
     const availablePortPoints = this.getAvailableExitPortPointsWithOmissions(
       currentCandidate.currentNodeId,
       endNodeId,
+      rootConnectionName,
     )
 
     for (const portPoint of availablePortPoints) {
