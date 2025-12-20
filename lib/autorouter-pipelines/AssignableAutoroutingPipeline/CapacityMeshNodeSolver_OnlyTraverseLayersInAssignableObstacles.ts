@@ -1,6 +1,5 @@
 import type { SimpleRouteJson, Obstacle, CapacityMeshNode } from "lib/types"
 import { CapacityMeshNodeSolver2_NodeUnderObstacle } from "lib/solvers/CapacityMeshSolver/CapacityMeshNodeSolver2_NodesUnderObstacles"
-import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
 
 interface CapacityMeshNodeSolverOptions {
   capacityDepth?: number
@@ -124,19 +123,10 @@ export class CapacityMeshNodeSolver_OnlyTraverseLayersInAssignableObstacles exte
     // Add a single multi-layer node for each assignable obstacle
     for (const obstacle of assignableObstacles) {
       const overlappingNodes = obstacleToNodesMap.get(obstacle) || []
-      const availableZ =
-        obstacle.layers && obstacle.layers.length > 0
-          ? Array.from(
-              new Set(
-                obstacle.layers.map((layer) =>
-                  mapLayerNameToZ(layer, this.srj.layerCount),
-                ),
-              ),
-            ).sort((a, b) => a - b)
-          : Array.from(
-              { length: this.srj.layerCount },
-              (_, i) => this.srj.layerCount - i - 1,
-            )
+      const availableZ = Array.from(
+        { length: this.srj.layerCount },
+        (_, i) => this.srj.layerCount - i - 1,
+      )
 
       // Calculate bounding box that covers all removed nodes
       let minX = obstacle.center.x - obstacle.width / 2
