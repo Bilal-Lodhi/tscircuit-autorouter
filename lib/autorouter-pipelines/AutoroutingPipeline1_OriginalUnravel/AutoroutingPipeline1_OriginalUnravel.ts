@@ -51,7 +51,7 @@ import { CapacityPathingGreedySolver } from "lib/solvers/CapacityPathingSectionS
 import { CacheProvider } from "lib/cache/types"
 import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
 import { NetToPointPairsSolver2_OffBoardConnection } from "lib/solvers/NetToPointPairsSolver2_OffBoardConnection/NetToPointPairsSolver2_OffBoardConnection"
-import { RectDiffSolver } from "@tscircuit/rectdiff"
+import { RectDiffPipeline } from "@tscircuit/rectdiff"
 import { TraceSimplificationSolver } from "lib/solvers/TraceSimplificationSolver/TraceSimplificationSolver"
 
 interface CapacityMeshSolverOptions {
@@ -93,7 +93,7 @@ function definePipelineStep<
 
 export class AutoroutingPipeline1_OriginalUnravel extends BaseSolver {
   netToPointPairsSolver?: NetToPointPairsSolver
-  nodeSolver?: RectDiffSolver
+  nodeSolver?: RectDiffPipeline
   nodeTargetMerger?: CapacityNodeTargetMerger
   edgeSolver?: CapacityMeshEdgeSolver
   initialPathingSolver?: CapacityPathingGreedySolver
@@ -142,7 +142,7 @@ export class AutoroutingPipeline1_OriginalUnravel extends BaseSolver {
     ),
     definePipelineStep(
       "nodeSolver",
-      RectDiffSolver,
+      RectDiffPipeline,
       // Cast to any because RectDiffSolver uses an older SimpleRouteJson type
       // that doesn't support MultiLayerConnectionPoint yet
       (cms) => [{ simpleRouteJson: cms.srjWithPointPairs! as any }],

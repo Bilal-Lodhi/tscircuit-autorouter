@@ -31,7 +31,7 @@ import { DeadEndSolver } from "../../solvers/DeadEndSolver/DeadEndSolver"
 import { CacheProvider } from "lib/cache/types"
 import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
 import { NetToPointPairsSolver2_OffBoardConnection } from "../../solvers/NetToPointPairsSolver2_OffBoardConnection/NetToPointPairsSolver2_OffBoardConnection"
-import { RectDiffSolver } from "@tscircuit/rectdiff"
+import { RectDiffPipeline } from "@tscircuit/rectdiff"
 import { TraceSimplificationSolver } from "../../solvers/TraceSimplificationSolver/TraceSimplificationSolver"
 import { AvailableSegmentPointSolver } from "../../solvers/AvailableSegmentPointSolver/AvailableSegmentPointSolver"
 import {
@@ -84,7 +84,7 @@ function definePipelineStep<
 export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
   netToPointPairsSolver?: NetToPointPairsSolver
   // nodeSolver?: CapacityMeshNodeSolver2_NodeUnderObstacle
-  nodeSolver?: RectDiffSolver
+  nodeSolver?: RectDiffPipeline
   nodeTargetMerger?: CapacityNodeTargetMerger
   edgeSolver?: CapacityMeshEdgeSolver
   colorMap: Record<string, string>
@@ -130,7 +130,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
     ),
     definePipelineStep(
       "nodeSolver",
-      RectDiffSolver,
+      RectDiffPipeline,
       // Cast to any because RectDiffSolver uses an older SimpleRouteJson type
       // that doesn't support MultiLayerConnectionPoint yet
       (cms) => [{ simpleRouteJson: cms.srjWithPointPairs! as any }],
