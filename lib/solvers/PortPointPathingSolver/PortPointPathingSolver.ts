@@ -30,8 +30,6 @@ export interface PortPointPathingHyperParameters {
   MEMORY_PF_FACTOR?: number
   BASE_CANDIDATE_COST?: number
 
-  REWARD_LOW_TRAVEL_PF_MAGNITUDE?: number
-
   MAX_ITERATIONS_PER_PATH?: number
 }
 
@@ -157,11 +155,6 @@ export class PortPointPathingSolver extends BaseSolver {
     return this.hyperParameters.RANDOM_COST_MAGNITUDE ?? 0
   }
 
-  /** Optional heuristic reward for stepping into low-memoryPf nodes */
-  get REWARD_LOW_TRAVEL_PF_MAGNITUDE() {
-    return this.hyperParameters.REWARD_LOW_TRAVEL_PF_MAGNITUDE ?? 0
-  }
-
   /** Cost of adding a candidate to the path */
   get BASE_CANDIDATE_COST() {
     return this.hyperParameters.BASE_CANDIDATE_COST ?? 0
@@ -172,7 +165,7 @@ export class PortPointPathingSolver extends BaseSolver {
 
   /** Penalty factor for port points that are far from the center of the segment */
   get CENTER_OFFSET_DIST_PENALTY_FACTOR() {
-    return this.hyperParameters.CENTER_OFFSET_DIST_PENALTY_FACTOR ?? 0
+    return this.hyperParameters.CENTER_OFFSET_DIST_PENALTY_FACTOR ?? 1
   }
 
   colorMap: Record<string, string>
@@ -628,17 +621,31 @@ export class PortPointPathingSolver extends BaseSolver {
     const needsLayerChange = !endNode.availableZ.includes(currentZ)
     const zChangeCost = needsLayerChange ? this.Z_DIST_COST : 0
 
-    // Optional small heuristic reward for being in a low-memoryPf region.
-    const rewardLowTravelPf =
-      memPfHere < 0.15 ? -this.REWARD_LOW_TRAVEL_PF_MAGNITUDE : 0
+    return distanceToGoal + estStepCost + memRiskCost + zChangeCost
+  }
 
-    return (
-      distanceToGoal +
-      estStepCost +
-      memRiskCost +
-      zChangeCost +
-      rewardLowTravelPf
-    )
+  getAvailableExitPortPoints(nodeId: CapacityMeshNodeId) {
+    const currentConnection =
+      this.connectionsWithResults[this.currentConnectionIndex]
+    const currentRootConnectionName =
+      currentConnection?.connection.rootConnectionName
+    const portPoints = this.nodePortPointsMap.get(nodeId) ?? []
+
+    const availablePortPoints: InputPortPoint[] = []
+
+    for (const pp of portPoints) {
+      if (this.visitedPortPoints?.has(pp.portPointId)) continue
+      const assignment = this.assignedPortPoints.get(pp.portPointId)
+      if (
+        assignment &&
+        assignment?.rootConnectionName !== currentRootConnectionName
+      ) {
+        continue
+      }
+      availablePortPoints.push(pp)
+    }
+
+    return availablePortPoints
   }
 
   /**
@@ -654,6 +661,10 @@ export class PortPointPathingSolver extends BaseSolver {
     _endGoalNodeId: CapacityMeshNodeId,
   ): InputPortPoint[] {
     const portPoints = this.nodePortPointsMap.get(nodeId) ?? []
+    const currentConnection =
+      this.connectionsWithResults[this.currentConnectionIndex]
+    const currentRootConnectionName =
+      currentConnection?.connection.rootConnectionName
 
     // Group by "other side node" + z
     const groups = new Map<string, InputPortPoint[]>()
@@ -682,9 +693,12 @@ export class PortPointPathingSolver extends BaseSolver {
       if (!center) continue
 
       // If center is already assigned, add adjacent offsets (next closest ones)
-      const centerAssigned = this.assignedPortPoints.has(center.portPointId)
+      const centerAssignment = this.assignedPortPoints.get(center.portPointId)
+      const canBeReassignedBecauseSameNet =
+        centerAssignment &&
+        centerAssignment.rootConnectionName === currentRootConnectionName
 
-      if (!centerAssigned) {
+      if (!centerAssignment || canBeReassignedBecauseSameNet) {
         result.push(center)
         continue
       }
