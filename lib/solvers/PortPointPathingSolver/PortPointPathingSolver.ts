@@ -165,7 +165,7 @@ export class PortPointPathingSolver extends BaseSolver {
 
   /** Penalty factor for port points that are far from the center of the segment */
   get CENTER_OFFSET_DIST_PENALTY_FACTOR() {
-    return this.hyperParameters.CENTER_OFFSET_DIST_PENALTY_FACTOR ?? 1
+    return this.hyperParameters.CENTER_OFFSET_DIST_PENALTY_FACTOR ?? 0
   }
 
   colorMap: Record<string, string>
