@@ -3,6 +3,12 @@ import { NodeWithPortPoints } from "lib/types/high-density-types"
 import { Point } from "graphics-debug"
 import { getIntraNodeCrossings } from "lib/utils/getIntraNodeCrossings"
 import { HighDensitySolver } from "lib/solvers/HighDensitySolver/HighDensitySolver"
+import {
+  isMainThread,
+  parentPort,
+  Worker,
+  workerData,
+} from "node:worker_threads"
 
 const settings = [
   { width: 1, height: 2.83 },
@@ -404,35 +410,45 @@ const saveDatasetToJson = async (
   await fs.writeFile(outputPath, jsonContent, "utf-8")
 }
 
-async function run() {
-  const MAX_COMPUTE = 5000
-  const SAMPLE_SIZE = 100
-  const BATCH_SIZE = 50
-  const OUTPUT_FILE = "ml-training-data.json"
+type DatasetRow = Features & { cost: number }
 
-  const dataset: Array<Features & { cost: number }> = []
+const DEFAULT_MAX_COMPUTE = 5000
+const DEFAULT_SAMPLE_SIZE = 100
+const OUTPUT_FILE = "ml-training-data.json"
+
+const generateDatasetChunk = async (params: {
+  maxCompute: number
+  sampleSize: number
+  logPrefix?: string
+}): Promise<DatasetRow[]> => {
+  const { maxCompute, sampleSize, logPrefix } = params
+
+  const dataset: DatasetRow[] = []
   const processedGeometricFeatures: number[][] = []
 
-  console.log(`Starting ML data generation with MAX_COMPUTE=${MAX_COMPUTE}`)
-  console.log(`Memory limit check enabled, batch size: ${BATCH_SIZE}`)
+  console.log(
+    `${logPrefix ? `[${logPrefix}] ` : ""}Starting ML data generation with MAX_COMPUTE=${maxCompute}`,
+  )
 
   let iterationCount = 0
   let solvedCount = 0
   let failedCount = 0
-  const TARGET_PER_CLASS = MAX_COMPUTE / 2
+  const TARGET_PER_CLASS = maxCompute / 2
 
-  while (dataset.length < MAX_COMPUTE) {
+  while (dataset.length < maxCompute) {
     iterationCount++
 
     if (processedGeometricFeatures.length > 10000) {
-      console.log("Memory limit: Trimming processed features to last 5000")
+      console.log(
+        `${logPrefix ? `[${logPrefix}] ` : ""}Memory limit: Trimming processed features to last 5000`,
+      )
       processedGeometricFeatures.splice(
         0,
         processedGeometricFeatures.length - 5000,
       )
     }
 
-    const candidates = generateDiverseCandidates(SAMPLE_SIZE)
+    const candidates = generateDiverseCandidates(sampleSize)
 
     let bestCandidate: Candidate | null = null
     let bestDist = -1
@@ -450,7 +466,9 @@ async function run() {
     }
 
     if (!bestCandidate || !bestGeo) {
-      console.log("No suitable candidate found, breaking")
+      console.log(
+        `${logPrefix ? `[${logPrefix}] ` : ""}No suitable candidate found, breaking`,
+      )
       break
     }
 
@@ -506,29 +524,124 @@ async function run() {
 
     if (dataset.length % 10 === 0) {
       console.log(
-        `Progress: ${dataset.length}/${MAX_COMPUTE} samples collected (diversity: ${bestDist.toFixed(4)})`,
+        `${logPrefix ? `[${logPrefix}] ` : ""}Progress: ${dataset.length}/${maxCompute} samples collected (diversity: ${bestDist.toFixed(4)})`,
       )
     }
 
-    if (dataset.length % BATCH_SIZE === 0) {
-      console.log(`Saving batch to ${OUTPUT_FILE}...`)
-      await saveDatasetToJson(dataset, OUTPUT_FILE)
-      console.log(`Saved ${dataset.length} samples`)
-    }
-
     if (isInformationSaturationReached(dataset)) {
-      console.log(`Information saturation reached at ${dataset.length} samples`)
+      console.log(
+        `${logPrefix ? `[${logPrefix}] ` : ""}Information saturation reached at ${dataset.length} samples`,
+      )
       break
     }
   }
 
-  console.log(`Data generation complete. Total samples: ${dataset.length}`)
-  console.log("Final save...")
-  await saveDatasetToJson(dataset, OUTPUT_FILE)
-  console.log(`All data saved to ${OUTPUT_FILE}`)
-  console.log("Sample data:", dataset.slice(0, 3))
+  console.log(
+    `${logPrefix ? `[${logPrefix}] ` : ""}Data generation complete. Total samples: ${dataset.length}`,
+  )
 
   return dataset
 }
 
-run()
+const runInWorker = async () => {
+  const { maxCompute, sampleSize, workerId } = workerData as {
+    maxCompute: number
+    sampleSize: number
+    workerId: number
+  }
+
+  const dataset = await generateDatasetChunk({
+    maxCompute,
+    sampleSize,
+    logPrefix: `worker-${workerId}`,
+  })
+
+  if (parentPort) {
+    parentPort.postMessage({
+      type: "result",
+      workerId,
+      dataset,
+    })
+  }
+}
+
+const runInMain = async () => {
+  const os = await import("node:os")
+
+  const cpuCount = os.cpus().length || 1
+  const envWorkerCount = process.env.WORKER_COUNT
+  let workerCount = envWorkerCount ? Number(envWorkerCount) : cpuCount
+
+  if (!Number.isFinite(workerCount) || workerCount <= 0) {
+    workerCount = 1
+  }
+
+  const maxComputePerWorker = Math.ceil(DEFAULT_MAX_COMPUTE / workerCount)
+
+  console.log(
+    `Starting data generation using ${workerCount} workers, up to ${maxComputePerWorker} samples per worker`,
+  )
+
+  const allRows: DatasetRow[] = []
+
+  await new Promise<void>((resolve, reject) => {
+    let finishedWorkers = 0
+    let hasError = false
+
+    for (let i = 0; i < workerCount; i++) {
+      const worker = new Worker(new URL(import.meta.url), {
+        workerData: {
+          maxCompute: maxComputePerWorker,
+          sampleSize: DEFAULT_SAMPLE_SIZE,
+          workerId: i,
+        },
+      })
+
+      worker.on("message", (message: any) => {
+        if (message?.type === "result") {
+          const rows = message.dataset as DatasetRow[]
+          allRows.push(...rows)
+        }
+      })
+
+      worker.on("error", (error) => {
+        if (!hasError) {
+          hasError = true
+          reject(error)
+        }
+      })
+
+      worker.on("exit", (code) => {
+        finishedWorkers += 1
+        if (code !== 0 && !hasError) {
+          hasError = true
+          reject(new Error(`Worker ${i} exited with code ${code}`))
+          return
+        }
+
+        if (!hasError && finishedWorkers === workerCount) {
+          resolve()
+        }
+      })
+    }
+  })
+
+  const finalDataset = allRows.slice(0, DEFAULT_MAX_COMPUTE)
+
+  console.log(`Combined dataset from workers: ${finalDataset.length} samples`)
+  console.log("Saving combined dataset...")
+  await saveDatasetToJson(finalDataset, OUTPUT_FILE)
+  console.log(`All data saved to ${OUTPUT_FILE}`)
+  console.log("Sample data:", finalDataset.slice(0, 3))
+}
+
+if (isMainThread) {
+  runInMain().catch((error) => {
+    console.error("Error in main thread:", error)
+    process.exitCode = 1
+  })
+} else {
+  runInWorker().catch((error) => {
+    console.error("Error in worker thread:", error)
+  })
+}
