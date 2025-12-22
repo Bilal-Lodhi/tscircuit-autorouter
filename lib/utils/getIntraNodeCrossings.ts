@@ -15,8 +15,6 @@ export const getIntraNodeCrossings = (node: NodeWithPortPoints) => {
     connectionName: string
   }[] = []
 
-  let numEntryExitLayerChanges = 0
-
   for (const A of node.portPoints) {
     if (pointPairs.some((p) => p.connectionName === A.connectionName)) {
       continue
@@ -37,7 +35,6 @@ export const getIntraNodeCrossings = (node: NodeWithPortPoints) => {
       pointPair.points.push({ x: B.x, y: B.y, z: B.z })
     }
     if (pointPair.points.some((p) => p.z !== pointPair.z)) {
-      numEntryExitLayerChanges++
       transitionPairPoints.push(pointPair)
       continue
     }
@@ -86,8 +83,7 @@ export const getIntraNodeCrossings = (node: NodeWithPortPoints) => {
 
   return {
     numSameLayerCrossings,
-    numEntryExitLayerChanges,
+    numEntryExitLayerChanges: transitionPairPoints.length,
     numTransitionPairCrossings,
-    numTransitions: transitionPairPoints.length,
   }
 }
