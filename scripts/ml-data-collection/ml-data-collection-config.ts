@@ -14,7 +14,7 @@ export const viaSizesVariants = [0.1, 0.2, 0.3, 0.4, 0.5]
 export const traceWidthsVariants = [0.05, 0.1, 0.15, 0.2, 0.25]
 export const layerVariation = [2, 4]
 
-export const DEFAULT_TOTAL_SAMPLES = 5000
+export const DEFAULT_TOTAL_SAMPLES = 1000
 export const OUTPUT_FILE = "ml-training-data.json"
 export const OUTPUT_TEMP_DIR = "ml-training-data-tmp"
 export const OUTPUT_CHUNK_PREFIX = "ml-training-data-chunk"
