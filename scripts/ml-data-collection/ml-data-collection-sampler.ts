@@ -29,6 +29,8 @@ const getNextRatio = (stats: SuccessFailureStats, outcome: Outcome): number => {
   return nextSuccess / nextTotal
 }
 
+const MIN_SAMPLES_FOR_STRICT_FILTER = 100
+
 export const shouldAcceptSample = (
   stats: SuccessFailureStats,
   outcome: Outcome,
@@ -38,12 +40,35 @@ export const shouldAcceptSample = (
   }
 
   const target = SUCCESS_FAILURE_RATIO_TARGET
+  const total = stats.success + stats.failure
+
+  // Always accept the very first sample to bootstrap stats
+  if (total === 0) {
+    return true
+  }
+
   const nextRatio = getNextRatio(stats, outcome)
 
   const lower = Math.max(0, target - DEFAULT_TOLERANCE)
   const upper = Math.min(1, target + DEFAULT_TOLERANCE)
 
-  return nextRatio >= lower && nextRatio <= upper
+  // Once we have enough samples, enforce the strict band
+  if (total >= MIN_SAMPLES_FOR_STRICT_FILTER) {
+    return nextRatio >= lower && nextRatio <= upper
+  }
+
+  // During bootstrapping, also accept samples that move
+  // the overall ratio closer to the target even if
+  // they are slightly outside the strict band.
+  const currentRatio = stats.success / total
+  const currentDelta = Math.abs(currentRatio - target)
+  const nextDelta = Math.abs(nextRatio - target)
+
+  if (nextRatio >= lower && nextRatio <= upper) {
+    return true
+  }
+
+  return nextDelta < currentDelta
 }
 
 export const updateStats = (

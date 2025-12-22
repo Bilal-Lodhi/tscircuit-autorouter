@@ -67,6 +67,28 @@ const run = async () => {
       : "failure"
 
     if (!shouldAcceptSample(stats, outcome)) {
+      if (
+        attempts % 10000 === 0 ||
+        (attempts % 1000 === 0 && acceptedSamples === 0)
+      ) {
+        const total = stats.success + stats.failure
+        const ratio = total > 0 ? stats.success / total : null
+        console.log(
+          "Worker",
+          workerId,
+          "skipping sample due to ratio filter",
+          "attempts",
+          attempts,
+          "accepted",
+          acceptedSamples,
+          "success",
+          stats.success,
+          "failure",
+          stats.failure,
+          "currentRatio",
+          ratio,
+        )
+      }
       continue
     }
 
@@ -79,11 +101,26 @@ const run = async () => {
     }
 
     if (acceptedSamples % 50 === 0) {
-      console.log(`worker-${workerId}: ${acceptedSamples}/${maxSamples}`)
+      const total = stats.success + stats.failure
+      const ratio = total > 0 ? stats.success / total : null
+      console.log(
+        `worker-${workerId}:`,
+        `${acceptedSamples}/${maxSamples}`,
+        "attempts",
+        attempts,
+        "success",
+        stats.success,
+        "failure",
+        stats.failure,
+        "currentRatio",
+        ratio,
+      )
     }
   }
 
   if (attempts >= maxAttempts && acceptedSamples < maxSamples) {
+    const total = stats.success + stats.failure
+    const ratio = total > 0 ? stats.success / total : null
     console.warn(
       "Worker",
       workerId,
@@ -93,6 +130,12 @@ const run = async () => {
       acceptedSamples,
       "target",
       maxSamples,
+      "finalSuccess",
+      stats.success,
+      "finalFailure",
+      stats.failure,
+      "finalRatio",
+      ratio,
     )
   }
 
