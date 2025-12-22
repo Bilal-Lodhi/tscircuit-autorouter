@@ -117,7 +117,7 @@ const runMain = async () => {
   await new Promise<void>((resolve, reject) => {
     for (let index = 0; index < workerCount; index++) {
       const worker = new Worker(
-        new URL("./ml-training-worker.ts", import.meta.url),
+        new URL("./ml-data-collection-worker.ts", import.meta.url),
         {
           workerData: {
             maxSamples: samplesPerWorker,
