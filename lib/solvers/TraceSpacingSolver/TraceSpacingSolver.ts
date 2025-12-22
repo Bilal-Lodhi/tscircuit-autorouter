@@ -49,7 +49,7 @@ type ViaGroup = {
 
 export class TraceSpacingForceSolver extends BaseSolver {
   OBSTACLE_MARGIN = 0.15
-  MIN_SEGMENT_SIZE = 0.25
+  MIN_SEGMENT_SIZE = 0.5
   SUBSTEP_FORCE_ITERATIONS = 8
   TRACE_FORCE_STRENGTH = 0.15
   OBSTACLE_FORCE_STRENGTH = 0.4
@@ -203,10 +203,11 @@ export class TraceSpacingForceSolver extends BaseSolver {
       const traceThickness = this.routeTraceThickness[routeIndex]
 
       for (let pointIndex = 0; pointIndex < points.length; pointIndex++) {
-        const isEndpoint = pointIndex === 0 || pointIndex === points.length - 1
-
         const group = groupByIndex.get(pointIndex)
         if (group && group.pointIndices[0] !== pointIndex) {
+          continue
+        }
+        if (this.isFixedPoint(pointIndex, points.length, group)) {
           continue
         }
 
@@ -258,7 +259,7 @@ export class TraceSpacingForceSolver extends BaseSolver {
           if (!doesObstacleApplyToLayer(obstacle, point.z, this.layerCount)) {
             continue
           }
-          if (isObstacleConnectedToRoute(obstacle, rootName)) {
+          if (this.isObstacleConnectedToRoute(obstacle, rootName)) {
             continue
           }
           const halfWidth = obstacle.width / 2
@@ -290,9 +291,7 @@ export class TraceSpacingForceSolver extends BaseSolver {
 
         const viaMultiplier =
           group && group.pointIndices.length > 1 ? this.VIA_FORCE_MULTIPLIER : 1
-        const endpointMultiplier = isEndpoint
-          ? this.ENDPOINT_FORCE_MULTIPLIER
-          : 1
+        const endpointMultiplier = this.ENDPOINT_FORCE_MULTIPLIER
         fx *= viaMultiplier * endpointMultiplier
         fy *= viaMultiplier * endpointMultiplier
 
@@ -345,6 +344,38 @@ export class TraceSpacingForceSolver extends BaseSolver {
     this.solved = true
   }
 
+  private isFixedPoint(
+    pointIndex: number,
+    pointCount: number,
+    group?: ViaGroup,
+  ) {
+    if (pointIndex === 0 || pointIndex === pointCount - 1) {
+      return true
+    }
+    if (group) {
+      return group.pointIndices.some(
+        (index) => index === 0 || index === pointCount - 1,
+      )
+    }
+    return false
+  }
+
+  private isObstacleConnectedToRoute(
+    obstacle: Obstacle,
+    rootConnectionName: string,
+  ) {
+    const connectedIds = new Set([
+      ...obstacle.connectedTo,
+      ...(obstacle.offBoardConnectsTo ?? []),
+    ])
+    for (const connectedId of connectedIds) {
+      if (this.connMap.areIdsConnected(rootConnectionName, connectedId)) {
+        return true
+      }
+    }
+    return false
+  }
+
   private enforceObstacleClearance() {
     for (
       let routeIndex = 0;
@@ -372,6 +403,9 @@ export class TraceSpacingForceSolver extends BaseSolver {
         dy: number,
       ) => {
         const group = groupByIndex.get(pointIndex)
+        if (this.isFixedPoint(pointIndex, points.length, group)) {
+          return
+        }
         if (group) {
           for (const idx of group.pointIndices) {
             points[idx].x = clamp(
@@ -402,6 +436,9 @@ export class TraceSpacingForceSolver extends BaseSolver {
       for (let pointIndex = 0; pointIndex < points.length; pointIndex++) {
         const group = groupByIndex.get(pointIndex)
         if (group && group.pointIndices[0] !== pointIndex) continue
+        if (this.isFixedPoint(pointIndex, points.length, group)) {
+          continue
+        }
 
         const point = points[pointIndex]
         let adjustedX = point.x
@@ -411,7 +448,7 @@ export class TraceSpacingForceSolver extends BaseSolver {
           if (!doesObstacleApplyToLayer(obstacle, point.z, this.layerCount)) {
             continue
           }
-          if (isObstacleConnectedToRoute(obstacle, rootName)) {
+          if (this.isObstacleConnectedToRoute(obstacle, rootName)) {
             continue
           }
 
@@ -543,17 +580,6 @@ const doesObstacleApplyToLayer = (
   return obstacle.layers.some(
     (layer) => mapLayerNameToZ(layer, layerCount) === z,
   )
-}
-
-const isObstacleConnectedToRoute = (
-  obstacle: Obstacle,
-  rootConnectionName: string,
-) => {
-  const connectedIds = new Set([
-    ...obstacle.connectedTo,
-    ...(obstacle.offBoardConnectsTo ?? []),
-  ])
-  return connectedIds.has(rootConnectionName)
 }
 
 const getClosestPointOnObstacle = (
