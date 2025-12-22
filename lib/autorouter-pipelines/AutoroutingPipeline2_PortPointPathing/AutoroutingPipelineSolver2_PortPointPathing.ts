@@ -33,6 +33,7 @@ import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
 import { NetToPointPairsSolver2_OffBoardConnection } from "../../solvers/NetToPointPairsSolver2_OffBoardConnection/NetToPointPairsSolver2_OffBoardConnection"
 import { RectDiffPipeline } from "@tscircuit/rectdiff"
 import { TraceSimplificationSolver } from "../../solvers/TraceSimplificationSolver/TraceSimplificationSolver"
+import { TraceSpacingSolver } from "../../solvers/TraceSpacingSolver/TraceSpacingSolver"
 import { AvailableSegmentPointSolver } from "../../solvers/AvailableSegmentPointSolver/AvailableSegmentPointSolver"
 import {
   PortPointPathingSolver,
@@ -94,6 +95,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
   strawSolver?: StrawSolver
   deadEndSolver?: DeadEndSolver
   traceSimplificationSolver?: TraceSimplificationSolver
+  traceSpacingSolver?: TraceSpacingSolver
   availableSegmentPointSolver?: AvailableSegmentPointSolver
   portPointPathingSolver?: PortPointPathingSolver
   multiSectionPortPointOptimizer?: MultiSectionPortPointOptimizer
@@ -313,12 +315,32 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
         },
       ],
     ),
+    definePipelineStep("traceSpacingSolver", TraceSpacingSolver, (cms) => [
+      {
+        hdRoutes: cms.highDensityStitchSolver!.mergedHdRoutes,
+        obstacles: cms.srj.obstacles,
+        layerCount: cms.srj.layerCount,
+        obstacleMargin: 0.15,
+        minSegmentSize: 0.5,
+        substepForceIterations: 10,
+        maxSteps: 80,
+        traceForceStrength: 0.08,
+        viaForceStrength: 0.06,
+        obstacleForceStrength: 0.22,
+        segmentObstacleForceStrength: 0.07,
+        damping: 0.9,
+        maxPointDisplacement: 0.06,
+        minMovementToContinue: 1e-5,
+      },
+    ]),
     definePipelineStep(
       "traceSimplificationSolver",
       TraceSimplificationSolver,
       (cms) => [
         {
-          hdRoutes: cms.highDensityStitchSolver!.mergedHdRoutes,
+          hdRoutes:
+            cms.traceSpacingSolver?.getOptimizedHdRoutes() ??
+            cms.highDensityStitchSolver!.mergedHdRoutes,
           obstacles: cms.srj.obstacles,
           connMap: cms.connMap,
           colorMap: cms.colorMap,
@@ -429,6 +451,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
     const highDensityViz = this.highDensityRouteSolver?.visualize()
     const highDensityStitchViz = this.highDensityStitchSolver?.visualize()
     const traceSimplificationViz = this.traceSimplificationSolver?.visualize()
+    const traceSpacingViz = this.traceSpacingSolver?.visualize()
     const problemOutline = this.srj.outline
     const problemLines: Line[] = []
 
@@ -502,6 +525,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
       multiSectionOptViz,
       highDensityViz ? combineVisualizations(problemViz, highDensityViz) : null,
       highDensityStitchViz,
+      traceSpacingViz,
       traceSimplificationViz,
       this.solved
         ? combineVisualizations(
@@ -567,6 +591,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
   _getOutputHdRoutes(): HighDensityRoute[] {
     return (
       this.traceSimplificationSolver?.simplifiedHdRoutes ??
+      this.traceSpacingSolver?.getOptimizedHdRoutes() ??
       this.highDensityStitchSolver!.mergedHdRoutes
     )
   }
