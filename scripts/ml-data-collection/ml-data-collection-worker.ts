@@ -16,6 +16,8 @@ import {
   updateStats,
 } from "./ml-data-collection-sampler"
 
+const ML_DEBUG_VERBOSE = process.env.ML_DEBUG_VERBOSE === "1"
+
 const run = async () => {
   const { maxSamples, workerId } = workerData as {
     maxSamples: number
@@ -66,8 +68,31 @@ const run = async () => {
       ? "success"
       : "failure"
 
+    if (ML_DEBUG_VERBOSE && attempts <= 1000) {
+      const total = stats.success + stats.failure
+      const ratio = total > 0 ? stats.success / total : null
+      console.log(
+        "ML_DEBUG_VERBOSE attempt",
+        "worker",
+        workerId,
+        "attempts",
+        attempts,
+        "accepted",
+        acceptedSamples,
+        "success",
+        stats.success,
+        "failure",
+        stats.failure,
+        "currentRatio",
+        ratio,
+        "outcome",
+        outcome,
+      )
+    }
+
     if (!shouldAcceptSample(stats, outcome)) {
       if (
+        ML_DEBUG_VERBOSE ||
         attempts % 10000 === 0 ||
         (attempts % 1000 === 0 && acceptedSamples === 0)
       ) {
@@ -92,15 +117,48 @@ const run = async () => {
       continue
     }
 
+    if (ML_DEBUG_VERBOSE) {
+      const totalBefore = stats.success + stats.failure
+      const ratioBefore = totalBefore > 0 ? stats.success / totalBefore : null
+      console.log(
+        "ML_DEBUG_VERBOSE accepting sample",
+        "worker",
+        workerId,
+        "attempts",
+        attempts,
+        "acceptedBefore",
+        acceptedSamples,
+        "successBefore",
+        stats.success,
+        "failureBefore",
+        stats.failure,
+        "ratioBefore",
+        ratioBefore,
+        "outcome",
+        outcome,
+      )
+    }
+
     stats = updateStats(stats, outcome)
     buffer.push(row)
     acceptedSamples += 1
 
     if (buffer.length >= CHUNK_FLUSH_SIZE) {
+      if (ML_DEBUG_VERBOSE) {
+        console.log(
+          "ML_DEBUG_VERBOSE flushing buffer",
+          "worker",
+          workerId,
+          "chunkIndex",
+          chunkIndex,
+          "bufferLength",
+          buffer.length,
+        )
+      }
       await flush()
     }
 
-    if (acceptedSamples % 50 === 0) {
+    if (acceptedSamples % 50 === 0 || ML_DEBUG_VERBOSE) {
       const total = stats.success + stats.failure
       const ratio = total > 0 ? stats.success / total : null
       console.log(

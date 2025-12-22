@@ -1,5 +1,7 @@
 import { SUCCESS_FAILURE_RATIO_TARGET } from "./ml-data-collection-config"
 
+const ML_DEBUG_VERBOSE = process.env.ML_DEBUG_VERBOSE === "1"
+
 export type Outcome = "success" | "failure"
 
 export type SuccessFailureStats = {
@@ -36,14 +38,38 @@ export const shouldAcceptSample = (
   outcome: Outcome,
 ): boolean => {
   if (SUCCESS_FAILURE_RATIO_TARGET === "natural") {
+    if (ML_DEBUG_VERBOSE) {
+      console.log("ML_DEBUG_VERBOSE sampler: natural mode, always accept")
+    }
     return true
   }
 
   const target = SUCCESS_FAILURE_RATIO_TARGET
   const total = stats.success + stats.failure
 
+  if (ML_DEBUG_VERBOSE) {
+    console.log(
+      "ML_DEBUG_VERBOSE sampler before decision",
+      "total",
+      total,
+      "success",
+      stats.success,
+      "failure",
+      stats.failure,
+      "outcome",
+      outcome,
+      "target",
+      target,
+    )
+  }
+
   // Always accept the very first sample to bootstrap stats
   if (total === 0) {
+    if (ML_DEBUG_VERBOSE) {
+      console.log(
+        "ML_DEBUG_VERBOSE sampler: accepting first sample unconditionally",
+      )
+    }
     return true
   }
 
@@ -52,9 +78,31 @@ export const shouldAcceptSample = (
   const lower = Math.max(0, target - DEFAULT_TOLERANCE)
   const upper = Math.min(1, target + DEFAULT_TOLERANCE)
 
+  if (ML_DEBUG_VERBOSE) {
+    console.log(
+      "ML_DEBUG_VERBOSE sampler ratio check",
+      "nextRatio",
+      nextRatio,
+      "lower",
+      lower,
+      "upper",
+      upper,
+    )
+  }
+
   // Once we have enough samples, enforce the strict band
   if (total >= MIN_SAMPLES_FOR_STRICT_FILTER) {
-    return nextRatio >= lower && nextRatio <= upper
+    const acceptStrict = nextRatio >= lower && nextRatio <= upper
+    if (ML_DEBUG_VERBOSE) {
+      console.log(
+        "ML_DEBUG_VERBOSE sampler strict mode decision",
+        "total",
+        total,
+        "accept",
+        acceptStrict,
+      )
+    }
+    return acceptStrict
   }
 
   // During bootstrapping, also accept samples that move
@@ -64,11 +112,35 @@ export const shouldAcceptSample = (
   const currentDelta = Math.abs(currentRatio - target)
   const nextDelta = Math.abs(nextRatio - target)
 
+  if (ML_DEBUG_VERBOSE) {
+    console.log(
+      "ML_DEBUG_VERBOSE sampler bootstrap mode",
+      "currentRatio",
+      currentRatio,
+      "currentDelta",
+      currentDelta,
+      "nextDelta",
+      nextDelta,
+    )
+  }
+
   if (nextRatio >= lower && nextRatio <= upper) {
+    if (ML_DEBUG_VERBOSE) {
+      console.log("ML_DEBUG_VERBOSE sampler: accept (within band in bootstrap)")
+    }
     return true
   }
 
-  return nextDelta < currentDelta
+  const acceptByDelta = nextDelta < currentDelta
+  if (ML_DEBUG_VERBOSE) {
+    console.log(
+      "ML_DEBUG_VERBOSE sampler: decision based on delta",
+      "accept",
+      acceptByDelta,
+    )
+  }
+
+  return acceptByDelta
 }
 
 export const updateStats = (
