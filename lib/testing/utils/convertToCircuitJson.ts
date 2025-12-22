@@ -89,6 +89,14 @@ function createSourceTraces(
 
   // Process each connection to create a source_trace
   srj.connections.forEach((connection) => {
+    const connectionAliases = new Set(
+      [
+        connection.name,
+        connection.rootConnectionName,
+        ...(connection.mergedConnectionNames ?? []),
+      ].filter(Boolean),
+    )
+
     // Extract port IDs from the connection points
     const connectedPortIds = connection.pointsToConnect
       .filter((point) => point.pcb_port_id)
@@ -123,6 +131,12 @@ function createSourceTraces(
       }
     }
 
+    const obstacleLinkedIds = srj.obstacles
+      .filter((obstacle) =>
+        obstacle.connectedTo.some((id) => connectionAliases.has(id)),
+      )
+      .flatMap((obstacle) => obstacle.connectedTo)
+
     // Check if this source_trace already exists
     const existingSourceTrace = sourceTraces.find(
       (st) =>
@@ -136,6 +150,7 @@ function createSourceTraces(
         ...new Set([
           ...sourceTrace.connected_source_port_ids,
           ...connectedPortIds,
+          ...obstacleLinkedIds,
         ]),
       ]
     } else {
@@ -148,6 +163,7 @@ function createSourceTraces(
             `obstacle_${o.center.x.toFixed(3)}_${o.center.y.toFixed(3)}_${o.layers.join(".")}`,
             ...o.connectedTo,
           ]),
+          obstacleLinkedIds,
         ),
         connected_source_net_ids: [],
       })
