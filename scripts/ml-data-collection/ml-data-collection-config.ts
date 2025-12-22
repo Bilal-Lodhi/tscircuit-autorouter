@@ -18,4 +18,4 @@ export const DEFAULT_TOTAL_SAMPLES = 5000
 export const OUTPUT_FILE = "ml-training-data.json"
 export const OUTPUT_TEMP_DIR = "ml-training-data-tmp"
 export const OUTPUT_CHUNK_PREFIX = "ml-training-data-chunk"
-export const CHUNK_FLUSH_SIZE = 100
+export const CHUNK_FLUSH_SIZE = 1

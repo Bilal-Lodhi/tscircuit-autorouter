@@ -3,12 +3,12 @@ import {
   CHUNK_FLUSH_SIZE,
   OUTPUT_CHUNK_PREFIX,
   OUTPUT_TEMP_DIR,
-} from "./ml-training-config"
+} from "./ml-data-collection-config"
 import {
   DatasetRow,
   evaluateCandidate,
   generateRandomCandidate,
-} from "./ml-training-features"
+} from "./ml-data-collection-features"
 
 const run = async () => {
   const { maxSamples, workerId } = workerData as {
@@ -35,6 +35,14 @@ const run = async () => {
     const json = JSON.stringify(buffer, null, 2)
 
     await fs.writeFile(filePath, json, "utf-8")
+    console.log(
+      "Worker chunk written",
+      workerId,
+      "chunk",
+      chunkIndex,
+      "rows",
+      buffer.length,
+    )
     buffer = []
     chunkIndex += 1
   }

@@ -9,7 +9,7 @@ import {
   viaSizesVariants,
   traceWidthsVariants,
   layerVariation,
-} from "./ml-training-config"
+} from "./ml-data-collection-config"
 
 const FEATURE_SCHEMA = {
   top_edge_ports_normalized_to_width: { useForGeometric: true },
@@ -299,6 +299,8 @@ export const evaluateCandidate = (candidate: Candidate): DatasetRow => {
     viaDiameter: viaSize,
     traceWidth,
   })
+
+  hdSolver.MAX_ITERATIONS = 20000
 
   hdSolver.solve()
 

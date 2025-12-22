@@ -3,8 +3,8 @@ import {
   DEFAULT_TOTAL_SAMPLES,
   OUTPUT_FILE,
   OUTPUT_TEMP_DIR,
-} from "./ml-training-config"
-import { DatasetRow } from "./ml-training-features"
+} from "./ml-data-collection-config"
+import { DatasetRow } from "./ml-data-collection-features"
 
 const readAllChunks = async (): Promise<DatasetRow[]> => {
   const fs = await import("node:fs/promises")
