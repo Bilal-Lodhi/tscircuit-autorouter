@@ -26,7 +26,37 @@ export const getDrcErrors = (circuitJson: CircuitJson): GetDrcErrorsResult => {
   const traceErrors = checkEachPcbTraceNonOverlapping(circuitJson)
   const viaErrors = checkSameNetViaSpacing(circuitJson)
 
-  const errors: DrcError[] = [...traceErrors, ...viaErrors]
+  const traceIdToSourceTraceId = new Map<string, string>()
+  const sourceTraceToPorts = new Map<string, Set<string>>()
+
+  for (const element of circuitJson) {
+    if (element.type === "pcb_trace") {
+      traceIdToSourceTraceId.set(
+        element.pcb_trace_id,
+        element.source_trace_id ?? "",
+      )
+    }
+
+    if (element.type === "source_trace") {
+      sourceTraceToPorts.set(
+        element.source_trace_id,
+        new Set(element.connected_source_port_ids ?? []),
+      )
+    }
+  }
+
+  const errors: DrcError[] = [...traceErrors, ...viaErrors].filter((error) => {
+    if (error.type !== "pcb_trace_error") return true
+    if (!("pcb_port_ids" in error) || !error.pcb_port_ids?.length) return true
+
+    const sourceTraceId = traceIdToSourceTraceId.get(error.pcb_trace_id)
+    if (!sourceTraceId) return true
+
+    const connectedPorts = sourceTraceToPorts.get(sourceTraceId)
+    if (!connectedPorts) return true
+
+    return !error.pcb_port_ids.every((portId) => connectedPorts.has(portId))
+  })
 
   const vias = circuitJson.filter(
     (

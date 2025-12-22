@@ -103,10 +103,17 @@ function createSourceTraces(
 
     // Test for obstacles we're inside of
     const obstaclesContainingEndpoints: Obstacle[] = []
-    const hdRoute = hdRoutes.find(
-      (r) =>
-        ((r as any).connection_name ?? (r as any).connectionName) ===
+    const connectionIds = new Set(
+      [
         connection.name,
+        connection.rootConnectionName,
+        connection.netConnectionName,
+      ].filter(Boolean),
+    )
+    const hdRoute = hdRoutes.find((r) =>
+      connectionIds.has(
+        (r as any).connection_name ?? (r as any).connectionName,
+      ),
     )
     if (hdRoute) {
       const endpoints = [

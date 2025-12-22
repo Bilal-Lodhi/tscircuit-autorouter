@@ -14,6 +14,7 @@ import {
   segmentToBoxMinDistance,
   computeGapBetweenBoxes,
   segmentToBoundsMinDistance,
+  pointToBoxDistance,
 } from "@tscircuit/math-utils"
 import { doesSegmentCrossPolygonBoundary } from "lib/utils/polygonContainment"
 
@@ -54,7 +55,7 @@ export class SingleSimplifiedPathSolver5 extends SingleSimplifiedPathSolver {
 
   segmentTree!: SegmentTree
 
-  OBSTACLE_MARGIN = 0.1
+  OBSTACLE_MARGIN = 0.15
   TRACE_THICKNESS = 0.15
 
   TAIL_JUMP_RATIO: number = 0.8
@@ -63,6 +64,8 @@ export class SingleSimplifiedPathSolver5 extends SingleSimplifiedPathSolver {
     params: ConstructorParameters<typeof SingleSimplifiedPathSolver>[0],
   ) {
     super(params)
+
+    this.TRACE_THICKNESS = this.inputRoute.traceThickness
 
     this.cachedValidPathSegments = new Set()
 
@@ -92,29 +95,22 @@ export class SingleSimplifiedPathSolver5 extends SingleSimplifiedPathSolver {
       height: bounds.maxY - bounds.minY,
     }
 
+    const routeEndpoints = [
+      this.inputRoute.route[0],
+      this.inputRoute.route[this.inputRoute.route.length - 1],
+    ]
+
     this.filteredObstacles = this.obstacles
       .filter(
         (obstacle) =>
-          !obstacle.connectedTo.some((id) =>
-            this.connMap.areIdsConnected(this.inputRoute.connectionName, id),
+          !routeEndpoints.some(
+            (point) => pointToBoxDistance(point, obstacle) <= 0,
           ),
       )
       .filter((obstacle) => {
-        if (
-          obstacle.connectedTo.some((obsId) =>
-            this.connMap.areIdsConnected(this.inputRoute.connectionName, obsId),
-          )
-        ) {
-          return false
-        }
-
         const distance = computeGapBetweenBoxes(boundsBox, obstacle)
 
-        if (distance < this.OBSTACLE_MARGIN + this.TRACE_THICKNESS / 2) {
-          return true
-        }
-
-        return false
+        return distance < this.OBSTACLE_MARGIN + this.TRACE_THICKNESS / 2
       })
 
     this.filteredObstaclePathSegments = this.otherHdRoutes.flatMap(
