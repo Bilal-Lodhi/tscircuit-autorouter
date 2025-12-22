@@ -5,19 +5,20 @@ import { getIntraNodeCrossings } from "lib/utils/getIntraNodeCrossings"
 import { HighDensitySolver } from "lib/solvers/HighDensitySolver/HighDensitySolver"
 
 const settings = [
-  { width: 1, height: 2.83, z: 1 },
-  { width: 2.83, height: 1, z: 1 },
-  { width: 81.574, height: 50.87, z: 1 },
-  { width: 30.41, height: 68.33, z: 1 },
-  { width: 10.86, height: 29.44, z: 1 },
-  { width: 5.43, height: 16.31, z: 1 },
-  { width: 0.839, height: 0.206, z: 1 },
-  { width: 3.19, height: 1.59, z: 1 },
+  { width: 1, height: 2.83 },
+  { width: 2.83, height: 1 },
+  { width: 81.574, height: 50.87 },
+  { width: 30.41, height: 68.33 },
+  { width: 10.86, height: 29.44 },
+  { width: 5.43, height: 16.31 },
+  { width: 0.839, height: 0.206 },
+  { width: 3.19, height: 1.59 },
 ]
 
 const connectionVariants = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 const viaSizesVariants = [0.1, 0.2, 0.3, 0.4, 0.5]
 const traceWidthsVariants = [0.05, 0.1, 0.15, 0.2, 0.25]
+const z = [2, 4]
 
 const FEATURE_SCHEMA = {
   top_edge_ports_normalized_to_width: { useForGeometric: true },
@@ -35,6 +36,7 @@ const FEATURE_SCHEMA = {
   board_aspect_ratio_not_normalized: { useForGeometric: true },
   total_trace_distance_normalized_to_diagonal: { useForGeometric: true },
   same_net_crossings_normalized_to_segments: { useForGeometric: false },
+  ports_on_top_layer_normalized_to_total_ports: { useForGeometric: false },
 } as const
 
 type FeatureKey = keyof typeof FEATURE_SCHEMA
@@ -56,6 +58,7 @@ const computeFeaturesForMl = (params: {
   numTransitionPairCrossings: number
   viaSize: number
   traceWidth: number
+  layerCount: number
 }): Features => {
   const top = params.node.center.y + params.node.height / 2
   const bottom = params.node.center.y - params.node.height / 2
@@ -137,6 +140,24 @@ const computeFeaturesForMl = (params: {
     uniqueNet,
   )
 
+  const toplayerIndex = 0
+  const bottomLayerIndex = params.layerCount - 1
+
+  const portsOnTopLayer = params.portPoints.filter(
+    (e) => e.z === toplayerIndex,
+  ).length
+  const portsOnBottomLayer = params.portPoints.filter(
+    (e) => e.z === bottomLayerIndex,
+  ).length
+  const portsOnOtherLayers = params.portPoints.filter(
+    (e) => e.z !== toplayerIndex && e.z !== bottomLayerIndex,
+  ).length
+
+  const ports_on_top_layer_normalized_to_total_ports = safeDiv(
+    portsOnTopLayer,
+    portsOnBottomLayer + portsOnTopLayer + portsOnOtherLayers,
+  )
+
   return {
     top_edge_ports_normalized_to_width,
     right_edge_ports_normalized_to_height,
@@ -149,6 +170,7 @@ const computeFeaturesForMl = (params: {
     board_aspect_ratio_not_normalized,
     total_trace_distance_normalized_to_diagonal,
     same_net_crossings_normalized_to_segments,
+    ports_on_top_layer_normalized_to_total_ports,
   }
 }
 
@@ -448,6 +470,7 @@ async function run() {
       numTransitionPairCrossings,
       viaSize,
       traceWidth: traceWidth,
+      layerCount: 2,
     })
 
     const cost =
