@@ -19,3 +19,7 @@ export const OUTPUT_FILE = "ml-training-data.json"
 export const OUTPUT_TEMP_DIR = "ml-training-data-tmp"
 export const OUTPUT_CHUNK_PREFIX = "ml-training-data-chunk"
 export const CHUNK_FLUSH_SIZE = 10
+
+export type SuccessFailureRatioTarget = "natural" | number
+
+export const SUCCESS_FAILURE_RATIO_TARGET: SuccessFailureRatioTarget = 0.4

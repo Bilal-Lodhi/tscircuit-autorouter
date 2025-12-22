@@ -3,6 +3,7 @@ import {
   DEFAULT_TOTAL_SAMPLES,
   OUTPUT_FILE,
   OUTPUT_TEMP_DIR,
+  SUCCESS_FAILURE_RATIO_TARGET,
 } from "./ml-data-collection-config"
 import { DatasetRow } from "./ml-data-collection-features"
 
@@ -104,6 +105,18 @@ const runMain = async () => {
   }
 
   const samplesPerWorker = Math.ceil(DEFAULT_TOTAL_SAMPLES / workerCount)
+
+  if (SUCCESS_FAILURE_RATIO_TARGET === "natural") {
+    console.log(
+      "Using natural HighDensitySolver success/failure ratio (no target)",
+    )
+  } else {
+    const successPct = Math.round(SUCCESS_FAILURE_RATIO_TARGET * 100)
+    const failurePct = 100 - successPct
+    console.log(
+      `Target success/failure ratio: ${successPct}% success / ${failurePct}% failure`,
+    )
+  }
 
   console.log(
     `Generating ${DEFAULT_TOTAL_SAMPLES} samples using ${workerCount} workers`,
