@@ -5,6 +5,12 @@ import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import { ObstacleSpatialHashIndex } from "lib/data-structures/ObstacleTree"
 import { HighDensityRouteSpatialIndex } from "lib/data-structures/HighDensityRouteSpatialIndex"
 import { GraphicsObject } from "graphics-debug"
+import {
+  computeDrawPositionFromCollisions,
+  obstacleToSegments,
+  routeToOutlineSegments,
+  Segment,
+} from "./computeDrawPositionFromCollisions"
 
 const CURSOR_STEP_DISTANCE = 0.05
 
@@ -15,24 +21,6 @@ interface Point2D {
 
 interface Point3D extends Point2D {
   z: number
-}
-
-const rollingAverage = (
-  current: { x: number; y: number },
-  newValue: { x: number; y: number },
-  numItems: number,
-): { x: number; y: number } => {
-  return {
-    x: (current.x * (numItems - 1) + newValue.x) / numItems,
-    y: (current.y * (numItems - 1) + newValue.y) / numItems,
-  }
-}
-
-const averagePoints = (points: Point2D[]): Point2D => {
-  return {
-    x: points.reduce((acc, curr) => acc + curr.x, 0) / points.length,
-    y: points.reduce((acc, curr) => acc + curr.y, 0) / points.length,
-  }
 }
 
 export interface TraceKeepoutSolverInput {
@@ -66,11 +54,11 @@ export class TraceKeepoutSolver extends BaseSolver {
   // Current trace being processed
   currentTrace: HighDensityRoute | null = null
   cursorPosition: Point3D | null = null
+  lastCursorPosition: Point3D | null = null
   drawPosition: Point2D | null = null
   currentTraceSegmentIndex = 0
   currentTraceSegmentT = 0 // Parameter t in [0, 1] along the current segment
   recordedDrawPositions: Point3D[] = []
-  nonAveragedDrawPositions: Point2D[] = []
 
   obstacleSHI: ObstacleSpatialHashIndex
   hdRouteSHI: HighDensityRouteSpatialIndex
@@ -163,12 +151,16 @@ export class TraceKeepoutSolver extends BaseSolver {
 
       const startPoint = this.currentTrace.route[0]!
       this.cursorPosition = { ...startPoint }
+      this.lastCursorPosition = { ...startPoint }
       this.drawPosition = { x: startPoint.x, y: startPoint.y }
       this.currentTraceSegmentIndex = 0
       this.currentTraceSegmentT = 0
       this.recordedDrawPositions = [{ ...startPoint }]
       return
     }
+
+    // Save last cursor position before stepping
+    this.lastCursorPosition = { ...this.cursorPosition! }
 
     // Step the cursor forward along the trace
     const stepped = this.stepCursorForward()
@@ -179,23 +171,36 @@ export class TraceKeepoutSolver extends BaseSolver {
       return
     }
 
-    // Check for non-connected obstacles and traces within the keepout radius
-    const obstacleAvoidance = this.checkForObstacles()
-    const lastDrawPosition = this.drawPosition
+    // Get colliding segments for obstacles and traces
+    const collidingSegments = this.getCollidingSegments()
 
-    if (obstacleAvoidance) {
-      // Move draw position to avoid obstacles
-      this.drawPosition = obstacleAvoidance
+    // Compute draw position using the collision avoidance algorithm
+    const newDrawPosition = computeDrawPositionFromCollisions({
+      cursorPosition: this.cursorPosition!,
+      lastCursorPosition: this.lastCursorPosition!,
+      collidingSegments,
+      keepoutRadius: this.currentKeepoutRadius,
+    })
+
+    if (newDrawPosition) {
+      // Check that new position doesn't hit any non-connected obstacle
+      const rootConnectionName =
+        this.currentTrace!.rootConnectionName ?? this.currentTrace!.connectionName
+      if (
+        !this.positionHitsAnyNonConnectedObstacle(
+          newDrawPosition,
+          rootConnectionName,
+        )
+      ) {
+        this.drawPosition = newDrawPosition
+      } else {
+        // Fall back to cursor position
+        this.drawPosition = { ...this.cursorPosition! }
+      }
     } else {
       // No obstacles, draw position follows cursor
       this.drawPosition = { ...this.cursorPosition! }
     }
-
-    this.nonAveragedDrawPositions.push(this.drawPosition!)
-
-    // this.drawPosition = rollingAverage(lastDrawPosition!, this.drawPosition!, 7)
-    // this.drawPosition = averagePoints(this.nonAveragedDrawPositions.slice(-3))
-    // this.drawPosition = averagePoints(this.nonAveragedDrawPositions.slice(
 
     // Record the draw position
     this.recordedDrawPositions.push({
@@ -271,15 +276,15 @@ export class TraceKeepoutSolver extends BaseSolver {
   }
 
   /**
-   * Checks for non-connected obstacles and traces within the keepout radius
-   * Returns a new draw position that avoids obstacles, or null if no avoidance needed
+   * Gets all colliding segments (obstacle edges and trace outlines) within the keepout radius
    */
-  private checkForObstacles(): Point2D | null {
-    if (!this.currentTrace || !this.cursorPosition) return null
+  private getCollidingSegments(): Segment[] {
+    if (!this.currentTrace || !this.cursorPosition) return []
 
     const rootConnectionName =
       this.currentTrace.rootConnectionName ?? this.currentTrace.connectionName
     const searchRadius = this.currentKeepoutRadius
+    const segments: Segment[] = []
 
     // Check for obstacles within the keepout radius
     const nearbyObstacles = this.obstacleSHI.searchArea(
@@ -289,19 +294,19 @@ export class TraceKeepoutSolver extends BaseSolver {
       searchRadius * 2,
     )
 
-    // Filter to non-connected obstacles on the same layer
-    const nonConnectedObstacles = nearbyObstacles.filter((obstacle) => {
+    // Filter to non-connected obstacles on the same layer and convert to segments
+    for (const obstacle of nearbyObstacles) {
       // Check if obstacle is on the same layer
       if (
         obstacle.zLayers &&
-        !obstacle.zLayers.includes(this.cursorPosition!.z)
+        !obstacle.zLayers.includes(this.cursorPosition.z)
       ) {
-        return false
+        continue
       }
 
       // Check if obstacle is connected to this trace's net
       if (obstacle.connectedTo.includes(rootConnectionName)) {
-        return false
+        continue
       }
 
       // Check if obstacle's own ID is connected
@@ -312,20 +317,24 @@ export class TraceKeepoutSolver extends BaseSolver {
           obstacle.obstacleId,
         )
       ) {
-        return false
+        continue
       }
 
       // Check connectivity via connMap
+      let isConnected = false
       for (const connectedId of obstacle.connectedTo) {
         if (
           this.input.connMap.areIdsConnected(rootConnectionName, connectedId)
         ) {
-          return false
+          isConnected = true
+          break
         }
       }
+      if (isConnected) continue
 
-      return true
-    })
+      // Convert obstacle to edge segments
+      segments.push(...obstacleToSegments(obstacle))
+    }
 
     // Check for non-connected traces within the keepout radius
     const nearbyRoutes = this.hdRouteSHI.getConflictingRoutesNearPoint(
@@ -333,56 +342,28 @@ export class TraceKeepoutSolver extends BaseSolver {
       searchRadius,
     )
 
-    const nonConnectedRoutes = nearbyRoutes.filter(({ conflictingRoute }) => {
+    for (const { conflictingRoute } of nearbyRoutes) {
       const routeRootName =
         conflictingRoute.rootConnectionName ?? conflictingRoute.connectionName
 
       // Don't avoid our own trace
       if (routeRootName === rootConnectionName) {
-        return false
+        continue
       }
 
       // Check connectivity
       if (
         this.input.connMap.areIdsConnected(rootConnectionName, routeRootName)
       ) {
-        return false
+        continue
       }
 
-      return true
-    })
-
-    // If there's nothing to avoid, return null
-    if (nonConnectedObstacles.length === 0 && nonConnectedRoutes.length === 0) {
-      return null
+      // Convert route to outline segments (considering trace width)
+      const traceWidth = conflictingRoute.traceThickness ?? 0.1
+      segments.push(...routeToOutlineSegments(conflictingRoute.route, traceWidth))
     }
 
-    // Calculate avoidance direction - push orthogonally to the trace direction
-    const avoidanceVector = this.calculateAvoidanceVector(
-      nonConnectedObstacles,
-      nonConnectedRoutes,
-    )
-
-    if (!avoidanceVector) {
-      // Couldn't calculate avoidance, fall back to cursor position
-      return { x: this.cursorPosition.x, y: this.cursorPosition.y }
-    }
-
-    // Calculate new draw position
-    const newDrawPos = {
-      x: this.cursorPosition.x + avoidanceVector.x,
-      y: this.cursorPosition.y + avoidanceVector.y,
-    }
-
-    // Verify the new position doesn't hit ANY non-connected obstacle
-    // Search a larger area around the new position to catch all potential collisions
-    if (
-      this.positionHitsAnyNonConnectedObstacle(newDrawPos, rootConnectionName)
-    ) {
-      return { x: this.cursorPosition.x, y: this.cursorPosition.y }
-    }
-
-    return newDrawPos
+    return segments
   }
 
   /**
@@ -459,200 +440,6 @@ export class TraceKeepoutSolver extends BaseSolver {
   }
 
   /**
-   * Calculates the avoidance vector to push the draw position away from obstacles
-   * Moves the minimum amount needed to get obstacles outside the keepout radius
-   */
-  private calculateAvoidanceVector(
-    obstacles: Obstacle[],
-    routes: Array<{ conflictingRoute: HighDensityRoute; distance: number }>,
-  ): Point2D | null {
-    if (!this.currentTrace || !this.cursorPosition) return null
-
-    // Get the trace direction at current position
-    const traceDir = this.getTraceDirectionAtCursor()
-    if (!traceDir) return null
-
-    // Calculate orthogonal direction (perpendicular to trace)
-    const orthogonal1 = { x: -traceDir.y, y: traceDir.x }
-    const orthogonal2 = { x: traceDir.y, y: -traceDir.x }
-
-    // Find the closest obstacle/trace point and determine push direction
-    const closest = this.findClosestObstaclePoint(obstacles, routes)
-    if (!closest) return null
-
-    // Vector from cursor to closest obstacle point
-    const toObstacle = {
-      x: closest.x - this.cursorPosition.x,
-      y: closest.y - this.cursorPosition.y,
-    }
-    const distToObstacle = Math.sqrt(toObstacle.x ** 2 + toObstacle.y ** 2)
-
-    // If already outside keepout radius, no movement needed
-    if (distToObstacle >= this.currentKeepoutRadius) {
-      return null
-    }
-
-    // Choose which orthogonal direction points away from the obstacle
-    const dot1 = orthogonal1.x * toObstacle.x + orthogonal1.y * toObstacle.y
-    const dot2 = orthogonal2.x * toObstacle.x + orthogonal2.y * toObstacle.y
-    const pushDir = dot1 < dot2 ? orthogonal1 : orthogonal2
-
-    // Calculate the perpendicular component of toObstacle relative to pushDir
-    // d_perp = toObstacle · pushDir (how far obstacle is in the push direction)
-    const d_perp = toObstacle.x * pushDir.x + toObstacle.y * pushDir.y
-
-    // d_along = component along trace direction
-    const d_along = toObstacle.x * traceDir.x + toObstacle.y * traceDir.y
-
-    // Calculate minimum push distance needed
-    // After pushing by m, new distance² = d_along² + (d_perp - m)²
-    // We want new distance = keepoutRadius
-    // keepoutRadius² = d_along² + (d_perp - m)²
-    // (d_perp - m)² = keepoutRadius² - d_along²
-
-    const keepoutSq = this.currentKeepoutRadius ** 2
-    const alongSq = d_along ** 2
-
-    if (keepoutSq <= alongSq) {
-      // Obstacle is far enough along trace direction, no orthogonal push needed
-      return null
-    }
-
-    const requiredPerpDist = Math.sqrt(keepoutSq - alongSq)
-
-    // We need |d_perp - m| >= requiredPerpDist
-    // Since pushDir points away (d_perp should be negative or we push to make it more negative)
-    // m = d_perp - (-requiredPerpDist) = d_perp + requiredPerpDist (if d_perp < 0)
-    // m = d_perp - requiredPerpDist (if d_perp > 0, but we chose pushDir to point away so this shouldn't happen)
-
-    let pushDistance: number
-    if (d_perp <= 0) {
-      // Obstacle is in opposite direction of push, push by enough to clear
-      pushDistance = Math.abs(d_perp) + requiredPerpDist
-    } else {
-      // Obstacle is in same direction as push (shouldn't happen with correct pushDir choice)
-      // Push enough to get past it
-      pushDistance = requiredPerpDist - d_perp
-      if (pushDistance < 0) pushDistance = 0
-    }
-
-    // Add small margin
-    pushDistance += 0.01
-
-    return {
-      x: pushDir.x * pushDistance,
-      y: pushDir.y * pushDistance,
-    }
-  }
-
-  /**
-   * Finds the closest obstacle or trace point to the cursor
-   */
-  private findClosestObstaclePoint(
-    obstacles: Obstacle[],
-    routes: Array<{ conflictingRoute: HighDensityRoute; distance: number }>,
-  ): Point2D | null {
-    if (!this.cursorPosition) return null
-
-    let closestX = 0
-    let closestY = 0
-    let closestDistSq = Infinity
-    let hasClosest = false
-
-    // Check obstacle centers (could improve by checking closest point on obstacle edge)
-    for (const obs of obstacles) {
-      // Find closest point on obstacle rectangle to cursor
-      const clampedX = Math.max(
-        obs.center.x - obs.width / 2,
-        Math.min(obs.center.x + obs.width / 2, this.cursorPosition.x),
-      )
-      const clampedY = Math.max(
-        obs.center.y - obs.height / 2,
-        Math.min(obs.center.y + obs.height / 2, this.cursorPosition.y),
-      )
-      const distSq =
-        (clampedX - this.cursorPosition.x) ** 2 +
-        (clampedY - this.cursorPosition.y) ** 2
-      if (distSq < closestDistSq) {
-        closestDistSq = distSq
-        closestX = clampedX
-        closestY = clampedY
-        hasClosest = true
-      }
-    }
-
-    // Check closest point on each conflicting route segment
-    for (const { conflictingRoute } of routes) {
-      const routePts = conflictingRoute.route
-      for (let i = 0; i < routePts.length - 1; i++) {
-        const a = routePts[i]!
-        const b = routePts[i + 1]!
-        const closest = this.closestPointOnSegment(this.cursorPosition, a, b)
-        const distSq =
-          (closest.x - this.cursorPosition.x) ** 2 +
-          (closest.y - this.cursorPosition.y) ** 2
-        if (distSq < closestDistSq) {
-          closestDistSq = distSq
-          closestX = closest.x
-          closestY = closest.y
-          hasClosest = true
-        }
-      }
-    }
-
-    if (!hasClosest) return null
-
-    return { x: closestX, y: closestY }
-  }
-
-  /**
-   * Gets the normalized direction vector of the trace at the cursor position
-   */
-  private getTraceDirectionAtCursor(): Point2D | null {
-    if (!this.currentTrace) return null
-
-    const route = this.currentTrace.route
-    if (this.currentTraceSegmentIndex >= route.length - 1) {
-      // At end of trace, use last segment direction
-      const idx = Math.max(0, route.length - 2)
-      const segStart = route[idx]!
-      const segEnd = route[idx + 1]!
-      const dx = segEnd.x - segStart.x
-      const dy = segEnd.y - segStart.y
-      const len = Math.sqrt(dx * dx + dy * dy)
-      if (len === 0) return { x: 1, y: 0 }
-      return { x: dx / len, y: dy / len }
-    }
-
-    const segStart = route[this.currentTraceSegmentIndex]!
-    const segEnd = route[this.currentTraceSegmentIndex + 1]!
-    const dx = segEnd.x - segStart.x
-    const dy = segEnd.y - segStart.y
-    const len = Math.sqrt(dx * dx + dy * dy)
-    if (len === 0) return { x: 1, y: 0 }
-    return { x: dx / len, y: dy / len }
-  }
-
-  /**
-   * Finds the closest point on a line segment to a given point
-   */
-  private closestPointOnSegment(p: Point2D, a: Point2D, b: Point2D): Point2D {
-    const dx = b.x - a.x
-    const dy = b.y - a.y
-    const lenSq = dx * dx + dy * dy
-
-    if (lenSq === 0) return { x: a.x, y: a.y }
-
-    let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq
-    t = Math.max(0, Math.min(1, t))
-
-    return {
-      x: a.x + t * dx,
-      y: a.y + t * dy,
-    }
-  }
-
-  /**
    * Finalizes the current trace with the recorded draw positions
    */
   private finalizeCurrentTrace() {
@@ -687,6 +474,7 @@ export class TraceKeepoutSolver extends BaseSolver {
     this.processedRoutes.push(redrawnTrace)
     this.currentTrace = null
     this.cursorPosition = null
+    this.lastCursorPosition = null
     this.drawPosition = null
     this.recordedDrawPositions = []
   }
