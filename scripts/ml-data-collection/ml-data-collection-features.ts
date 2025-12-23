@@ -30,8 +30,6 @@ const FEATURE_SCHEMA = {
   single_via_area_normalized_to_area: { useForGeometric: true },
   two_via_area_normalized_to_area: { useForGeometric: true },
   board_aspect_ratio_not_normalized: { useForGeometric: true },
-  layer_count_not_normalized: { useForGeometric: false },
-  same_net_crossings_normalized_to_segments: { useForGeometric: false },
 } as const
 
 type FeatureKey = keyof typeof FEATURE_SCHEMA
@@ -70,11 +68,6 @@ export const computeFeaturesForMl = (params: {
   let bottomPortCount = 0
   let leftPortCount = 0
   let rightPortCount = 0
-
-  const setOfAlredySeenConnectionNames = new Set<string>()
-  let countSameNetConnection = 0
-
-  const uniqueNet = Math.max(1, setOfAlredySeenConnectionNames.size)
 
   const top_edge_ports_normalized_to_width = safeDiv(
     topPortCount * params.traceWidth,
@@ -124,12 +117,7 @@ export const computeFeaturesForMl = (params: {
     params.node.width,
     params.node.height,
   )
-  const same_net_crossings_normalized_to_segments = safeDiv(
-    countSameNetConnection,
-    uniqueNet,
-  )
 
-  const layer_count_not_normalized = params.node.availableZ.length
 
   return {
     top_edge_ports_normalized_to_width,
@@ -145,8 +133,6 @@ export const computeFeaturesForMl = (params: {
     single_via_area_normalized_to_area: single_via_occupancy_normalized_to_area,
     two_via_area_normalized_to_area: two_via_occupancy_normalized_to_area,
     board_aspect_ratio_not_normalized,
-    layer_count_not_normalized,
-    same_net_crossings_normalized_to_segments,
   }
 }
 
