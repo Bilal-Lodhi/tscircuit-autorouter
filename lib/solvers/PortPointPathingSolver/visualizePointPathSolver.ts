@@ -56,7 +56,7 @@ export function visualizePointPathSolver(
 
     const red = Math.min(255, Math.floor(pf * 512))
     const greenAndBlue = Math.max(0, 255 - Math.floor(pf * 512))
-    let color = `rgba(${red}, ${greenAndBlue}, ${greenAndBlue}, 0.3)`
+    let color = `rgba(${red}, ${greenAndBlue}, ${greenAndBlue}, ${pf < 0.001 ? "0.1" : "0.3"})`
 
     if (node._containsObstacle) {
       color = "rgba(255, 0, 0, 0.3)"
@@ -68,8 +68,8 @@ export function visualizePointPathSolver(
 
     graphics.rects!.push({
       center: node.center,
-      width: node.width * 0.9,
-      height: node.height * 0.9,
+      width: node.width - 0.2,
+      height: node.height - 0.2,
       layer: `z${node.availableZ.join(",")}`,
       fill: color,
       label: `${node.capacityMeshNodeId}\npf: ${pf.toFixed(3)}, memPf: ${memPf.toFixed(3)}\nxSame: ${crossings.numSameLayerCrossings}, xLC: ${crossings.numEntryExitLayerChanges}, xTransition: ${crossings.numTransitionPairCrossings}\nobCmid: ${node._offBoardConnectedCapacityMeshNodeIds?.join(",")}\nobs: ${node._containsObstacle ? "yes" : "no"}`,

@@ -176,7 +176,7 @@ export class AvailableSegmentPointSolver extends BaseSolver {
     const centerY = (overlap.start.y + overlap.end.y) / 2
 
     if (maxPortPoints > 5) {
-      maxPortPoints = 5 + maxPortPoints / 4
+      maxPortPoints = 5 + Math.floor(maxPortPoints / 4)
     }
 
     // First pass: compute all XY positions and find which is closest to segment center

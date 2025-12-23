@@ -10,6 +10,17 @@ const srj = bugReport.simple_route_json as SimpleRouteJson
 
 test("bugreport27-dd3734.json", () => {
   const solver = new AssignableAutoroutingPipeline2(srj)
+
+  // solve until the high density route solver, take a snapshot of the
+  // visualization from the port point pathing solver
+  solver.solveUntilPhase("simpleHighDensityRouteSolver")
+
+  expect(
+    getLastStepSvg(solver.portPointPathingSolver!.visualize()),
+  ).toMatchSvgSnapshot(import.meta.path, {
+    svgName: "bugreport27-portPointPathingSolver",
+  })
+
   solver.solve()
   expect(getLastStepSvg(solver.visualize())).toMatchSvgSnapshot(
     import.meta.path,
