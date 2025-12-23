@@ -247,13 +247,13 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
             capacityMeshNodes: cms.capacityNodes!,
             colorMap: cms.colorMap,
             numShuffleSeeds: 2000,
+            minAllowedBoardScore: -1,
             hyperParameters: {
               // 1 = 60% maximum pf (see computeSectionScore)
               // 5 = 99.3% maximum pf
               // 10 = 99.995% maximum pf (1 - e**(-10))
               // NODE_PF_MAX_PENALTY: 10,
               // RANDOM_WALK_DISTANCE: 50,
-              MIN_ALLOWED_BOARD_SCORE: -1,
               NODE_PF_FACTOR: 10000,
               FORCE_OFF_BOARD_FREQUENCY: 0.3,
               CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,

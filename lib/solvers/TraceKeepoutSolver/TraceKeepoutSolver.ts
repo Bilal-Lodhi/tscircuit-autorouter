@@ -17,6 +17,24 @@ interface Point3D extends Point2D {
   z: number
 }
 
+const rollingAverage = (
+  current: { x: number; y: number },
+  newValue: { x: number; y: number },
+  numItems: number,
+): { x: number; y: number } => {
+  return {
+    x: (current.x * (numItems - 1) + newValue.x) / numItems,
+    y: (current.y * (numItems - 1) + newValue.y) / numItems,
+  }
+}
+
+const averagePoints = (points: Point2D[]): Point2D => {
+  return {
+    x: points.reduce((acc, curr) => acc + curr.x, 0) / points.length,
+    y: points.reduce((acc, curr) => acc + curr.y, 0) / points.length,
+  }
+}
+
 export interface TraceKeepoutSolverInput {
   hdRoutes: HighDensityRoute[]
   obstacles: Obstacle[]
@@ -52,6 +70,7 @@ export class TraceKeepoutSolver extends BaseSolver {
   currentTraceSegmentIndex = 0
   currentTraceSegmentT = 0 // Parameter t in [0, 1] along the current segment
   recordedDrawPositions: Point3D[] = []
+  nonAveragedDrawPositions: Point2D[] = []
 
   obstacleSHI: ObstacleSpatialHashIndex
   hdRouteSHI: HighDensityRouteSpatialIndex
@@ -162,17 +181,21 @@ export class TraceKeepoutSolver extends BaseSolver {
 
     // Check for non-connected obstacles and traces within the keepout radius
     const obstacleAvoidance = this.checkForObstacles()
+    const lastDrawPosition = this.drawPosition
 
     if (obstacleAvoidance) {
       // Move draw position to avoid obstacles
       this.drawPosition = obstacleAvoidance
     } else {
       // No obstacles, draw position follows cursor
-      this.drawPosition = {
-        x: this.cursorPosition!.x,
-        y: this.cursorPosition!.y,
-      }
+      this.drawPosition = { ...this.cursorPosition! }
     }
+
+    this.nonAveragedDrawPositions.push(this.drawPosition!)
+
+    // this.drawPosition = rollingAverage(lastDrawPosition!, this.drawPosition!, 7)
+    // this.drawPosition = averagePoints(this.nonAveragedDrawPositions.slice(-3))
+    // this.drawPosition = averagePoints(this.nonAveragedDrawPositions.slice(
 
     // Record the draw position
     this.recordedDrawPositions.push({
@@ -284,7 +307,10 @@ export class TraceKeepoutSolver extends BaseSolver {
       // Check if obstacle's own ID is connected
       if (
         obstacle.obstacleId &&
-        this.input.connMap.areIdsConnected(rootConnectionName, obstacle.obstacleId)
+        this.input.connMap.areIdsConnected(
+          rootConnectionName,
+          obstacle.obstacleId,
+        )
       ) {
         return false
       }
@@ -395,7 +421,10 @@ export class TraceKeepoutSolver extends BaseSolver {
       // Check if obstacle's own ID is connected
       if (
         obstacle.obstacleId &&
-        this.input.connMap.areIdsConnected(rootConnectionName, obstacle.obstacleId)
+        this.input.connMap.areIdsConnected(
+          rootConnectionName,
+          obstacle.obstacleId,
+        )
       ) {
         continue
       }

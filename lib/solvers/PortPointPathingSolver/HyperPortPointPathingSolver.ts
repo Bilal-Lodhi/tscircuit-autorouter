@@ -100,8 +100,9 @@ export class HyperPortPointPathingSolver extends HyperParameterSupervisorSolver<
         ...this.params.hyperParameters,
         ...hyperParameters,
         MIN_ALLOWED_BOARD_SCORE:
+          this.params.minAllowedBoardScore ??
           hyperParameters.MIN_ALLOWED_BOARD_SCORE ??
-          this.params.minAllowedBoardScore,
+          this.params.hyperParameters?.MIN_ALLOWED_BOARD_SCORE,
       },
     })
   }
