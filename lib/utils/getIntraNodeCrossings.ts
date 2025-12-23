@@ -1,6 +1,9 @@
 import { doSegmentsIntersect } from "@tscircuit/math-utils"
 import { NodeWithPortPoints } from "lib/types/high-density-types"
 
+// Intersection calculation is only accurate to 0.00001 (0.01mm)
+const intSpace = (a: number) => Math.floor(a * 10000)
+
 export const getIntraNodeCrossings = (node: NodeWithPortPoints) => {
   // Count the number of crossings
   let numSameLayerCrossings = 0
@@ -29,12 +32,12 @@ export const getIntraNodeCrossings = (node: NodeWithPortPoints) => {
     const pointPair = {
       connectionName: A.connectionName,
       z: A.z,
-      points: [{ x: A.x, y: A.y, z: A.z }],
+      points: [{ x: intSpace(A.x), y: intSpace(A.y), z: A.z }],
     }
     for (const B of node.portPoints) {
       if (A.connectionName !== B.connectionName) continue
       if (A.x === B.x && A.y === B.y) continue
-      pointPair.points.push({ x: B.x, y: B.y, z: B.z })
+      pointPair.points.push({ x: intSpace(B.x), y: intSpace(B.y), z: B.z })
     }
     if (pointPair.points.some((p) => p.z !== pointPair.z)) {
       numEntryExitLayerChanges++
