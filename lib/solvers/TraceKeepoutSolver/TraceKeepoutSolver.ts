@@ -60,7 +60,9 @@ export class TraceKeepoutSolver extends BaseSolver {
     super()
     this.MAX_ITERATIONS = 1e6
     this.hdRoutes = [...input.hdRoutes]
-    this.KEEPOUT_RADIUS_SCHEDULE = input.keepoutRadiusSchedule ?? [0.5, 0.3, 0.15]
+    this.KEEPOUT_RADIUS_SCHEDULE = input.keepoutRadiusSchedule ?? [
+      0.5, 0.3, 0.15,
+    ]
     this.currentKeepoutRadius = this.KEEPOUT_RADIUS_SCHEDULE[0] ?? 0.15
     this.unprocessedRoutes = [...input.hdRoutes]
 
@@ -246,7 +248,9 @@ export class TraceKeepoutSolver extends BaseSolver {
 
       // Check connectivity via connMap
       for (const connectedId of obstacle.connectedTo) {
-        if (this.input.connMap.areIdsConnected(rootConnectionName, connectedId)) {
+        if (
+          this.input.connMap.areIdsConnected(rootConnectionName, connectedId)
+        ) {
           return false
         }
       }
@@ -270,7 +274,9 @@ export class TraceKeepoutSolver extends BaseSolver {
       }
 
       // Check connectivity
-      if (this.input.connMap.areIdsConnected(rootConnectionName, routeRootName)) {
+      if (
+        this.input.connMap.areIdsConnected(rootConnectionName, routeRootName)
+      ) {
         return false
       }
 
@@ -301,7 +307,9 @@ export class TraceKeepoutSolver extends BaseSolver {
 
     // Verify the new position doesn't hit ANY non-connected obstacle
     // Search a larger area around the new position to catch all potential collisions
-    if (this.positionHitsAnyNonConnectedObstacle(newDrawPos, rootConnectionName)) {
+    if (
+      this.positionHitsAnyNonConnectedObstacle(newDrawPos, rootConnectionName)
+    ) {
       return { x: this.cursorPosition.x, y: this.cursorPosition.y }
     }
 
@@ -344,7 +352,9 @@ export class TraceKeepoutSolver extends BaseSolver {
       // Check connectivity via connMap
       let isConnected = false
       for (const connectedId of obstacle.connectedTo) {
-        if (this.input.connMap.areIdsConnected(rootConnectionName, connectedId)) {
+        if (
+          this.input.connMap.areIdsConnected(rootConnectionName, connectedId)
+        ) {
           isConnected = true
           break
         }
