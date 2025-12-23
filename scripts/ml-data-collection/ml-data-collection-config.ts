@@ -22,4 +22,4 @@ export const CHUNK_FLUSH_SIZE = 1
 
 export type SuccessFailureRatioTarget = "natural" | number
 
-export const SUCCESS_FAILURE_RATIO_TARGET: SuccessFailureRatioTarget = 0.4
+export const SUCCESS_FAILURE_RATIO_TARGET: SuccessFailureRatioTarget = "natural"
