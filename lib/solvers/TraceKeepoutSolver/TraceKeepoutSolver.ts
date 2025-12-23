@@ -18,6 +18,7 @@ import {
   pointToSegmentClosestPoint,
   pointToSegmentDistance,
 } from "@tscircuit/math-utils"
+import { smoothHdRoutes } from "./smoothLines"
 
 const CURSOR_STEP_DISTANCE = 0.2
 
@@ -36,6 +37,7 @@ export interface TraceKeepoutSolverInput {
   connMap: ConnectivityMap
   colorMap: Record<string, string>
   keepoutRadiusSchedule?: number[]
+  smoothDistance?: number
 }
 
 /**
@@ -48,8 +50,11 @@ export interface TraceKeepoutSolverInput {
  * radii as defined by KEEPOUT_RADIUS_SCHEDULE.
  */
 export class TraceKeepoutSolver extends BaseSolver {
+  originalHdRoutes: HighDensityRoute[]
   hdRoutes: HighDensityRoute[]
   redrawnHdRoutes: HighDensityRoute[] = []
+
+  smoothDistance: number
 
   KEEPOUT_RADIUS_SCHEDULE: number[]
   currentScheduleIndex = 0
@@ -74,15 +79,22 @@ export class TraceKeepoutSolver extends BaseSolver {
   constructor(private input: TraceKeepoutSolverInput) {
     super()
     this.MAX_ITERATIONS = 1e6
-    this.hdRoutes = [...input.hdRoutes]
+
+    // Store original routes for visualization
+    this.originalHdRoutes = [...input.hdRoutes]
+
+    // Apply smoothing to routes
+    this.smoothDistance = input.smoothDistance ?? 0.5
+    this.hdRoutes = smoothHdRoutes(input.hdRoutes, this.smoothDistance)
+
     this.KEEPOUT_RADIUS_SCHEDULE = input.keepoutRadiusSchedule ?? [
       0.5, 0.5, 0.5,
     ]
     this.currentKeepoutRadius = this.KEEPOUT_RADIUS_SCHEDULE[0] ?? 0.15
-    this.unprocessedRoutes = [...input.hdRoutes]
+    this.unprocessedRoutes = [...this.hdRoutes]
 
     this.obstacleSHI = new ObstacleSpatialHashIndex("flatbush", input.obstacles)
-    this.hdRouteSHI = new HighDensityRouteSpatialIndex(input.hdRoutes)
+    this.hdRouteSHI = new HighDensityRouteSpatialIndex(this.hdRoutes)
 
     // Make sure the start/endpoint of any route is properly connected in the
     // connMap to the obstacle
@@ -292,7 +304,7 @@ export class TraceKeepoutSolver extends BaseSolver {
 
     const rootConnectionName =
       this.currentTrace.rootConnectionName ?? this.currentTrace.connectionName
-    const searchRadius = this.currentKeepoutRadius * 2
+    const searchRadius = this.currentKeepoutRadius * 8
     const segments: Segment[] = []
 
     // Check for obstacles within the keepout radius
@@ -486,7 +498,47 @@ export class TraceKeepoutSolver extends BaseSolver {
       rects: [],
       circles: [],
       coordinateSystem: "cartesian",
-      title: `Trace Keepout Solver (radius: ${this.currentKeepoutRadius.toFixed(2)})`,
+      title: `Trace Keepout Solver (radius: ${this.currentKeepoutRadius.toFixed(2)}, smooth: ${this.smoothDistance.toFixed(2)}mm)`,
+    }
+
+    for (const route of this.originalHdRoutes) {
+      if (route.route.length === 0) continue
+
+      for (let i = 0; i < route.route.length - 1; i++) {
+        const current = route.route[i]!
+        const next = route.route[i + 1]!
+
+        if (current.z === next.z) {
+          visualization.lines.push({
+            points: [
+              { x: current.x, y: current.y },
+              { x: next.x, y: next.y },
+            ],
+            strokeColor: "rgba(0,0,0,0.25)",
+            strokeWidth: (route.traceThickness ?? 0.15) * 1.5,
+          })
+        }
+      }
+    }
+
+    // Draw smoothed routes (these are what the solver will process)
+    for (const route of this.hdRoutes) {
+      if (route.route.length === 0) continue
+
+      for (let i = 0; i < route.route.length - 1; i++) {
+        const current = route.route[i]!
+        const next = route.route[i + 1]!
+
+        if (current.z === next.z) {
+          visualization.lines.push({
+            points: [
+              { x: current.x, y: current.y },
+              { x: next.x, y: next.y },
+            ],
+            strokeColor: "gray",
+          })
+        }
+      }
     }
 
     // Visualize obstacles
@@ -510,37 +562,6 @@ export class TraceKeepoutSolver extends BaseSolver {
         fill: fillColor,
         label: `Obstacle (Z: ${obstacle.zLayers?.join(", ")})`,
       })
-    }
-
-    // Draw unprocessed routes in gray
-    for (const route of this.unprocessedRoutes) {
-      if (route.route.length === 0) continue
-
-      for (let i = 0; i < route.route.length - 1; i++) {
-        const current = route.route[i]!
-        const next = route.route[i + 1]!
-
-        if (current.z === next.z) {
-          visualization.lines.push({
-            points: [
-              { x: current.x, y: current.y },
-              { x: next.x, y: next.y },
-            ],
-            strokeColor: "rgba(128, 128, 128, 0.5)",
-            strokeWidth: route.traceThickness,
-            label: `${route.connectionName} (unprocessed)`,
-          })
-        }
-      }
-
-      for (const via of route.vias) {
-        visualization.circles.push({
-          center: { x: via.x, y: via.y },
-          radius: route.viaDiameter / 2,
-          fill: "rgba(128, 128, 128, 0.3)",
-          label: `${route.connectionName} via (unprocessed)`,
-        })
-      }
     }
 
     // Draw processed routes
