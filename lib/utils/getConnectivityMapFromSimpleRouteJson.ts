@@ -1,5 +1,6 @@
 import { SimpleRouteJson } from "lib/types"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
+import { mapLayerNameToZ } from "./mapLayerNameToZ"
 
 const pointHash = (point: { x: number; y: number }) =>
   `${Math.round(point.x * 100)},${Math.round(point.y * 100)}`
@@ -26,7 +27,14 @@ export const getConnectivityMapFromSimpleRouteJson = (srj: SimpleRouteJson) => {
       connMap.addConnections([
         [
           connection.name,
-          `${pointHash(point)}:${"layers" in point ? point.layers.sort().join("-") : point.layer}`,
+          `${pointHash(point)}:${
+            "layers" in point
+              ? point.layers
+                  .map((l) => mapLayerNameToZ(l, srj.layerCount))
+                  .sort()
+                  .join("-")
+              : mapLayerNameToZ(point.layer, srj.layerCount)
+          }`,
         ],
       ])
       if ("pcb_port_id" in point && point.pcb_port_id) {
@@ -37,11 +45,17 @@ export const getConnectivityMapFromSimpleRouteJson = (srj: SimpleRouteJson) => {
   for (const obstacle of srj.obstacles) {
     const offBoardConnections = obstacle.offBoardConnectsTo ?? []
     const connectionGroup = Array.from(
-      new Set([
-        ...obstacle.connectedTo,
-        ...offBoardConnections,
-        `${pointHash(obstacle.center)}:${obstacle.layers.sort().join("-")}`,
-      ]),
+      new Set(
+        [
+          obstacle.obstacleId,
+          ...obstacle.connectedTo,
+          ...offBoardConnections,
+          `${pointHash(obstacle.center)}:${obstacle.layers
+            .map((l) => mapLayerNameToZ(l, srj.layerCount))
+            .sort()
+            .join("-")}`,
+        ].filter(Boolean),
+      ),
     )
 
     if (connectionGroup.length > 0) {

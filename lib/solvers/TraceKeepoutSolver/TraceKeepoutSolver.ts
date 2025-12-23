@@ -68,6 +68,41 @@ export class TraceKeepoutSolver extends BaseSolver {
 
     this.obstacleSHI = new ObstacleSpatialHashIndex("flatbush", input.obstacles)
     this.hdRouteSHI = new HighDensityRouteSpatialIndex(input.hdRoutes)
+
+    // Make sure the start/endpoint of any route is properly connected in the
+    // connMap to the obstacle
+    for (const [
+      endpoint,
+      connectionName,
+      rootConnectionName,
+    ] of this.hdRoutes.flatMap(
+      (
+        r,
+      ): [
+        { x: number; y: number; z: number },
+        string,
+        string | undefined,
+      ][] => [
+        [r.route[0]!, r.connectionName, r.rootConnectionName],
+        [r.route[r.route.length - 1]!, r.connectionName, r.rootConnectionName],
+      ],
+    )) {
+      const obstacles = this.obstacleSHI
+        .searchArea(endpoint.x, endpoint.y, 0.01, 0.01)
+        .filter((o) => o.zLayers?.includes(endpoint.z))
+      if (obstacles.length === 0) continue
+      const obstacle = obstacles[0]!
+
+      this.input.connMap.addConnections([
+        [
+          connectionName,
+          rootConnectionName!,
+          ...(obstacle.offBoardConnectsTo ?? []),
+          obstacle.obstacleId!,
+          ...obstacle.connectedTo,
+        ].filter(Boolean),
+      ])
+    }
   }
 
   _step() {
@@ -556,11 +591,7 @@ export class TraceKeepoutSolver extends BaseSolver {
   /**
    * Finds the closest point on a line segment to a given point
    */
-  private closestPointOnSegment(
-    p: Point2D,
-    a: Point2D,
-    b: Point2D,
-  ): Point2D {
+  private closestPointOnSegment(p: Point2D, a: Point2D, b: Point2D): Point2D {
     const dx = b.x - a.x
     const dy = b.y - a.y
     const lenSq = dx * dx + dy * dy
