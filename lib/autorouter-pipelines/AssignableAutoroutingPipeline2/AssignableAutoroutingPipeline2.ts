@@ -246,7 +246,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
             inputNodes,
             capacityMeshNodes: cms.capacityNodes!,
             colorMap: cms.colorMap,
-            numShuffleSeeds: 2000,
+            numShuffleSeeds: 10000,
             minAllowedBoardScore: -1,
             hyperParameters: {
               // 1 = 60% maximum pf (see computeSectionScore)
