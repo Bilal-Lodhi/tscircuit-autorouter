@@ -298,13 +298,20 @@ export class PortPointPathingSolver extends BaseSolver {
   }
 
   /** Base node cost with the currently-committed port points (no candidate additions) */
-  private getBaseNodeFailureCost(nodeId: CapacityMeshNodeId): number {
+  private getBaseNodeFailureCost(
+    nodeId: CapacityMeshNodeId,
+    connectionsWithResults: ConnectionPathResult[],
+    alreadyConnectedPath: PortPoint[],
+  ): number {
     const cached = this.baseNodeCostCache.get(nodeId)
     if (cached != null) return cached
 
     const node = this.nodeMap.get(nodeId)
     if (!node) return 0
 
+    // NOTE: connectionsWithResults and alreadyConnectedPath are accepted but
+    // currently ignored in the Pf calculation. They are reserved for future
+    // improvements where Pf may depend on more global path context.
     const pfBefore = this.computeNodePf(node)
     const baseCost = this.pfToFailureCost(pfBefore)
     this.baseNodeCostCache.set(nodeId, baseCost)
@@ -323,6 +330,8 @@ export class PortPointPathingSolver extends BaseSolver {
     nodeId: CapacityMeshNodeId,
     entry: PortPoint,
     exit: PortPoint,
+    connectionsWithResults: ConnectionPathResult[],
+    alreadyConnectedPath: PortPoint[],
   ): number {
     const key = `${nodeId}|${this.pointKey(
       { x: entry.x, y: entry.y },
@@ -338,7 +347,11 @@ export class PortPointPathingSolver extends BaseSolver {
     const node = this.nodeMap.get(nodeId)
     if (!node) return 0
 
-    const baseCost = this.getBaseNodeFailureCost(nodeId)
+    const baseCost = this.getBaseNodeFailureCost(
+      nodeId,
+      connectionsWithResults,
+      alreadyConnectedPath,
+    )
 
     const pfAfter = this.computeNodePf(node, [entry, exit])
     const afterCost = this.pfToFailureCost(pfAfter)
@@ -487,6 +500,21 @@ export class PortPointPathingSolver extends BaseSolver {
     return null
   }
 
+  private buildAlreadyConnectedPath(
+    candidate: PortPointCandidate,
+    connectionName: string,
+    rootConnectionName?: string,
+  ): PortPoint[] {
+    const pathCandidates = this.getBacktrackedPath(candidate)
+    return pathCandidates.map((c) => ({
+      x: c.point.x,
+      y: c.point.y,
+      z: c.z,
+      connectionName,
+      rootConnectionName,
+    }))
+  }
+
   /**
    * Exact step cost from prevCandidate to exiting current node via `exitPortPoint`.
    *
@@ -524,10 +552,18 @@ export class PortPointPathingSolver extends BaseSolver {
       rootConnectionName,
     }
 
+    const alreadyConnectedPath = this.buildAlreadyConnectedPath(
+      prevCandidate,
+      connectionName,
+      rootConnectionName,
+    )
+
     const nodeDeltaCost = this.getNodeDeltaFailureCostForSegment(
       leavingNodeId,
       entry,
       exit,
+      this.connectionsWithResults,
+      alreadyConnectedPath,
     )
 
     const reusePenalty = this.getPortPointReusePenalty(
@@ -581,10 +617,18 @@ export class PortPointPathingSolver extends BaseSolver {
       rootConnectionName,
     }
 
+    const alreadyConnectedPath = this.buildAlreadyConnectedPath(
+      candidateAtEndNode,
+      connectionName,
+      rootConnectionName,
+    )
+
     const nodeDeltaCost = this.getNodeDeltaFailureCostForSegment(
       endNodeId,
       entry,
       exit,
+      this.connectionsWithResults,
+      alreadyConnectedPath,
     )
 
     return (
