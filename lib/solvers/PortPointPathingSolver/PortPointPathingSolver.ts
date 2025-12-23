@@ -19,6 +19,7 @@ import {
   seededRandom,
 } from "lib/utils/cloneAndShuffleArray"
 import { computeFeaturesForMl } from "scripts/ml-data-collection/ml-data-collection-features"
+import { predictHighDensitySolverSuccess } from "scripts/ml-data-collection/hd_solver_predictor"
 
 export interface PortPointPathingHyperParameters {
   SHUFFLE_SEED?: number
@@ -467,7 +468,7 @@ export class PortPointPathingSolver extends BaseSolver {
       additionalPortPoints,
     )
     const crossings = getIntraNodeCrossings(nodeWithPortPoints)
-    
+
     // TODO: use this features to make a good ml estimator for Pf
     const features = computeFeaturesForMl({
       numEntryExitLayerChanges: crossings.numEntryExitLayerChanges,
@@ -477,15 +478,38 @@ export class PortPointPathingSolver extends BaseSolver {
       traceWidth: this.simpleRouteJson.minTraceWidth ?? 0.15,
       viaSize: this.simpleRouteJson.minViaDiameter ?? 0.6,
       connectionsWithResults,
-    alreadyConnectedPath,
+      alreadyConnectedPath,
     })
 
-    return calculateNodeProbabilityOfFailure(
-      this.capacityMeshNodeMap.get(node.capacityMeshNodeId)!,
-      crossings.numSameLayerCrossings,
-      crossings.numEntryExitLayerChanges,
-      crossings.numTransitionPairCrossings,
-    )
+    const cost =
+      crossings.numEntryExitLayerChanges +
+      crossings.numSameLayerCrossings +
+      crossings.numTransitionPairCrossings
+
+    return predictHighDensitySolverSuccess({
+      totalCrossingsNormalizedToArea:
+        features.total_crossings_normalized_to_area,
+      entryExitLayerChangesNormalizedToArea:
+        features.entry_exit_layer_changes_normalized_to_area,
+      singleViaAreaNormalizedToArea:
+        features.single_via_area_normalized_to_area,
+      twoViaAreaNormalizedToArea: features.two_via_area_normalized_to_area,
+      transitionPairCrossingsNormalizedToArea:
+        features.transition_pair_crossings_normalized_to_area,
+      cost,
+      viaDiameterNormalizedToMinSide:
+        features.via_diameter_normalized_to_min_side,
+      traceWidthNormalizedToMinSide:
+        features.trace_width_normalized_to_min_side,
+      transitionPairCrossingsFractionOfTotal:
+        features.transition_pair_crossings_fraction_of_total,
+      transitionPairCrossingsNormalizedToTraceWidth:
+        features.transition_pair_crossings_normalized_to_trace_width,
+      entryExitLayerChangesNormalizedToTraceWidth:
+        features.entry_exit_layer_changes_normalized_to_trace_width,
+      entryExitLayerChangesFractionOfTotal:
+        features.entry_exit_layer_changes_fraction_of_total,
+    })
   }
 
   /**
