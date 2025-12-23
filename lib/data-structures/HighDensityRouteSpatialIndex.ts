@@ -14,6 +14,7 @@ type Segment = [Point, Point]
 
 export type HighDensityIntraNodeRoute = {
   connectionName: string // Assuming this is unique per route
+  rootConnectionName?: string // Parent connection for merged routes
   traceThickness: number
   viaDiameter: number // Now used in conflict calculation
   route: Array<{ x: number; y: number; z: number }>

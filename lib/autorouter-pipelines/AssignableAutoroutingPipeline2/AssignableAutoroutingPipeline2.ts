@@ -34,6 +34,7 @@ import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
 import { NetToPointPairsSolver2_OffBoardConnection } from "../../solvers/NetToPointPairsSolver2_OffBoardConnection/NetToPointPairsSolver2_OffBoardConnection"
 import { RectDiffPipeline } from "@tscircuit/rectdiff"
 import { TraceSimplificationSolver } from "../../solvers/TraceSimplificationSolver/TraceSimplificationSolver"
+import { TraceKeepoutSolver } from "../../solvers/TraceKeepoutSolver/TraceKeepoutSolver"
 import { AvailableSegmentPointSolver } from "../../solvers/AvailableSegmentPointSolver/AvailableSegmentPointSolver"
 import {
   PortPointPathingSolver,
@@ -102,6 +103,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
   strawSolver?: StrawSolver
   deadEndSolver?: DeadEndSolver
   traceSimplificationSolver?: TraceSimplificationSolver
+  traceKeepoutSolver?: TraceKeepoutSolver
   availableSegmentPointSolver?: AvailableSegmentPointSolver
   portPointPathingSolver?: PortPointPathingSolver
   multiSectionPortPointOptimizer?: MultiSectionPortPointOptimizer
@@ -296,19 +298,19 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
         },
       ],
     ),
-    // definePipelineStep(
-    //   "highDensityStitchSolver",
-    //   MultipleHighDensityRouteStitchSolver,
-    //   (cms) => [
-    //     {
-    //       connections: cms.srjWithPointPairs!.connections,
-    //       hdRoutes: cms.highDensityRouteSolver!.routes,
-    //       colorMap: cms.colorMap,
-    //       layerCount: cms.srj.layerCount,
-    //       defaultViaDiameter: cms.viaDiameter,
-    //     },
-    //   ],
-    // ),
+    definePipelineStep(
+      "highDensityStitchSolver",
+      MultipleHighDensityRouteStitchSolver,
+      (cms) => [
+        {
+          connections: cms.srjWithPointPairs!.connections,
+          hdRoutes: cms.simpleHighDensityRouteSolver!.routes,
+          colorMap: cms.colorMap,
+          layerCount: cms.srj.layerCount,
+          defaultViaDiameter: cms.viaDiameter,
+        },
+      ],
+    ),
     definePipelineStep(
       "traceSimplificationSolver",
       TraceSimplificationSolver,
@@ -328,6 +330,15 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
         },
       ],
     ),
+    definePipelineStep("traceKeepoutSolver", TraceKeepoutSolver, (cms) => [
+      {
+        hdRoutes: cms.traceSimplificationSolver?.simplifiedHdRoutes ?? [],
+        obstacles: cms.srj.obstacles,
+        connMap: cms.connMap,
+        colorMap: cms.colorMap,
+        keepoutRadiusSchedule: [0.5, 0.3, 0.15] as number[],
+      },
+    ]),
   ]
 
   constructor(
@@ -430,6 +441,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
     const simpleHighDensityViz = this.simpleHighDensityRouteSolver?.visualize()
     const highDensityStitchViz = this.highDensityStitchSolver?.visualize()
     const traceSimplificationViz = this.traceSimplificationSolver?.visualize()
+    const traceKeepoutViz = this.traceKeepoutSolver?.visualize()
     const problemOutline = this.srj.outline
     const problemLines: Line[] = []
 
@@ -516,6 +528,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
         : null,
       highDensityStitchViz,
       traceSimplificationViz,
+      traceKeepoutViz,
       this.solved
         ? combineVisualizations(
             problemViz,
@@ -582,6 +595,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
 
   _getOutputHdRoutes(): HighDensityRoute[] {
     return (
+      this.traceKeepoutSolver?.redrawnHdRoutes ??
       this.traceSimplificationSolver?.simplifiedHdRoutes ??
       this.highDensityStitchSolver?.mergedHdRoutes ??
       this.simpleHighDensityRouteSolver?.routes ??
