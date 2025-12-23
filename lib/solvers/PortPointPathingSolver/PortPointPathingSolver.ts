@@ -18,6 +18,7 @@ import {
   cloneAndShuffleArray,
   seededRandom,
 } from "lib/utils/cloneAndShuffleArray"
+import { computeFeaturesForMl } from "scripts/ml-data-collection/ml-data-collection-features"
 
 export interface PortPointPathingHyperParameters {
   SHUFFLE_SEED?: number
@@ -442,6 +443,14 @@ export class PortPointPathingSolver extends BaseSolver {
       additionalPortPoints,
     )
     const crossings = getIntraNodeCrossings(nodeWithPortPoints)
+    computeFeaturesForMl({
+      numEntryExitLayerChanges: crossings.numEntryExitLayerChanges,
+      numSameLayerCrossings: crossings.numSameLayerCrossings,
+      numTransitionPairCrossings: crossings.numTransitionPairCrossings,
+      node,
+      traceWidth: this.simpleRouteJson.minTraceWidth ?? 0.15,
+      viaSize: this.simpleRouteJson.minViaDiameter ?? 0.6,
+    })
 
     return calculateNodeProbabilityOfFailure(
       this.capacityMeshNodeMap.get(node.capacityMeshNodeId)!,

@@ -1,5 +1,5 @@
 import { CapacityMeshNode } from "lib/types"
-import { NodeWithPortPoints } from "lib/types/high-density-types"
+import { NodeWithPortPoints, PortPoint } from "lib/types/high-density-types"
 import { Point } from "graphics-debug"
 import { getIntraNodeCrossings } from "lib/utils/getIntraNodeCrossings"
 import { HighDensitySolver } from "lib/solvers/HighDensitySolver/HighDensitySolver"
@@ -10,24 +10,28 @@ import {
   traceWidthsVariants,
   layerVariation,
 } from "./ml-data-collection-config"
+import { InputNodeWithPortPoints } from "lib/solvers/PortPointPathingSolver/PortPointPathingSolver"
 
 const FEATURE_SCHEMA = {
   top_edge_ports_normalized_to_width: { useForGeometric: true },
   right_edge_ports_normalized_to_height: { useForGeometric: true },
   bottom_edge_ports_normalized_to_width: { useForGeometric: true },
   left_edge_ports_normalized_to_height: { useForGeometric: true },
-  same_layer_crossings_normalized_to_if_all_where_layercrossing: {
+  same_layer_crossings_normalized_to_area: { useForGeometric: false },
+  same_layer_crossings_normalized_to_trace_width: { useForGeometric: false },
+  entry_exit_layer_changes_normalized_to_area: { useForGeometric: false },
+  entry_exit_layer_changes_normalized_to_trace_width: {
     useForGeometric: false,
   },
-  layer_transitions_normalized_to_if_all_connections_where_transition: {
+  transition_pair_crossings_normalized_to_area: { useForGeometric: false },
+  transition_pair_crossings_normalized_to_trace_width: {
     useForGeometric: false,
   },
   single_via_area_normalized_to_area: { useForGeometric: true },
   two_via_area_normalized_to_area: { useForGeometric: true },
   board_aspect_ratio_not_normalized: { useForGeometric: true },
-  total_trace_distance_normalized_to_diagonal: { useForGeometric: true },
+  layer_count_not_normalized: { useForGeometric: false },
   same_net_crossings_normalized_to_segments: { useForGeometric: false },
-  ports_on_top_layer_normalized_to_total_ports: { useForGeometric: false },
 } as const
 
 type FeatureKey = keyof typeof FEATURE_SCHEMA
@@ -51,61 +55,25 @@ const safeDiv = (a: number, b: number) => {
   return a / b
 }
 
-const distance = (p1: Point, p2: Point) => {
-  return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2)
-}
-
-const computeFeaturesForMl = (params: {
-  portPoints: NodeWithPortPoints["portPoints"]
-  node: CapacityMeshNode
+export const computeFeaturesForMl = (params: {
+  node: InputNodeWithPortPoints
   numSameLayerCrossings: number
   numEntryExitLayerChanges: number
   numTransitionPairCrossings: number
   viaSize: number
   traceWidth: number
-  layerCount: number
 }): Features => {
-  const top = params.node.center.y + params.node.height / 2
-  const bottom = params.node.center.y - params.node.height / 2
-  const right = params.node.center.x + params.node.width / 2
-  const left = params.node.center.x - params.node.width / 2
-
   const area = Math.max(1, params.node.width * params.node.height)
   const viaArea = Math.max(1, Math.PI * (params.viaSize / 2) ** 2)
-  const diagonal = Math.sqrt(params.node.width ** 2 + params.node.height ** 2)
 
   let topPortCount = 0
   let bottomPortCount = 0
   let leftPortCount = 0
   let rightPortCount = 0
-  let totalTraceDistance = 0
-
-  for (const [index, portPoint] of params.portPoints.entries()) {
-    if (portPoint.y - top === 0) topPortCount++
-    else if (portPoint.y - bottom === 0) bottomPortCount++
-    else if (portPoint.x - right === 0) rightPortCount++
-    else if (portPoint.x - left === 0) leftPortCount++
-
-    if (index > 0) {
-      const last = params.portPoints[index - 1]
-      totalTraceDistance += distance(
-        { x: portPoint.x, y: portPoint.y },
-        { x: last.x, y: last.y },
-      )
-    }
-  }
 
   const setOfAlredySeenConnectionNames = new Set<string>()
   let countSameNetConnection = 0
-  params.portPoints.some((e) => {
-    if (setOfAlredySeenConnectionNames.has(e.connectionName)) {
-      countSameNetConnection++
-    } else {
-      setOfAlredySeenConnectionNames.add(e.connectionName)
-    }
-  })
 
-  const numNet = Math.max(1, params.portPoints.length)
   const uniqueNet = Math.max(1, setOfAlredySeenConnectionNames.size)
 
   const top_edge_ports_normalized_to_width = safeDiv(
@@ -124,58 +92,61 @@ const computeFeaturesForMl = (params: {
     leftPortCount * params.traceWidth,
     params.node.height,
   )
-  const same_layer_crossings_normalized_to_if_all_where_layercrossing = safeDiv(
+
+  const same_layer_crossings_normalized_to_area = safeDiv(
     params.numSameLayerCrossings,
-    numNet,
+    area,
   )
-  const layer_transitions_normalized_to_if_all_connections_where_transition =
-    safeDiv(params.numEntryExitLayerChanges, numNet)
+  const same_layer_crossings_normalized_to_trace_width = safeDiv(
+    params.numSameLayerCrossings,
+    params.traceWidth,
+  )
+  const entry_exit_layer_changes_normalized_to_area = safeDiv(
+    params.numEntryExitLayerChanges,
+    area,
+  )
+  const entry_exit_layer_changes_normalized_to_trace_width = safeDiv(
+    params.numEntryExitLayerChanges,
+    params.traceWidth,
+  )
+  const transition_pair_crossings_normalized_to_area = safeDiv(
+    params.numTransitionPairCrossings,
+    area,
+  )
+  const transition_pair_crossings_normalized_to_trace_width = safeDiv(
+    params.numTransitionPairCrossings,
+    params.traceWidth,
+  )
+
   const single_via_occupancy_normalized_to_area = safeDiv(viaArea, area)
   const two_via_occupancy_normalized_to_area = safeDiv(viaArea * 2, area)
   const board_aspect_ratio_not_normalized = safeDiv(
     params.node.width,
     params.node.height,
   )
-  const total_trace_distance_normalized_to_diagonal = safeDiv(
-    totalTraceDistance,
-    numNet * diagonal,
-  )
   const same_net_crossings_normalized_to_segments = safeDiv(
     countSameNetConnection,
     uniqueNet,
   )
 
-  const toplayerIndex = 0
-  const bottomLayerIndex = params.layerCount - 1
-
-  const portsOnTopLayer = params.portPoints.filter(
-    (e) => e.z === toplayerIndex,
-  ).length
-  const portsOnBottomLayer = params.portPoints.filter(
-    (e) => e.z === bottomLayerIndex,
-  ).length
-  const portsOnOtherLayers = params.portPoints.filter(
-    (e) => e.z !== toplayerIndex && e.z !== bottomLayerIndex,
-  ).length
-
-  const ports_on_top_layer_normalized_to_total_ports = safeDiv(
-    portsOnTopLayer,
-    portsOnBottomLayer + portsOnTopLayer + portsOnOtherLayers,
-  )
+  const layer_count_not_normalized = params.node.availableZ.length
 
   return {
     top_edge_ports_normalized_to_width,
     right_edge_ports_normalized_to_height,
     bottom_edge_ports_normalized_to_width,
     left_edge_ports_normalized_to_height,
-    same_layer_crossings_normalized_to_if_all_where_layercrossing,
-    layer_transitions_normalized_to_if_all_connections_where_transition,
+    same_layer_crossings_normalized_to_area,
+    same_layer_crossings_normalized_to_trace_width,
+    entry_exit_layer_changes_normalized_to_area,
+    entry_exit_layer_changes_normalized_to_trace_width,
+    transition_pair_crossings_normalized_to_area,
+    transition_pair_crossings_normalized_to_trace_width,
     single_via_area_normalized_to_area: single_via_occupancy_normalized_to_area,
     two_via_area_normalized_to_area: two_via_occupancy_normalized_to_area,
     board_aspect_ratio_not_normalized,
-    total_trace_distance_normalized_to_diagonal,
+    layer_count_not_normalized,
     same_net_crossings_normalized_to_segments,
-    ports_on_top_layer_normalized_to_total_ports,
   }
 }
 
@@ -269,8 +240,7 @@ export const generateRandomCandidate = (): Candidate => {
 }
 
 export const evaluateCandidate = (candidate: Candidate): DatasetRow => {
-  const { nodeWithPortPoints, node, viaSize, traceWidth, layerCount } =
-    candidate
+  const { nodeWithPortPoints, viaSize, traceWidth } = candidate
 
   const {
     numSameLayerCrossings,
@@ -278,15 +248,24 @@ export const evaluateCandidate = (candidate: Candidate): DatasetRow => {
     numTransitionPairCrossings,
   } = getIntraNodeCrossings(nodeWithPortPoints)
 
+  const inputNode: InputNodeWithPortPoints = {
+    capacityMeshNodeId: nodeWithPortPoints.capacityMeshNodeId,
+    center: nodeWithPortPoints.center,
+    width: nodeWithPortPoints.width,
+    height: nodeWithPortPoints.height,
+    // For ML features, we only need geometry and availableZ.
+    // PortPointPathingSolver provides real portPoints; here we use an empty set.
+    portPoints: [],
+    availableZ: nodeWithPortPoints.availableZ ?? [],
+  }
+
   const features = computeFeaturesForMl({
-    portPoints: nodeWithPortPoints.portPoints,
-    node,
+    node: inputNode,
     numSameLayerCrossings,
     numEntryExitLayerChanges,
     numTransitionPairCrossings,
     viaSize,
     traceWidth,
-    layerCount,
   })
 
   const cost =
