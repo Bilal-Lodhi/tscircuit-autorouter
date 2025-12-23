@@ -61,6 +61,7 @@ export class TraceKeepoutSolver extends BaseSolver {
   currentKeepoutRadius: number
 
   unprocessedRoutes: HighDensityRoute[] = []
+  smoothedCursorRoutes: HighDensityRoute[] = []
   processedRoutes: HighDensityRoute[] = []
 
   // Current trace being processed
@@ -92,6 +93,7 @@ export class TraceKeepoutSolver extends BaseSolver {
     ]
     this.currentKeepoutRadius = this.KEEPOUT_RADIUS_SCHEDULE[0] ?? 0.15
     this.unprocessedRoutes = [...this.hdRoutes]
+    this.smoothedCursorRoutes = [...this.unprocessedRoutes]
 
     this.obstacleSHI = new ObstacleSpatialHashIndex("flatbush", input.obstacles)
     this.hdRouteSHI = new HighDensityRouteSpatialIndex(this.hdRoutes)
@@ -145,7 +147,11 @@ export class TraceKeepoutSolver extends BaseSolver {
           // Requeue all traces with the new keepout radius
           this.currentKeepoutRadius =
             this.KEEPOUT_RADIUS_SCHEDULE[this.currentScheduleIndex]!
-          this.unprocessedRoutes = [...this.processedRoutes]
+          this.unprocessedRoutes = smoothHdRoutes(
+            [...this.processedRoutes],
+            this.smoothDistance,
+          )
+          this.smoothedCursorRoutes = [...this.unprocessedRoutes]
           this.processedRoutes = []
           // Rebuild the spatial index with processed routes
           this.hdRouteSHI = new HighDensityRouteSpatialIndex(
@@ -304,7 +310,7 @@ export class TraceKeepoutSolver extends BaseSolver {
 
     const rootConnectionName =
       this.currentTrace.rootConnectionName ?? this.currentTrace.connectionName
-    const searchRadius = this.currentKeepoutRadius * 8
+    const searchRadius = this.currentKeepoutRadius * 2
     const segments: Segment[] = []
 
     // Check for obstacles within the keepout radius
@@ -521,26 +527,6 @@ export class TraceKeepoutSolver extends BaseSolver {
       }
     }
 
-    // Draw smoothed routes (these are what the solver will process)
-    for (const route of this.hdRoutes) {
-      if (route.route.length === 0) continue
-
-      for (let i = 0; i < route.route.length - 1; i++) {
-        const current = route.route[i]!
-        const next = route.route[i + 1]!
-
-        if (current.z === next.z) {
-          visualization.lines.push({
-            points: [
-              { x: current.x, y: current.y },
-              { x: next.x, y: next.y },
-            ],
-            strokeColor: "gray",
-          })
-        }
-      }
-    }
-
     // Visualize obstacles
     for (const obstacle of this.input.obstacles) {
       let fillColor = "rgba(128, 128, 128, 0.2)"
@@ -654,6 +640,28 @@ export class TraceKeepoutSolver extends BaseSolver {
           strokeWidth: 0.02,
           label: "Colliding segment",
         })
+      }
+    }
+
+    if (!this.solved) {
+      // Draw smoothed routes (these are what the solver will process)
+      for (const route of this.smoothedCursorRoutes) {
+        if (route.route.length === 0) continue
+
+        for (let i = 0; i < route.route.length - 1; i++) {
+          const current = route.route[i]!
+          const next = route.route[i + 1]!
+
+          if (current.z === next.z) {
+            visualization.lines.push({
+              points: [
+                { x: current.x, y: current.y },
+                { x: next.x, y: next.y },
+              ],
+              strokeColor: "gray",
+            })
+          }
+        }
       }
     }
 

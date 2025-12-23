@@ -17,8 +17,8 @@ interface Point3D {
  */
 export function smoothRoute(
   route: Point3D[],
-  smoothDistance: number = 0.5,
-  sampleInterval: number = 0.05,
+  smoothDistance: number = 1,
+  sampleInterval: number = 0.25,
 ): Point3D[] {
   if (route.length < 3) return [...route]
 
@@ -137,7 +137,11 @@ function gaussianSmooth(route: Point3D[], smoothDistance: number): Point3D[] {
     }
 
     let cumulativeDistForward = 0
-    for (let j = i + 1; j < route.length && cumulativeDistForward <= smoothDistance; j++) {
+    for (
+      let j = i + 1;
+      j < route.length && cumulativeDistForward <= smoothDistance;
+      j++
+    ) {
       const pt = route[j]!
 
       // Stop at layer transitions
