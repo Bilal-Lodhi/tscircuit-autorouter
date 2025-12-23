@@ -10,7 +10,10 @@ import {
   traceWidthsVariants,
   layerVariation,
 } from "./ml-data-collection-config"
-import { InputNodeWithPortPoints } from "lib/solvers/PortPointPathingSolver/PortPointPathingSolver"
+import {
+  ConnectionPathResult,
+  InputNodeWithPortPoints,
+} from "lib/solvers/PortPointPathingSolver/PortPointPathingSolver"
 
 const FEATURE_SCHEMA = {
   top_edge_ports_normalized_to_width: { useForGeometric: true },
@@ -30,6 +33,55 @@ const FEATURE_SCHEMA = {
   single_via_area_normalized_to_area: { useForGeometric: true },
   two_via_area_normalized_to_area: { useForGeometric: true },
   board_aspect_ratio_not_normalized: { useForGeometric: true },
+  // New crossing aggregation features (bounded to [0, 1])
+  total_crossings_normalized_to_area: { useForGeometric: false },
+  total_crossings_normalized_to_trace_width: { useForGeometric: false },
+  same_layer_crossings_fraction_of_total: { useForGeometric: false },
+  entry_exit_layer_changes_fraction_of_total: { useForGeometric: false },
+  transition_pair_crossings_fraction_of_total: { useForGeometric: false },
+  // New geometry/size features (all in [0, 1])
+  width_normalized_to_max_side: { useForGeometric: true },
+  height_normalized_to_max_side: { useForGeometric: true },
+  trace_width_normalized_to_min_side: { useForGeometric: true },
+  via_diameter_normalized_to_min_side: { useForGeometric: true },
+  // New congestion features based on existing/partial paths
+  existing_connection_points_normalized_to_perimeter: {
+    useForGeometric: true,
+  },
+  already_connected_points_normalized_to_perimeter: {
+    useForGeometric: true,
+  },
+  fraction_of_existing_connections_touching_node: {
+    useForGeometric: false,
+  },
+  fraction_of_current_connection_already_in_node: {
+    useForGeometric: false,
+  },
+  // Additional occupancy / layer-usage features
+  existing_connection_points_normalized_to_area: {
+    useForGeometric: true,
+  },
+  already_connected_points_normalized_to_area: {
+    useForGeometric: true,
+  },
+  max_existing_connection_points_normalized_to_perimeter: {
+    useForGeometric: true,
+  },
+  already_connected_points_fraction_of_existing_points_in_node: {
+    useForGeometric: false,
+  },
+  existing_points_fraction_on_primary_layer: {
+    useForGeometric: false,
+  },
+  already_connected_points_fraction_on_primary_layer: {
+    useForGeometric: false,
+  },
+  existing_layers_fraction_used_in_node: {
+    useForGeometric: false,
+  },
+  already_connected_layers_fraction_used_in_node: {
+    useForGeometric: false,
+  },
 } as const
 
 type FeatureKey = keyof typeof FEATURE_SCHEMA
@@ -60,10 +112,14 @@ export const computeFeaturesForMl = (params: {
   numTransitionPairCrossings: number
   viaSize: number
   traceWidth: number
+  connectionsWithResults?: ConnectionPathResult[]
+  alreadyConnectedPath?: PortPoint[]
 }): Features => {
   const area = Math.max(1, params.node.width * params.node.height)
   const viaArea = Math.max(1, Math.PI * (params.viaSize / 2) ** 2)
 
+  // Edge port counts (kept as placeholders for now; can be
+  // filled in using params.node.portPoints when desired)
   let topPortCount = 0
   let bottomPortCount = 0
   let leftPortCount = 0
@@ -86,6 +142,7 @@ export const computeFeaturesForMl = (params: {
     params.node.height,
   )
 
+  // Crossing-normalized features
   const same_layer_crossings_normalized_to_area = safeDiv(
     params.numSameLayerCrossings,
     area,
@@ -111,11 +168,186 @@ export const computeFeaturesForMl = (params: {
     params.traceWidth,
   )
 
+  const totalCrossings =
+    params.numSameLayerCrossings +
+    params.numEntryExitLayerChanges +
+    params.numTransitionPairCrossings
+
+  // Clamp the total-crossings normalizations into [0, 1] so they
+  // stay on a similar scale to the other features
+  const total_crossings_normalized_to_area = Math.min(
+    1,
+    safeDiv(totalCrossings, area),
+  )
+  const total_crossings_normalized_to_trace_width = Math.min(
+    1,
+    safeDiv(totalCrossings, params.traceWidth),
+  )
+
+  const same_layer_crossings_fraction_of_total = safeDiv(
+    params.numSameLayerCrossings,
+    totalCrossings,
+  )
+  const entry_exit_layer_changes_fraction_of_total = safeDiv(
+    params.numEntryExitLayerChanges,
+    totalCrossings,
+  )
+  const transition_pair_crossings_fraction_of_total = safeDiv(
+    params.numTransitionPairCrossings,
+    totalCrossings,
+  )
+
+  // Via occupancy
   const single_via_occupancy_normalized_to_area = safeDiv(viaArea, area)
   const two_via_occupancy_normalized_to_area = safeDiv(viaArea * 2, area)
+
+  // Geometry-scaled features
+  const maxSide = Math.max(params.node.width, params.node.height, 1)
+  const minSide = Math.max(1, Math.min(params.node.width, params.node.height))
+
+  const width_normalized_to_max_side = safeDiv(params.node.width, maxSide)
+  const height_normalized_to_max_side = safeDiv(params.node.height, maxSide)
+
+  const trace_width_normalized_to_min_side = Math.min(
+    1,
+    safeDiv(params.traceWidth, minSide),
+  )
+  const via_diameter_normalized_to_min_side = Math.min(
+    1,
+    safeDiv(params.viaSize, minSide),
+  )
+
   const board_aspect_ratio_not_normalized = safeDiv(
     params.node.width,
     params.node.height,
+  )
+
+  // --- Congestion-style features from existing/partial paths ---
+  const nodeMinX = params.node.center.x - params.node.width / 2
+  const nodeMaxX = params.node.center.x + params.node.width / 2
+  const nodeMinY = params.node.center.y - params.node.height / 2
+  const nodeMaxY = params.node.center.y + params.node.height / 2
+
+  const isPointInNode = (p: { x: number; y: number }) =>
+    p.x >= nodeMinX && p.x <= nodeMaxX && p.y >= nodeMinY && p.y <= nodeMaxY
+
+  const nodePerimeter = Math.max(
+    1,
+    2 * (params.node.width + params.node.height),
+  )
+
+  const availableZ = params.node.availableZ ?? []
+  const primaryZ = availableZ.length > 0 ? Math.min(...availableZ) : 0
+
+  let existingPointsInNode = 0
+  let existingConnectionsTouchingNode = 0
+  let totalConnections = 0
+  let maxPointsPerConnectionInNode = 0
+  let existingPointsOnPrimaryLayer = 0
+  const existingLayersInNode = new Set<number>()
+
+  if (params.connectionsWithResults) {
+    totalConnections = params.connectionsWithResults.length
+
+    for (const conn of params.connectionsWithResults) {
+      const portPoints = conn.portPoints ?? []
+      let touchesNode = false
+      let pointsInThisConnectionInNode = 0
+
+      for (const pp of portPoints) {
+        if (isPointInNode(pp)) {
+          existingPointsInNode += 1
+          pointsInThisConnectionInNode += 1
+          touchesNode = true
+          existingLayersInNode.add(pp.z)
+          if (pp.z === primaryZ) existingPointsOnPrimaryLayer += 1
+        }
+      }
+
+      if (touchesNode) {
+        existingConnectionsTouchingNode += 1
+        if (pointsInThisConnectionInNode > maxPointsPerConnectionInNode) {
+          maxPointsPerConnectionInNode = pointsInThisConnectionInNode
+        }
+      }
+    }
+  }
+
+  let alreadyConnectedPointsInNode = 0
+  let totalAlreadyConnectedPoints = 0
+  let alreadyConnectedPointsOnPrimaryLayer = 0
+  const alreadyConnectedLayersInNode = new Set<number>()
+
+  if (params.alreadyConnectedPath) {
+    totalAlreadyConnectedPoints = params.alreadyConnectedPath.length
+
+    for (const pp of params.alreadyConnectedPath) {
+      if (isPointInNode(pp)) {
+        alreadyConnectedPointsInNode += 1
+        alreadyConnectedLayersInNode.add(pp.z)
+        if (pp.z === primaryZ) alreadyConnectedPointsOnPrimaryLayer += 1
+      }
+    }
+  }
+
+  const existing_connection_points_normalized_to_perimeter = Math.min(
+    1,
+    safeDiv(existingPointsInNode * params.traceWidth, nodePerimeter),
+  )
+
+  const already_connected_points_normalized_to_perimeter = Math.min(
+    1,
+    safeDiv(alreadyConnectedPointsInNode * params.traceWidth, nodePerimeter),
+  )
+
+  const fraction_of_existing_connections_touching_node = safeDiv(
+    existingConnectionsTouchingNode,
+    totalConnections,
+  )
+
+  const fraction_of_current_connection_already_in_node = safeDiv(
+    alreadyConnectedPointsInNode,
+    totalAlreadyConnectedPoints,
+  )
+
+  const existing_connection_points_normalized_to_area = Math.min(
+    1,
+    safeDiv(existingPointsInNode * params.traceWidth * minSide, area),
+  )
+
+  const already_connected_points_normalized_to_area = Math.min(
+    1,
+    safeDiv(alreadyConnectedPointsInNode * params.traceWidth * minSide, area),
+  )
+
+  const max_existing_connection_points_normalized_to_perimeter = Math.min(
+    1,
+    safeDiv(maxPointsPerConnectionInNode * params.traceWidth, nodePerimeter),
+  )
+
+  const already_connected_points_fraction_of_existing_points_in_node = safeDiv(
+    alreadyConnectedPointsInNode,
+    existingPointsInNode,
+  )
+
+  const existing_points_fraction_on_primary_layer = safeDiv(
+    existingPointsOnPrimaryLayer,
+    existingPointsInNode,
+  )
+
+  const already_connected_points_fraction_on_primary_layer = safeDiv(
+    alreadyConnectedPointsOnPrimaryLayer,
+    alreadyConnectedPointsInNode,
+  )
+
+  const existing_layers_fraction_used_in_node = safeDiv(
+    existingLayersInNode.size,
+    availableZ.length,
+  )
+
+  const already_connected_layers_fraction_used_in_node = safeDiv(
+    alreadyConnectedLayersInNode.size,
+    availableZ.length,
   )
 
   return {
@@ -132,6 +364,27 @@ export const computeFeaturesForMl = (params: {
     single_via_area_normalized_to_area: single_via_occupancy_normalized_to_area,
     two_via_area_normalized_to_area: two_via_occupancy_normalized_to_area,
     board_aspect_ratio_not_normalized,
+    total_crossings_normalized_to_area,
+    total_crossings_normalized_to_trace_width,
+    same_layer_crossings_fraction_of_total,
+    entry_exit_layer_changes_fraction_of_total,
+    transition_pair_crossings_fraction_of_total,
+    width_normalized_to_max_side,
+    height_normalized_to_max_side,
+    trace_width_normalized_to_min_side,
+    via_diameter_normalized_to_min_side,
+    existing_connection_points_normalized_to_perimeter,
+    already_connected_points_normalized_to_perimeter,
+    fraction_of_existing_connections_touching_node,
+    fraction_of_current_connection_already_in_node,
+    existing_connection_points_normalized_to_area,
+    already_connected_points_normalized_to_area,
+    max_existing_connection_points_normalized_to_perimeter,
+    already_connected_points_fraction_of_existing_points_in_node,
+    existing_points_fraction_on_primary_layer,
+    already_connected_points_fraction_on_primary_layer,
+    existing_layers_fraction_used_in_node,
+    already_connected_layers_fraction_used_in_node,
   }
 }
 

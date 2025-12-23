@@ -467,13 +467,17 @@ export class PortPointPathingSolver extends BaseSolver {
       additionalPortPoints,
     )
     const crossings = getIntraNodeCrossings(nodeWithPortPoints)
-    computeFeaturesForMl({
+    
+    // TODO: use this features to make a good ml estimator for Pf
+    const features = computeFeaturesForMl({
       numEntryExitLayerChanges: crossings.numEntryExitLayerChanges,
       numSameLayerCrossings: crossings.numSameLayerCrossings,
       numTransitionPairCrossings: crossings.numTransitionPairCrossings,
       node,
       traceWidth: this.simpleRouteJson.minTraceWidth ?? 0.15,
       viaSize: this.simpleRouteJson.minViaDiameter ?? 0.6,
+      connectionsWithResults,
+    alreadyConnectedPath,
     })
 
     return calculateNodeProbabilityOfFailure(
