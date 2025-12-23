@@ -15,291 +15,179 @@ export interface ComputeDrawPositionInput {
   keepoutRadius: number
 }
 
-/**
- * Finds the closest point on a line segment to a given point
- */
 function closestPointOnSegment(p: Point2D, a: Point2D, b: Point2D): Point2D {
-  const dx = b.x - a.x
-  const dy = b.y - a.y
+  const dx = b.x - a.x,
+    dy = b.y - a.y
   const lenSq = dx * dx + dy * dy
-
   if (lenSq === 0) return { x: a.x, y: a.y }
-
-  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq
-  t = Math.max(0, Math.min(1, t))
-
-  return {
-    x: a.x + t * dx,
-    y: a.y + t * dy,
-  }
+  const t = Math.max(
+    0,
+    Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq),
+  )
+  return { x: a.x + t * dx, y: a.y + t * dy }
 }
 
 /**
- * Finds the closest point among all segments to the cursor position
- */
-function findClosestPointOnSegments(
-  cursorPosition: Point2D,
-  segments: Segment[],
-): Point2D | null {
-  let closestX = 0
-  let closestY = 0
-  let closestDistSq = Infinity
-  let hasClosest = false
-
-  for (const segment of segments) {
-    const closest = closestPointOnSegment(
-      cursorPosition,
-      segment.start,
-      segment.end,
-    )
-    const distSq =
-      (closest.x - cursorPosition.x) ** 2 +
-      (closest.y - cursorPosition.y) ** 2
-    if (distSq < closestDistSq) {
-      closestDistSq = distSq
-      closestX = closest.x
-      closestY = closest.y
-      hasClosest = true
-    }
-  }
-
-  if (!hasClosest) return null
-  return { x: closestX, y: closestY }
-}
-
-/**
- * Calculates the avoidance vector to push the draw position away from obstacles
- * Moves the minimum amount needed to get obstacles outside the keepout radius
- */
-function calculateAvoidanceVector(
-  cursorPosition: Point2D,
-  traceDirection: Point2D,
-  closestObstaclePoint: Point2D,
-  keepoutRadius: number,
-): Point2D | null {
-  // Calculate orthogonal directions (perpendicular to trace)
-  const orthogonal1 = { x: -traceDirection.y, y: traceDirection.x }
-  const orthogonal2 = { x: traceDirection.y, y: -traceDirection.x }
-
-  // Vector from cursor to closest obstacle point
-  const toObstacle = {
-    x: closestObstaclePoint.x - cursorPosition.x,
-    y: closestObstaclePoint.y - cursorPosition.y,
-  }
-  const distToObstacle = Math.sqrt(toObstacle.x ** 2 + toObstacle.y ** 2)
-
-  // If already outside keepout radius, no movement needed
-  if (distToObstacle >= keepoutRadius) {
-    return null
-  }
-
-  // Choose which orthogonal direction points away from the obstacle
-  const dot1 = orthogonal1.x * toObstacle.x + orthogonal1.y * toObstacle.y
-  const dot2 = orthogonal2.x * toObstacle.x + orthogonal2.y * toObstacle.y
-  const pushDir = dot1 < dot2 ? orthogonal1 : orthogonal2
-
-  // Calculate the perpendicular component of toObstacle relative to pushDir
-  // d_perp = toObstacle · pushDir (how far obstacle is in the push direction)
-  const d_perp = toObstacle.x * pushDir.x + toObstacle.y * pushDir.y
-
-  // d_along = component along trace direction
-  const d_along =
-    toObstacle.x * traceDirection.x + toObstacle.y * traceDirection.y
-
-  // Calculate minimum push distance needed
-  // After pushing by m, new distance² = d_along² + (d_perp - m)²
-  // We want new distance = keepoutRadius
-  // keepoutRadius² = d_along² + (d_perp - m)²
-  // (d_perp - m)² = keepoutRadius² - d_along²
-
-  const keepoutSq = keepoutRadius ** 2
-  const alongSq = d_along ** 2
-
-  if (keepoutSq <= alongSq) {
-    // Obstacle is far enough along trace direction, no orthogonal push needed
-    return null
-  }
-
-  const requiredPerpDist = Math.sqrt(keepoutSq - alongSq)
-
-  // We need |d_perp - m| >= requiredPerpDist
-  // Since pushDir points away (d_perp should be negative or we push to make it more negative)
-  // m = d_perp - (-requiredPerpDist) = d_perp + requiredPerpDist (if d_perp < 0)
-  // m = d_perp - requiredPerpDist (if d_perp > 0, but we chose pushDir to point away so this shouldn't happen)
-
-  let pushDistance: number
-  if (d_perp <= 0) {
-    // Obstacle is in opposite direction of push, push by enough to clear
-    pushDistance = Math.abs(d_perp) + requiredPerpDist
-  } else {
-    // Obstacle is in same direction as push (shouldn't happen with correct pushDir choice)
-    // Push enough to get past it
-    pushDistance = requiredPerpDist - d_perp
-    if (pushDistance < 0) pushDistance = 0
-  }
-
-  // Add small margin
-  pushDistance += 0.01
-
-  return {
-    x: pushDir.x * pushDistance,
-    y: pushDir.y * pushDistance,
-  }
-}
-
-/**
- * Computes a new draw position based on collision avoidance.
+ * Computes an optimal draw position that maintains keepoutRadius from all segments.
+ * Uses iterative gradient-based refinement to handle multiple simultaneous collisions.
  *
- * Given the cursor position, the last cursor position (to determine direction),
- * and a set of colliding segments (edges of obstacles and trace outlines),
- * this function calculates an adjusted draw position that maintains the
- * keepout radius from all collisions.
- *
- * @param input.cursorPosition - Current position along the trace
- * @param input.lastCursorPosition - Previous position (used to determine trace direction)
- * @param input.collidingSegments - Line segments representing obstacle edges and trace outlines
- * @param input.keepoutRadius - Minimum distance to maintain from obstacles
- *
- * @returns The adjusted draw position, or null if no adjustment needed
+ * The draw position is constrained to never move "behind" the cursor along the trace
+ * direction. A barrier line perpendicular to the trace direction passes through the
+ * cursor, and the draw position must stay on or ahead of this line.
  */
 export function computeDrawPositionFromCollisions(
   input: ComputeDrawPositionInput,
 ): Point2D | null {
-  const { cursorPosition, lastCursorPosition, collidingSegments, keepoutRadius } =
-    input
-
-  if (collidingSegments.length === 0) {
-    return null
-  }
-
-  // Calculate trace direction from last to current cursor position
-  const dx = cursorPosition.x - lastCursorPosition.x
-  const dy = cursorPosition.y - lastCursorPosition.y
-  const len = Math.sqrt(dx * dx + dy * dy)
-
-  // Default direction if positions are the same
-  const traceDirection =
-    len === 0 ? { x: 1, y: 0 } : { x: dx / len, y: dy / len }
-
-  // Find the closest point among all colliding segments
-  const closestPoint = findClosestPointOnSegments(cursorPosition, collidingSegments)
-  if (!closestPoint) {
-    return null
-  }
-
-  // Calculate the avoidance vector
-  const avoidanceVector = calculateAvoidanceVector(
+  const {
     cursorPosition,
-    traceDirection,
-    closestPoint,
+    lastCursorPosition,
+    collidingSegments,
     keepoutRadius,
+  } = input
+
+  if (collidingSegments.length === 0) return null
+
+  const maxIterations = 50
+  const epsilon = 0.0001
+  const margin = 0.01
+
+  let pos = { x: cursorPosition.x, y: cursorPosition.y }
+
+  // Calculate trace direction for tie-breaking
+  const tdx = cursorPosition.x - lastCursorPosition.x
+  const tdy = cursorPosition.y - lastCursorPosition.y
+  const tLen = Math.sqrt(tdx * tdx + tdy * tdy)
+  const traceDir =
+    tLen > epsilon ? { x: tdx / tLen, y: tdy / tLen } : { x: 1, y: 0 }
+
+  for (let iter = 0; iter < maxIterations; iter++) {
+    // Accumulate push vectors from ALL violating segments
+    let pushX = 0,
+      pushY = 0
+    let maxViolation = 0
+    let violationCount = 0
+
+    for (const seg of collidingSegments) {
+      const closest = closestPointOnSegment(pos, seg.start, seg.end)
+      const dx = pos.x - closest.x
+      const dy = pos.y - closest.y
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      const violation = keepoutRadius - dist
+
+      if (violation > epsilon) {
+        maxViolation = Math.max(maxViolation, violation)
+        violationCount++
+
+        if (dist > epsilon) {
+          // Push directly away from closest point, weighted by violation amount
+          const weight = violation / keepoutRadius
+          pushX += (dx / dist) * violation * (1 + weight)
+          pushY += (dy / dist) * violation * (1 + weight)
+        } else {
+          // Point is ON the segment - push perpendicular to segment
+          const segDx = seg.end.x - seg.start.x
+          const segDy = seg.end.y - seg.start.y
+          const segLen = Math.sqrt(segDx * segDx + segDy * segDy)
+
+          if (segLen > epsilon) {
+            // Choose perpendicular direction that aligns better with trace perpendicular
+            const perp1 = { x: -segDy / segLen, y: segDx / segLen }
+            const tracePerpDot = perp1.x * -traceDir.y + perp1.y * traceDir.x
+            const sign = tracePerpDot >= 0 ? 1 : -1
+            pushX += sign * perp1.x * (keepoutRadius + margin)
+            pushY += sign * perp1.y * (keepoutRadius + margin)
+          }
+        }
+      }
+    }
+
+    // Converged - no more violations
+    if (maxViolation <= epsilon) break
+
+    // Normalize and apply push with adaptive step size
+    const pushMag = Math.sqrt(pushX * pushX + pushY * pushY)
+    if (pushMag > epsilon) {
+      // Use smaller steps when dealing with multiple violations for stability
+      const stepScale = violationCount > 1 ? 0.7 : 1.0
+      const stepSize = Math.min(maxViolation + margin, pushMag) * stepScale
+      pos.x += (pushX / pushMag) * stepSize
+      pos.y += (pushY / pushMag) * stepSize
+    } else {
+      break
+    }
+  }
+
+  // Final validation pass - ensure we actually satisfied constraints
+  let finalMaxViolation = 0
+  for (const seg of collidingSegments) {
+    const closest = closestPointOnSegment(pos, seg.start, seg.end)
+    const dist = Math.sqrt((pos.x - closest.x) ** 2 + (pos.y - closest.y) ** 2)
+    finalMaxViolation = Math.max(finalMaxViolation, keepoutRadius - dist)
+  }
+
+  // If still violating, try a more aggressive escape
+  if (finalMaxViolation > margin) {
+    pos = escapeViaOrthogonalSearch(
+      cursorPosition,
+      traceDir,
+      collidingSegments,
+      keepoutRadius,
+      margin,
+    )
+  }
+
+  const movedDist = Math.sqrt(
+    (pos.x - cursorPosition.x) ** 2 + (pos.y - cursorPosition.y) ** 2,
   )
-
-  if (!avoidanceVector) {
-    return null
-  }
-
-  // Return the new draw position
-  return {
-    x: cursorPosition.x + avoidanceVector.x,
-    y: cursorPosition.y + avoidanceVector.y,
-  }
+  return movedDist > epsilon ? pos : null
 }
 
 /**
- * Converts an obstacle (rectangular) to its 4 edge segments
+ * Fallback: search along perpendicular directions to find valid position.
+ * Only searches perpendicular to trace (along barrier line) to respect forward-only constraint.
  */
-export function obstacleToSegments(obstacle: {
-  center: { x: number; y: number }
-  width: number
-  height: number
-}): Segment[] {
-  const halfW = obstacle.width / 2
-  const halfH = obstacle.height / 2
-  const cx = obstacle.center.x
-  const cy = obstacle.center.y
+function escapeViaOrthogonalSearch(
+  cursor: Point2D,
+  traceDir: Point2D,
+  segments: Segment[],
+  keepoutRadius: number,
+  margin: number,
+): Point2D {
+  const ortho1 = { x: -traceDir.y, y: traceDir.x }
+  const ortho2 = { x: traceDir.y, y: -traceDir.x }
 
-  const topLeft = { x: cx - halfW, y: cy + halfH }
-  const topRight = { x: cx + halfW, y: cy + halfH }
-  const bottomLeft = { x: cx - halfW, y: cy - halfH }
-  const bottomRight = { x: cx + halfW, y: cy - halfH }
+  const searchDist = keepoutRadius * 5
+  const steps = 50
 
-  return [
-    { start: topLeft, end: topRight }, // top edge
-    { start: topRight, end: bottomRight }, // right edge
-    { start: bottomRight, end: bottomLeft }, // bottom edge
-    { start: bottomLeft, end: topLeft }, // left edge
-  ]
-}
+  let bestPos = { x: cursor.x, y: cursor.y }
+  let bestScore = -Infinity
 
-/**
- * Converts a trace segment to its outline segments (left and right edges)
- * considering the trace width
- */
-export function traceSegmentToOutlineSegments(
-  segmentStart: Point2D,
-  segmentEnd: Point2D,
-  traceWidth: number = 0.1,
-): Segment[] {
-  const dx = segmentEnd.x - segmentStart.x
-  const dy = segmentEnd.y - segmentStart.y
-  const len = Math.sqrt(dx * dx + dy * dy)
+  for (const dir of [ortho1, ortho2]) {
+    for (let i = 1; i <= steps; i++) {
+      const d = (i / steps) * searchDist
+      const testPos = { x: cursor.x + dir.x * d, y: cursor.y + dir.y * d }
 
-  if (len === 0) {
-    return []
+      // Find minimum clearance at this position
+      let minClearance = Infinity
+      for (const seg of segments) {
+        const closest = closestPointOnSegment(testPos, seg.start, seg.end)
+        const dist = Math.sqrt(
+          (testPos.x - closest.x) ** 2 + (testPos.y - closest.y) ** 2,
+        )
+        minClearance = Math.min(minClearance, dist)
+      }
+
+      // Score: prefer positions that satisfy keepout with minimum movement
+      if (minClearance >= keepoutRadius + margin) {
+        const score = -d // Closer to cursor is better
+        if (score > bestScore) {
+          bestScore = score
+          bestPos = testPos
+        }
+        break // Found valid position in this direction
+      }
+    }
   }
 
-  // Normalized direction
-  const nx = dx / len
-  const ny = dy / len
-
-  // Perpendicular direction
-  const px = -ny
-  const py = nx
-
-  // Half width offset
-  const halfW = traceWidth / 2
-
-  // Left edge
-  const leftStart = {
-    x: segmentStart.x + px * halfW,
-    y: segmentStart.y + py * halfW,
-  }
-  const leftEnd = {
-    x: segmentEnd.x + px * halfW,
-    y: segmentEnd.y + py * halfW,
-  }
-
-  // Right edge
-  const rightStart = {
-    x: segmentStart.x - px * halfW,
-    y: segmentStart.y - py * halfW,
-  }
-  const rightEnd = {
-    x: segmentEnd.x - px * halfW,
-    y: segmentEnd.y - py * halfW,
-  }
-
-  return [
-    { start: leftStart, end: leftEnd },
-    { start: rightStart, end: rightEnd },
-  ]
-}
-
-/**
- * Converts an entire route to outline segments
- */
-export function routeToOutlineSegments(
-  route: Array<{ x: number; y: number }>,
-  traceWidth: number = 0.1,
-): Segment[] {
-  const segments: Segment[] = []
-
-  for (let i = 0; i < route.length - 1; i++) {
-    const start = route[i]!
-    const end = route[i + 1]!
-    segments.push(...traceSegmentToOutlineSegments(start, end, traceWidth))
-  }
-
-  return segments
+  return bestPos
 }

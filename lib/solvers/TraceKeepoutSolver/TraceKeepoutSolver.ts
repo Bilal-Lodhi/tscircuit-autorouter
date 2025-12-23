@@ -7,10 +7,12 @@ import { HighDensityRouteSpatialIndex } from "lib/data-structures/HighDensityRou
 import { GraphicsObject } from "graphics-debug"
 import {
   computeDrawPositionFromCollisions,
-  obstacleToSegments,
-  routeToOutlineSegments,
   Segment,
 } from "./computeDrawPositionFromCollisions"
+import {
+  obstacleToSegments,
+  routeToOutlineSegments,
+} from "./obstacleToSegments"
 
 const CURSOR_STEP_DISTANCE = 0.05
 
@@ -59,6 +61,7 @@ export class TraceKeepoutSolver extends BaseSolver {
   currentTraceSegmentIndex = 0
   currentTraceSegmentT = 0 // Parameter t in [0, 1] along the current segment
   recordedDrawPositions: Point3D[] = []
+  lastCollidingSegments: Segment[] = []
 
   obstacleSHI: ObstacleSpatialHashIndex
   hdRouteSHI: HighDensityRouteSpatialIndex
@@ -173,6 +176,7 @@ export class TraceKeepoutSolver extends BaseSolver {
 
     // Get colliding segments for obstacles and traces
     const collidingSegments = this.getCollidingSegments()
+    this.lastCollidingSegments = collidingSegments
 
     // Compute draw position using the collision avoidance algorithm
     const newDrawPosition = computeDrawPositionFromCollisions({
@@ -182,30 +186,12 @@ export class TraceKeepoutSolver extends BaseSolver {
       keepoutRadius: this.currentKeepoutRadius,
     })
 
-    if (newDrawPosition) {
-      // Check that new position doesn't hit any non-connected obstacle
-      const rootConnectionName =
-        this.currentTrace!.rootConnectionName ?? this.currentTrace!.connectionName
-      if (
-        !this.positionHitsAnyNonConnectedObstacle(
-          newDrawPosition,
-          rootConnectionName,
-        )
-      ) {
-        this.drawPosition = newDrawPosition
-      } else {
-        // Fall back to cursor position
-        this.drawPosition = { ...this.cursorPosition! }
-      }
-    } else {
-      // No obstacles, draw position follows cursor
-      this.drawPosition = { ...this.cursorPosition! }
-    }
+    this.drawPosition = newDrawPosition ?? { ...this.cursorPosition! }
 
     // Record the draw position
     this.recordedDrawPositions.push({
-      x: this.drawPosition.x,
-      y: this.drawPosition.y,
+      x: this.drawPosition!.x,
+      y: this.drawPosition!.y,
       z: this.cursorPosition!.z,
     })
   }
@@ -360,7 +346,9 @@ export class TraceKeepoutSolver extends BaseSolver {
 
       // Convert route to outline segments (considering trace width)
       const traceWidth = conflictingRoute.traceThickness ?? 0.1
-      segments.push(...routeToOutlineSegments(conflictingRoute.route, traceWidth))
+      segments.push(
+        ...routeToOutlineSegments(conflictingRoute.route, traceWidth),
+      )
     }
 
     return segments
@@ -663,6 +651,19 @@ export class TraceKeepoutSolver extends BaseSolver {
           y: this.drawPosition.y,
           color: "lime",
           label: "Draw",
+        })
+      }
+
+      // Draw colliding segments
+      for (const segment of this.lastCollidingSegments) {
+        visualization.lines.push({
+          points: [
+            { x: segment.start.x, y: segment.start.y },
+            { x: segment.end.x, y: segment.end.y },
+          ],
+          strokeColor: "rgba(255, 0, 255, 0.8)",
+          strokeWidth: 0.02,
+          label: "Colliding segment",
         })
       }
     }
