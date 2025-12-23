@@ -13,8 +13,13 @@ import {
   obstacleToSegments,
   routeToOutlineSegments,
 } from "./obstacleToSegments"
+import {
+  distance,
+  pointToSegmentClosestPoint,
+  pointToSegmentDistance,
+} from "@tscircuit/math-utils"
 
-const CURSOR_STEP_DISTANCE = 0.05
+const CURSOR_STEP_DISTANCE = 0.2
 
 interface Point2D {
   x: number
@@ -71,7 +76,7 @@ export class TraceKeepoutSolver extends BaseSolver {
     this.MAX_ITERATIONS = 1e6
     this.hdRoutes = [...input.hdRoutes]
     this.KEEPOUT_RADIUS_SCHEDULE = input.keepoutRadiusSchedule ?? [
-      0.5, 0.3, 0.15,
+      0.25, 0.4, 0.4, 0.25,
     ]
     this.currentKeepoutRadius = this.KEEPOUT_RADIUS_SCHEDULE[0] ?? 0.15
     this.unprocessedRoutes = [...input.hdRoutes]
@@ -175,7 +180,7 @@ export class TraceKeepoutSolver extends BaseSolver {
     }
 
     // Get colliding segments for obstacles and traces
-    const collidingSegments = this.getCollidingSegments()
+    const collidingSegments = this.getCollidingSegments(this.cursorPosition!)
     this.lastCollidingSegments = collidingSegments
 
     // Compute draw position using the collision avoidance algorithm
@@ -187,6 +192,20 @@ export class TraceKeepoutSolver extends BaseSolver {
     })
 
     this.drawPosition = newDrawPosition ?? { ...this.cursorPosition! }
+
+    // if (
+    //   this.positionHasCollision(
+    //     {
+    //       ...this.drawPosition!,
+    //       z: this.cursorPosition!.z,
+    //     },
+    //     -0.001,
+    //   ) ||
+    //   distance(this.drawPosition!, this.cursorPosition!) >
+    //     this.currentKeepoutRadius + 0.001
+    // ) {
+    //   this.drawPosition = { ...this.cursorPosition! }
+    // }
 
     // Record the draw position
     this.recordedDrawPositions.push({
@@ -264,8 +283,12 @@ export class TraceKeepoutSolver extends BaseSolver {
   /**
    * Gets all colliding segments (obstacle edges and trace outlines) within the keepout radius
    */
-  private getCollidingSegments(): Segment[] {
-    if (!this.currentTrace || !this.cursorPosition) return []
+  private getCollidingSegments(position: {
+    x: number
+    y: number
+    z: number
+  }): Segment[] {
+    if (!this.currentTrace) return []
 
     const rootConnectionName =
       this.currentTrace.rootConnectionName ?? this.currentTrace.connectionName
@@ -274,8 +297,8 @@ export class TraceKeepoutSolver extends BaseSolver {
 
     // Check for obstacles within the keepout radius
     const nearbyObstacles = this.obstacleSHI.searchArea(
-      this.cursorPosition.x,
-      this.cursorPosition.y,
+      position.x,
+      position.y,
       searchRadius * 2,
       searchRadius * 2,
     )
@@ -283,10 +306,7 @@ export class TraceKeepoutSolver extends BaseSolver {
     // Filter to non-connected obstacles on the same layer and convert to segments
     for (const obstacle of nearbyObstacles) {
       // Check if obstacle is on the same layer
-      if (
-        obstacle.zLayers &&
-        !obstacle.zLayers.includes(this.cursorPosition.z)
-      ) {
+      if (obstacle.zLayers && !obstacle.zLayers.includes(position.z)) {
         continue
       }
 
@@ -324,7 +344,7 @@ export class TraceKeepoutSolver extends BaseSolver {
 
     // Check for non-connected traces within the keepout radius
     const nearbyRoutes = this.hdRouteSHI.getConflictingRoutesNearPoint(
-      { x: this.cursorPosition.x, y: this.cursorPosition.y },
+      { x: position.x, y: position.y },
       searchRadius,
     )
 
@@ -345,7 +365,7 @@ export class TraceKeepoutSolver extends BaseSolver {
       }
 
       // Convert route to outline segments (considering trace width)
-      const traceWidth = conflictingRoute.traceThickness ?? 0.1
+      const traceWidth = conflictingRoute.traceThickness ?? 0.15
       segments.push(
         ...routeToOutlineSegments(conflictingRoute.route, traceWidth),
       )
@@ -354,76 +374,24 @@ export class TraceKeepoutSolver extends BaseSolver {
     return segments
   }
 
-  /**
-   * Checks if a position would be within keepoutRadius of any non-connected obstacle
-   */
-  private positionHitsAnyNonConnectedObstacle(
-    pos: Point2D,
-    rootConnectionName: string,
+  positionHasCollision(
+    position: {
+      x: number
+      y: number
+      z: number
+    },
+    margin: number = 0,
   ): boolean {
-    if (!this.cursorPosition) return false
+    const collidingSegments = this.getCollidingSegments(position)
 
-    const keepout = this.currentKeepoutRadius
-
-    // Search for obstacles near the new position (expanded by keepout radius)
-    const nearbyObstacles = this.obstacleSHI.searchArea(
-      pos.x,
-      pos.y,
-      keepout * 4,
-      keepout * 4,
-    )
-
-    for (const obstacle of nearbyObstacles) {
-      // Check if obstacle is on the same layer
+    for (const segment of collidingSegments) {
       if (
-        obstacle.zLayers &&
-        !obstacle.zLayers.includes(this.cursorPosition.z)
-      ) {
-        continue
-      }
-
-      // Check if obstacle is connected to this trace's net
-      if (obstacle.connectedTo.includes(rootConnectionName)) {
-        continue
-      }
-
-      // Check if obstacle's own ID is connected
-      if (
-        obstacle.obstacleId &&
-        this.input.connMap.areIdsConnected(
-          rootConnectionName,
-          obstacle.obstacleId,
-        )
-      ) {
-        continue
-      }
-
-      // Check connectivity via connMap
-      let isConnected = false
-      for (const connectedId of obstacle.connectedTo) {
-        if (
-          this.input.connMap.areIdsConnected(rootConnectionName, connectedId)
-        ) {
-          isConnected = true
-          break
-        }
-      }
-      if (isConnected) continue
-
-      // Check if position is within keepoutRadius of this obstacle
-      // Expand the obstacle bounds by keepoutRadius
-      const halfW = obstacle.width / 2 + keepout
-      const halfH = obstacle.height / 2 + keepout
-      if (
-        pos.x >= obstacle.center.x - halfW &&
-        pos.x <= obstacle.center.x + halfW &&
-        pos.y >= obstacle.center.y - halfH &&
-        pos.y <= obstacle.center.y + halfH
+        pointToSegmentDistance(position, segment.start, segment.end) <=
+        this.currentKeepoutRadius + margin
       ) {
         return true
       }
     }
-
     return false
   }
 
