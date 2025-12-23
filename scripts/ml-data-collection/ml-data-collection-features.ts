@@ -118,7 +118,6 @@ export const computeFeaturesForMl = (params: {
     params.node.height,
   )
 
-
   return {
     top_edge_ports_normalized_to_width,
     right_edge_ports_normalized_to_height,

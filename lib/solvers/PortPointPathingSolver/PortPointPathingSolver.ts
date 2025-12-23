@@ -312,7 +312,11 @@ export class PortPointPathingSolver extends BaseSolver {
     // NOTE: connectionsWithResults and alreadyConnectedPath are accepted but
     // currently ignored in the Pf calculation. They are reserved for future
     // improvements where Pf may depend on more global path context.
-    const pfBefore = this.computeNodePf(node)
+    const pfBefore = this.computeNodePf(
+      node,
+      connectionsWithResults,
+      alreadyConnectedPath,
+    )
     const baseCost = this.pfToFailureCost(pfBefore)
     this.baseNodeCostCache.set(nodeId, baseCost)
     return baseCost
@@ -353,7 +357,12 @@ export class PortPointPathingSolver extends BaseSolver {
       alreadyConnectedPath,
     )
 
-    const pfAfter = this.computeNodePf(node, [entry, exit])
+    const pfAfter = this.computeNodePf(
+      node,
+      connectionsWithResults,
+      alreadyConnectedPath,
+      [entry, exit],
+    )
     const afterCost = this.pfToFailureCost(pfAfter)
 
     // If the estimator ever yields a lower Pf after adding points, don't reward it here.
@@ -447,6 +456,8 @@ export class PortPointPathingSolver extends BaseSolver {
    */
   computeNodePf(
     node: InputNodeWithPortPoints,
+    connectionsWithResults: ConnectionPathResult[],
+    alreadyConnectedPath: PortPoint[],
     additionalPortPoints?: PortPoint[],
   ): number {
     if (node._containsTarget) return 0
