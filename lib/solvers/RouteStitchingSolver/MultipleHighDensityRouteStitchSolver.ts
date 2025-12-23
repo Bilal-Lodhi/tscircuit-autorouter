@@ -6,6 +6,8 @@ import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
 import { SingleHighDensityRouteStitchSolver } from "./SingleHighDensityRouteStitchSolver"
 import { GraphicsObject } from "graphics-debug"
 import { safeTransparentize } from "../colors"
+import { ConnectivityMap } from "connectivity-map"
+import { distance } from "@tscircuit/math-utils"
 
 export type UnsolvedRoute = {
   connectionName: string
@@ -13,6 +15,9 @@ export type UnsolvedRoute = {
   start: { x: number; y: number; z: number }
   end: { x: number; y: number; z: number }
 }
+
+const roundedPointHash = (p: { x: number; y: number; z: number }) =>
+  `${Math.round(p.x * 100)},${Math.round(p.y * 100)},${Math.round(p.z * 100)}`
 
 export class MultipleHighDensityRouteStitchSolver extends BaseSolver {
   unsolvedRoutes: UnsolvedRoute[]
@@ -22,7 +27,7 @@ export class MultipleHighDensityRouteStitchSolver extends BaseSolver {
   defaultTraceThickness: number
   defaultViaDiameter: number
 
-  constructor(opts: {
+  constructor(params: {
     connections: SimpleRouteConnection[]
     hdRoutes: HighDensityIntraNodeRoute[]
     colorMap?: Record<string, string>
@@ -30,31 +35,115 @@ export class MultipleHighDensityRouteStitchSolver extends BaseSolver {
     defaultViaDiameter?: number
   }) {
     super()
-    this.colorMap = opts.colorMap ?? {}
+    this.colorMap = params.colorMap ?? {}
 
-    const firstRoute = opts.hdRoutes[0]
+    const firstRoute = params.hdRoutes[0]
     this.defaultTraceThickness = firstRoute?.traceThickness ?? 0.15
     this.defaultViaDiameter =
-      firstRoute?.viaDiameter ?? opts.defaultViaDiameter ?? 0.6
+      firstRoute?.viaDiameter ?? params.defaultViaDiameter ?? 0.6
 
-    this.unsolvedRoutes = opts.connections.map((c) => ({
-      connectionName: c.name,
-      hdRoutes: opts.hdRoutes.filter((r) => r.connectionName === c.name),
-      start: {
-        ...c.pointsToConnect[0],
-        z: mapLayerNameToZ(
-          getConnectionPointLayer(c.pointsToConnect[0]),
-          opts.layerCount,
-        ),
-      },
-      end: {
-        ...c.pointsToConnect[1],
-        z: mapLayerNameToZ(
-          getConnectionPointLayer(c.pointsToConnect[1]),
-          opts.layerCount,
-        ),
-      },
-    }))
+    const routeIslandConnectivityMap = new ConnectivityMap({})
+    const routeIslandConnections: Array<string[]> = []
+    const routeIslands = []
+
+    const pointHashCounts = new Map<string, number>()
+
+    for (let i = 0; i < params.hdRoutes.length; i++) {
+      const hdRoute = params.hdRoutes[i]
+      const start = hdRoute.route[0]
+      const end = hdRoute.route[hdRoute.route.length - 1]
+      routeIslandConnections.push([
+        `route_island_${i}`,
+        `${hdRoute.connectionName}:${roundedPointHash(start)}`,
+        `${hdRoute.connectionName}:${roundedPointHash(end)}`,
+      ])
+    }
+    routeIslandConnectivityMap.addConnections(routeIslandConnections)
+    for (const routeIslandConnection of routeIslandConnections) {
+      for (const pointHash of routeIslandConnection.slice(1)) {
+        pointHashCounts.set(
+          pointHash,
+          (pointHashCounts.get(pointHash) ?? 0) + 1,
+        )
+      }
+    }
+
+    this.unsolvedRoutes = []
+
+    const uniqueNets = Array.from(
+      new Set(Object.values(routeIslandConnectivityMap.idToNetMap)),
+    )
+
+    for (const netName of uniqueNets) {
+      const netMembers =
+        routeIslandConnectivityMap.getIdsConnectedToNet(netName)
+
+      const hdRoutes = params.hdRoutes.filter((r, i) =>
+        netMembers.includes(`route_island_${i}`),
+      )
+      if (hdRoutes.length === 0) continue
+
+      const connection = params.connections.find(
+        (c) => c.name === hdRoutes[0].connectionName,
+      )!
+
+      const possibleEndpoints1 = hdRoutes.flatMap((r) => [
+        r.route[0],
+        r.route[r.route.length - 1],
+      ])
+
+      const possibleEndpoints2 = []
+      for (const possibleEndpoint1 of possibleEndpoints1) {
+        const pointHash = `${hdRoutes[0].connectionName}:${roundedPointHash(possibleEndpoint1)}`
+        if (pointHashCounts.get(pointHash) === 1) {
+          possibleEndpoints2.push(possibleEndpoint1)
+        }
+      }
+      // Not sure why this happens
+      // If removing, make sure off-board-assignable2 doesn't break
+      if (possibleEndpoints2.length === 0) {
+        console.log("no possible endpoints, can't stitch")
+        continue
+      }
+
+      let start: { x: number; y: number; z: number }
+      let end: { x: number; y: number; z: number }
+
+      if (possibleEndpoints2.length !== 2) {
+        start = {
+          ...connection.pointsToConnect[0],
+          z: mapLayerNameToZ(
+            getConnectionPointLayer(connection.pointsToConnect[0]),
+            params.layerCount,
+          ),
+        }
+        end = {
+          ...connection.pointsToConnect[1],
+          z: mapLayerNameToZ(
+            getConnectionPointLayer(connection.pointsToConnect[1]),
+            params.layerCount,
+          ),
+        }
+      } else {
+        start = possibleEndpoints2[0]
+        end = possibleEndpoints2[1]
+
+        if (
+          distance(start, connection.pointsToConnect[1]) <
+          distance(end, connection.pointsToConnect[0])
+        ) {
+          ;[start, end] = [end, start]
+        }
+      }
+
+      this.unsolvedRoutes.push({
+        connectionName: hdRoutes[0].connectionName,
+        hdRoutes,
+        start,
+        end,
+      })
+    }
+
     this.MAX_ITERATIONS = 100e3
   }
 
