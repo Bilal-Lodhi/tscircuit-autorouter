@@ -148,7 +148,7 @@ export function computeDrawPositionFromCollisions(
 
   // Search outward from cursor along barrier line in both directions
   // Stop as soon as we find a valid position (minimal displacement)
-  const steps = 100
+  const steps = 20
 
   // Search both directions simultaneously, increasing distance from cursor
   for (let i = 1; i <= steps; i++) {
