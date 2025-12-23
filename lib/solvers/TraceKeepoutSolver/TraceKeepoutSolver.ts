@@ -380,6 +380,7 @@ export class TraceKeepoutSolver extends BaseSolver {
 
   /**
    * Calculates the avoidance vector to push the draw position away from obstacles
+   * Moves the minimum amount needed to get obstacles outside the keepout radius
    */
   private calculateAvoidanceVector(
     obstacles: Obstacle[],
@@ -395,25 +396,133 @@ export class TraceKeepoutSolver extends BaseSolver {
     const orthogonal1 = { x: -traceDir.y, y: traceDir.x }
     const orthogonal2 = { x: traceDir.y, y: -traceDir.x }
 
-    // Determine which orthogonal direction pushes away from obstacles
-    let pushDir = this.choosePushDirection(
-      orthogonal1,
-      orthogonal2,
-      obstacles,
-      routes,
-    )
+    // Find the closest obstacle/trace point and determine push direction
+    const closest = this.findClosestObstaclePoint(obstacles, routes)
+    if (!closest) return null
 
-    if (!pushDir) {
-      pushDir = orthogonal1 // Default to one direction
+    // Vector from cursor to closest obstacle point
+    const toObstacle = {
+      x: closest.x - this.cursorPosition.x,
+      y: closest.y - this.cursorPosition.y,
+    }
+    const distToObstacle = Math.sqrt(toObstacle.x ** 2 + toObstacle.y ** 2)
+
+    // If already outside keepout radius, no movement needed
+    if (distToObstacle >= this.currentKeepoutRadius) {
+      return null
     }
 
-    // Calculate push distance based on keepout radius
-    const pushDistance = this.currentKeepoutRadius
+    // Choose which orthogonal direction points away from the obstacle
+    const dot1 = orthogonal1.x * toObstacle.x + orthogonal1.y * toObstacle.y
+    const dot2 = orthogonal2.x * toObstacle.x + orthogonal2.y * toObstacle.y
+    const pushDir = dot1 < dot2 ? orthogonal1 : orthogonal2
+
+    // Calculate the perpendicular component of toObstacle relative to pushDir
+    // d_perp = toObstacle · pushDir (how far obstacle is in the push direction)
+    const d_perp = toObstacle.x * pushDir.x + toObstacle.y * pushDir.y
+
+    // d_along = component along trace direction
+    const d_along = toObstacle.x * traceDir.x + toObstacle.y * traceDir.y
+
+    // Calculate minimum push distance needed
+    // After pushing by m, new distance² = d_along² + (d_perp - m)²
+    // We want new distance = keepoutRadius
+    // keepoutRadius² = d_along² + (d_perp - m)²
+    // (d_perp - m)² = keepoutRadius² - d_along²
+
+    const keepoutSq = this.currentKeepoutRadius ** 2
+    const alongSq = d_along ** 2
+
+    if (keepoutSq <= alongSq) {
+      // Obstacle is far enough along trace direction, no orthogonal push needed
+      return null
+    }
+
+    const requiredPerpDist = Math.sqrt(keepoutSq - alongSq)
+
+    // We need |d_perp - m| >= requiredPerpDist
+    // Since pushDir points away (d_perp should be negative or we push to make it more negative)
+    // m = d_perp - (-requiredPerpDist) = d_perp + requiredPerpDist (if d_perp < 0)
+    // m = d_perp - requiredPerpDist (if d_perp > 0, but we chose pushDir to point away so this shouldn't happen)
+
+    let pushDistance: number
+    if (d_perp <= 0) {
+      // Obstacle is in opposite direction of push, push by enough to clear
+      pushDistance = Math.abs(d_perp) + requiredPerpDist
+    } else {
+      // Obstacle is in same direction as push (shouldn't happen with correct pushDir choice)
+      // Push enough to get past it
+      pushDistance = requiredPerpDist - d_perp
+      if (pushDistance < 0) pushDistance = 0
+    }
+
+    // Add small margin
+    pushDistance += 0.01
 
     return {
       x: pushDir.x * pushDistance,
       y: pushDir.y * pushDistance,
     }
+  }
+
+  /**
+   * Finds the closest obstacle or trace point to the cursor
+   */
+  private findClosestObstaclePoint(
+    obstacles: Obstacle[],
+    routes: Array<{ conflictingRoute: HighDensityRoute; distance: number }>,
+  ): Point2D | null {
+    if (!this.cursorPosition) return null
+
+    let closestX = 0
+    let closestY = 0
+    let closestDistSq = Infinity
+    let hasClosest = false
+
+    // Check obstacle centers (could improve by checking closest point on obstacle edge)
+    for (const obs of obstacles) {
+      // Find closest point on obstacle rectangle to cursor
+      const clampedX = Math.max(
+        obs.center.x - obs.width / 2,
+        Math.min(obs.center.x + obs.width / 2, this.cursorPosition.x),
+      )
+      const clampedY = Math.max(
+        obs.center.y - obs.height / 2,
+        Math.min(obs.center.y + obs.height / 2, this.cursorPosition.y),
+      )
+      const distSq =
+        (clampedX - this.cursorPosition.x) ** 2 +
+        (clampedY - this.cursorPosition.y) ** 2
+      if (distSq < closestDistSq) {
+        closestDistSq = distSq
+        closestX = clampedX
+        closestY = clampedY
+        hasClosest = true
+      }
+    }
+
+    // Check closest point on each conflicting route segment
+    for (const { conflictingRoute } of routes) {
+      const routePts = conflictingRoute.route
+      for (let i = 0; i < routePts.length - 1; i++) {
+        const a = routePts[i]!
+        const b = routePts[i + 1]!
+        const closest = this.closestPointOnSegment(this.cursorPosition, a, b)
+        const distSq =
+          (closest.x - this.cursorPosition.x) ** 2 +
+          (closest.y - this.cursorPosition.y) ** 2
+        if (distSq < closestDistSq) {
+          closestDistSq = distSq
+          closestX = closest.x
+          closestY = closest.y
+          hasClosest = true
+        }
+      }
+    }
+
+    if (!hasClosest) return null
+
+    return { x: closestX, y: closestY }
   }
 
   /**
@@ -445,57 +554,26 @@ export class TraceKeepoutSolver extends BaseSolver {
   }
 
   /**
-   * Chooses which orthogonal direction to push based on obstacle positions
+   * Finds the closest point on a line segment to a given point
    */
-  private choosePushDirection(
-    dir1: Point2D,
-    dir2: Point2D,
-    obstacles: Obstacle[],
-    routes: Array<{ conflictingRoute: HighDensityRoute; distance: number }>,
-  ): Point2D | null {
-    if (!this.cursorPosition) return null
+  private closestPointOnSegment(
+    p: Point2D,
+    a: Point2D,
+    b: Point2D,
+  ): Point2D {
+    const dx = b.x - a.x
+    const dy = b.y - a.y
+    const lenSq = dx * dx + dy * dy
 
-    // Calculate center of mass of all obstacles
-    let centerX = 0
-    let centerY = 0
-    let count = 0
+    if (lenSq === 0) return { x: a.x, y: a.y }
 
-    for (const obs of obstacles) {
-      centerX += obs.center.x
-      centerY += obs.center.y
-      count++
+    let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq
+    t = Math.max(0, Math.min(1, t))
+
+    return {
+      x: a.x + t * dx,
+      y: a.y + t * dy,
     }
-
-    for (const { conflictingRoute } of routes) {
-      // Use first point of route as representative position
-      if (conflictingRoute.route.length > 0) {
-        const firstPt = conflictingRoute.route[0]!
-        centerX += firstPt.x
-        centerY += firstPt.y
-        count++
-      }
-    }
-
-    if (count === 0) return dir1
-
-    centerX /= count
-    centerY /= count
-
-    // Direction from cursor to obstacle center
-    const toObstacles = {
-      x: centerX - this.cursorPosition.x,
-      y: centerY - this.cursorPosition.y,
-    }
-
-    // Choose the direction that points away from obstacles
-    const dot1 = dir1.x * toObstacles.x + dir1.y * toObstacles.y
-    const dot2 = dir2.x * toObstacles.x + dir2.y * toObstacles.y
-
-    // Return the direction with negative dot product (pointing away)
-    if (dot1 < dot2) {
-      return dir1
-    }
-    return dir2
   }
 
   /**
