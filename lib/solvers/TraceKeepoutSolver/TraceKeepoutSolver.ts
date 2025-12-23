@@ -281,6 +281,14 @@ export class TraceKeepoutSolver extends BaseSolver {
         return false
       }
 
+      // Check if obstacle's own ID is connected
+      if (
+        obstacle.obstacleId &&
+        this.input.connMap.areIdsConnected(rootConnectionName, obstacle.obstacleId)
+      ) {
+        return false
+      }
+
       // Check connectivity via connMap
       for (const connectedId of obstacle.connectedTo) {
         if (
@@ -381,6 +389,14 @@ export class TraceKeepoutSolver extends BaseSolver {
 
       // Check if obstacle is connected to this trace's net
       if (obstacle.connectedTo.includes(rootConnectionName)) {
+        continue
+      }
+
+      // Check if obstacle's own ID is connected
+      if (
+        obstacle.obstacleId &&
+        this.input.connMap.areIdsConnected(rootConnectionName, obstacle.obstacleId)
+      ) {
         continue
       }
 
