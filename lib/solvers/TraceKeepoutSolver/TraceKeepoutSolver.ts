@@ -76,7 +76,7 @@ export class TraceKeepoutSolver extends BaseSolver {
     this.MAX_ITERATIONS = 1e6
     this.hdRoutes = [...input.hdRoutes]
     this.KEEPOUT_RADIUS_SCHEDULE = input.keepoutRadiusSchedule ?? [
-      0.25, 0.4, 0.4, 0.25,
+      0.5, 0.5, 0.5,
     ]
     this.currentKeepoutRadius = this.KEEPOUT_RADIUS_SCHEDULE[0] ?? 0.15
     this.unprocessedRoutes = [...input.hdRoutes]
@@ -292,15 +292,15 @@ export class TraceKeepoutSolver extends BaseSolver {
 
     const rootConnectionName =
       this.currentTrace.rootConnectionName ?? this.currentTrace.connectionName
-    const searchRadius = this.currentKeepoutRadius
+    const searchRadius = this.currentKeepoutRadius * 2
     const segments: Segment[] = []
 
     // Check for obstacles within the keepout radius
     const nearbyObstacles = this.obstacleSHI.searchArea(
       position.x,
       position.y,
-      searchRadius * 2,
-      searchRadius * 2,
+      searchRadius,
+      searchRadius,
     )
 
     // Filter to non-connected obstacles on the same layer and convert to segments

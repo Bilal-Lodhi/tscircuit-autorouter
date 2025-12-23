@@ -169,9 +169,13 @@ export function computeDrawPositionFromCollisions(
     const clearanceMinus = getMinClearance(posMinus, collidingSegments)
 
     // Return the first valid position found (minimal displacement)
-    // If both are valid at same distance, pick the one with better clearance
-    const validPlus = clearancePlus >= keepoutRadius
-    const validMinus = clearanceMinus >= keepoutRadius
+    // Position must have sufficient clearance AND path from cursor must be clear
+    const validPlus =
+      clearancePlus >= keepoutRadius &&
+      isPathClear(cursorPosition, posPlus, collidingSegments)
+    const validMinus =
+      clearanceMinus >= keepoutRadius &&
+      isPathClear(cursorPosition, posMinus, collidingSegments)
 
     if (validPlus && validMinus) {
       return clearancePlus >= clearanceMinus ? posPlus : posMinus
@@ -181,9 +185,9 @@ export function computeDrawPositionFromCollisions(
   }
 
   // No valid position found - return the best suboptimal position
-  // (position with maximum clearance within the search range)
-  let bestPos: Point2D = { x: cursorPosition.x, y: cursorPosition.y }
-  let bestClearance = cursorClearance
+  // (position with maximum clearance within the search range that has clear path)
+  let bestPos: Point2D | null = null
+  let bestClearance = -Infinity
 
   for (let i = -steps; i <= steps; i++) {
     const d = (i / steps) * keepoutRadius
@@ -191,6 +195,12 @@ export function computeDrawPositionFromCollisions(
       x: cursorPosition.x + barrierDir.x * d,
       y: cursorPosition.y + barrierDir.y * d,
     }
+
+    // Only consider positions with clear path from cursor
+    if (!isPathClear(cursorPosition, testPos, collidingSegments)) {
+      continue
+    }
+
     const clearance = getMinClearance(testPos, collidingSegments)
     if (clearance > bestClearance) {
       bestClearance = clearance
@@ -198,12 +208,16 @@ export function computeDrawPositionFromCollisions(
     }
   }
 
+  // If no position has clear path, fall back to cursor position (return null)
+  if (bestPos === null) {
+    return null
+  }
+
   const movedDist = Math.sqrt(
     (bestPos.x - cursorPosition.x) ** 2 + (bestPos.y - cursorPosition.y) ** 2,
   )
   return movedDist > epsilon ? bestPos : null
 }
-
 /**
  * Converts an obstacle (rectangular) to its 4 edge segments
  */
