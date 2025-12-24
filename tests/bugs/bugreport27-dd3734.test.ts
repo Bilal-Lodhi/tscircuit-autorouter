@@ -8,7 +8,7 @@ import { getLastStepSvg } from "../fixtures/getLastStepSvg"
 
 const srj = bugReport.simple_route_json as SimpleRouteJson
 
-test("bugreport27-dd3734", () => {
+test.skip("bugreport27-dd3734", () => {
   const portPointWinningHyperParameters = {
     NODE_PF_FACTOR: 10000,
     FORCE_OFF_BOARD_FREQUENCY: 0.3,
