@@ -40,7 +40,14 @@ const PIPELINE_SOLVERS = {
   AutoroutingPipeline1_OriginalUnravel,
 } as const
 
+const DEFAULT_PIPELINE_ID =
+  "AutoroutingPipelineSolver2_PortPointPathing" as const
+
 const PIPELINE_STORAGE_KEY = "selectedPipeline"
+const isValidPipelineId = (
+  value: string | null | undefined,
+): value is PipelineId =>
+  !!value && Object.prototype.hasOwnProperty.call(PIPELINE_SOLVERS, value)
 
 interface CapacityMeshPipelineDebuggerProps {
   srj: SimpleRouteJson
@@ -108,8 +115,9 @@ export const AutoroutingPipelineDebugger = ({
 
   const [selectedPipelineId, setSelectedPipelineIdState] = useState<PipelineId>(
     () =>
-      (localStorage.getItem(PIPELINE_STORAGE_KEY) as PipelineId) ||
-      "AutoroutingPipelineSolver2_PortPointPathing",
+      isValidPipelineId(localStorage.getItem(PIPELINE_STORAGE_KEY))
+        ? localStorage.getItem(PIPELINE_STORAGE_KEY)
+        : DEFAULT_PIPELINE_ID,
   )
 
   const setSelectedPipelineId = (newPipelineId: PipelineId) => {
@@ -132,7 +140,8 @@ export const AutoroutingPipelineDebugger = ({
       return createSolverProp(srj, { cacheProvider, ...opts })
     }
     const pipelineToUse = opts.pipelineId ?? selectedPipelineId
-    const SolverClass = PIPELINE_SOLVERS[pipelineToUse]
+    const SolverClass =
+      PIPELINE_SOLVERS[pipelineToUse] ?? PIPELINE_SOLVERS[DEFAULT_PIPELINE_ID]
     return new SolverClass(srj, {
       cacheProvider,
       ...opts,
@@ -141,14 +150,18 @@ export const AutoroutingPipelineDebugger = ({
 
   const [solver, setSolver] = useState<any>(() => {
     // Read directly from localStorage for initial render to avoid closure issues
-    const initialPipelineId =
-      (localStorage.getItem(PIPELINE_STORAGE_KEY) as PipelineId) ||
-      "AutoroutingPipelineSolver2_PortPointPathing"
+    const initialPipelineId = isValidPipelineId(
+      localStorage.getItem(PIPELINE_STORAGE_KEY),
+    )
+      ? localStorage.getItem(PIPELINE_STORAGE_KEY)
+      : DEFAULT_PIPELINE_ID
     const initialCacheName =
       (localStorage.getItem("cacheProviderName") as CacheProviderName) ?? "None"
     const initialCacheProvider =
       getGlobalCacheProviderFromName(initialCacheName)
-    const SolverClass = PIPELINE_SOLVERS[initialPipelineId]
+    const SolverClass =
+      PIPELINE_SOLVERS[initialPipelineId] ??
+      PIPELINE_SOLVERS[DEFAULT_PIPELINE_ID]
     return createSolverProp
       ? createSolverProp(srj, { cacheProvider: initialCacheProvider })
       : new SolverClass(srj, { cacheProvider: initialCacheProvider })
