@@ -47,7 +47,7 @@ export const getConnectivityMapFromSimpleRouteJson = (srj: SimpleRouteJson) => {
     const connectionGroup = Array.from(
       new Set(
         [
-          obstacle.obstacleId,
+          obstacle.obstacleId!,
           ...obstacle.connectedTo,
           ...offBoardConnections,
           `${pointHash(obstacle.center)}:${obstacle.layers
