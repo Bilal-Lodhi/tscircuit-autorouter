@@ -19,7 +19,7 @@ async function runBenchmark() {
 
     if (!benchmarkFunction) {
       console.error(
-        `Benchmark function '${functionName}' not found in benchmarks/${datasetName}/${datasetName}.ts`,
+        `Benchmark function '${functionName}' not found in examples/benchmark/${datasetName}/${datasetName}.ts`,
       )
       process.exit(1)
     }
