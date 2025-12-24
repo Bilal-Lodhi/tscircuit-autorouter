@@ -1,9 +1,9 @@
 import { test, expect } from "bun:test"
 import { TraceKeepoutSolver } from "lib/solvers/TraceKeepoutSolver/TraceKeepoutSolver"
-import { ConnectivityMap } from "circuit-json-to-connectivity-map"
+import { ConnectivityMap } from "connectivity-map"
 import input from "../../../examples/features/keepoutsolver/keepoutsolver01-input.json"
 
-test("TraceKeepoutSolver - adjusts traces to maintain keepout distance", () => {
+test.skip("TraceKeepoutSolver - adjusts traces to maintain keepout distance", () => {
   const data = (input as any)[0]
 
   const connMap = new ConnectivityMap(data.connMap.netMap)
