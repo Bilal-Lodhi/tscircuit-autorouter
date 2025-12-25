@@ -1,5 +1,7 @@
 import { AutoroutingPipelineSolver } from "lib"
 import type { SimpleRouteJson } from "lib/types"
+import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
+import { getDrcErrors } from "lib/testing/getDrcErrors"
 import keyboard4 from "examples/legacy/assets/keyboard4.json"
 import e2e3 from "examples/legacy/assets/e2e3.json"
 import bugreport23 from "examples/bug-reports/bugreport23-LGA15x4/bugreport23-LGA15x4.srj.json"
@@ -7,36 +9,77 @@ import bugreport23 from "examples/bug-reports/bugreport23-LGA15x4/bugreport23-LG
 interface BenchmarkResult {
   name: string
   success: boolean
-  error?: string
+  durationMs: number
+  drcErrors: number
 }
 
+const formatDuration = (durationMs: number) => (durationMs / 1000).toFixed(2)
+
 function runBenchmark(name: string, srj: SimpleRouteJson): BenchmarkResult {
+  console.log(`Running "${name}"`)
+
   const totalConnections = srj.connections.length
+  const startTime = performance.now()
 
   try {
     const solver = new AutoroutingPipelineSolver(srj)
     solver.solve()
 
-    if (!solver.solved) {
+    if (!solver.solved || solver.failed) {
+      const durationMs = performance.now() - startTime
+      console.log(`❌ failed in ${formatDuration(durationMs)}s`)
       return {
         name,
         success: false,
-        error: solver.error || "Solver did not complete",
+        durationMs,
+        drcErrors: 0,
       }
     }
 
+    const srjWithPointPairs = solver.srjWithPointPairs
+    if (!srjWithPointPairs) {
+      const durationMs = performance.now() - startTime
+      return {
+        name,
+        success: false,
+        durationMs,
+        drcErrors: 0,
+      }
+    }
+
+    const simplifiedTraces = solver.getOutputSimplifiedPcbTraces()
+    const circuitJson = convertToCircuitJson(
+      srjWithPointPairs,
+      simplifiedTraces,
+      srj.minTraceWidth ?? 0.1,
+      srj.minViaDiameter ?? 0.6,
+    )
+    const { errors } = getDrcErrors(circuitJson)
+
     const result = solver.getOutputSimpleRouteJson()
     const solvedTraces = result.traces?.length || 0
+    const success = solvedTraces >= totalConnections
+    const durationMs = performance.now() - startTime
+    const drcLabel = `${errors.length} DRC Failure${errors.length === 1 ? "" : "s"}`
+    const statusMessage = success ? "solved" : "incomplete"
+    console.log(
+      `${success ? "✅" : "❌"} ${statusMessage} in ${formatDuration(durationMs)}s  (${drcLabel})`,
+    )
 
     return {
       name,
-      success: solvedTraces >= totalConnections,
+      success,
+      durationMs,
+      drcErrors: errors.length,
     }
   } catch (error) {
+    const durationMs = performance.now() - startTime
+    console.log(`❌ failed in ${formatDuration(durationMs)}s`)
     return {
       name,
       success: false,
-      error: error instanceof Error ? error.message : String(error),
+      durationMs,
+      drcErrors: 0,
     }
   }
 }
@@ -53,7 +96,6 @@ export function runDataset01Benchmark() {
   ]
 
   for (const benchmark of benchmarks) {
-    console.log(`Running ${benchmark.name}...`)
     const result = runBenchmark(benchmark.name, benchmark.srj)
     results.push(result)
   }
@@ -62,6 +104,26 @@ export function runDataset01Benchmark() {
   console.log(
     `Passed: ${results.filter((r) => r.success).length}/${results.length}`,
   )
+
+  const headers = ["Benchmark", "Time (s)", "DRC Errors", "Status"]
+  const rows = results.map((result) => [
+    result.name,
+    formatDuration(result.durationMs),
+    result.drcErrors.toString(),
+    result.success ? "✅ pass" : "❌ fail",
+  ])
+  const columnWidths = headers.map((header, index) =>
+    Math.max(header.length, ...rows.map((row) => row[index].length)),
+  )
+  const formatRow = (row: string[]) =>
+    row.map((cell, index) => cell.padEnd(columnWidths[index])).join(" | ")
+
+  console.log("\nBenchmark Results")
+  console.log(formatRow(headers))
+  console.log(columnWidths.map((width) => "-".repeat(width)).join("-+-"))
+  for (const row of rows) {
+    console.log(formatRow(row))
+  }
 
   return results
 }
