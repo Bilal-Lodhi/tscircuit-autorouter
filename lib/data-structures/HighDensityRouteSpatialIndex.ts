@@ -100,6 +100,8 @@ export class HighDensityRouteSpatialIndex {
   private viaBuckets: Map<BucketCoordinate, StoredVia[]> // New: Store vias
   private routes: Map<string, HighDensityRoute>
   private CELL_SIZE: number
+  private maxTraceRadius: number
+  private maxViaRadius: number
 
   constructor(routes: HighDensityRoute[], cellSize: number = 1.0) {
     // console.time("HighDensityRouteSpatialIndex Constructor");
@@ -107,6 +109,8 @@ export class HighDensityRouteSpatialIndex {
     this.viaBuckets = new Map() // Initialize via buckets
     this.routes = new Map()
     this.CELL_SIZE = cellSize
+    this.maxTraceRadius = 0
+    this.maxViaRadius = 0
     const epsilon = 1e-9 // For segment boundary checks
 
     for (const route of routes) {
@@ -121,6 +125,14 @@ export class HighDensityRouteSpatialIndex {
         continue
       }
       this.routes.set(route.connectionName, route)
+      const traceRadius = (route.traceThickness ?? 0) / 2
+      const viaRadius = (route.viaDiameter ?? 0) / 2
+      if (traceRadius > this.maxTraceRadius) {
+        this.maxTraceRadius = traceRadius
+      }
+      if (viaRadius > this.maxViaRadius) {
+        this.maxViaRadius = viaRadius
+      }
 
       // --- Index Segments ---
       if (route.route && route.route.length >= 2) {
@@ -208,10 +220,12 @@ export class HighDensityRouteSpatialIndex {
     // Need to consider the maximum possible radius (trace/2 or via/2) + margin
     // For simplicity, just use the provided margin for bucket search.
     // Precise checks will use item-specific sizes.
-    const searchMinX = bounds.minX - margin
-    const searchMinY = bounds.minY - margin
-    const searchMaxX = bounds.maxX + margin
-    const searchMaxY = bounds.maxY + margin
+    const maxRouteRadius = Math.max(this.maxTraceRadius, this.maxViaRadius)
+    const searchPadding = margin + maxRouteRadius
+    const searchMinX = bounds.minX - searchPadding
+    const searchMinY = bounds.minY - searchPadding
+    const searchMaxX = bounds.maxX + searchPadding
+    const searchMaxY = bounds.maxY + searchPadding
     const epsilon = 1e-9
 
     const minIndexX = Math.floor(searchMinX / this.CELL_SIZE)
@@ -331,10 +345,12 @@ export class HighDensityRouteSpatialIndex {
     margin: number, // Minimum required clearance
   ): Array<{ conflictingRoute: HighDensityRoute; distance: number }> {
     // --- Define search area ---
-    const searchMinX = point.x - margin
-    const searchMinY = point.y - margin
-    const searchMaxX = point.x + margin
-    const searchMaxY = point.y + margin
+    const maxRouteRadius = Math.max(this.maxTraceRadius, this.maxViaRadius)
+    const searchPadding = margin + maxRouteRadius
+    const searchMinX = point.x - searchPadding
+    const searchMinY = point.y - searchPadding
+    const searchMaxX = point.x + searchPadding
+    const searchMaxY = point.y + searchPadding
     const epsilon = 1e-9
 
     const minIndexX = Math.floor(searchMinX / this.CELL_SIZE)
