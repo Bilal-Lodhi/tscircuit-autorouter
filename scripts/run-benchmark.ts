@@ -11,7 +11,7 @@ if (!datasetName) {
 async function runBenchmark() {
   try {
     const benchmarkModule = await import(
-      `../benchmark/${datasetName}/${datasetName}.ts`
+      `../benchmarks/${datasetName}/${datasetName}.ts`
     )
 
     const functionName = `run${datasetName.charAt(0).toUpperCase() + datasetName.slice(1)}Benchmark`
