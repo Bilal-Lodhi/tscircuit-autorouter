@@ -24,7 +24,7 @@ async function runBenchmark() {
       process.exit(1)
     }
 
-    const results = autorouteBenchmarkSample()
+    const results = benchmarkFunction()
 
     const allPassed = results.every((r: any) => r.success)
     process.exit(allPassed ? 0 : 1)
