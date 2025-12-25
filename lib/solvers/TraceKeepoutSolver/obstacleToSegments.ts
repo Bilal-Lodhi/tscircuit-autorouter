@@ -97,10 +97,88 @@ export function routeToOutlineSegments(
 ): Segment[] {
   const segments: Segment[] = []
 
+  const getOffsetPoints = (
+    segmentStart: Point2D,
+    segmentEnd: Point2D,
+  ): {
+    leftStart: Point2D
+    leftEnd: Point2D
+    rightStart: Point2D
+    rightEnd: Point2D
+  } | null => {
+    const dx = segmentEnd.x - segmentStart.x
+    const dy = segmentEnd.y - segmentStart.y
+    const len = Math.sqrt(dx * dx + dy * dy)
+    if (len === 0) {
+      return null
+    }
+
+    const nx = dx / len
+    const ny = dy / len
+    const px = -ny
+    const py = nx
+    const halfW = traceWidth / 2
+
+    return {
+      leftStart: {
+        x: segmentStart.x + px * halfW,
+        y: segmentStart.y + py * halfW,
+      },
+      leftEnd: {
+        x: segmentEnd.x + px * halfW,
+        y: segmentEnd.y + py * halfW,
+      },
+      rightStart: {
+        x: segmentStart.x - px * halfW,
+        y: segmentStart.y - py * halfW,
+      },
+      rightEnd: {
+        x: segmentEnd.x - px * halfW,
+        y: segmentEnd.y - py * halfW,
+      },
+    }
+  }
+
+  let firstSegmentIndex = -1
+  let lastSegmentIndex = -1
   for (let i = 0; i < route.length - 1; i++) {
     const start = route[i]!
     const end = route[i + 1]!
-    segments.push(...traceSegmentToOutlineSegments(start, end, traceWidth))
+    if (start.x === end.x && start.y === end.y) {
+      continue
+    }
+    if (firstSegmentIndex === -1) {
+      firstSegmentIndex = i
+    }
+    lastSegmentIndex = i
+  }
+
+  for (let i = 0; i < route.length - 1; i++) {
+    const start = route[i]!
+    const end = route[i + 1]!
+    const offsetPoints = getOffsetPoints(start, end)
+    if (!offsetPoints) {
+      continue
+    }
+
+    segments.push(
+      { start: offsetPoints.leftStart, end: offsetPoints.leftEnd },
+      { start: offsetPoints.rightStart, end: offsetPoints.rightEnd },
+    )
+
+    if (i === firstSegmentIndex) {
+      segments.push({
+        start: offsetPoints.leftStart,
+        end: offsetPoints.rightStart,
+      })
+    }
+
+    if (i === lastSegmentIndex) {
+      segments.push({
+        start: offsetPoints.leftEnd,
+        end: offsetPoints.rightEnd,
+      })
+    }
   }
 
   return segments
