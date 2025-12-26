@@ -22,6 +22,7 @@ import { smoothHdRoutes } from "./smoothLines"
 import { cloneAndShuffleArray } from "lib/utils/cloneAndShuffleArray"
 
 const CURSOR_STEP_DISTANCE = 0.5
+const BOARD_OUTLINE_CONNECTION_NAME = "__board_outline__"
 
 interface Point2D {
   x: number
@@ -39,7 +40,7 @@ export interface TraceKeepoutSolverInput {
   colorMap: Record<string, string>
   keepoutRadiusSchedule?: number[]
   smoothDistance?: number
-  srj: Pick<SimpleRouteJson, "outline" | "bounds">
+  srj?: Pick<SimpleRouteJson, "outline" | "bounds">
 }
 
 /**
@@ -78,6 +79,7 @@ export class TraceKeepoutSolver extends BaseSolver {
 
   obstacleSHI: ObstacleSpatialHashIndex
   hdRouteSHI: HighDensityRouteSpatialIndex
+  boardOutlineRoutes: HighDensityRoute[] = []
 
   constructor(private input: TraceKeepoutSolverInput) {
     super()
@@ -98,7 +100,16 @@ export class TraceKeepoutSolver extends BaseSolver {
     this.smoothedCursorRoutes = [...this.unprocessedRoutes]
 
     this.obstacleSHI = new ObstacleSpatialHashIndex("flatbush", input.obstacles)
-    this.hdRouteSHI = new HighDensityRouteSpatialIndex(this.hdRoutes)
+
+    // Create artificial hdRoutes for board outline to prevent traces from going outside
+    this.boardOutlineRoutes = this.createBoardOutlineRoutes()
+
+    // Add board outline routes to the spatial index so they act as obstacles
+    // but NOT to unprocessedRoutes so they won't be processed
+    this.hdRouteSHI = new HighDensityRouteSpatialIndex([
+      ...this.hdRoutes,
+      ...this.boardOutlineRoutes,
+    ])
 
     // Make sure the start/endpoint of any route is properly connected in the
     // connMap to the obstacle
@@ -155,10 +166,11 @@ export class TraceKeepoutSolver extends BaseSolver {
           )
           this.smoothedCursorRoutes = [...this.unprocessedRoutes]
           this.processedRoutes = []
-          // Rebuild the spatial index with processed routes
-          this.hdRouteSHI = new HighDensityRouteSpatialIndex(
-            this.unprocessedRoutes,
-          )
+          // Rebuild the spatial index with processed routes (including board outline)
+          this.hdRouteSHI = new HighDensityRouteSpatialIndex([
+            ...this.unprocessedRoutes,
+            ...this.boardOutlineRoutes,
+          ])
           return
         }
 
@@ -494,6 +506,70 @@ export class TraceKeepoutSolver extends BaseSolver {
     return result
   }
 
+  /**
+   * Creates artificial hdRoutes representing the board outline.
+   * These routes act as obstacles to prevent traces from being pushed outside the board.
+   */
+  private createBoardOutlineRoutes(): HighDensityRoute[] {
+    const routes: HighDensityRoute[] = []
+
+    // If no srj is provided, don't create board outline routes
+    if (!this.input.srj) {
+      return routes
+    }
+
+    const { outline, bounds } = this.input.srj
+
+    // Get the outline points - use outline if available, otherwise create from bounds
+    let outlinePoints: Array<{ x: number; y: number }>
+
+    if (outline && outline.length >= 3) {
+      outlinePoints = outline
+    } else {
+      // Create outline from bounds
+      outlinePoints = [
+        { x: bounds.minX, y: bounds.minY },
+        { x: bounds.maxX, y: bounds.minY },
+        { x: bounds.maxX, y: bounds.maxY },
+        { x: bounds.minX, y: bounds.maxY },
+      ]
+    }
+
+    // Create a route for each edge of the outline (on all layers)
+    // We create separate routes for each edge so the spatial index can find them efficiently
+    // Each route needs a unique connection name for the spatial index
+    for (let i = 0; i < outlinePoints.length; i++) {
+      const start = outlinePoints[i]!
+      const end = outlinePoints[(i + 1) % outlinePoints.length]!
+
+      // Create route on z=0 (top layer)
+      routes.push({
+        connectionName: `${BOARD_OUTLINE_CONNECTION_NAME}_${i}_z0`,
+        traceThickness: 0.01, // Thin trace for outline
+        viaDiameter: 0,
+        route: [
+          { x: start.x, y: start.y, z: 0 },
+          { x: end.x, y: end.y, z: 0 },
+        ],
+        vias: [],
+      })
+
+      // Create route on z=1 (bottom layer)
+      routes.push({
+        connectionName: `${BOARD_OUTLINE_CONNECTION_NAME}_${i}_z1`,
+        traceThickness: 0.01,
+        viaDiameter: 0,
+        route: [
+          { x: start.x, y: start.y, z: 1 },
+          { x: end.x, y: end.y, z: 1 },
+        ],
+        vias: [],
+      })
+    }
+
+    return routes
+  }
+
   visualize(): GraphicsObject {
     const visualization: GraphicsObject & {
       lines: NonNullable<GraphicsObject["lines"]>
@@ -550,6 +626,40 @@ export class TraceKeepoutSolver extends BaseSolver {
         fill: fillColor,
         label: `Obstacle (Z: ${obstacle.zLayers?.join(", ")})`,
       })
+    }
+
+    // Draw board outline
+    if (this.input.srj) {
+      const { outline, bounds } = this.input.srj
+      let outlinePoints: Array<{ x: number; y: number }>
+
+      if (outline && outline.length >= 3) {
+        outlinePoints = outline
+      } else {
+        // Create outline from bounds
+        outlinePoints = [
+          { x: bounds.minX, y: bounds.minY },
+          { x: bounds.maxX, y: bounds.minY },
+          { x: bounds.maxX, y: bounds.maxY },
+          { x: bounds.minX, y: bounds.maxY },
+        ]
+      }
+
+      // Draw each edge of the outline
+      for (let i = 0; i < outlinePoints.length; i++) {
+        const start = outlinePoints[i]!
+        const end = outlinePoints[(i + 1) % outlinePoints.length]!
+
+        visualization.lines.push({
+          points: [
+            { x: start.x, y: start.y },
+            { x: end.x, y: end.y },
+          ],
+          strokeColor: "rgba(0, 128, 0, 0.6)",
+          strokeWidth: 0.1,
+          label: "Board outline",
+        })
+      }
     }
 
     // Draw processed routes

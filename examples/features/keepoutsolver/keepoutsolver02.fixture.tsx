@@ -15,6 +15,7 @@ export default () => {
       connMap,
       colorMap: data.colorMap,
       keepoutRadiusSchedule: data.keepoutRadiusSchedule,
+      srj: data.srj,
     })
   }
 

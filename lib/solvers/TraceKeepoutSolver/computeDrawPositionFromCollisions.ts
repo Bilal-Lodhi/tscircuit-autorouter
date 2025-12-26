@@ -126,6 +126,7 @@ export function computeDrawPositionFromCollisions(
     collidingSegments,
     keepoutRadius,
   } = input
+  console.log(input)
   if (collidingSegments.length === 0) return null
 
   const epsilon = 0.0001
