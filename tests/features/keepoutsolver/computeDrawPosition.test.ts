@@ -106,3 +106,87 @@ test("computeDrawPositionFromCollisions should position between colliding segmen
     expect(Math.abs(result.y - expectedCenter)).toBeLessThan(0.15)
   }
 })
+
+test("computeDrawPositionFromCollisions should not cross colliding segments", () => {
+  const input = {
+    cursorPosition: {
+      x: 31.46,
+      y: 3.159747470810159,
+      z: 0,
+    },
+    lastCursorPosition: {
+      x: 31.46,
+      y: 2.659747470810159,
+      z: 0,
+    },
+    collidingSegments: [
+      // First rectangle (left obstacle)
+      { start: { x: 29.19, y: 3.54 }, end: { x: 31.19, y: 3.54 } },
+      { start: { x: 31.19, y: 3.54 }, end: { x: 31.19, y: 1.54 } },
+      { start: { x: 31.19, y: 1.54 }, end: { x: 29.19, y: 1.54 } },
+      { start: { x: 29.19, y: 1.54 }, end: { x: 29.19, y: 3.54 } },
+      // Second rectangle (right obstacle)
+      { start: { x: 31.73, y: 3.54 }, end: { x: 33.73, y: 3.54 } },
+      { start: { x: 33.73, y: 3.54 }, end: { x: 33.73, y: 1.54 } },
+      { start: { x: 33.73, y: 1.54 }, end: { x: 31.73, y: 1.54 } },
+      { start: { x: 31.73, y: 1.54 }, end: { x: 31.73, y: 3.54 } },
+    ],
+    keepoutRadius: 0.5,
+  }
+
+  const result = computeDrawPositionFromCollisions(input)
+
+  // The cursor is at x=31.46, in the gap between rectangles at x=31.19 and x=31.73
+  // Gap width: 31.73 - 31.19 = 0.54
+  // Gap center: (31.19 + 31.73) / 2 = 31.46 (cursor is already centered!)
+
+  // The draw position should either be null (cursor is fine) or very close to cursor
+  // It should NEVER cross a colliding segment (x should stay between 31.19 and 31.73)
+
+  if (result) {
+    // Draw position must stay within the gap
+    expect(result.x).toBeGreaterThan(31.19)
+    expect(result.x).toBeLessThan(31.73)
+
+    // Check that no segment is crossed between cursor and draw position
+    const segmentsCrossed = input.collidingSegments.filter((seg) => {
+      // Simple line intersection check
+      return segmentsIntersect(
+        input.cursorPosition,
+        result,
+        seg.start,
+        seg.end,
+      )
+    })
+    expect(segmentsCrossed.length).toBe(0)
+  }
+})
+
+// Helper function for segment intersection
+function segmentsIntersect(
+  a1: { x: number; y: number },
+  a2: { x: number; y: number },
+  b1: { x: number; y: number },
+  b2: { x: number; y: number },
+): boolean {
+  const d1 = direction(b1, b2, a1)
+  const d2 = direction(b1, b2, a2)
+  const d3 = direction(a1, a2, b1)
+  const d4 = direction(a1, a2, b2)
+
+  if (
+    ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+    ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))
+  ) {
+    return true
+  }
+  return false
+}
+
+function direction(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  c: { x: number; y: number },
+): number {
+  return (c.x - a.x) * (b.y - a.y) - (b.x - a.x) * (c.y - a.y)
+}
