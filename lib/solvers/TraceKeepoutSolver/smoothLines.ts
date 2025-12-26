@@ -18,7 +18,7 @@ interface Point3D {
 export function smoothRoute(
   route: Point3D[],
   smoothDistance: number = 0.5,
-  sampleInterval: number = 0.1,
+  sampleInterval: number = 0.25,
 ): Point3D[] {
   if (route.length < 3) return [...route]
 
