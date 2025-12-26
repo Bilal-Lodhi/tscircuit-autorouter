@@ -185,39 +185,69 @@ export function computeDrawPositionFromCollisions(
     if (validMinus) return posMinus
   }
 
-  // No valid position found - return the best suboptimal position
-  // (position with maximum clearance within the search range that has clear path)
-  let bestPos: Point2D | null = null
-  let bestClearance = -Infinity
+  // No valid position found - search for the position with maximum clearance
+  // along the barrier line. This finds the center of the gap between obstacles.
+  //
+  // Strategy: Search outward from cursor and find local clearance maxima.
+  // We want the NEAREST local maximum, not the global maximum (which might be
+  // in empty space far from the trace path).
+  const searchRange = keepoutRadius * 1.5
+  const searchSteps = 60
 
-  for (let i = -steps; i <= steps; i++) {
-    const d = (i / steps) * keepoutRadius
+  // Sample clearance at each position
+  const samples: Array<{ pos: Point2D; clearance: number; dist: number }> = []
+  for (let i = -searchSteps; i <= searchSteps; i++) {
+    const d = (i / searchSteps) * searchRange
     const testPos = {
       x: cursorPosition.x + barrierDir.x * d,
       y: cursorPosition.y + barrierDir.y * d,
     }
-
-    // Only consider positions with clear path from cursor
-    if (!isPathClear(cursorPosition, testPos, collidingSegments)) {
-      continue
-    }
-
     const clearance = getMinClearance(testPos, collidingSegments)
-    if (clearance > bestClearance) {
-      bestClearance = clearance
-      bestPos = testPos
+    samples.push({ pos: testPos, clearance, dist: Math.abs(d) })
+  }
+
+  // Find local maxima (positions where clearance is higher than neighbors)
+  const localMaxima: Array<{ pos: Point2D; clearance: number; dist: number }> =
+    []
+  for (let i = 1; i < samples.length - 1; i++) {
+    const prev = samples[i - 1]!
+    const curr = samples[i]!
+    const next = samples[i + 1]!
+    if (curr.clearance >= prev.clearance && curr.clearance >= next.clearance) {
+      // This is a local maximum
+      localMaxima.push(curr)
     }
   }
 
-  // If no position has clear path, fall back to cursor position (return null)
-  if (bestPos === null) {
-    return null
+  // If no local maxima found, fall back to the sample with best clearance
+  if (localMaxima.length === 0) {
+    let bestSample = samples[0]!
+    for (const s of samples) {
+      if (s.clearance > bestSample.clearance) {
+        bestSample = s
+      }
+    }
+    const movedDist = Math.sqrt(
+      (bestSample.pos.x - cursorPosition.x) ** 2 +
+        (bestSample.pos.y - cursorPosition.y) ** 2,
+    )
+    return movedDist > epsilon ? bestSample.pos : null
+  }
+
+  // Among local maxima, choose the one with best clearance
+  // (prioritizing clearance over distance since we need to be in a gap)
+  let bestMax = localMaxima[0]!
+  for (const m of localMaxima) {
+    if (m.clearance > bestMax.clearance) {
+      bestMax = m
+    }
   }
 
   const movedDist = Math.sqrt(
-    (bestPos.x - cursorPosition.x) ** 2 + (bestPos.y - cursorPosition.y) ** 2,
+    (bestMax.pos.x - cursorPosition.x) ** 2 +
+      (bestMax.pos.y - cursorPosition.y) ** 2,
   )
-  return movedDist > epsilon ? bestPos : null
+  return movedDist > epsilon ? bestMax.pos : null
 }
 /**
  * Converts an obstacle (rectangular) to its 4 edge segments
