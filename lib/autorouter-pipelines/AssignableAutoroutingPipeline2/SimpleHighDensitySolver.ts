@@ -547,6 +547,7 @@ export class SimpleHighDensitySolver extends BaseSolver {
         height: bounds.maxY - bounds.minY,
         fill: "rgba(0, 0, 0, 0.08)",
         stroke: "rgba(0, 0, 0, 0.2)",
+        label: node.capacityMeshNodeId,
       })
     }
 
