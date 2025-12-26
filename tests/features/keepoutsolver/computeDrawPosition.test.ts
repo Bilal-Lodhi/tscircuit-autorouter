@@ -151,12 +151,7 @@ test("computeDrawPositionFromCollisions should not cross colliding segments", ()
     // Check that no segment is crossed between cursor and draw position
     const segmentsCrossed = input.collidingSegments.filter((seg) => {
       // Simple line intersection check
-      return segmentsIntersect(
-        input.cursorPosition,
-        result,
-        seg.start,
-        seg.end,
-      )
+      return segmentsIntersect(input.cursorPosition, result, seg.start, seg.end)
     })
     expect(segmentsCrossed.length).toBe(0)
   }

@@ -209,7 +209,13 @@ export function computeDrawPositionFromCollisions(
     }
     const clearance = getMinClearance(testPos, collidingSegments)
     const pathClear = isPathClear(cursorPosition, testPos, collidingSegments)
-    samples.push({ pos: testPos, clearance, dist: Math.abs(d), pathClear, index: i })
+    samples.push({
+      pos: testPos,
+      clearance,
+      dist: Math.abs(d),
+      pathClear,
+      index: i,
+    })
   }
 
   // Filter to reachable positions (paths don't cross segments)
@@ -217,7 +223,8 @@ export function computeDrawPositionFromCollisions(
 
   // Find center index in all samples array
   const centerIdx = samples.findIndex((s) => s.index === 0)
-  const actualCenterIdx = centerIdx >= 0 ? centerIdx : Math.floor(samples.length / 2)
+  const actualCenterIdx =
+    centerIdx >= 0 ? centerIdx : Math.floor(samples.length / 2)
 
   // Search ALL samples to find local maxima in both directions
   // This ensures we find gaps even if path to them crosses segments
@@ -252,13 +259,22 @@ export function computeDrawPositionFromCollisions(
   if (reachableSamples.length > 0) {
     const reachableCenterIdx = reachableSamples.findIndex((s) => s.index === 0)
     const actualReachableCenterIdx =
-      reachableCenterIdx >= 0 ? reachableCenterIdx : Math.floor(reachableSamples.length / 2)
+      reachableCenterIdx >= 0
+        ? reachableCenterIdx
+        : Math.floor(reachableSamples.length / 2)
 
-    for (let i = actualReachableCenterIdx + 1; i < reachableSamples.length - 1; i++) {
+    for (
+      let i = actualReachableCenterIdx + 1;
+      i < reachableSamples.length - 1;
+      i++
+    ) {
       const prev = reachableSamples[i - 1]!
       const curr = reachableSamples[i]!
       const next = reachableSamples[i + 1]!
-      if (curr.clearance >= prev.clearance && curr.clearance >= next.clearance) {
+      if (
+        curr.clearance >= prev.clearance &&
+        curr.clearance >= next.clearance
+      ) {
         reachablePosMax = curr
         break
       }
@@ -268,7 +284,10 @@ export function computeDrawPositionFromCollisions(
       const prev = reachableSamples[i - 1]!
       const curr = reachableSamples[i]!
       const next = reachableSamples[i + 1]!
-      if (curr.clearance >= prev.clearance && curr.clearance >= next.clearance) {
+      if (
+        curr.clearance >= prev.clearance &&
+        curr.clearance >= next.clearance
+      ) {
         reachableNegMax = curr
         break
       }
