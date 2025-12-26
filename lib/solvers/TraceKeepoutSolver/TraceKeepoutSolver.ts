@@ -1,6 +1,6 @@
 import { BaseSolver } from "../BaseSolver"
 import { HighDensityRoute } from "lib/types/high-density-types"
-import { Obstacle } from "lib/types"
+import { Obstacle, SimpleRouteJson } from "lib/types"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import { ObstacleSpatialHashIndex } from "lib/data-structures/ObstacleTree"
 import { HighDensityRouteSpatialIndex } from "lib/data-structures/HighDensityRouteSpatialIndex"
@@ -39,6 +39,11 @@ export interface TraceKeepoutSolverInput {
   colorMap: Record<string, string>
   keepoutRadiusSchedule?: number[]
   smoothDistance?: number
+  srj: {
+    outline?: SimpleRouteJson["outline"]
+    width?: number
+    height?: number
+  }
 }
 
 /**
