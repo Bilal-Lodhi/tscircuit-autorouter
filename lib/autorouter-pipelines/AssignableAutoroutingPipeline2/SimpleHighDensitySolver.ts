@@ -91,6 +91,7 @@ export class SimpleHighDensitySolver extends BaseSolver {
 
   // State for current node being processed
   currentNode: NodeWithPortPoints | null = null
+  lastNode: NodeWithPortPoints | null = null
   currentNodeStep: number = 0
   routesInProgress: RouteInProgress[] = []
   pushMargin: number
@@ -141,6 +142,7 @@ export class SimpleHighDensitySolver extends BaseSolver {
         return
       }
 
+      this.lastNode = this.currentNode
       this.currentNode = this.unsolvedNodes.pop()!
       this.currentNodeStep = 0
       this.routesInProgress = []
@@ -157,6 +159,7 @@ export class SimpleHighDensitySolver extends BaseSolver {
     // Check if we've spent enough steps on this node
     if (this.currentNodeStep >= STEPS_PER_NODE) {
       this._finalizeRoutesForCurrentNode()
+      this.lastNode = this.currentNode
       this.currentNode = null
     }
   }
@@ -164,17 +167,11 @@ export class SimpleHighDensitySolver extends BaseSolver {
   _initializeRoutesForCurrentNode() {
     const node = this.currentNode!
 
-    // Compute node bounds from port points
-    let minX = Infinity
-    let maxX = -Infinity
-    let minY = Infinity
-    let maxY = -Infinity
-    for (const pt of node.portPoints) {
-      minX = Math.min(minX, pt.x)
-      maxX = Math.max(maxX, pt.x)
-      minY = Math.min(minY, pt.y)
-      maxY = Math.max(maxY, pt.y)
-    }
+    // Compute node bounds from center, width, and height
+    const minX = node.center.x - node.width / 2
+    const maxX = node.center.x + node.width / 2
+    const minY = node.center.y - node.height / 2
+    const maxY = node.center.y + node.height / 2
     this.currentNodeBounds = { minX, maxX, minY, maxY }
 
     // Group port points within this node by connectionName
@@ -513,17 +510,12 @@ export class SimpleHighDensitySolver extends BaseSolver {
     minY: number
     maxY: number
   } {
-    let minX = Infinity
-    let maxX = -Infinity
-    let minY = Infinity
-    let maxY = -Infinity
-    for (const pt of node.portPoints) {
-      minX = Math.min(minX, pt.x)
-      maxX = Math.max(maxX, pt.x)
-      minY = Math.min(minY, pt.y)
-      maxY = Math.max(maxY, pt.y)
+    return {
+      minX: node.center.x - node.width / 2,
+      maxX: node.center.x + node.width / 2,
+      minY: node.center.y - node.height / 2,
+      maxY: node.center.y + node.height / 2,
     }
-    return { minX, maxX, minY, maxY }
   }
 
   visualize(): GraphicsObject {
@@ -548,6 +540,20 @@ export class SimpleHighDensitySolver extends BaseSolver {
         fill: "rgba(0, 0, 0, 0.08)",
         stroke: "rgba(0, 0, 0, 0.2)",
         label: node.capacityMeshNodeId,
+      })
+    }
+
+    if (this.lastNode) {
+      const bounds = this._getNodeBounds(this.lastNode)
+      graphics.rects!.push({
+        center: {
+          x: (bounds.minX + bounds.maxX) / 2,
+          y: (bounds.minY + bounds.maxY) / 2,
+        },
+        width: bounds.maxX - bounds.minX,
+        height: bounds.maxY - bounds.minY,
+        fill: "rgba(0, 200, 0, 0.15)",
+        stroke: "rgba(0, 0, 255, 0.6)",
       })
     }
 
