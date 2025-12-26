@@ -39,11 +39,7 @@ export interface TraceKeepoutSolverInput {
   colorMap: Record<string, string>
   keepoutRadiusSchedule?: number[]
   smoothDistance?: number
-  srj: {
-    outline?: SimpleRouteJson["outline"]
-    width?: number
-    height?: number
-  }
+  srj: Pick<SimpleRouteJson, "outline" | "bounds">
 }
 
 /**

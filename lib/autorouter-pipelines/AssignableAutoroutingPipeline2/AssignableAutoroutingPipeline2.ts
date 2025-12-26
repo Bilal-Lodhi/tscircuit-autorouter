@@ -336,6 +336,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
         obstacles: cms.srj.obstacles,
         connMap: cms.connMap,
         colorMap: cms.colorMap,
+        srj: cms.srj,
       },
     ]),
   ]
