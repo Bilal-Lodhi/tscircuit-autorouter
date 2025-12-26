@@ -105,3 +105,62 @@ export function routeToOutlineSegments(
 
   return segments
 }
+
+/**
+ * Checks if a segment is within the search radius of a point
+ */
+function segmentIsNearPoint(
+  segment: { start: Point2D; end: Point2D },
+  point: Point2D,
+  radius: number,
+): boolean {
+  // Check if either endpoint is within radius
+  const d1 = Math.hypot(segment.start.x - point.x, segment.start.y - point.y)
+  const d2 = Math.hypot(segment.end.x - point.x, segment.end.y - point.y)
+  if (d1 <= radius || d2 <= radius) return true
+
+  // Check if the closest point on the segment is within radius
+  const dx = segment.end.x - segment.start.x
+  const dy = segment.end.y - segment.start.y
+  const lenSq = dx * dx + dy * dy
+  if (lenSq === 0) return false
+
+  const t = Math.max(
+    0,
+    Math.min(
+      1,
+      ((point.x - segment.start.x) * dx + (point.y - segment.start.y) * dy) /
+        lenSq,
+    ),
+  )
+  const closestX = segment.start.x + t * dx
+  const closestY = segment.start.y + t * dy
+  const dist = Math.hypot(closestX - point.x, closestY - point.y)
+
+  return dist <= radius
+}
+
+/**
+ * Converts route segments near a point to outline segments
+ * Only processes segments that are within the search radius
+ */
+export function routeToOutlineSegmentsNearPoint(
+  route: Array<{ x: number; y: number }>,
+  traceWidth: number,
+  point: Point2D,
+  searchRadius: number,
+): Segment[] {
+  const segments: Segment[] = []
+
+  for (let i = 0; i < route.length - 1; i++) {
+    const start = route[i]!
+    const end = route[i + 1]!
+
+    // Check if this route segment is near the point
+    if (segmentIsNearPoint({ start, end }, point, searchRadius + traceWidth)) {
+      segments.push(...traceSegmentToOutlineSegments(start, end, traceWidth))
+    }
+  }
+
+  return segments
+}

@@ -11,7 +11,7 @@ import {
 } from "./computeDrawPositionFromCollisions"
 import {
   obstacleToSegments,
-  routeToOutlineSegments,
+  routeToOutlineSegmentsNearPoint,
 } from "./obstacleToSegments"
 import {
   distance,
@@ -397,9 +397,15 @@ export class TraceKeepoutSolver extends BaseSolver {
       }
 
       // Convert route to outline segments (considering trace width)
+      // Only include segments that are within the search area
       const traceWidth = conflictingRoute.traceThickness ?? 0.15
       segments.push(
-        ...routeToOutlineSegments(conflictingRoute.route, traceWidth),
+        ...routeToOutlineSegmentsNearPoint(
+          conflictingRoute.route,
+          traceWidth,
+          { x: position.x, y: position.y },
+          searchRadius,
+        ),
       )
     }
 
