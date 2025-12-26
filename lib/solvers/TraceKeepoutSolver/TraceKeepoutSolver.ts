@@ -19,8 +19,9 @@ import {
   pointToSegmentDistance,
 } from "@tscircuit/math-utils"
 import { smoothHdRoutes } from "./smoothLines"
+import { cloneAndShuffleArray } from "lib/utils/cloneAndShuffleArray"
 
-const CURSOR_STEP_DISTANCE = 0.2
+const CURSOR_STEP_DISTANCE = 0.5
 
 interface Point2D {
   x: number
@@ -147,9 +148,9 @@ export class TraceKeepoutSolver extends BaseSolver {
           // Requeue all traces with the new keepout radius
           this.currentKeepoutRadius =
             this.KEEPOUT_RADIUS_SCHEDULE[this.currentScheduleIndex]!
-          this.unprocessedRoutes = smoothHdRoutes(
-            [...this.processedRoutes],
-            this.smoothDistance,
+          this.unprocessedRoutes = cloneAndShuffleArray(
+            smoothHdRoutes([...this.processedRoutes], this.smoothDistance),
+            this.currentScheduleIndex,
           )
           this.smoothedCursorRoutes = [...this.unprocessedRoutes]
           this.processedRoutes = []
