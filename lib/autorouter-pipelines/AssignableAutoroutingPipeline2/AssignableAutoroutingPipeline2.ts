@@ -354,6 +354,12 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
         srj: cms.srj,
       },
     ]),
+    definePipelineStep("traceWidthSolver", TraceWidthSolver, (cms) => [
+      {
+        hdRoutes: cms.traceKeepoutSolver?.redrawnHdRoutes ?? [],
+        nominalTraceWidth: cms.srj.nominalTraceWidth ?? cms.minTraceWidth * 2,
+      },
+    ]),
   ]
 
   constructor(
@@ -614,6 +620,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
 
   _getOutputHdRoutes(): HighDensityRoute[] {
     return (
+      this.traceWidthSolver?.hdRoutesWithWidths ??
       this.traceKeepoutSolver?.redrawnHdRoutes ??
       this.traceSimplificationSolver?.simplifiedHdRoutes ??
       this.highDensityStitchSolver?.mergedHdRoutes ??

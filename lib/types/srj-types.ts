@@ -28,6 +28,7 @@ export type ConnectionTempId = string
 export interface SimpleRouteJson {
   layerCount: number
   minTraceWidth: number
+  nominalTraceWidth?: number
   minViaDiameter?: number
   obstacles: Obstacle[]
   connections: Array<SimpleRouteConnection>
