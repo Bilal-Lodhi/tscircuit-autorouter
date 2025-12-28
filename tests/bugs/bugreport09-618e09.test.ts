@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { AutoroutingPipeline1_OriginalUnravel } from "lib"
 import type { SimpleRouteJson } from "lib/types"
-import bugReport from "../../examples/bug-reports/bugreport09-618e09/bugreport09-618e09.json" assert {
+import bugReport from "../../bug-reports/bugreport09-618e09/bugreport09-618e09.json" assert {
   type: "json",
 }
 

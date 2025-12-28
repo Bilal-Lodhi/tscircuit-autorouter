@@ -1,8 +1,8 @@
 import { AutoroutingPipelineSolver2_PortPointPathing } from "lib/autorouter-pipelines/AutoroutingPipeline2_PortPointPathing/AutoroutingPipelineSolver2_PortPointPathing"
 import type { SimpleRouteJson } from "lib/types"
 import type { CacheProvider } from "lib/cache/types"
-import keyboard4 from "examples/legacy/assets/keyboard4.json"
-import keyboard5 from "examples/legacy/assets/keyboard5.json"
+import keyboard4 from "legacy/assets/keyboard4.json"
+import keyboard5 from "legacy/assets/keyboard5.json"
 import { InMemoryCache } from "lib/cache/InMemoryCache"
 
 interface RunResult {

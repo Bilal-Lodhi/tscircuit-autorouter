@@ -3,7 +3,7 @@ import { HyperAssignableViaCapacityPathingSolver } from "../../../lib/autorouter
 import { getSvgFromGraphicsObject } from "graphics-debug"
 import "../../../tests/fixtures/svg-matcher"
 // @ts-ignore
-import constructorInput from "../../../examples/unassigned-obstacles/AssignableViaCapacityPathingSolver_DirectiveSubOptimal/AssignableViaCapacityPathingSolver_DirectiveSubOptimal01.json"
+import constructorInput from "../../../unassigned-obstacles/AssignableViaCapacityPathingSolver_DirectiveSubOptimal/AssignableViaCapacityPathingSolver_DirectiveSubOptimal01.json"
 
 test("HyperAssignableViaCapacityPathingSolver should solve DirectiveSubOptimal01 problem", async () => {
   // Create hyper solver with the test input

@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import { AutoroutingPipelineSolver } from "lib"
-import bugReport from "../../examples/bug-reports/bugreport10-71239a/bugreport10-71239a.json" assert {
+import bugReport from "../../bug-reports/bugreport10-71239a/bugreport10-71239a.json" assert {
   type: "json",
 }
 import type { SimpleRouteJson } from "lib/types"

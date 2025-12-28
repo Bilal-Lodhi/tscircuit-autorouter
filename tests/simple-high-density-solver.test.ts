@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test"
 import { SimpleHighDensitySolver } from "lib/autorouter-pipelines/AssignableAutoroutingPipeline2/SimpleHighDensitySolver"
 import { generateColorMapFromNodeWithPortPoints } from "lib/utils/generateColorMapFromNodeWithPortPoints"
-import input from "../examples/legacy/assets/simpleHighDensityRouteSolverInput.json" assert {
+import input from "../legacy/assets/simpleHighDensityRouteSolverInput.json" assert {
   type: "json",
 }
 

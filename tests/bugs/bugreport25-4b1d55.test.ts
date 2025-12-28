@@ -3,7 +3,7 @@ import {
   AutoroutingPipeline1_OriginalUnravel,
   AutoroutingPipelineSolver,
 } from "lib"
-import bugReport from "../../examples/bug-reports/bugreport25-4b1d55/bugreport25-4b1d55.json" assert {
+import bugReport from "../../bug-reports/bugreport25-4b1d55/bugreport25-4b1d55.json" assert {
   type: "json",
 }
 import type { SimpleRouteJson } from "lib/types"

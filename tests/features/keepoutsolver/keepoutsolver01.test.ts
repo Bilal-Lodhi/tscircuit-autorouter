@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test"
 import { TraceKeepoutSolver } from "lib/solvers/TraceKeepoutSolver/TraceKeepoutSolver"
 import { ConnectivityMap } from "connectivity-map"
-import input from "../../../examples/features/keepoutsolver/keepoutsolver01-input.json"
+import input from "features/keepoutsolver/keepoutsolver01-input.json"
 
 test.skip("TraceKeepoutSolver - adjusts traces to maintain keepout distance", () => {
   const data = (input as any)[0]

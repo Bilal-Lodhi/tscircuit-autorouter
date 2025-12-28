@@ -31,5 +31,5 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
   },
-  "exclude": ["examples/legacy/assets/**/*.json"]
+  "exclude": ["legacy/assets/**/*.json"]
 }

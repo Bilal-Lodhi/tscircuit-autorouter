@@ -2,7 +2,7 @@ import { expect, test } from "bun:test"
 import { AutoroutingPipelineSolver } from "../lib"
 import { SimpleRouteJson } from "lib/types"
 import { convertSrjToGraphicsObject } from "../lib"
-import e2e3 from "examples/legacy/assets/e2e3.json"
+import e2e3 from "legacy/assets/e2e3.json"
 import { getSvgFromGraphicsObject } from "graphics-debug"
 import {
   createPortPointSection,
