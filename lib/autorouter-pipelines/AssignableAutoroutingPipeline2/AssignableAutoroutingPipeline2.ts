@@ -357,7 +357,8 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
     definePipelineStep("traceWidthSolver", TraceWidthSolver, (cms) => [
       {
         hdRoutes: cms.traceKeepoutSolver?.redrawnHdRoutes ?? [],
-        nominalTraceWidth: cms.srj.nominalTraceWidth ?? cms.minTraceWidth * 2,
+        nominalTraceWidth: cms.srj.nominalTraceWidth,
+        minTraceWidth: cms.minTraceWidth,
       },
     ]),
   ]
