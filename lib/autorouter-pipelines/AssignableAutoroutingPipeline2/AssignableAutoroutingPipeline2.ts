@@ -37,6 +37,7 @@ import { NetToPointPairsSolver2_OffBoardConnection } from "../../solvers/NetToPo
 import { RectDiffPipeline } from "@tscircuit/rectdiff"
 import { TraceSimplificationSolver } from "../../solvers/TraceSimplificationSolver/TraceSimplificationSolver"
 import { TraceKeepoutSolver } from "../../solvers/TraceKeepoutSolver/TraceKeepoutSolver"
+import { TraceWidthSolver } from "../../solvers/TraceWidthSolver/TraceWidthSolver"
 import { AvailableSegmentPointSolver } from "../../solvers/AvailableSegmentPointSolver/AvailableSegmentPointSolver"
 import {
   PortPointPathingSolver,
@@ -107,6 +108,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
   deadEndSolver?: DeadEndSolver
   traceSimplificationSolver?: TraceSimplificationSolver
   traceKeepoutSolver?: TraceKeepoutSolver
+  traceWidthSolver?: TraceWidthSolver
   availableSegmentPointSolver?: AvailableSegmentPointSolver
   portPointPathingSolver?: PortPointPathingSolver
   multiSectionPortPointOptimizer?: MultiSectionPortPointOptimizer
@@ -468,6 +470,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
     const highDensityStitchViz = this.highDensityStitchSolver?.visualize()
     const traceSimplificationViz = this.traceSimplificationSolver?.visualize()
     const traceKeepoutViz = this.traceKeepoutSolver?.visualize()
+    const traceWidthViz = this.traceWidthSolver?.visualize()
     const problemOutline = this.srj.outline
     const problemLines: Line[] = []
 
@@ -555,6 +558,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
       highDensityStitchViz,
       traceSimplificationViz,
       traceKeepoutViz,
+      traceWidthViz,
       this.solved
         ? combineVisualizations(
             problemViz,
