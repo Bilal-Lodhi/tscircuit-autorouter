@@ -40,6 +40,8 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
   // Process each trace
   if (srj.traces) {
     for (const trace of srj.traces) {
+      let traceWidth = srj.minTraceWidth
+
       for (let j = 0; j < trace.route.length - 1; j++) {
         const routePoint = trace.route[j]
         const nextRoutePoint = trace.route[j + 1]
@@ -58,6 +60,7 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
           nextRoutePoint.route_type === "wire" &&
           nextRoutePoint.layer === routePoint.layer
         ) {
+          traceWidth = routePoint.width
           // Create a line between consecutive wire segments on the same layer
           lines.push({
             points: [
@@ -65,7 +68,7 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
               { x: nextRoutePoint.x, y: nextRoutePoint.y },
             ],
             layer: `z${mapLayerNameToZ(routePoint.layer, layerCount)}`,
-            strokeWidth: 0.15,
+            strokeWidth: traceWidth,
             strokeColor: safeTransparentize(
               {
                 top: "red",
