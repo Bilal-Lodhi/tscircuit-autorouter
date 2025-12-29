@@ -30,6 +30,8 @@ import {
   AutoroutingPipelineMenuBar,
   PIPELINE_OPTIONS,
   type PipelineId,
+  EFFORT_LEVELS,
+  type EffortLevel,
 } from "./AutoroutingPipelineMenuBar"
 import { AssignableAutoroutingPipeline2 } from "lib/autorouter-pipelines/AssignableAutoroutingPipeline2/AssignableAutoroutingPipeline2"
 
@@ -41,13 +43,14 @@ const PIPELINE_SOLVERS = {
 } as const
 
 const PIPELINE_STORAGE_KEY = "selectedPipeline"
+const EFFORT_STORAGE_KEY = "selectedEffort"
 
 interface CapacityMeshPipelineDebuggerProps {
   srj: SimpleRouteJson
   animationSpeed?: number
   createSolver?: (
     srj: SimpleRouteJson,
-    opts: { cacheProvider?: CacheProvider | null },
+    opts: { cacheProvider?: CacheProvider | null; effort?: EffortLevel },
   ) => any
 }
 
@@ -122,19 +125,39 @@ export const AutoroutingPipelineDebugger = ({
     }
   }
 
+  const [effort, setEffortState] = useState<EffortLevel>(() => {
+    const stored = localStorage.getItem(EFFORT_STORAGE_KEY)
+    const parsed = stored ? parseInt(stored, 10) : 1
+    return EFFORT_LEVELS.includes(parsed as EffortLevel)
+      ? (parsed as EffortLevel)
+      : 1
+  })
+
+  const setEffort = (newEffort: EffortLevel) => {
+    setEffortState(newEffort)
+    try {
+      localStorage.setItem(EFFORT_STORAGE_KEY, String(newEffort))
+    } catch (e) {
+      console.warn("Could not save effort to localStorage:", e)
+    }
+  }
+
   const createNewSolver = (
     opts: {
       cacheProvider?: CacheProvider | null
       pipelineId?: PipelineId
+      effort?: EffortLevel
     } = {},
   ) => {
     if (createSolverProp) {
-      return createSolverProp(srj, { cacheProvider, ...opts })
+      return createSolverProp(srj, { cacheProvider, effort, ...opts })
     }
     const pipelineToUse = opts.pipelineId ?? selectedPipelineId
+    const effortToUse = opts.effort ?? effort
     const SolverClass = PIPELINE_SOLVERS[pipelineToUse]
     return new SolverClass(srj, {
       cacheProvider,
+      effort: effortToUse,
       ...opts,
     })
   }
@@ -148,10 +171,14 @@ export const AutoroutingPipelineDebugger = ({
       (localStorage.getItem("cacheProviderName") as CacheProviderName) ?? "None"
     const initialCacheProvider =
       getGlobalCacheProviderFromName(initialCacheName)
+    const storedEffort = localStorage.getItem(EFFORT_STORAGE_KEY)
+    const initialEffort = storedEffort
+      ? (parseInt(storedEffort, 10) as EffortLevel)
+      : 1
     const SolverClass = PIPELINE_SOLVERS[initialPipelineId]
     return createSolverProp
-      ? createSolverProp(srj, { cacheProvider: initialCacheProvider })
-      : new SolverClass(srj, { cacheProvider: initialCacheProvider })
+      ? createSolverProp(srj, { cacheProvider: initialCacheProvider, effort: initialEffort })
+      : new SolverClass(srj, { cacheProvider: initialCacheProvider, effort: initialEffort })
   })
   const [previewMode, setPreviewMode] = useState(false)
   const [renderer, setRenderer] = useState<"canvas" | "vector">(
@@ -648,7 +675,14 @@ export const AutoroutingPipelineDebugger = ({
         onSetPipelineId={(pipelineId: PipelineId) => {
           setSelectedPipelineId(pipelineId)
           const SolverClass = PIPELINE_SOLVERS[pipelineId]
-          setSolver(new SolverClass(srj, { cacheProvider }))
+          setSolver(new SolverClass(srj, { cacheProvider, effort }))
+          setDrcErrors(null)
+          setDrcErrorCount(0)
+        }}
+        effort={effort}
+        onSetEffort={(newEffort: EffortLevel) => {
+          setEffort(newEffort)
+          setSolver(createNewSolver({ effort: newEffort }))
           setDrcErrors(null)
           setDrcErrorCount(0)
         }}

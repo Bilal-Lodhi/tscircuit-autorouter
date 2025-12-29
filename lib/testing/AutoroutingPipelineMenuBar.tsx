@@ -23,6 +23,9 @@ const cacheProviders: CacheProviderName[] = [
   "Local Storage",
 ]
 
+export const EFFORT_LEVELS = [1, 2, 5, 10, 20, 50, 100] as const
+export type EffortLevel = (typeof EFFORT_LEVELS)[number]
+
 export const PIPELINE_OPTIONS = [
   {
     id: "AutoroutingPipeline1_OriginalUnravel",
@@ -60,6 +63,8 @@ interface AutoroutingPipelineMenuBarProps {
   onClearCache: () => void
   selectedPipelineId: PipelineId
   onSetPipelineId: (pipelineId: PipelineId) => void
+  effort: EffortLevel
+  onSetEffort: (effort: EffortLevel) => void
 }
 
 export const AutoroutingPipelineMenuBar = ({
@@ -78,6 +83,8 @@ export const AutoroutingPipelineMenuBar = ({
   onClearCache,
   selectedPipelineId,
   onSetPipelineId,
+  effort,
+  onSetEffort,
 }: AutoroutingPipelineMenuBarProps) => {
   return (
     <Menubar className="rounded-none border-b border-none px-2 lg:px-4 mb-4 light">
@@ -96,6 +103,22 @@ export const AutoroutingPipelineMenuBar = ({
               )}
             </MenubarItem>
           ))}
+          <MenubarSeparator />
+          <MenubarSub>
+            <MenubarSubTrigger>Effort: {effort}x</MenubarSubTrigger>
+            <MenubarSubContent>
+              {EFFORT_LEVELS.map((level) => (
+                <MenubarItem
+                  key={level}
+                  onClick={() => onSetEffort(level)}
+                  disabled={effort === level}
+                >
+                  {level}x
+                  {effort === level && <MenubarShortcut>✓</MenubarShortcut>}
+                </MenubarItem>
+              ))}
+            </MenubarSubContent>
+          </MenubarSub>
         </MenubarContent>
       </MenubarMenu>
       <MenubarMenu>
