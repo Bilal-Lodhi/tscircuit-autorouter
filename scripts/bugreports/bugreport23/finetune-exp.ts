@@ -54,7 +54,7 @@ function runTest(schedule: ScheduleEntry[]): {
     const result = execSync(
       `bun --eval "
         import { AutoroutingPipelineSolver } from './lib/solvers/AutoroutingPipelineSolver'
-        import bugreport23 from './examples/bug-reports/bugreport23-LGA15x4/bugreport23-LGA15x4.srj.json'
+        import bugreport23 from './fixtures/bug-reports/bugreport23-LGA15x4/bugreport23-LGA15x4.srj.json' assert { type: "json" }
         const solver = new AutoroutingPipelineSolver(bugreport23 as any)
         solver.solveUntilPhase('highDensityRouteSolver')
         const stats = solver.multiSectionPortPointOptimizer?.stats || {}

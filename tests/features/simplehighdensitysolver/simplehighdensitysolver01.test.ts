@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test"
 import { SimpleHighDensitySolver } from "lib/autorouter-pipelines/AssignableAutoroutingPipeline2/SimpleHighDensitySolver"
 import { generateColorMapFromNodeWithPortPoints } from "lib/utils/generateColorMapFromNodeWithPortPoints"
-import input from "../../../examples/features/simplehighdensitysolver/simplehighdensitysolver01-input.json"
+import input from "../../../fixtures/features/simplehighdensitysolver/simplehighdensitysolver01-input.json" assert { type: "json" }
 
 test("SimpleHighDensitySolver01 - solves high density routes", () => {
   const nodePortPoints = (input as any[]).flatMap(

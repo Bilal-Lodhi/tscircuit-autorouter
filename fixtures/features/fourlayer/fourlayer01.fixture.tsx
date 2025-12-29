@@ -1,0 +1,9 @@
+import { AutoroutingPipelineDebugger } from "lib/testing/AutoroutingPipelineDebugger"
+import { SimpleRouteJson } from "lib/types"
+import simpleRouteJson from "fixtures/legacy/assets/e2e3.json" assert { type: "json" }
+
+export default () => (
+  <AutoroutingPipelineDebugger
+    srj={{ ...simpleRouteJson, layerCount: 4 } as SimpleRouteJson}
+  />
+)

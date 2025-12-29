@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import { AssignableViaCapacityPathingSolver_DirectiveSubOptimal } from "../../../lib/autorouter-pipelines/AssignableAutoroutingPipeline1/AssignableViaCapacityPathing/AssignableViaCapacityPathingSolver_DirectiveSubOptimal"
 // @ts-ignore
-import constructorInput from "../../../examples/unassigned-obstacles/AssignableViaCapacityPathingSolver_DirectiveSubOptimal/AssignableViaCapacityPathingSolver_DirectiveSubOptimal01.json"
+import constructorInput from "../../../fixtures/unassigned-obstacles/AssignableViaCapacityPathingSolver_DirectiveSubOptimal/AssignableViaCapacityPathingSolver_DirectiveSubOptimal01.json" assert { type: "json" }
 
 // Skipping because the hyper parameters have to be tuned for it to solve this
 // problem- using the hyper solver should pass

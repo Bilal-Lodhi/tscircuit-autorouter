@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from "bun:test"
 import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
 import type { AnyCircuitElement } from "circuit-json"
-import keyboard4 from "../examples/legacy/assets/keyboard4.json"
+import keyboard4 from "../fixtures/legacy/assets/keyboard4.json" assert { type: "json" }
 import { CapacityMeshSolver } from "../lib"
 import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
 import { getDrcErrors } from "lib/testing/getDrcErrors"

@@ -48,7 +48,7 @@ Module._load = function (request: string, parent: any, isMain: boolean) {
 
 import { AutoroutingPipelineSolver2_PortPointPathing } from "../../../lib/autorouter-pipelines/AutoroutingPipeline2_PortPointPathing/AutoroutingPipelineSolver2_PortPointPathing"
 import type { SimpleRouteJson } from "../../../lib/types"
-import bugreport23 from "../../../examples/bug-reports/bugreport23-LGA15x4/bugreport23-LGA15x4.srj.json"
+import bugreport23 from "../../../fixtures/bug-reports/bugreport23-LGA15x4/bugreport23-LGA15x4.srj.json" assert { type: "json" }
 
 // Since patching is complex, let's just run the test and output the results
 // We'll compare different schedules by modifying the source file in the outer script
