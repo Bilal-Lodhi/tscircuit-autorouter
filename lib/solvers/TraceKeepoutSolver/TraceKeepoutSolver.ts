@@ -39,7 +39,7 @@ export interface TraceKeepoutSolverInput {
   connMap: ConnectivityMap
   colorMap: Record<string, string>
   keepoutRadiusSchedule?: number[]
-  srj?: Pick<SimpleRouteJson, "outline" | "bounds">
+  srj?: Pick<SimpleRouteJson, "outline" | "bounds" | "layerCount">
 }
 
 /**
@@ -553,33 +553,23 @@ export class TraceKeepoutSolver extends BaseSolver {
     // Create a route for each edge of the outline (on all layers)
     // We create separate routes for each edge so the spatial index can find them efficiently
     // Each route needs a unique connection name for the spatial index
+    const layerCount = this.input.srj.layerCount ?? 2
     for (let i = 0; i < outlinePoints.length; i++) {
       const start = outlinePoints[i]!
       const end = outlinePoints[(i + 1) % outlinePoints.length]!
 
-      // Create route on z=0 (top layer)
-      routes.push({
-        connectionName: `${BOARD_OUTLINE_CONNECTION_NAME}_${i}_z0`,
-        traceThickness: 0.01, // Thin trace for outline
-        viaDiameter: 0,
-        route: [
-          { x: start.x, y: start.y, z: 0 },
-          { x: end.x, y: end.y, z: 0 },
-        ],
-        vias: [],
-      })
-
-      // Create route on z=1 (bottom layer)
-      routes.push({
-        connectionName: `${BOARD_OUTLINE_CONNECTION_NAME}_${i}_z1`,
-        traceThickness: 0.01,
-        viaDiameter: 0,
-        route: [
-          { x: start.x, y: start.y, z: 1 },
-          { x: end.x, y: end.y, z: 1 },
-        ],
-        vias: [],
-      })
+      for (let layerIndex = 0; layerIndex < layerCount; layerIndex++) {
+        routes.push({
+          connectionName: `${BOARD_OUTLINE_CONNECTION_NAME}_${i}_z${layerIndex}`,
+          traceThickness: 0.01, // Thin trace for outline
+          viaDiameter: 0,
+          route: [
+            { x: start.x, y: start.y, z: layerIndex },
+            { x: end.x, y: end.y, z: layerIndex },
+          ],
+          vias: [],
+        })
+      }
     }
 
     return routes
