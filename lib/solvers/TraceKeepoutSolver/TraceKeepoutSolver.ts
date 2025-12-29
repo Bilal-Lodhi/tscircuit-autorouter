@@ -21,7 +21,6 @@ import {
 import { smoothHdRoutes } from "./smoothLines"
 import { cloneAndShuffleArray } from "lib/utils/cloneAndShuffleArray"
 
-const CURSOR_STEP_DISTANCE = 0.25
 const BOARD_OUTLINE_CONNECTION_NAME = "__board_outline__"
 
 interface Point2D {
@@ -247,6 +246,10 @@ export class TraceKeepoutSolver extends BaseSolver {
     })
   }
 
+  getStepDistance(): number {
+    return this.currentKeepoutRadius / 2
+  }
+
   /**
    * Steps the cursor forward by CURSOR_STEP_DISTANCE along the trace
    * Returns false if we've reached the end of the trace
@@ -255,7 +258,7 @@ export class TraceKeepoutSolver extends BaseSolver {
     if (!this.currentTrace || !this.cursorPosition) return false
 
     const route = this.currentTrace.route
-    let remainingDistance = CURSOR_STEP_DISTANCE
+    let remainingDistance = this.getStepDistance()
 
     while (remainingDistance > 0) {
       if (this.currentTraceSegmentIndex >= route.length - 1) {
