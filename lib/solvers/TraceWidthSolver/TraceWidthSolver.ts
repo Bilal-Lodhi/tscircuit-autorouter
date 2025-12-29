@@ -57,6 +57,12 @@ export class TraceWidthSolver extends BaseSolver {
   currentTargetWidth: number = 0
   hasInsufficientClearance = false
 
+  // For visualization - track colliding objects
+  lastCollidingObstacles: Obstacle[] = []
+  lastCollidingRoutes: HighDensityRoute[] = []
+  lastClearance: number = Infinity
+
+  obstacles: Obstacle[] = []
   obstacleSHI?: ObstacleSpatialHashIndex
   hdRouteSHI: HighDensityRouteSpatialIndex
   connMap?: ConnectivityMap
@@ -68,25 +74,22 @@ export class TraceWidthSolver extends BaseSolver {
 
     this.hdRoutes = [...input.hdRoutes]
     this.minTraceWidth = input.minTraceWidth
-    this.nominalTraceWidth =
-      input.nominalTraceWidth ?? input.minTraceWidth * 2
+    this.nominalTraceWidth = input.nominalTraceWidth ?? input.minTraceWidth * 2
 
-    // Build the width schedule: [nominal, mid, min]
+    // Build the width schedule: [nominal, mid]
+    // minTraceWidth is not in schedule - it's the fallback when all schedule options fail
     const midWidth = (this.nominalTraceWidth + this.minTraceWidth) / 2
-    this.TRACE_WIDTH_SCHEDULE = [
-      this.nominalTraceWidth,
-      midWidth,
-      this.minTraceWidth,
-    ]
+    this.TRACE_WIDTH_SCHEDULE = [this.nominalTraceWidth, midWidth]
 
     this.unprocessedRoutes = [...this.hdRoutes]
     this.connMap = input.connMap
     this.colorMap = input.colorMap
+    this.obstacles = input.obstacles ?? []
 
-    if (input.obstacles && input.obstacles.length > 0) {
+    if (this.obstacles.length > 0) {
       this.obstacleSHI = new ObstacleSpatialHashIndex(
         "flatbush",
-        input.obstacles,
+        this.obstacles,
       )
     }
 
@@ -239,6 +242,7 @@ export class TraceWidthSolver extends BaseSolver {
 
   /**
    * Gets the minimum clearance at a given position from obstacles and other traces
+   * Also updates lastCollidingObstacles and lastCollidingRoutes for visualization
    */
   private getClearanceAtPosition(position: Point3D): number {
     if (!this.currentTrace) return Infinity
@@ -247,6 +251,10 @@ export class TraceWidthSolver extends BaseSolver {
       this.currentTrace.rootConnectionName ?? this.currentTrace.connectionName
     const searchRadius = this.nominalTraceWidth * 2
     let minClearance = Infinity
+
+    // Reset colliding objects for visualization
+    this.lastCollidingObstacles = []
+    this.lastCollidingRoutes = []
 
     // Check for obstacles within the search radius
     if (this.obstacleSHI) {
@@ -301,6 +309,11 @@ export class TraceWidthSolver extends BaseSolver {
         )
         const distToObstacle = Math.sqrt(dx * dx + dy * dy)
 
+        // Track obstacles that are within the current target width
+        if (distToObstacle < this.currentTargetWidth / 2) {
+          this.lastCollidingObstacles.push(obstacle)
+        }
+
         if (distToObstacle < minClearance) {
           minClearance = distToObstacle
         }
@@ -328,11 +341,17 @@ export class TraceWidthSolver extends BaseSolver {
       const otherTraceHalfWidth = (conflictingRoute.traceThickness ?? 0.15) / 2
       const clearance = distance - otherTraceHalfWidth
 
+      // Track routes that are within the current target width
+      if (clearance < this.currentTargetWidth / 2) {
+        this.lastCollidingRoutes.push(conflictingRoute)
+      }
+
       if (clearance < minClearance) {
         minClearance = clearance
       }
     }
 
+    this.lastClearance = minClearance
     return minClearance
   }
 
@@ -358,20 +377,61 @@ export class TraceWidthSolver extends BaseSolver {
   }
 
   visualize(): GraphicsObject {
-    const scheduleStr = this.TRACE_WIDTH_SCHEDULE.map((w) =>
-      w.toFixed(2),
-    ).join(", ")
+    const scheduleStr = this.TRACE_WIDTH_SCHEDULE.map((w) => w.toFixed(2)).join(
+      ", ",
+    )
 
     const visualization: GraphicsObject & {
       lines: NonNullable<GraphicsObject["lines"]>
       points: NonNullable<GraphicsObject["points"]>
       circles: NonNullable<GraphicsObject["circles"]>
+      rects: NonNullable<GraphicsObject["rects"]>
     } = {
       lines: [],
       points: [],
       circles: [],
+      rects: [],
       coordinateSystem: "cartesian",
-      title: `Trace Width Solver (schedule: [${scheduleStr}]mm)`,
+      title: `Trace Width Solver (schedule: [${scheduleStr}]mm, fallback: ${this.minTraceWidth.toFixed(2)}mm)`,
+    }
+
+    // Build set of colliding obstacle IDs for quick lookup
+    const collidingObstacleIds = new Set(
+      this.lastCollidingObstacles.map((o) => o.obstacleId),
+    )
+    const collidingRouteNames = new Set(
+      this.lastCollidingRoutes.map((r) => r.connectionName),
+    )
+
+    // Draw all obstacles (faded, with colliding ones highlighted)
+    for (const obstacle of this.obstacles) {
+      const isColliding = collidingObstacleIds.has(obstacle.obstacleId)
+      const isOnLayer0 = obstacle.zLayers?.includes(0)
+      const isOnLayer1 = obstacle.zLayers?.includes(1)
+
+      let fillColor: string
+      if (isColliding) {
+        fillColor = "rgba(255, 0, 0, 0.6)"
+      } else if (isOnLayer0 && isOnLayer1) {
+        fillColor = "rgba(128, 0, 128, 0.15)"
+      } else if (isOnLayer0) {
+        fillColor = "rgba(255, 0, 0, 0.15)"
+      } else if (isOnLayer1) {
+        fillColor = "rgba(0, 0, 255, 0.15)"
+      } else {
+        fillColor = "rgba(128, 128, 128, 0.15)"
+      }
+
+      visualization.rects.push({
+        center: obstacle.center,
+        width: obstacle.width,
+        height: obstacle.height,
+        fill: fillColor,
+        stroke: isColliding ? "red" : undefined,
+        label: isColliding
+          ? `COLLIDING: ${obstacle.obstacleId ?? "obstacle"}`
+          : `${obstacle.obstacleId ?? "obstacle"} (Z: ${obstacle.zLayers?.join(", ")})`,
+      })
     }
 
     // Draw processed routes with their determined widths
@@ -379,8 +439,7 @@ export class TraceWidthSolver extends BaseSolver {
       if (route.route.length === 0) continue
 
       const isNominalWidth = route.traceThickness === this.nominalTraceWidth
-      const isMidWidth =
-        route.traceThickness === this.TRACE_WIDTH_SCHEDULE[1]
+      const isMidWidth = route.traceThickness === this.TRACE_WIDTH_SCHEDULE[1]
       const strokeColor = isNominalWidth
         ? "green"
         : isMidWidth
@@ -426,8 +485,9 @@ export class TraceWidthSolver extends BaseSolver {
               { x: current.x, y: current.y },
               { x: next.x, y: next.y },
             ],
-            strokeColor: "gray",
+            strokeColor: "cyan",
             strokeWidth: this.currentTrace.traceThickness ?? this.minTraceWidth,
+            label: `Processing: ${this.currentTrace.connectionName}`,
           })
         }
       }
@@ -439,7 +499,7 @@ export class TraceWidthSolver extends BaseSolver {
           radius: this.currentTargetWidth / 2,
           stroke: this.hasInsufficientClearance ? "red" : "green",
           fill: "none",
-          label: `Testing width: ${this.currentTargetWidth.toFixed(2)}mm`,
+          label: `Testing width: ${this.currentTargetWidth.toFixed(2)}mm (clearance: ${this.lastClearance.toFixed(2)}mm)`,
         })
 
         visualization.points.push({
@@ -451,9 +511,11 @@ export class TraceWidthSolver extends BaseSolver {
       }
     }
 
-    // Draw unprocessed routes
+    // Draw unprocessed routes (faded, with colliding ones highlighted)
     for (const route of this.unprocessedRoutes) {
       if (route.route.length === 0) continue
+
+      const isColliding = collidingRouteNames.has(route.connectionName)
 
       for (let i = 0; i < route.route.length - 1; i++) {
         const current = route.route[i]!
@@ -465,8 +527,13 @@ export class TraceWidthSolver extends BaseSolver {
               { x: current.x, y: current.y },
               { x: next.x, y: next.y },
             ],
-            strokeColor: "rgba(128, 128, 128, 0.3)",
+            strokeColor: isColliding
+              ? "rgba(255, 0, 0, 0.8)"
+              : "rgba(128, 128, 128, 0.3)",
             strokeWidth: route.traceThickness ?? this.minTraceWidth,
+            label: isColliding
+              ? `COLLIDING: ${route.connectionName}`
+              : route.connectionName,
           })
         }
       }
