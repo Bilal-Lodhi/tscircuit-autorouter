@@ -20,6 +20,7 @@ import {
 } from "@tscircuit/math-utils"
 import { smoothHdRoutes } from "./smoothLines"
 import { cloneAndShuffleArray } from "lib/utils/cloneAndShuffleArray"
+import { removeSelfIntersections } from "./removeSelfIntersections"
 
 const BOARD_OUTLINE_CONNECTION_NAME = "__board_outline__"
 
@@ -460,13 +461,16 @@ export class TraceKeepoutSolver extends BaseSolver {
     // Simplify the recorded positions to remove redundant points
     const simplifiedRoute = this.simplifyRoute(this.recordedDrawPositions)
 
+    // Remove any self-intersections from the route
+    const cleanedRoute = removeSelfIntersections(simplifiedRoute)
+
     // Create the redrawn trace
     const redrawnTrace: HighDensityRoute = {
       connectionName: this.currentTrace.connectionName,
       rootConnectionName: this.currentTrace.rootConnectionName,
       traceThickness: this.currentTrace.traceThickness,
       viaDiameter: this.currentTrace.viaDiameter,
-      route: simplifiedRoute,
+      route: cleanedRoute,
       vias: [...this.currentTrace.vias], // Keep vias unchanged
     }
 
