@@ -15,6 +15,10 @@ import type {
   SimpleRouteJson,
 } from "../../types"
 import type { NodeWithPortPoints } from "../../types/high-density-types"
+import {
+  precomputeSharedParams,
+  type PrecomputedInitialParams,
+} from "./precomputeSharedParams"
 
 export interface HyperPortPointPathingSolverParams {
   simpleRouteJson: SimpleRouteJson
@@ -29,6 +33,7 @@ export interface HyperPortPointPathingSolverParams {
 
 export class HyperPortPointPathingSolver extends HyperParameterSupervisorSolver<PortPointPathingSolver> {
   private params: HyperPortPointPathingSolverParams
+  private precomputedInitialParams: PrecomputedInitialParams
 
   constructor(params: HyperPortPointPathingSolverParams) {
     super()
@@ -38,6 +43,12 @@ export class HyperPortPointPathingSolver extends HyperParameterSupervisorSolver<
     // Run each solver for enough steps to get meaningful score differentiation
     // This allows early scores to diverge before switching, enabling better decisions
     this.MIN_SUBSTEPS = 50
+
+    // Precompute shared params once for all solver instances
+    this.precomputedInitialParams = precomputeSharedParams(
+      params.simpleRouteJson,
+      params.inputNodes,
+    )
   }
 
   getHyperParameterDefs(): Array<HyperParameterDef> {
@@ -104,6 +115,7 @@ export class HyperPortPointPathingSolver extends HyperParameterSupervisorSolver<
           hyperParameters.MIN_ALLOWED_BOARD_SCORE ??
           this.params.hyperParameters?.MIN_ALLOWED_BOARD_SCORE,
       },
+      precomputedInitialParams: this.precomputedInitialParams,
     })
   }
 

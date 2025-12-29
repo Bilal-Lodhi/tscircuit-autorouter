@@ -19,6 +19,11 @@ import {
   seededRandom,
 } from "lib/utils/cloneAndShuffleArray"
 import { computeSectionScore } from "../MultiSectionPortPointOptimizer"
+import {
+  type PrecomputedInitialParams,
+  clonePrecomputedMutableParams,
+} from "./precomputeSharedParams"
+import { getConnectionsWithNodes as getConnectionsWithNodesShared } from "./getConnectionsWithNodes"
 
 export interface PortPointPathingHyperParameters {
   SHUFFLE_SEED?: number
@@ -274,6 +279,7 @@ export class PortPointPathingSolver extends BaseSolver {
     colorMap,
     nodeMemoryPfMap,
     hyperParameters,
+    precomputedInitialParams,
   }: {
     simpleRouteJson: SimpleRouteJson
     capacityMeshNodes: CapacityMeshNode[]
@@ -281,6 +287,7 @@ export class PortPointPathingSolver extends BaseSolver {
     colorMap?: Record<string, string>
     nodeMemoryPfMap?: Map<CapacityMeshNodeId, number>
     hyperParameters?: Partial<PortPointPathingHyperParameters>
+    precomputedInitialParams?: PrecomputedInitialParams
   }) {
     super()
     this.MAX_ITERATIONS = 50e3
@@ -292,50 +299,74 @@ export class PortPointPathingSolver extends BaseSolver {
     )
     this.nodeMemoryPfMap = nodeMemoryPfMap ?? new Map()
     this.hyperParameters = hyperParameters ?? {}
-    this.nodeMap = new Map(inputNodes.map((n) => [n.capacityMeshNodeId, n]))
 
-    // Compute a rough node pitch to convert distance into estimated hops for heuristic
-    const pitches = inputNodes
-      .map((n) => (n.width + n.height) / 2)
-      .filter((x) => Number.isFinite(x) && x > 0)
-    this.avgNodePitch =
-      pitches.length > 0
-        ? pitches.reduce((a, b) => a + b, 0) / pitches.length
-        : 1
+    if (precomputedInitialParams) {
+      // Use precomputed params - clone mutable ones
+      this.nodeMap = precomputedInitialParams.nodeMap
+      this.avgNodePitch = precomputedInitialParams.avgNodePitch
+      this.offBoardNodes = precomputedInitialParams.offBoardNodes
+      this.portPointMap = precomputedInitialParams.portPointMap
+      this.nodePortPointsMap = precomputedInitialParams.nodePortPointsMap
+      this.connectionNameToGoalNodeIds =
+        precomputedInitialParams.connectionNameToGoalNodeIds
 
-    // Cache off-board nodes for FORCE_OFF_BOARD routing
-    this.offBoardNodes = inputNodes.filter((n) => n._offBoardConnectionId)
+      // Clone mutable params
+      const { nodeAssignedPortPoints } =
+        clonePrecomputedMutableParams(precomputedInitialParams)
+      this.nodeAssignedPortPoints = nodeAssignedPortPoints
 
-    // Build port point maps
-    this.portPointMap = new Map()
-    this.nodePortPointsMap = new Map()
+      // Shuffle the connections based on SHUFFLE_SEED
+      this.connectionsWithResults = cloneAndShuffleArray(
+        precomputedInitialParams.unshuffledConnectionsWithResults,
+        this.hyperParameters.SHUFFLE_SEED ?? 0,
+      )
+    } else {
+      // Compute all params from scratch
+      this.nodeMap = new Map(inputNodes.map((n) => [n.capacityMeshNodeId, n]))
 
-    for (const node of inputNodes) {
-      this.nodePortPointsMap.set(node.capacityMeshNodeId, [])
-      this.nodeAssignedPortPoints.set(node.capacityMeshNodeId, [])
-    }
+      // Compute a rough node pitch to convert distance into estimated hops for heuristic
+      const pitches = inputNodes
+        .map((n) => (n.width + n.height) / 2)
+        .filter((x) => Number.isFinite(x) && x > 0)
+      this.avgNodePitch =
+        pitches.length > 0
+          ? pitches.reduce((a, b) => a + b, 0) / pitches.length
+          : 1
 
-    for (const node of inputNodes) {
-      for (const pp of node.portPoints) {
-        this.portPointMap.set(pp.portPointId, pp)
+      // Cache off-board nodes for FORCE_OFF_BOARD routing
+      this.offBoardNodes = inputNodes.filter((n) => n._offBoardConnectionId)
 
-        // Add to both nodes that share this port point
-        for (const nodeId of pp.connectionNodeIds) {
-          const nodePortPoints = this.nodePortPointsMap.get(nodeId)
-          if (
-            nodePortPoints &&
-            !nodePortPoints.some((p) => p.portPointId === pp.portPointId)
-          ) {
-            nodePortPoints.push(pp)
+      // Build port point maps
+      this.portPointMap = new Map()
+      this.nodePortPointsMap = new Map()
+
+      for (const node of inputNodes) {
+        this.nodePortPointsMap.set(node.capacityMeshNodeId, [])
+        this.nodeAssignedPortPoints.set(node.capacityMeshNodeId, [])
+      }
+
+      for (const node of inputNodes) {
+        for (const pp of node.portPoints) {
+          this.portPointMap.set(pp.portPointId, pp)
+
+          // Add to both nodes that share this port point
+          for (const nodeId of pp.connectionNodeIds) {
+            const nodePortPoints = this.nodePortPointsMap.get(nodeId)
+            if (
+              nodePortPoints &&
+              !nodePortPoints.some((p) => p.portPointId === pp.portPointId)
+            ) {
+              nodePortPoints.push(pp)
+            }
           }
         }
       }
-    }
 
-    const { connectionsWithResults, connectionNameToGoalNodeIds } =
-      this.getConnectionsWithNodes()
-    this.connectionsWithResults = connectionsWithResults
-    this.connectionNameToGoalNodeIds = connectionNameToGoalNodeIds
+      const { connectionsWithResults, connectionNameToGoalNodeIds } =
+        this.getConnectionsWithNodes()
+      this.connectionsWithResults = connectionsWithResults
+      this.connectionNameToGoalNodeIds = connectionNameToGoalNodeIds
+    }
   }
 
   private clearCostCaches() {
@@ -414,55 +445,11 @@ export class PortPointPathingSolver extends BaseSolver {
   }
 
   getConnectionsWithNodes() {
-    let connectionsWithResults: ConnectionPathResult[] = []
-    const nodesWithTargets = this.inputNodes.filter((n) => n._containsTarget)
-    const connectionNameToGoalNodeIds = new Map<string, CapacityMeshNodeId[]>()
+    const { unshuffledConnectionsWithResults, connectionNameToGoalNodeIds } =
+      getConnectionsWithNodesShared(this.simpleRouteJson, this.inputNodes)
 
-    for (const connection of this.simpleRouteJson.connections) {
-      const nodesForConnection: InputNodeWithPortPoints[] = []
-
-      for (const point of connection.pointsToConnect) {
-        let closestNode = this.inputNodes[0]
-        let minDistance = Number.MAX_VALUE
-
-        for (const node of nodesWithTargets) {
-          const dist = Math.sqrt(
-            (node.center.x - point.x) ** 2 + (node.center.y - point.y) ** 2,
-          )
-          if (dist < minDistance) {
-            minDistance = dist
-            closestNode = node
-          }
-        }
-        nodesForConnection.push(closestNode)
-      }
-
-      if (nodesForConnection.length < 2) {
-        throw new Error(
-          `Not enough nodes for connection "${connection.name}", only ${nodesForConnection.length} found`,
-        )
-      }
-
-      connectionNameToGoalNodeIds.set(
-        connection.name,
-        nodesForConnection.map((n) => n.capacityMeshNodeId),
-      )
-
-      connectionsWithResults.push({
-        connection,
-        nodeIds: [
-          nodesForConnection[0].capacityMeshNodeId,
-          nodesForConnection[nodesForConnection.length - 1].capacityMeshNodeId,
-        ],
-        straightLineDistance: distance(
-          nodesForConnection[0].center,
-          nodesForConnection[nodesForConnection.length - 1].center,
-        ),
-      })
-    }
-
-    connectionsWithResults = cloneAndShuffleArray(
-      connectionsWithResults,
+    const connectionsWithResults = cloneAndShuffleArray(
+      unshuffledConnectionsWithResults,
       this.hyperParameters.SHUFFLE_SEED ?? 0,
     )
 
