@@ -46,6 +46,7 @@ export interface MultiSectionPortPointOptimizerParams {
   >
   /** Node assigned port points from initial run */
   initialNodeAssignedPortPoints: Map<CapacityMeshNodeId, PortPoint[]>
+  effort?: number
 }
 
 // Generate optimization schedule with multiple shuffle seeds per expansion degree
@@ -152,6 +153,8 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
   /** Acceptable probability of failure threshold */
   ACCEPTABLE_PF = 0.05
 
+  effort: number = 1
+
   constructor(params: MultiSectionPortPointOptimizerParams) {
     super()
     this.MAX_ITERATIONS = 1e6
@@ -160,6 +163,9 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     this.capacityMeshNodes = params.capacityMeshNodes
     this.capacityMeshEdges = params.capacityMeshEdges
     this.colorMap = params.colorMap ?? {}
+    this.effort = params.effort ?? 1
+
+    this.MAX_SECTION_ATTEMPTS *= this.effort
 
     this.nodeMap = new Map(
       params.inputNodes.map((n) => [n.capacityMeshNodeId, n]),
@@ -509,7 +515,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
       capacityMeshNodes: section.capacityMeshNodes,
       colorMap: this.colorMap,
       nodeMemoryPfMap: this.nodePfMap,
-      numShuffleSeeds: 20,
+      numShuffleSeeds: 20 * this.effort,
       hyperParameters: this.getHyperParametersForScheduleIndex(
         this.currentScheduleIndex,
         this.sectionAttempts,
