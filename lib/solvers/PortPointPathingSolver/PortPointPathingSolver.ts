@@ -40,6 +40,14 @@ export interface PortPointPathingHyperParameters {
 
   FORCE_OFF_BOARD_FREQUENCY?: number
   FORCE_OFF_BOARD_SEED?: number
+
+  /**
+   * Maximum number of hops to check for connectivity before starting A* search.
+   * If the end node is not reachable within this many hops, the connection is
+   * considered blocked and fails early. Set to 0 to disable early blocking check.
+   * Default: 50
+   */
+  EARLY_BLOCKED_CHECK_MAX_HOPS?: number
 }
 
 /**
@@ -238,6 +246,10 @@ export class PortPointPathingSolver extends BaseSolver {
     return this.hyperParameters.MIN_ALLOWED_BOARD_SCORE ?? -10000
   }
 
+  get EARLY_BLOCKED_CHECK_MAX_HOPS() {
+    return this.hyperParameters.EARLY_BLOCKED_CHECK_MAX_HOPS ?? 50
+  }
+
   nodeMemoryPfMap: Map<CapacityMeshNodeId, number>
 
   // Current pathing state
@@ -335,6 +347,92 @@ export class PortPointPathingSolver extends BaseSolver {
 
   private clearCostCaches() {
     this.baseNodeCostCache.clear()
+  }
+
+  /**
+   * Check if the end node is reachable from the start node within maxHops.
+   * Uses BFS through the capacity mesh graph (via port points).
+   * Returns true if reachable, false if blocked.
+   *
+   * This is a fast check that ignores capacity/assignment constraints to
+   * quickly determine if a path is structurally possible.
+   */
+  checkReachabilityWithinHops(
+    startNodeId: CapacityMeshNodeId,
+    endNodeId: CapacityMeshNodeId,
+    maxHops: number,
+    connectionName: string,
+    rootConnectionName?: string,
+  ): { reachable: boolean; hopsToReach?: number } {
+    if (maxHops <= 0) return { reachable: true }
+    if (startNodeId === endNodeId) return { reachable: true, hopsToReach: 0 }
+
+    const visited = new Set<CapacityMeshNodeId>()
+    const queue: { nodeId: CapacityMeshNodeId; hops: number }[] = [
+      { nodeId: startNodeId, hops: 0 },
+    ]
+    visited.add(startNodeId)
+
+    while (queue.length > 0) {
+      const { nodeId, hops } = queue.shift()!
+
+      if (hops >= maxHops) continue
+
+      const currentNode = this.nodeMap.get(nodeId)
+      if (!currentNode) continue
+
+      // Get all neighbor nodes through port points
+      const portPoints = this.nodePortPointsMap.get(nodeId) ?? []
+      const neighborNodeIds = new Set<CapacityMeshNodeId>()
+
+      for (const pp of portPoints) {
+        // Check if port point is available (not assigned to a different net)
+        const assignment = this.assignedPortPoints.get(pp.portPointId)
+        if (assignment && assignment.rootConnectionName !== rootConnectionName) {
+          continue
+        }
+
+        const otherNodeId = this.getOtherNodeId(pp, nodeId)
+        if (otherNodeId && !visited.has(otherNodeId)) {
+          neighborNodeIds.add(otherNodeId)
+        }
+      }
+
+      // Also check off-board connections
+      if (currentNode._offBoardConnectedCapacityMeshNodeIds) {
+        for (const offBoardNodeId of currentNode._offBoardConnectedCapacityMeshNodeIds) {
+          if (!visited.has(offBoardNodeId)) {
+            neighborNodeIds.add(offBoardNodeId)
+          }
+        }
+      }
+
+      for (const neighborId of neighborNodeIds) {
+        if (neighborId === endNodeId) {
+          return { reachable: true, hopsToReach: hops + 1 }
+        }
+
+        const neighborNode = this.nodeMap.get(neighborId)
+        if (!neighborNode) continue
+
+        // Skip obstacle nodes that this connection cannot traverse
+        if (
+          neighborNode._containsObstacle &&
+          !this.canTravelThroughObstacle(
+            neighborNode,
+            connectionName,
+            rootConnectionName!,
+          )
+        ) {
+          continue
+        }
+
+        visited.add(neighborId)
+        queue.push({ nodeId: neighborId, hops: hops + 1 })
+      }
+    }
+
+    return { reachable: false }
   }
 
   private clampPf(pf: number): number {
@@ -1097,6 +1195,22 @@ export class PortPointPathingSolver extends BaseSolver {
     if (!this.candidates) {
       // New connection search: clear caches (base costs depend on committed state)
       this.clearCostCaches()
+
+      // Early blocked connection detection: check if end node is reachable
+      if (this.EARLY_BLOCKED_CHECK_MAX_HOPS > 0) {
+        const reachability = this.checkReachabilityWithinHops(
+          startNodeId,
+          endNodeId,
+          this.EARLY_BLOCKED_CHECK_MAX_HOPS,
+          connectionName,
+          rootConnectionName,
+        )
+        if (!reachability.reachable) {
+          this.failed = true
+          this.error = `Connection "${connectionName}" is blocked: end node not reachable within ${this.EARLY_BLOCKED_CHECK_MAX_HOPS} hops`
+          return
+        }
+      }
 
       // Determine if this connection should route off-board based on frequency and seed
       if (this.FORCE_OFF_BOARD_FREQUENCY > 0) {
