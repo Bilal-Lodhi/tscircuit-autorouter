@@ -2,9 +2,13 @@ import { AutoroutingPipelineSolver } from "lib"
 import type { SimpleRouteJson } from "lib/types"
 import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
 import { getDrcErrors } from "lib/testing/getDrcErrors"
-import keyboard4 from "fixtures/legacy/assets/keyboard4.json" with { type: "json" }
+import keyboard4 from "fixtures/legacy/assets/keyboard4.json" with {
+  type: "json",
+}
 import e2e3 from "fixtures/legacy/assets/e2e3.json" with { type: "json" }
-import bugreport23 from "fixtures/bug-reports/bugreport23-LGA15x4/bugreport23-LGA15x4.srj.json" with { type: "json" }
+import bugreport23 from "fixtures/bug-reports/bugreport23-LGA15x4/bugreport23-LGA15x4.srj.json" with {
+  type: "json",
+}
 
 interface BenchmarkResult {
   name: string

@@ -1,5 +1,7 @@
 import { InteractiveGraphics } from "graphics-debug/react"
-import gkSample191 from "fixtures/legacy/assets/growing-grid-keyboard-sample-sample191-unrouted_simple_route.json" with { type: "json" }
+import gkSample191 from "fixtures/legacy/assets/growing-grid-keyboard-sample-sample191-unrouted_simple_route.json" with {
+  type: "json",
+}
 import { CapacityMeshSolver } from "lib/autorouter-pipelines/AutoroutingPipeline2_PortPointPathing/AutoroutingPipelineSolver2_PortPointPathing"
 import type { SimpleRouteJson } from "lib/types"
 import { useState, useRef } from "react"

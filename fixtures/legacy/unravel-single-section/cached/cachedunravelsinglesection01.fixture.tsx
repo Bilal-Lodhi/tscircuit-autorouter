@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react"
 import { CachedUnravelSectionSolver } from "lib/solvers/UnravelSolver/CachedUnravelSectionSolver"
 import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger" // Import GenericSolverDebugger
-import segmentpoint5 from "fixtures/legacy/assets/segmenttopoint5.json" with { type: "json" }
+import segmentpoint5 from "fixtures/legacy/assets/segmenttopoint5.json" with {
+  type: "json",
+}
 import { getDedupedSegments } from "lib/solvers/UnravelSolver/getDedupedSegments"
 import { CapacityMeshNode, CapacityMeshNodeId } from "lib/types"
 import { SegmentId, SegmentPoint } from "lib/solvers/UnravelSolver/types"

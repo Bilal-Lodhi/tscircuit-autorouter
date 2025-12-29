@@ -1,4 +1,6 @@
-import cn3495 from "fixtures/legacy/assets/cn3495-nodeWithPortPoints.json" with { type: "json" }
+import cn3495 from "fixtures/legacy/assets/cn3495-nodeWithPortPoints.json" with {
+  type: "json",
+}
 import { HyperHighDensityDebugger } from "lib/testing/HyperHighDensityDebugger"
 
 export const hyperParameters = {

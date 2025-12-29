@@ -3,7 +3,9 @@ import { AutoroutingPipelineDebugger } from "lib/testing/AutoroutingPipelineDebu
 import { useMemo, useState } from "react"
 import { Fragment } from "react/jsx-runtime"
 import { CapacityMeshAutorouterCoreBinding } from "tests/fixtures/CapacityMeshAutorouterCoreBinding"
-import corebug2 from "fixtures/legacy/assets/corebug2.json" with { type: "json" }
+import corebug2 from "fixtures/legacy/assets/corebug2.json" with {
+  type: "json",
+}
 
 export default () => {
   return <AutoroutingPipelineDebugger srj={corebug2 as any} />

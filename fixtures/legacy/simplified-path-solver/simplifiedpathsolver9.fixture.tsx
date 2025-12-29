@@ -2,7 +2,9 @@ import { useMemo } from "react"
 import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"
 import { SingleSimplifiedPathSolver5 } from "lib/solvers/SimplifiedPathSolver/SingleSimplifiedPathSolver5_Deg45"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
-import simplifiedPathSolver9 from "fixtures/legacy/assets/simplifiedpathsolver9.json" with { type: "json" }
+import simplifiedPathSolver9 from "fixtures/legacy/assets/simplifiedpathsolver9.json" with {
+  type: "json",
+}
 
 export default () => {
   const createSolver = () => {

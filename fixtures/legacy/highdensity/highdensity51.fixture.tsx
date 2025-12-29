@@ -1,4 +1,6 @@
-import cn27910 from "fixtures/legacy/assets/cn27910-nodeWithPortPoints.json" with { type: "json" }
+import cn27910 from "fixtures/legacy/assets/cn27910-nodeWithPortPoints.json" with {
+  type: "json",
+}
 import { IntraNodeRouteSolver } from "lib/solvers/HighDensitySolver/IntraNodeSolver"
 import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"
 import { HyperHighDensityDebugger } from "lib/testing/HyperHighDensityDebugger"

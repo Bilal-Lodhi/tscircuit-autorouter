@@ -1,4 +1,6 @@
-import cn705 from "fixtures/legacy/assets/cn705-nodeWithPortPoints.json" with { type: "json" }
+import cn705 from "fixtures/legacy/assets/cn705-nodeWithPortPoints.json" with {
+  type: "json",
+}
 import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"
 import { MultiHeadPolyLineIntraNodeSolver } from "lib/solvers/HighDensitySolver/MultiHeadPolyLineIntraNodeSolver/MultiHeadPolyLineIntraNodeSolver"
 

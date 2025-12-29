@@ -1,4 +1,6 @@
-import cn8724 from "fixtures/legacy/assets/cn8724-nodeWithPortPoints.json" with { type: "json" }
+import cn8724 from "fixtures/legacy/assets/cn8724-nodeWithPortPoints.json" with {
+  type: "json",
+}
 import React from "react"
 import { InteractiveGraphics } from "graphics-debug/react"
 import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"

@@ -1,7 +1,9 @@
 import { test, expect } from "bun:test"
 import { TraceKeepoutSolver } from "lib/solvers/TraceKeepoutSolver/TraceKeepoutSolver"
 import { ConnectivityMap } from "connectivity-map"
-import input from "../../../fixtures/features/keepoutsolver/keepoutsolver03-input.json" with { type: "json" }
+import input from "../../../fixtures/features/keepoutsolver/keepoutsolver03-input.json" with {
+  type: "json",
+}
 
 test("TraceKeepoutSolver - keepoutsolver03", () => {
   const data = (input as any)[0]

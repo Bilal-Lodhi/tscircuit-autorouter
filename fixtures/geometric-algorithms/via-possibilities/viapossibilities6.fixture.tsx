@@ -1,4 +1,6 @@
-import cn62169 from "fixtures/legacy/assets/cn62169-nodeWithPortPoints.json" with { type: "json" }
+import cn62169 from "fixtures/legacy/assets/cn62169-nodeWithPortPoints.json" with {
+  type: "json",
+}
 import React from "react"
 import { ViaPossibilitiesDebugger } from "./ViaPossibilitiesDebugger"
 import { NodeWithPortPoints } from "lib/types/high-density-types"

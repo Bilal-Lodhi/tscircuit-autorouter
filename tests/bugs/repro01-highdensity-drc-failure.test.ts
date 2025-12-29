@@ -1,7 +1,9 @@
 import { test, expect } from "bun:test"
 import { SingleTransitionCrossingRouteSolver } from "lib/solvers/HighDensitySolver/TwoRouteHighDensitySolver/SingleTransitionCrossingRouteSolver"
 import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
-import node from "../../fixtures/legacy/assets/cn11081-nodeWithPortPoints.json" with { type: "json" }
+import node from "../../fixtures/legacy/assets/cn11081-nodeWithPortPoints.json" with {
+  type: "json",
+}
 import { createSrjFromNodeWithPortPoints } from "lib/utils/createSrjFromNodeWithPortPoints"
 import { HyperSingleIntraNodeSolver } from "lib/solvers/HyperHighDensitySolver/HyperSingleIntraNodeSolver"
 import { getDrcErrors } from "lib/testing/getDrcErrors"

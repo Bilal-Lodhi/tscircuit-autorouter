@@ -1,5 +1,7 @@
 import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"
-import inputData from "fixtures/legacy/assets/simplifiedpathsolver5.json" with { type: "json" }
+import inputData from "fixtures/legacy/assets/simplifiedpathsolver5.json" with {
+  type: "json",
+}
 import { MultiSimplifiedPathSolver } from "lib/solvers/SimplifiedPathSolver/MultiSimplifiedPathSolver"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 

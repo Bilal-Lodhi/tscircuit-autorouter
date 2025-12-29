@@ -1,6 +1,8 @@
 import { expect, test } from "bun:test"
 import { AutoroutingPipelineSolver } from "lib"
-import simpleRouteJson from "../../fixtures/features/off-board-connections/offboardconnects01.srj.json" with { type: "json" }
+import simpleRouteJson from "../../fixtures/features/off-board-connections/offboardconnects01.srj.json" with {
+  type: "json",
+}
 import type { SimpleRouteJson } from "lib/types"
 import { getLastStepSvg } from "../fixtures/getLastStepSvg"
 

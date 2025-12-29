@@ -9,10 +9,7 @@
     "width": 1.1875,
     "height": 1.1875,
     "layer": "top",
-    "availableZ": [
-      0,
-      1
-    ],
+    "availableZ": [0, 1],
     "_depth": 4,
     "_parent": {
       "capacityMeshNodeId": "cn789",
@@ -23,10 +20,7 @@
       "width": 2.375,
       "height": 2.375,
       "layer": "top",
-      "availableZ": [
-        0,
-        1
-      ],
+      "availableZ": [0, 1],
       "_depth": 3,
       "_parent": {
         "capacityMeshNodeId": "cn5",
@@ -37,10 +31,7 @@
         "width": 4.75,
         "height": 4.75,
         "layer": "top",
-        "availableZ": [
-          0,
-          1
-        ],
+        "availableZ": [0, 1],
         "_depth": 2,
         "_parent": {
           "capacityMeshNodeId": "cn4",
@@ -51,10 +42,7 @@
           "width": 9.5,
           "height": 9.5,
           "layer": "top",
-          "availableZ": [
-            0,
-            1
-          ],
+          "availableZ": [0, 1],
           "_depth": 1,
           "_parent": {
             "capacityMeshNodeId": "cn0",
@@ -65,10 +53,7 @@
             "width": 19,
             "height": 19,
             "layer": "top",
-            "availableZ": [
-              0,
-              1
-            ],
+            "availableZ": [0, 1],
             "_depth": 0,
             "_containsTarget": true,
             "_containsObstacle": true,

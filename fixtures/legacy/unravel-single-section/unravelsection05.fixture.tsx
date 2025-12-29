@@ -1,6 +1,8 @@
 import { UnravelSectionSolver } from "lib/solvers/UnravelSolver/UnravelSectionSolver"
 import UnravelSectionDebugger from "lib/testing/UnravelSectionDebugger"
-import unravel5 from "fixtures/legacy/assets/unravel_section_cn125220_input.json" with { type: "json" }
+import unravel5 from "fixtures/legacy/assets/unravel_section_cn125220_input.json" with {
+  type: "json",
+}
 import { getDedupedSegments } from "lib/solvers/UnravelSolver/getDedupedSegments"
 import { CapacityMeshNode, CapacityMeshNodeId } from "lib/types"
 import { SegmentId } from "lib/solvers/UnravelSolver/types"

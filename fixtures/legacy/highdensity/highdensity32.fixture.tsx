@@ -1,4 +1,6 @@
-import cn38186 from "fixtures/legacy/assets/cn38186-nodeWithPortPoints.json" with { type: "json" }
+import cn38186 from "fixtures/legacy/assets/cn38186-nodeWithPortPoints.json" with {
+  type: "json",
+}
 import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"
 import { IntraNodeRouteSolver } from "lib/solvers/HighDensitySolver/IntraNodeSolver"
 import { generateColorMapFromNodeWithPortPoints } from "lib/utils/generateColorMapFromNodeWithPortPoints"

@@ -1,4 +1,6 @@
-import cn10483 from "fixtures/legacy/assets/cn10483-nodeWithPortPoints.json" with { type: "json" }
+import cn10483 from "fixtures/legacy/assets/cn10483-nodeWithPortPoints.json" with {
+  type: "json",
+}
 import { IntraNodeRouteSolver } from "lib/solvers/HighDensitySolver/IntraNodeSolver"
 import { SingleHighDensityRouteSolver } from "lib/solvers/HighDensitySolver/SingleHighDensityRouteSolver"
 import { TwoCrossingRoutesHighDensitySolver } from "lib/solvers/HighDensitySolver/TwoRouteHighDensitySolver/TwoCrossingRoutesHighDensitySolver"

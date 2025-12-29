@@ -1,4 +1,6 @@
-import cn11104 from "fixtures/legacy/assets/cn11104-nodeWithPortPoints.json" with { type: "json" }
+import cn11104 from "fixtures/legacy/assets/cn11104-nodeWithPortPoints.json" with {
+  type: "json",
+}
 import { HyperHighDensityDebugger } from "lib/testing/HyperHighDensityDebugger"
 
 export default () => {

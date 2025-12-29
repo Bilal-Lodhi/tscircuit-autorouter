@@ -1,4 +1,6 @@
-import cn2432 from "fixtures/legacy/assets/cn2432-nodeWithPortPoints.json" with { type: "json" }
+import cn2432 from "fixtures/legacy/assets/cn2432-nodeWithPortPoints.json" with {
+  type: "json",
+}
 import { HyperHighDensityDebugger } from "lib/testing/HyperHighDensityDebugger"
 
 export const hyperParameters = {
