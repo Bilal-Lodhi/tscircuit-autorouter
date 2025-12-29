@@ -42,7 +42,7 @@ async function runTest(schedule: ScheduleEntry[]): Promise<{
     return await new Promise((resolve, reject) => {
       const testScript = `
         import { AutoroutingPipelineSolver } from "./lib/solvers/AutoroutingPipelineSolver"
-        import bugreport23 from "./fixtures/bug-reports/bugreport23-LGA15x4/bugreport23-LGA15x4.srj.json" assert { type: "json" }
+        import bugreport23 from "./fixtures/bug-reports/bugreport23-LGA15x4/bugreport23-LGA15x4.srj.json" with { type: "json" }
 
         const solver = new AutoroutingPipelineSolver(bugreport23 as any)
         solver.solveUntilPhase("highDensityRouteSolver")

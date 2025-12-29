@@ -1,5 +1,5 @@
 import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"
-import simplifiedPathSolver6 from "fixtures/legacy/assets/simplifiedpathsolver6.json" assert { type: "json" }
+import simplifiedPathSolver6 from "fixtures/legacy/assets/simplifiedpathsolver6.json" with { type: "json" }
 import { MultiSimplifiedPathSolver } from "lib/solvers/SimplifiedPathSolver/MultiSimplifiedPathSolver"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 

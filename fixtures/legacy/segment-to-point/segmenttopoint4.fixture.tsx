@@ -1,5 +1,5 @@
 import SegmentOptimizerDebugger from "lib/testing/SegmentOptimizerDebugger"
-import inputs from "fixtures/legacy/assets/segmenttopoint4.json" assert { type: "json" }
+import inputs from "fixtures/legacy/assets/segmenttopoint4.json" with { type: "json" }
 
 export default function SegmentToPoint4Fixture() {
   return (

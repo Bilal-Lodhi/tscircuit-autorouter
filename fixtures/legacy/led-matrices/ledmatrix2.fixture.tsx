@@ -1,5 +1,5 @@
 import { InteractiveGraphics } from "graphics-debug/react"
-import contributionBoardRoutes from "fixtures/legacy/assets/contribution-board_routes_small.json" assert { type: "json" }
+import contributionBoardRoutes from "fixtures/legacy/assets/contribution-board_routes_small.json" with { type: "json" }
 import { AutoroutingPipelineDebugger } from "lib/testing/AutoroutingPipelineDebugger"
 import type { SimpleRouteJson } from "lib/types"
 

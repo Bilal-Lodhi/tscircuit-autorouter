@@ -1,6 +1,6 @@
 import { UnravelSectionSolver } from "lib/solvers/UnravelSolver/UnravelSectionSolver"
 import UnravelSectionDebugger from "lib/testing/UnravelSectionDebugger"
-import unravelmultisection04 from "fixtures/legacy/assets/unravelmultisection04.json" assert { type: "json" }
+import unravelmultisection04 from "fixtures/legacy/assets/unravelmultisection04.json" with { type: "json" }
 import { getDedupedSegments } from "lib/solvers/UnravelSolver/getDedupedSegments"
 import { CapacityMeshNode, CapacityMeshNodeId } from "lib/types"
 import { SegmentId } from "lib/solvers/UnravelSolver/types"

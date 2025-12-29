@@ -1,4 +1,4 @@
-import cn153082 from "fixtures/legacy/assets/cn153082-nodeWithPortPoints.json" assert { type: "json" }
+import cn153082 from "fixtures/legacy/assets/cn153082-nodeWithPortPoints.json" with { type: "json" }
 import { IntraNodeRouteSolver } from "lib/solvers/HighDensitySolver/IntraNodeSolver"
 import { SingleHighDensityRouteSolver } from "lib/solvers/HighDensitySolver/SingleHighDensityRouteSolver"
 import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"

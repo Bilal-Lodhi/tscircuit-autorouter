@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test"
 import { TraceWidthSolver } from "lib/solvers/TraceWidthSolver/TraceWidthSolver"
-import input from "../../../fixtures/features/tracewidthsolver/tracewidthsolver01-input.json" assert { type: "json" }
+import input from "../../../fixtures/features/tracewidthsolver/tracewidthsolver01-input.json" with { type: "json" }
 
 test("TraceWidthSolver - determines optimal trace width based on clearance", () => {
   const data = (input as any)[0]

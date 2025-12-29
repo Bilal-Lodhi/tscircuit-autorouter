@@ -1,4 +1,4 @@
-import cn27515 from "fixtures/legacy/assets/cn27515-nodeWithPortPoints.json" assert { type: "json" }
+import cn27515 from "fixtures/legacy/assets/cn27515-nodeWithPortPoints.json" with { type: "json" }
 import { IntraNodeRouteSolver } from "lib/solvers/HighDensitySolver/IntraNodeSolver"
 import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"
 import { HyperHighDensityDebugger } from "lib/testing/HyperHighDensityDebugger"

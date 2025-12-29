@@ -1,6 +1,6 @@
 import { UnravelSectionSolver } from "lib/solvers/UnravelSolver/UnravelSectionSolver"
 import UnravelSectionDebugger from "lib/testing/UnravelSectionDebugger"
-import unravel7 from "fixtures/legacy/assets/unravel_section_cn27756_input.json" assert { type: "json" }
+import unravel7 from "fixtures/legacy/assets/unravel_section_cn27756_input.json" with { type: "json" }
 
 export default () => {
   return (

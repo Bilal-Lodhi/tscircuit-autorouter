@@ -1,5 +1,5 @@
 import { InteractiveGraphics } from "graphics-debug/react"
-import ledMatrix1 from "fixtures/legacy/assets/ledmatrix1.json" assert { type: "json" }
+import ledMatrix1 from "fixtures/legacy/assets/ledmatrix1.json" with { type: "json" }
 import { CapacityMeshSolver } from "lib/autorouter-pipelines/AutoroutingPipeline2_PortPointPathing/AutoroutingPipelineSolver2_PortPointPathing"
 import type { SimpleRouteJson } from "lib/types"
 import { useState } from "react"

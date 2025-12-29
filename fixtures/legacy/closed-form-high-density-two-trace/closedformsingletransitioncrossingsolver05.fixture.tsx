@@ -1,7 +1,7 @@
 import type { NodeWithPortPoints } from "lib/types/high-density-types"
 import { SingleTransitionCrossingRouteSolver } from "lib/solvers/HighDensitySolver/TwoRouteHighDensitySolver/SingleTransitionCrossingRouteSolver"
 import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"
-import cn7810 from "fixtures/legacy/assets/cn7810-nodeWithPortPoints.json" assert { type: "json" }
+import cn7810 from "fixtures/legacy/assets/cn7810-nodeWithPortPoints.json" with { type: "json" }
 
 export default () => {
   return (

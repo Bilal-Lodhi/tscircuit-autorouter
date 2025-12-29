@@ -2,7 +2,7 @@ import { expect, test, describe } from "bun:test"
 import { CapacityMeshSolver } from "../lib"
 import { SimpleRouteJson } from "lib/types"
 import { convertSrjToGraphicsObject } from "../lib"
-import e2e8 from "fixtures/legacy/assets/e2e8.json" assert { type: "json" }
+import e2e8 from "fixtures/legacy/assets/e2e8.json" with { type: "json" }
 import { getLastStepSvg } from "./fixtures/getLastStepSvg"
 
 describe.skip("CapacityMeshSolver", () => {

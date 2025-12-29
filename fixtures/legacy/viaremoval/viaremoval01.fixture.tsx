@@ -1,4 +1,4 @@
-import viaRemoval from "fixtures/legacy/assets/viaremoval01.json" assert { type: "json" }
+import viaRemoval from "fixtures/legacy/assets/viaremoval01.json" with { type: "json" }
 import { BaseSolver } from "lib/solvers/BaseSolver"
 import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"
 import { UselessViaRemovalSolver } from "lib/solvers/UselessViaRemovalSolver/UselessViaRemovalSolver"

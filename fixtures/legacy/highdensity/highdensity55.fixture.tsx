@@ -1,4 +1,4 @@
-import cn628 from "fixtures/legacy/assets/cn628-nodeWithPortPoints.json" assert { type: "json" }
+import cn628 from "fixtures/legacy/assets/cn628-nodeWithPortPoints.json" with { type: "json" }
 import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"
 import { MultiHeadPolyLineIntraNodeSolver } from "lib/solvers/HighDensitySolver/MultiHeadPolyLineIntraNodeSolver/MultiHeadPolyLineIntraNodeSolver"
 

@@ -1,6 +1,6 @@
 import { MultipleHighDensityRouteStitchSolver } from "lib/solvers/RouteStitchingSolver/MultipleHighDensityRouteStitchSolver"
 import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"
-import inputs from "fixtures/legacy/assets/highdensitystitchsolver4.json" assert { type: "json" }
+import inputs from "fixtures/legacy/assets/highdensitystitchsolver4.json" with { type: "json" }
 
 export default () => {
   return (

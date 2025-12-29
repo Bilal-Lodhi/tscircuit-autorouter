@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"
-import inputData from "fixtures/legacy/assets/simplifiedpathsolver1.json" assert { type: "json" }
+import inputData from "fixtures/legacy/assets/simplifiedpathsolver1.json" with { type: "json" }
 import { SingleSimplifiedPathSolver5 } from "lib/solvers/SimplifiedPathSolver/SingleSimplifiedPathSolver5_Deg45"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 

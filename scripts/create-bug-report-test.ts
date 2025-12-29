@@ -101,9 +101,7 @@ console.log(`Fixture file created at ${fixtureFilePath}`)
 
 const testTemplate = `import { expect, test } from "bun:test"
 import { AutoroutingPipelineSolver } from "lib"
-import bugReport from "../../fixtures/bug-reports/${dirName}/${jsonFileName}" assert {
-  type: "json",
-}
+import bugReport from "../../fixtures/bug-reports/${dirName}/${jsonFileName}" with { type: "json" }
 import type { SimpleRouteJson } from "lib/types"
 import { getLastStepSvg } from "../fixtures/getLastStepSvg"
 

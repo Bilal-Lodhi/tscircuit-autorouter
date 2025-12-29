@@ -1,4 +1,4 @@
-import cn310 from "fixtures/legacy/assets/cn310-nodeWithPortPoints.json" assert { type: "json" }
+import cn310 from "fixtures/legacy/assets/cn310-nodeWithPortPoints.json" with { type: "json" }
 import React from "react"
 import { NodeWithPortPoints } from "lib/types/high-density-types"
 import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"
