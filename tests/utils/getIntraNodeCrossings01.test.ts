@@ -112,4 +112,106 @@ describe("getIntraNodeCrossings", () => {
 
     expect(result.numSameLayerCrossings).toBe(1)
   })
+
+  test("detects crossings that occur on later segments for multi-point routes", () => {
+    const nodeWithPortPoints = {
+      capacityMeshNodeId: "multi-segment-crossing",
+      center: { x: 0, y: 0 },
+      width: 10,
+      height: 10,
+      portPoints: [
+        {
+          x: -5,
+          y: -5,
+          z: 0,
+          connectionName: "multi",
+          rootConnectionName: "multi",
+        },
+        {
+          x: -5,
+          y: 5,
+          z: 0,
+          connectionName: "multi",
+          rootConnectionName: "multi",
+        },
+        {
+          x: 5,
+          y: 5,
+          z: 0,
+          connectionName: "multi",
+          rootConnectionName: "multi",
+        },
+        {
+          x: 0,
+          y: -5,
+          z: 0,
+          connectionName: "vertical",
+          rootConnectionName: "vertical",
+        },
+        {
+          x: 0,
+          y: 5,
+          z: 0,
+          connectionName: "vertical",
+          rootConnectionName: "vertical",
+        },
+      ],
+      availableZ: [0],
+    }
+
+    const result = getIntraNodeCrossings(nodeWithPortPoints)
+
+    expect(result.numSameLayerCrossings).toBe(1)
+  })
+
+  test("counts collinear intersections for multi-segment boundary routes", () => {
+    const nodeWithPortPoints = {
+      capacityMeshNodeId: "multi-segment-collinear",
+      center: { x: 0, y: 0 },
+      width: 10,
+      height: 10,
+      portPoints: [
+        {
+          x: -4,
+          y: 5,
+          z: 0,
+          connectionName: "top_multi",
+          rootConnectionName: "top_multi",
+        },
+        {
+          x: -1,
+          y: 5,
+          z: 0,
+          connectionName: "top_multi",
+          rootConnectionName: "top_multi",
+        },
+        {
+          x: 4,
+          y: 5,
+          z: 0,
+          connectionName: "top_multi",
+          rootConnectionName: "top_multi",
+        },
+        {
+          x: 1,
+          y: -5,
+          z: 0,
+          connectionName: "vertical",
+          rootConnectionName: "vertical",
+        },
+        {
+          x: 1,
+          y: 5,
+          z: 0,
+          connectionName: "vertical",
+          rootConnectionName: "vertical",
+        },
+      ],
+      availableZ: [0],
+    }
+
+    const result = getIntraNodeCrossings(nodeWithPortPoints)
+
+    expect(result.numCollinearConnectionIntersections).toBe(1)
+  })
 })
