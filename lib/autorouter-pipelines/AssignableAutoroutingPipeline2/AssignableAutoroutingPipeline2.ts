@@ -195,7 +195,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
     ),
     definePipelineStep(
       "portPointPathingSolver",
-      HyperPortPointPathingSolver,
+      PortPointPathingSolver,
       (cms) => {
         // Convert capacity nodes and segment points to InputNodeWithPortPoints
         const inputNodes: InputNodeWithPortPoints[] = cms.capacityNodes!.map(
@@ -259,10 +259,14 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
               // 10 = 99.995% maximum pf (1 - e**(-10))
               // NODE_PF_MAX_PENALTY: 10,
               // RANDOM_WALK_DISTANCE: 50,
-              NODE_PF_FACTOR: 10000,
+              NODE_PF_FACTOR: 1,
+              NODE_PF_MAX_PENALTY: 5,
               FORCE_OFF_BOARD_FREQUENCY: 0.3,
-              CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+              CENTER_OFFSET_DIST_PENALTY_FACTOR: 5,
               FORCE_CENTER_FIRST: true,
+              RIP_N_REPLACE_ENABLED: true,
+              RIP_N_REPLACE_PF_THRESHOLD: 0.05,
+              RIP_N_REPLACE_MAX_RIPS: 500,
             },
           } as HyperPortPointPathingSolverParams,
         ]

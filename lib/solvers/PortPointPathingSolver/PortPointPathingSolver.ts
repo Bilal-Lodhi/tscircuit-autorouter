@@ -40,6 +40,10 @@ export interface PortPointPathingHyperParameters {
 
   FORCE_OFF_BOARD_FREQUENCY?: number
   FORCE_OFF_BOARD_SEED?: number
+
+  RIP_N_REPLACE_ENABLED?: boolean
+  RIP_N_REPLACE_PF_THRESHOLD?: number
+  RIP_N_REPLACE_MAX_RIPS?: number
 }
 
 /**
@@ -209,6 +213,18 @@ export class PortPointPathingSolver extends BaseSolver {
     return this.hyperParameters.FORCE_OFF_BOARD_SEED ?? 0
   }
 
+  get RIP_N_REPLACE_ENABLED() {
+    return this.hyperParameters.RIP_N_REPLACE_ENABLED ?? false
+  }
+
+  get RIP_N_REPLACE_PF_THRESHOLD() {
+    return this.hyperParameters.RIP_N_REPLACE_PF_THRESHOLD ?? 0.5
+  }
+
+  get RIP_N_REPLACE_MAX_RIPS() {
+    return this.hyperParameters.RIP_N_REPLACE_MAX_RIPS ?? 500
+  }
+
   get NODE_MAX_PF() {
     const NODE_MAX_PF = Math.min(
       0.99999,
@@ -247,6 +263,9 @@ export class PortPointPathingSolver extends BaseSolver {
   /** Tracks visited port point IDs to avoid revisiting */
   visitedPortPoints?: Set<string> | null
   connectionNameToGoalNodeIds: Map<string, CapacityMeshNodeId[]>
+
+  /** Counter for rip'n'replace iterations */
+  ripCount = 0
 
   capacityMeshNodeMap: Map<CapacityMeshNodeId, CapacityMeshNode>
 
@@ -1052,6 +1071,119 @@ export class PortPointPathingSolver extends BaseSolver {
     return false
   }
 
+  /**
+   * Find all nodes that have pf above the RIP_N_REPLACE_PF_THRESHOLD.
+   */
+  findNodesAbovePfThreshold(): InputNodeWithPortPoints[] {
+    const nodesAboveThreshold: InputNodeWithPortPoints[] = []
+
+    for (const node of this.inputNodes) {
+      // Skip nodes that contain targets (they have pf = 0)
+      if (node._containsTarget) continue
+
+      const pf = this.computeNodePf(node)
+      if (pf > this.RIP_N_REPLACE_PF_THRESHOLD) {
+        nodesAboveThreshold.push(node)
+      }
+    }
+
+    return nodesAboveThreshold
+  }
+
+  /**
+   * Find all connections that are routed through the given nodes.
+   */
+  findConnectionsThroughNodes(
+    nodes: InputNodeWithPortPoints[],
+  ): ConnectionPathResult[] {
+    const nodeIdSet = new Set(nodes.map((n) => n.capacityMeshNodeId))
+    const affectedConnections: ConnectionPathResult[] = []
+
+    for (const connResult of this.connectionsWithResults) {
+      if (!connResult.path) continue
+
+      // Check if any node in the path is in our set
+      for (const candidate of connResult.path) {
+        if (nodeIdSet.has(candidate.currentNodeId)) {
+          affectedConnections.push(connResult)
+          break
+        }
+      }
+    }
+
+    return affectedConnections
+  }
+
+  /**
+   * Unroute a connection by removing its port points from all tracking structures.
+   */
+  unrouteConnection(connResult: ConnectionPathResult): void {
+    const connectionName = connResult.connection.name
+    const rootConnectionName = connResult.connection.rootConnectionName
+
+    // Remove port points assigned by this connection from assignedPortPoints
+    for (const [portPointId, assignment] of this.assignedPortPoints.entries()) {
+      if (assignment.connectionName === connectionName) {
+        this.assignedPortPoints.delete(portPointId)
+      }
+    }
+
+    // Remove port points from nodeAssignedPortPoints
+    for (const [nodeId, portPoints] of this.nodeAssignedPortPoints.entries()) {
+      const filteredPortPoints = portPoints.filter(
+        (pp) => pp.connectionName !== connectionName,
+      )
+      this.nodeAssignedPortPoints.set(nodeId, filteredPortPoints)
+    }
+
+    // Clear the path and portPoints from the connection result
+    connResult.path = undefined
+    connResult.portPoints = undefined
+  }
+
+  /**
+   * Perform rip'n'replace: unroute connections through high-pf nodes and re-queue them.
+   */
+  performRipAndReplace(nodesAboveThreshold: InputNodeWithPortPoints[]): void {
+    // Find all connections routed through these nodes
+    const connectionsToRip = this.findConnectionsThroughNodes(nodesAboveThreshold)
+
+    if (connectionsToRip.length === 0) {
+      // No connections to rip, we're done (shouldn't happen if nodes have high pf)
+      return
+    }
+
+    // Unroute each affected connection
+    for (const connResult of connectionsToRip) {
+      this.unrouteConnection(connResult)
+    }
+
+    // Shuffle the ripped connections
+    const shuffledConnections = cloneAndShuffleArray(
+      connectionsToRip,
+      (this.hyperParameters.SHUFFLE_SEED ?? 0) + this.ripCount + 1,
+    )
+
+    // Remove the ripped connections from their current positions in connectionsWithResults
+    const rippedNames = new Set(shuffledConnections.map((c) => c.connection.name))
+    const remainingConnections = this.connectionsWithResults.filter(
+      (c) => !rippedNames.has(c.connection.name),
+    )
+
+    // Add the shuffled connections back at the end
+    this.connectionsWithResults = [...remainingConnections, ...shuffledConnections]
+
+    // Reset the connection index to process the ripped connections
+    // We need to find where the ripped connections now start
+    this.currentConnectionIndex = remainingConnections.length
+
+    // Increment rip count
+    this.ripCount++
+
+    // Clear cost caches since state has changed
+    this.clearCostCaches()
+  }
+
   _step() {
     const nextConnection =
       this.connectionsWithResults[this.currentConnectionIndex]
@@ -1059,12 +1191,32 @@ export class PortPointPathingSolver extends BaseSolver {
       const boardScore = this.computeBoardScore()
       this.stats = {
         boardScore,
+        ripCount: this.ripCount,
       }
       if (boardScore < this.MIN_ALLOWED_BOARD_SCORE) {
         this.failed = true
         this.error = `Board score ${boardScore.toFixed(2)} is less than MIN_ALLOWED_BOARD_SCORE ${this.MIN_ALLOWED_BOARD_SCORE.toFixed(2)}`
         return
       }
+
+      // Rip'n'replace mode: check if any node has pf above threshold
+      if (this.RIP_N_REPLACE_ENABLED) {
+        // Check if we've exceeded max rips
+        if (this.ripCount >= this.RIP_N_REPLACE_MAX_RIPS) {
+          this.solved = true
+          return
+        }
+
+        // Find nodes with pf above threshold
+        const nodesAboveThreshold = this.findNodesAbovePfThreshold()
+
+        if (nodesAboveThreshold.length > 0) {
+          // Perform rip'n'replace
+          this.performRipAndReplace(nodesAboveThreshold)
+          return
+        }
+      }
+
       this.solved = true
       return
     }
