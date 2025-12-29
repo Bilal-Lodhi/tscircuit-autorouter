@@ -5,7 +5,6 @@ import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import { ObstacleSpatialHashIndex } from "lib/data-structures/ObstacleTree"
 import { HighDensityRouteSpatialIndex } from "lib/data-structures/HighDensityRouteSpatialIndex"
 import { GraphicsObject } from "graphics-debug"
-import { pointToSegmentDistance } from "@tscircuit/math-utils"
 
 const CURSOR_STEP_DISTANCE = 0.25
 
@@ -29,9 +28,12 @@ export interface TraceWidthSolverInput {
 
 /**
  * TraceWidthSolver determines the optimal trace width for each route.
- * It walks along each trace with a cursor, checking clearance from obstacles
- * and non-connected traces. If clearance is sufficient for nominalTraceWidth,
- * it uses that; otherwise it falls back to minTraceWidth.
+ * It uses a TRACE_WIDTH_SCHEDULE to try progressively narrower widths:
+ * [nominalTraceWidth, (nominalTraceWidth + minTraceWidth)/2, minTraceWidth]
+ *
+ * For each trace, it walks along with a cursor checking clearance.
+ * If clearance is insufficient for the current width, it tries the next
+ * narrower width in the schedule.
  *
  * nominalTraceWidth defaults to minTraceWidth * 2 if not specified.
  */
@@ -41,6 +43,7 @@ export class TraceWidthSolver extends BaseSolver {
 
   nominalTraceWidth: number
   minTraceWidth: number
+  TRACE_WIDTH_SCHEDULE: number[]
 
   unprocessedRoutes: HighDensityRoute[] = []
   processedRoutes: HighDensityRoute[] = []
@@ -49,7 +52,9 @@ export class TraceWidthSolver extends BaseSolver {
   currentTrace: HighDensityRoute | null = null
   cursorPosition: Point3D | null = null
   currentTraceSegmentIndex = 0
-  currentTraceSegmentT = 0 // Parameter t in [0, 1] along the current segment
+  currentTraceSegmentT = 0
+  currentScheduleIndex = 0
+  currentTargetWidth: number = 0
   hasInsufficientClearance = false
 
   obstacleSHI?: ObstacleSpatialHashIndex
@@ -57,7 +62,7 @@ export class TraceWidthSolver extends BaseSolver {
   connMap?: ConnectivityMap
   colorMap?: Record<string, string>
 
-  constructor(private input: TraceWidthSolverInput) {
+  constructor(input: TraceWidthSolverInput) {
     super()
     this.MAX_ITERATIONS = 1e6
 
@@ -65,6 +70,14 @@ export class TraceWidthSolver extends BaseSolver {
     this.minTraceWidth = input.minTraceWidth
     this.nominalTraceWidth =
       input.nominalTraceWidth ?? input.minTraceWidth * 2
+
+    // Build the width schedule: [nominal, mid, min]
+    const midWidth = (this.nominalTraceWidth + this.minTraceWidth) / 2
+    this.TRACE_WIDTH_SCHEDULE = [
+      this.nominalTraceWidth,
+      midWidth,
+      this.minTraceWidth,
+    ]
 
     this.unprocessedRoutes = [...this.hdRoutes]
     this.connMap = input.connMap
@@ -104,11 +117,10 @@ export class TraceWidthSolver extends BaseSolver {
         return
       }
 
-      const startPoint = this.currentTrace.route[0]!
-      this.cursorPosition = { ...startPoint }
-      this.currentTraceSegmentIndex = 0
-      this.currentTraceSegmentT = 0
-      this.hasInsufficientClearance = false
+      // Start with the widest width in the schedule
+      this.currentScheduleIndex = 0
+      this.currentTargetWidth = this.TRACE_WIDTH_SCHEDULE[0]!
+      this.initializeCursor()
       return
     }
 
@@ -116,21 +128,55 @@ export class TraceWidthSolver extends BaseSolver {
     const stepped = this.stepCursorForward()
 
     if (!stepped) {
-      // Reached end of trace, finalize it
-      this.finalizeCurrentTrace()
+      // Reached end of trace
+      if (this.hasInsufficientClearance) {
+        // Try the next narrower width in the schedule
+        this.currentScheduleIndex++
+        if (this.currentScheduleIndex < this.TRACE_WIDTH_SCHEDULE.length) {
+          this.currentTargetWidth =
+            this.TRACE_WIDTH_SCHEDULE[this.currentScheduleIndex]!
+          this.initializeCursor()
+          return
+        }
+        // Exhausted schedule, use minTraceWidth
+        this.finalizeCurrentTrace(this.minTraceWidth)
+      } else {
+        // Current width fits, use it
+        this.finalizeCurrentTrace(this.currentTargetWidth)
+      }
       return
     }
 
     // Check clearance at current cursor position
     const clearance = this.getClearanceAtPosition(this.cursorPosition!)
 
-    // Check if there's enough clearance for nominal width
-    // We need clearance of at least (nominalTraceWidth - minTraceWidth) / 2 extra
-    // beyond what minTraceWidth would need
-    const requiredClearance = this.nominalTraceWidth / 2
+    // Check if there's enough clearance for the current target width
+    const requiredClearance = this.currentTargetWidth / 2
     if (clearance < requiredClearance) {
       this.hasInsufficientClearance = true
+      // Early exit: try the next width immediately
+      this.currentScheduleIndex++
+      if (this.currentScheduleIndex < this.TRACE_WIDTH_SCHEDULE.length) {
+        this.currentTargetWidth =
+          this.TRACE_WIDTH_SCHEDULE[this.currentScheduleIndex]!
+        this.initializeCursor()
+      } else {
+        // Exhausted schedule, use minTraceWidth
+        this.finalizeCurrentTrace(this.minTraceWidth)
+      }
     }
+  }
+
+  /**
+   * Initializes/resets the cursor for processing a trace
+   */
+  private initializeCursor() {
+    if (!this.currentTrace) return
+    const startPoint = this.currentTrace.route[0]!
+    this.cursorPosition = { ...startPoint }
+    this.currentTraceSegmentIndex = 0
+    this.currentTraceSegmentT = 0
+    this.hasInsufficientClearance = false
   }
 
   /**
@@ -145,7 +191,6 @@ export class TraceWidthSolver extends BaseSolver {
 
     while (remainingDistance > 0) {
       if (this.currentTraceSegmentIndex >= route.length - 1) {
-        // Reached end of trace
         return false
       }
 
@@ -157,37 +202,31 @@ export class TraceWidthSolver extends BaseSolver {
       const segLength = Math.sqrt(segDx * segDx + segDy * segDy)
 
       if (segLength === 0) {
-        // Zero-length segment, skip it
         this.currentTraceSegmentIndex++
         this.currentTraceSegmentT = 0
         continue
       }
 
-      // How far we are into this segment
       const currentDistInSeg = this.currentTraceSegmentT * segLength
       const distToSegEnd = segLength - currentDistInSeg
 
       if (remainingDistance <= distToSegEnd) {
-        // We can complete the step within this segment
         const newDistInSeg = currentDistInSeg + remainingDistance
         this.currentTraceSegmentT = newDistInSeg / segLength
 
-        // Update cursor position
         this.cursorPosition = {
           x: segStart.x + segDx * this.currentTraceSegmentT,
           y: segStart.y + segDy * this.currentTraceSegmentT,
-          z: segStart.z, // Stay on same layer within segment
+          z: segStart.z,
         }
 
         return true
       } else {
-        // Step goes beyond this segment
         remainingDistance -= distToSegEnd
         this.currentTraceSegmentIndex++
         this.currentTraceSegmentT = 0
 
         if (this.currentTraceSegmentIndex >= route.length - 1) {
-          // Reached end of trace
           const lastPoint = route[route.length - 1]!
           this.cursorPosition = { ...lastPoint }
           return false
@@ -219,17 +258,14 @@ export class TraceWidthSolver extends BaseSolver {
       )
 
       for (const obstacle of nearbyObstacles) {
-        // Check if obstacle is on the same layer
         if (obstacle.zLayers && !obstacle.zLayers.includes(position.z)) {
           continue
         }
 
-        // Check if obstacle is connected to this trace's net
         if (obstacle.connectedTo.includes(rootConnectionName)) {
           continue
         }
 
-        // Check if obstacle's own ID is connected
         if (
           obstacle.obstacleId &&
           this.connMap?.areIdsConnected(rootConnectionName, obstacle.obstacleId)
@@ -237,7 +273,6 @@ export class TraceWidthSolver extends BaseSolver {
           continue
         }
 
-        // Check connectivity via connMap
         let isConnected = false
         if (this.connMap) {
           for (const connectedId of obstacle.connectedTo) {
@@ -249,13 +284,11 @@ export class TraceWidthSolver extends BaseSolver {
         }
         if (isConnected) continue
 
-        // Calculate distance to obstacle edges
         const obstacleMinX = obstacle.center.x - obstacle.width / 2
         const obstacleMaxX = obstacle.center.x + obstacle.width / 2
         const obstacleMinY = obstacle.center.y - obstacle.height / 2
         const obstacleMaxY = obstacle.center.y + obstacle.height / 2
 
-        // Calculate distance from point to obstacle rectangle
         const dx = Math.max(
           obstacleMinX - position.x,
           0,
@@ -284,17 +317,14 @@ export class TraceWidthSolver extends BaseSolver {
       const routeRootName =
         conflictingRoute.rootConnectionName ?? conflictingRoute.connectionName
 
-      // Don't check our own trace
       if (routeRootName === rootConnectionName) {
         continue
       }
 
-      // Check connectivity
       if (this.connMap?.areIdsConnected(rootConnectionName, routeRootName)) {
         continue
       }
 
-      // Calculate clearance (distance minus half the other trace's width)
       const otherTraceHalfWidth = (conflictingRoute.traceThickness ?? 0.15) / 2
       const clearance = distance - otherTraceHalfWidth
 
@@ -307,17 +337,11 @@ export class TraceWidthSolver extends BaseSolver {
   }
 
   /**
-   * Finalizes the current trace with the determined width
+   * Finalizes the current trace with the given width
    */
-  private finalizeCurrentTrace() {
+  private finalizeCurrentTrace(traceWidth: number) {
     if (!this.currentTrace) return
 
-    // Determine the trace width based on whether we found any insufficient clearance
-    const traceWidth = this.hasInsufficientClearance
-      ? this.minTraceWidth
-      : this.nominalTraceWidth
-
-    // Create the route with the determined width
     const routeWithWidth: HighDensityRoute = {
       connectionName: this.currentTrace.connectionName,
       rootConnectionName: this.currentTrace.rootConnectionName,
@@ -334,6 +358,10 @@ export class TraceWidthSolver extends BaseSolver {
   }
 
   visualize(): GraphicsObject {
+    const scheduleStr = this.TRACE_WIDTH_SCHEDULE.map((w) =>
+      w.toFixed(2),
+    ).join(", ")
+
     const visualization: GraphicsObject & {
       lines: NonNullable<GraphicsObject["lines"]>
       points: NonNullable<GraphicsObject["points"]>
@@ -343,15 +371,21 @@ export class TraceWidthSolver extends BaseSolver {
       points: [],
       circles: [],
       coordinateSystem: "cartesian",
-      title: `Trace Width Solver (nominal: ${this.nominalTraceWidth.toFixed(2)}mm, min: ${this.minTraceWidth.toFixed(2)}mm)`,
+      title: `Trace Width Solver (schedule: [${scheduleStr}]mm)`,
     }
 
     // Draw processed routes with their determined widths
     for (const route of this.processedRoutes) {
       if (route.route.length === 0) continue
 
-      const color = this.colorMap?.[route.connectionName] || "#888888"
       const isNominalWidth = route.traceThickness === this.nominalTraceWidth
+      const isMidWidth =
+        route.traceThickness === this.TRACE_WIDTH_SCHEDULE[1]
+      const strokeColor = isNominalWidth
+        ? "green"
+        : isMidWidth
+          ? "yellow"
+          : "orange"
 
       for (let i = 0; i < route.route.length - 1; i++) {
         const current = route.route[i]!
@@ -363,7 +397,7 @@ export class TraceWidthSolver extends BaseSolver {
               { x: current.x, y: current.y },
               { x: next.x, y: next.y },
             ],
-            strokeColor: isNominalWidth ? "green" : "orange",
+            strokeColor,
             strokeWidth: route.traceThickness,
             label: `${route.connectionName} (w=${route.traceThickness.toFixed(2)})`,
           })
@@ -402,12 +436,10 @@ export class TraceWidthSolver extends BaseSolver {
       if (this.cursorPosition) {
         visualization.circles.push({
           center: { x: this.cursorPosition.x, y: this.cursorPosition.y },
-          radius: this.nominalTraceWidth / 2,
+          radius: this.currentTargetWidth / 2,
           stroke: this.hasInsufficientClearance ? "red" : "green",
           fill: "none",
-          label: this.hasInsufficientClearance
-            ? "Insufficient clearance"
-            : "Sufficient clearance",
+          label: `Testing width: ${this.currentTargetWidth.toFixed(2)}mm`,
         })
 
         visualization.points.push({
