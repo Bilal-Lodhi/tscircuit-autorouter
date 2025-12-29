@@ -115,6 +115,11 @@ export interface PortPointCandidate {
   lastMoveWasOffBoard?: boolean
   /** The node we went through when making an off-board move */
   throughNodeId?: CapacityMeshNodeId
+
+  /** Rotation cost incurred at this candidate (based on turn direction) */
+  rotationCost?: number
+  /** Direction of the turn: "CW", "CCW", or "none" */
+  rotationDirection?: "CW" | "CCW" | "none"
 }
 
 export interface ConnectionPathResult {
@@ -251,11 +256,11 @@ export class PortPointPathingSolver extends BaseSolver {
   MAX_CANDIDATES_IN_MEMORY = 1000
 
   get MAX_ITERATIONS_PER_PATH() {
-    return this.hyperParameters.MAX_ITERATIONS_PER_PATH ?? 2000
+    return this.hyperParameters.MAX_ITERATIONS_PER_PATH ?? 4000
   }
 
   ITERATIONS_PER_MM_FOR_PATH = 5
-  BASE_ITERATIONS_PER_PATH = 2000
+  BASE_ITERATIONS_PER_PATH = 4000
 
   get MIN_ALLOWED_BOARD_SCORE() {
     return this.hyperParameters.MIN_ALLOWED_BOARD_SCORE ?? -10000
@@ -267,8 +272,6 @@ export class PortPointPathingSolver extends BaseSolver {
   currentConnectionIndex = 0
   currentPathIterations = 0
   candidates?: PortPointCandidate[] | null
-  /** Tracks visited port point IDs to avoid revisiting */
-  visitedPortPoints?: Set<string> | null
   connectionNameToGoalNodeIds: Map<string, CapacityMeshNodeId[]>
 
   capacityMeshNodeMap: Map<CapacityMeshNodeId, CapacityMeshNode>
@@ -468,18 +471,20 @@ export class PortPointPathingSolver extends BaseSolver {
    *
    * @param prevCandidate The previous candidate (must have a prevCandidate to compute rotation)
    * @param exitPoint The point we're exiting to
-   * @returns Cost based on rotation direction and angle
+   * @returns Object with cost, direction, and the cost-per-rotation used
    */
-  private computeRotationCost(
+  computeRotationCost(
     prevCandidate: PortPointCandidate,
     exitPoint: { x: number; y: number },
-  ): number {
+  ): { cost: number; direction: "CW" | "CCW" | "none"; costPerRotation: number } {
     // Need at least two previous points to compute rotation
-    if (!prevCandidate.prevCandidate) return 0
+    if (!prevCandidate.prevCandidate) {
+      return { cost: 0, direction: "none", costPerRotation: 0 }
+    }
 
     // Skip if both costs are zero
     if (this.CW_COST_PER_ROTATION === 0 && this.CCW_COST_PER_ROTATION === 0) {
-      return 0
+      return { cost: 0, direction: "none", costPerRotation: 0 }
     }
 
     const prev = prevCandidate.prevCandidate.point
@@ -501,7 +506,9 @@ export class PortPointPathingSolver extends BaseSolver {
     const mag1 = Math.sqrt(dx1 * dx1 + dy1 * dy1)
     const mag2 = Math.sqrt(dx2 * dx2 + dy2 * dy2)
 
-    if (mag1 === 0 || mag2 === 0) return 0
+    if (mag1 === 0 || mag2 === 0) {
+      return { cost: 0, direction: "none", costPerRotation: 0 }
+    }
 
     // Angle in radians (0 to PI)
     const cosAngle = Math.max(-1, Math.min(1, dot / (mag1 * mag2)))
@@ -512,13 +519,21 @@ export class PortPointPathingSolver extends BaseSolver {
 
     if (cross > 0) {
       // Counter-clockwise turn
-      return this.CCW_COST_PER_ROTATION * normalizedAngle
+      return {
+        cost: this.CCW_COST_PER_ROTATION * normalizedAngle,
+        direction: "CCW",
+        costPerRotation: this.CCW_COST_PER_ROTATION,
+      }
     } else if (cross < 0) {
       // Clockwise turn
-      return this.CW_COST_PER_ROTATION * normalizedAngle
+      return {
+        cost: this.CW_COST_PER_ROTATION * normalizedAngle,
+        direction: "CW",
+        costPerRotation: this.CW_COST_PER_ROTATION,
+      }
     }
 
-    return 0
+    return { cost: 0, direction: "none", costPerRotation: 0 }
   }
 
   getConnectionsWithNodes() {
@@ -757,27 +772,17 @@ export class PortPointPathingSolver extends BaseSolver {
       point.distToCentermostPortOnZ ** 2
 
     // Compute rotation cost to bias CW or CCW routing
-    const rotationCost = prevCandidate
+    const rotationResult = prevCandidate
       ? this.computeRotationCost(prevCandidate, point)
-      : 0
+      : { cost: 0, direction: "none" as const, costPerRotation: 0 }
 
     return (
       distanceToGoal +
       estStepCost +
       memRiskForHop +
       centerOffsetDistPenalty +
-      rotationCost
+      rotationResult.cost
     )
-  }
-
-  getVisitedPortPointKey(
-    portPointId: string,
-    hasTouchedOffBoardNode?: boolean,
-  ): string {
-    if (this.currentConnectionShouldRouteOffBoard && hasTouchedOffBoardNode) {
-      return `${portPointId}:touched_off_board`
-    }
-    return portPointId
   }
 
   getAvailableExitPortPoints(
@@ -793,11 +798,6 @@ export class PortPointPathingSolver extends BaseSolver {
     const availablePortPoints: InputPortPoint[] = []
 
     for (const pp of portPoints) {
-      const visitedKey = this.getVisitedPortPointKey(
-        pp.portPointId,
-        hasTouchedOffBoardNode,
-      )
-      if (this.visitedPortPoints?.has(visitedKey)) continue
       const assignment = this.assignedPortPoints.get(pp.portPointId)
       if (
         assignment &&
@@ -825,7 +825,6 @@ export class PortPointPathingSolver extends BaseSolver {
     hasTouchedOffBoardNode?: boolean,
   ): InputPortPoint[] {
     const portPoints = this.nodePortPointsMap.get(nodeId) ?? []
-    const currentNode = this.nodeMap.get(nodeId)
     const currentConnection =
       this.connectionsWithResults[this.currentConnectionIndex]
     const currentRootConnectionName =
@@ -835,16 +834,8 @@ export class PortPointPathingSolver extends BaseSolver {
     const portsOnSameEdgeMap = new Map<string, InputPortPoint[]>()
 
     for (const pp of portPoints) {
-      const visitedKey = this.getVisitedPortPointKey(
-        pp.portPointId,
-        hasTouchedOffBoardNode,
-      )
-      if (this.visitedPortPoints?.has(visitedKey)) continue
-
       const otherNodeId = this.getOtherNodeId(pp, nodeId)
       if (!otherNodeId) continue
-
-      const otherNode = this.nodeMap.get(otherNodeId)
 
       const edgeKey = `${otherNodeId}|${pp.z}`
       const arr = portsOnSameEdgeMap.get(edgeKey) ?? []
@@ -909,11 +900,6 @@ export class PortPointPathingSolver extends BaseSolver {
       if (!otherNode) continue
       const otherPortPoints = this.nodePortPointsMap.get(otherNodeId) ?? []
       for (const pp of otherPortPoints) {
-        const visitedKey = this.getVisitedPortPointKey(
-          pp.portPointId,
-          hasTouchedOffBoardNode,
-        )
-        if (this.visitedPortPoints?.has(visitedKey)) continue
         const assignment = this.assignedPortPoints.get(pp.portPointId)
         if (
           assignment &&
@@ -1197,7 +1183,6 @@ export class PortPointPathingSolver extends BaseSolver {
     if (this.currentPathIterations > maxIterationsForPath) {
       this.currentConnectionIndex++
       this.candidates = null
-      this.visitedPortPoints = null
       this.currentPathIterations = 0
       this.failed = true
       this.error = `Exceeded max iterations for path (${maxIterationsForPath}) on connection ${nextConnection.connection.name}`
@@ -1236,7 +1221,6 @@ export class PortPointPathingSolver extends BaseSolver {
 
       // Create initial candidates for each available z layer on the start node
       this.candidates = []
-      this.visitedPortPoints = new Set<string>()
 
       for (const z of startNode.availableZ) {
         const p = startPoint
@@ -1271,18 +1255,8 @@ export class PortPointPathingSolver extends BaseSolver {
     // Sort candidates by f value
     this.candidates.sort((a, b) => a.f - b.f)
 
-    // Pop until we find a candidate whose entry portPoint isn't already closed
-    let currentCandidate = this.candidates.shift()
-    while (currentCandidate?.portPoint && this.visitedPortPoints) {
-      const visitedKey = this.getVisitedPortPointKey(
-        currentCandidate.portPoint.portPointId,
-        currentCandidate.hasTouchedOffBoardNode,
-      )
-      if (!this.visitedPortPoints.has(visitedKey)) {
-        break
-      }
-      currentCandidate = this.candidates.shift()
-    }
+    // Pop the best candidate
+    const currentCandidate = this.candidates.shift()
 
     // Limit memory usage
     if (this.candidates.length > this.MAX_CANDIDATES_IN_MEMORY) {
@@ -1296,19 +1270,9 @@ export class PortPointPathingSolver extends BaseSolver {
       this.error = `Ran out of candidates on connection ${connectionName}`
       this.currentConnectionIndex++
       this.candidates = null
-      this.visitedPortPoints = null
       this.currentPathIterations = 0
       this.failed = true
       return
-    }
-
-    // Mark current port point as visited immediately (Fix B: mark visited early)
-    if (currentCandidate.portPoint && this.visitedPortPoints) {
-      const visitedKey = this.getVisitedPortPointKey(
-        currentCandidate.portPoint.portPointId,
-        currentCandidate.hasTouchedOffBoardNode,
-      )
-      this.visitedPortPoints.add(visitedKey)
     }
 
     // If we're at end goal node, close it by connecting to the end target point
@@ -1360,7 +1324,6 @@ export class PortPointPathingSolver extends BaseSolver {
       this.progress =
         this.currentConnectionIndex / this.connectionsWithResults.length
       this.candidates = null
-      this.visitedPortPoints = null
       this.currentPathIterations = 0
       return
     }
@@ -1471,6 +1434,9 @@ export class PortPointPathingSolver extends BaseSolver {
         currentCandidate,
       )
 
+      // Compute rotation cost separately to store on candidate
+      const rotationResult = this.computeRotationCost(currentCandidate, portPoint)
+
       const f = g + h * this.GREEDY_MULTIPLIER
 
       const lastMoveWasOffBoard =
@@ -1493,6 +1459,8 @@ export class PortPointPathingSolver extends BaseSolver {
           hasTouchedOffBoardNode ||
           Boolean(nextNode._offBoardConnectionId) ||
           Boolean(currentNode?._offBoardConnectionId),
+        rotationCost: rotationResult.cost,
+        rotationDirection: rotationResult.direction,
       })
     }
   }

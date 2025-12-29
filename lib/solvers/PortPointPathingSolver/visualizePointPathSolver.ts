@@ -359,6 +359,7 @@ export function visualizePointPathSolver(
             `  estHops: ${estHops.toFixed(1)}`,
             `  estStepCost: ${estStepCost.toFixed(2)}`,
             `  memRiskCost: ${memRiskCost.toFixed(2)}`,
+            `  rot: ${candidate.rotationDirection ?? "none"} cost=${(candidate.rotationCost ?? 0).toFixed(2)}`,
             `z: ${candidate.z}`,
             `node: ${candidate.currentNodeId}`,
             `Cost(Pf): ${costPf.toFixed(3)}`,
