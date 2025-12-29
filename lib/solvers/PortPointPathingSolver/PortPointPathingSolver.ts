@@ -45,6 +45,11 @@ export interface PortPointPathingHyperParameters {
 
   FORCE_OFF_BOARD_FREQUENCY?: number
   FORCE_OFF_BOARD_SEED?: number
+
+  /** Cost per unit of clockwise rotation (0-1 normalized angle) */
+  CW_COST_PER_ROTATION?: number
+  /** Cost per unit of counter-clockwise rotation (0-1 normalized angle) */
+  CCW_COST_PER_ROTATION?: number
 }
 
 /**
@@ -214,6 +219,16 @@ export class PortPointPathingSolver extends BaseSolver {
     return this.hyperParameters.FORCE_OFF_BOARD_SEED ?? 0
   }
 
+  /** Cost per unit of clockwise rotation (0-1 normalized angle) */
+  get CW_COST_PER_ROTATION() {
+    return this.hyperParameters.CW_COST_PER_ROTATION ?? 0
+  }
+
+  /** Cost per unit of counter-clockwise rotation (0-1 normalized angle) */
+  get CCW_COST_PER_ROTATION() {
+    return this.hyperParameters.CCW_COST_PER_ROTATION ?? 0
+  }
+
   get NODE_MAX_PF() {
     const NODE_MAX_PF = Math.min(
       0.99999,
@@ -236,11 +251,11 @@ export class PortPointPathingSolver extends BaseSolver {
   MAX_CANDIDATES_IN_MEMORY = 1000
 
   get MAX_ITERATIONS_PER_PATH() {
-    return this.hyperParameters.MAX_ITERATIONS_PER_PATH ?? 500
+    return this.hyperParameters.MAX_ITERATIONS_PER_PATH ?? 2000
   }
 
   ITERATIONS_PER_MM_FOR_PATH = 5
-  BASE_ITERATIONS_PER_PATH = 20
+  BASE_ITERATIONS_PER_PATH = 2000
 
   get MIN_ALLOWED_BOARD_SCORE() {
     return this.hyperParameters.MIN_ALLOWED_BOARD_SCORE ?? -10000
@@ -447,6 +462,65 @@ export class PortPointPathingSolver extends BaseSolver {
     return delta * this.NODE_PF_FACTOR
   }
 
+  /**
+   * Compute the rotation cost based on the angle change between segments.
+   * Uses the cross product to determine if the turn is clockwise or counter-clockwise.
+   *
+   * @param prevCandidate The previous candidate (must have a prevCandidate to compute rotation)
+   * @param exitPoint The point we're exiting to
+   * @returns Cost based on rotation direction and angle
+   */
+  private computeRotationCost(
+    prevCandidate: PortPointCandidate,
+    exitPoint: { x: number; y: number },
+  ): number {
+    // Need at least two previous points to compute rotation
+    if (!prevCandidate.prevCandidate) return 0
+
+    // Skip if both costs are zero
+    if (this.CW_COST_PER_ROTATION === 0 && this.CCW_COST_PER_ROTATION === 0) {
+      return 0
+    }
+
+    const prev = prevCandidate.prevCandidate.point
+    const current = prevCandidate.point
+    const next = exitPoint
+
+    // Calculate direction vectors
+    const dx1 = current.x - prev.x
+    const dy1 = current.y - prev.y
+    const dx2 = next.x - current.x
+    const dy2 = next.y - current.y
+
+    // Cross product determines rotation direction
+    // Positive = counter-clockwise, Negative = clockwise (in standard math coordinates)
+    const cross = dx1 * dy2 - dy1 * dx2
+
+    // Dot product and magnitudes to get angle
+    const dot = dx1 * dx2 + dy1 * dy2
+    const mag1 = Math.sqrt(dx1 * dx1 + dy1 * dy1)
+    const mag2 = Math.sqrt(dx2 * dx2 + dy2 * dy2)
+
+    if (mag1 === 0 || mag2 === 0) return 0
+
+    // Angle in radians (0 to PI)
+    const cosAngle = Math.max(-1, Math.min(1, dot / (mag1 * mag2)))
+    const angle = Math.acos(cosAngle)
+
+    // Normalize angle to 0-1 range (0 = no turn, 1 = 180 degree turn)
+    const normalizedAngle = angle / Math.PI
+
+    if (cross > 0) {
+      // Counter-clockwise turn
+      return this.CCW_COST_PER_ROTATION * normalizedAngle
+    } else if (cross < 0) {
+      // Clockwise turn
+      return this.CW_COST_PER_ROTATION * normalizedAngle
+    }
+
+    return 0
+  }
+
   getConnectionsWithNodes() {
     const { unshuffledConnectionsWithResults, connectionNameToGoalNodeIds } =
       getConnectionsWithNodesShared(this.simpleRouteJson, this.inputNodes)
@@ -635,14 +709,16 @@ export class PortPointPathingSolver extends BaseSolver {
    *  - distance to goal
    *  - estimated remaining hops (distance / avgNodePitch)
    *  - memoryPfMap to bias away from historically high Pf regions
+   *  - rotation cost to bias CW or CCW routing
    */
   computeH(
     point: InputPortPoint,
     currentNodeId: CapacityMeshNodeId,
     endGoalNodeId: CapacityMeshNodeId,
-    currentZ: number,
+    _currentZ: number,
     distanceTraveled: number,
     hasTouchedOffBoardNode?: boolean,
+    prevCandidate?: PortPointCandidate | null,
   ): number {
     // Random walk: if we haven't traveled far enough, return 0 to encourage exploration
     if (
@@ -680,8 +756,17 @@ export class PortPointPathingSolver extends BaseSolver {
       this.CENTER_OFFSET_DIST_PENALTY_FACTOR *
       point.distToCentermostPortOnZ ** 2
 
+    // Compute rotation cost to bias CW or CCW routing
+    const rotationCost = prevCandidate
+      ? this.computeRotationCost(prevCandidate, point)
+      : 0
+
     return (
-      distanceToGoal + estStepCost + memRiskForHop + centerOffsetDistPenalty
+      distanceToGoal +
+      estStepCost +
+      memRiskForHop +
+      centerOffsetDistPenalty +
+      rotationCost
     )
   }
 
@@ -1383,6 +1468,7 @@ export class PortPointPathingSolver extends BaseSolver {
         portPoint.z,
         distanceTraveled,
         hasTouchedOffBoardNode,
+        currentCandidate,
       )
 
       const f = g + h * this.GREEDY_MULTIPLIER
