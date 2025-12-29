@@ -177,8 +177,14 @@ export const AutoroutingPipelineDebugger = ({
       : 1
     const SolverClass = PIPELINE_SOLVERS[initialPipelineId]
     return createSolverProp
-      ? createSolverProp(srj, { cacheProvider: initialCacheProvider, effort: initialEffort })
-      : new SolverClass(srj, { cacheProvider: initialCacheProvider, effort: initialEffort })
+      ? createSolverProp(srj, {
+          cacheProvider: initialCacheProvider,
+          effort: initialEffort,
+        })
+      : new SolverClass(srj, {
+          cacheProvider: initialCacheProvider,
+          effort: initialEffort,
+        })
   })
   const [previewMode, setPreviewMode] = useState(false)
   const [renderer, setRenderer] = useState<"canvas" | "vector">(
