@@ -1,14 +1,13 @@
 import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"
 import { TraceWidthSolver } from "lib/solvers/TraceWidthSolver/TraceWidthSolver"
 import input from "./tracewidthsolver01-input.json"
+import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 
 export default () => {
   const createSolver = () => {
-    const data = input[0] as any
-
     return new TraceWidthSolver({
-      hdRoutes: data.hdRoutes,
-      minTraceWidth: data.minTraceWidth,
+      ...(input[0] as any),
+      connMap: new ConnectivityMap(input[0].connMap.netMap),
     })
   }
 

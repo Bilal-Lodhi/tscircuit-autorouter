@@ -4108,7 +4108,9 @@
         ]
       }
     ],
-    "minTraceWidth": 0.15
+    "minTraceWidth": 0.15,
+    "defaultObstacleMargin": 0.1,
+    "nominalTraceWidth": 0.25
   },
   "circuit_json": null,
   "subcircuit_id": null,

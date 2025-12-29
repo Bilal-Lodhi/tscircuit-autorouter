@@ -6,7 +6,7 @@ import { ObstacleSpatialHashIndex } from "lib/data-structures/ObstacleTree"
 import { HighDensityRouteSpatialIndex } from "lib/data-structures/HighDensityRouteSpatialIndex"
 import { GraphicsObject } from "graphics-debug"
 
-const CURSOR_STEP_DISTANCE = 0.25
+const CURSOR_STEP_DISTANCE = 0.1
 
 interface Point2D {
   x: number
