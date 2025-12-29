@@ -311,8 +311,9 @@ export class PortPointPathingSolver extends BaseSolver {
         precomputedInitialParams.connectionNameToGoalNodeIds
 
       // Clone mutable params
-      const { nodeAssignedPortPoints } =
-        clonePrecomputedMutableParams(precomputedInitialParams)
+      const { nodeAssignedPortPoints } = clonePrecomputedMutableParams(
+        precomputedInitialParams,
+      )
       this.nodeAssignedPortPoints = nodeAssignedPortPoints
 
       // Shuffle the connections based on SHUFFLE_SEED

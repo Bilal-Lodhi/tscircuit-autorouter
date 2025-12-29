@@ -1,7 +1,4 @@
-import type {
-  CapacityMeshNodeId,
-  SimpleRouteJson,
-} from "../../types"
+import type { CapacityMeshNodeId, SimpleRouteJson } from "../../types"
 import type { PortPoint } from "../../types/high-density-types"
 import type {
   ConnectionPathResult,
@@ -43,18 +40,14 @@ export function precomputeSharedParams(
   inputNodes: InputNodeWithPortPoints[],
 ): PrecomputedInitialParams {
   // Build nodeMap
-  const nodeMap = new Map(
-    inputNodes.map((n) => [n.capacityMeshNodeId, n]),
-  )
+  const nodeMap = new Map(inputNodes.map((n) => [n.capacityMeshNodeId, n]))
 
   // Compute average node pitch for heuristic
   const pitches = inputNodes
     .map((n) => (n.width + n.height) / 2)
     .filter((x) => Number.isFinite(x) && x > 0)
   const avgNodePitch =
-    pitches.length > 0
-      ? pitches.reduce((a, b) => a + b, 0) / pitches.length
-      : 1
+    pitches.length > 0 ? pitches.reduce((a, b) => a + b, 0) / pitches.length : 1
 
   // Cache off-board nodes
   const offBoardNodes = inputNodes.filter((n) => n._offBoardConnectionId)

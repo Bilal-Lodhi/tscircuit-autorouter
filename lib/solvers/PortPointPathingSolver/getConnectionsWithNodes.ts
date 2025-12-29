@@ -1,8 +1,5 @@
 import { distance } from "@tscircuit/math-utils"
-import type {
-  CapacityMeshNodeId,
-  SimpleRouteJson,
-} from "../../types"
+import type { CapacityMeshNodeId, SimpleRouteJson } from "../../types"
 import type {
   ConnectionPathResult,
   InputNodeWithPortPoints,
