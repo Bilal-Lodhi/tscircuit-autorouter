@@ -495,7 +495,8 @@ export class PortPointPathingSolver extends BaseSolver {
 
     return calculateNodeProbabilityOfFailure(
       this.capacityMeshNodeMap.get(node.capacityMeshNodeId)!,
-      crossings.numSameLayerCrossings,
+      crossings.numSameLayerCrossings +
+        crossings.numCollinearConnectionIntersections,
       crossings.numEntryExitLayerChanges,
       crossings.numTransitionPairCrossings,
     )
