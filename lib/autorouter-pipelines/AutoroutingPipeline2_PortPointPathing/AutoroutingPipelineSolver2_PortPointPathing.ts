@@ -50,6 +50,7 @@ interface CapacityMeshSolverOptions {
   capacityDepth?: number
   targetMinCapacity?: number
   cacheProvider?: CacheProvider | null
+  effort?: number
 }
 export type AutoroutingPipelineSolverOptions = CapacityMeshSolverOptions
 
@@ -103,6 +104,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
   multiSectionPortPointOptimizer?: MultiSectionPortPointOptimizer
   viaDiameter: number
   minTraceWidth: number
+  effort: number
 
   startTimeOfPhase: Record<string, number>
   endTimeOfPhase: Record<string, number>
@@ -294,6 +296,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
             initialAssignedPortPoints: portPointSolver.assignedPortPoints,
             initialNodeAssignedPortPoints:
               portPointSolver.nodeAssignedPortPoints,
+            effort: cms.effort,
           },
         ]
       },
@@ -349,6 +352,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
     this.MAX_ITERATIONS = 100e6
     this.viaDiameter = srj.minViaDiameter ?? 0.6
     this.minTraceWidth = srj.minTraceWidth
+    this.effort = opts.effort ?? 1
 
     // If capacityDepth is not provided, calculate it automatically
     if (opts.capacityDepth === undefined) {
