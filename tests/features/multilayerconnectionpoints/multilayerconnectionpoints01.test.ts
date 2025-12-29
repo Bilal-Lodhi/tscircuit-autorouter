@@ -2,9 +2,7 @@ import { expect, test } from "bun:test"
 import { AutoroutingPipelineSolver } from "lib"
 import type { SimpleRouteJson } from "lib/types"
 import { getLastStepSvg } from "../../fixtures/getLastStepSvg"
-import { simpleRouteJson } from "../../../fixtures/features/multilayerconnectionpoints/multilayerconnectionpoints01.fixture" with {
-  type: "json",
-}
+import { simpleRouteJson } from "../../../fixtures/features/multilayerconnectionpoints/multilayerconnectionpoints01.fixture"
 
 test("routes multilayer connection point with mixed layer obstacles", () => {
   const solver = new AutoroutingPipelineSolver(
