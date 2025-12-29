@@ -9,6 +9,11 @@ import type { GraphicsObject } from "graphics-debug"
 import { distance } from "@tscircuit/math-utils"
 import { calculateNodeProbabilityOfFailure } from "../UnravelSolver/calculateCrossingProbabilityOfFailure"
 import { getIntraNodeCrossings } from "../../utils/getIntraNodeCrossings"
+import {
+  preprocessIntraNodeCrossings,
+  hasAnyCrossingFromPortPoints,
+  type NodeWithCrossingPrecompute,
+} from "../../utils/getIntraNodeCrossingsFast"
 import type {
   PortPoint,
   NodeWithPortPoints,
@@ -40,6 +45,13 @@ export interface PortPointPathingHyperParameters {
 
   FORCE_OFF_BOARD_FREQUENCY?: number
   FORCE_OFF_BOARD_SEED?: number
+
+  /**
+   * When true, uses optimized single-layer crossing detection.
+   * Any crossing immediately returns NODE_PF_MAX_PENALTY for fast rejection.
+   * Uses precomputed bitset adjacency matrices for O(1) intersection checks.
+   */
+  SINGLE_LAYER_MODE?: boolean
 }
 
 /**
@@ -209,6 +221,10 @@ export class PortPointPathingSolver extends BaseSolver {
     return this.hyperParameters.FORCE_OFF_BOARD_SEED ?? 0
   }
 
+  get SINGLE_LAYER_MODE() {
+    return this.hyperParameters.SINGLE_LAYER_MODE ?? false
+  }
+
   get NODE_MAX_PF() {
     const NODE_MAX_PF = Math.min(
       0.99999,
@@ -331,6 +347,13 @@ export class PortPointPathingSolver extends BaseSolver {
       this.getConnectionsWithNodes()
     this.connectionsWithResults = connectionsWithResults
     this.connectionNameToGoalNodeIds = connectionNameToGoalNodeIds
+
+    // Precompute crossing bitsets for SINGLE_LAYER_MODE optimization
+    if (this.SINGLE_LAYER_MODE) {
+      for (const node of inputNodes) {
+        preprocessIntraNodeCrossings(node as NodeWithCrossingPrecompute)
+      }
+    }
   }
 
   private clearCostCaches() {
@@ -480,6 +503,8 @@ export class PortPointPathingSolver extends BaseSolver {
 
   /**
    * Compute probability of failure for a node using getIntraNodeCrossings.
+   * When SINGLE_LAYER_MODE is enabled, uses fast bitset-based detection
+   * and returns NODE_MAX_PF immediately if any crossing is detected.
    */
   computeNodePf(
     node: InputNodeWithPortPoints,
@@ -487,10 +512,35 @@ export class PortPointPathingSolver extends BaseSolver {
   ): number {
     if (node._containsTarget) return 0
 
-    const nodeWithPortPoints = this.buildNodeWithPortPointsForCrossing(
-      node,
-      additionalPortPoints,
-    )
+    const existingPortPoints =
+      this.nodeAssignedPortPoints.get(node.capacityMeshNodeId) ?? []
+    const allPortPoints = additionalPortPoints
+      ? [...existingPortPoints, ...additionalPortPoints]
+      : existingPortPoints
+
+    // Fast path for SINGLE_LAYER_MODE: immediately reject if any crossing
+    if (this.SINGLE_LAYER_MODE) {
+      if (
+        hasAnyCrossingFromPortPoints(
+          node as NodeWithCrossingPrecompute,
+          allPortPoints,
+        )
+      ) {
+        return this.NODE_MAX_PF
+      }
+      // No crossings detected, return 0 pf
+      return 0
+    }
+
+    // Standard path: compute full crossing metrics
+    const nodeWithPortPoints: NodeWithPortPoints = {
+      capacityMeshNodeId: node.capacityMeshNodeId,
+      center: node.center,
+      width: node.width,
+      height: node.height,
+      portPoints: allPortPoints,
+      availableZ: node.availableZ,
+    }
     const crossings = getIntraNodeCrossings(nodeWithPortPoints)
 
     return calculateNodeProbabilityOfFailure(
