@@ -318,7 +318,9 @@ export class PortPointPathingSolver extends BaseSolver {
 
       // Shuffle the connections based on SHUFFLE_SEED
       this.connectionsWithResults = cloneAndShuffleArray(
-        precomputedInitialParams.unshuffledConnectionsWithResults,
+        structuredClone(
+          precomputedInitialParams.unshuffledConnectionsWithResults,
+        ),
         this.hyperParameters.SHUFFLE_SEED ?? 0,
       )
     } else {
