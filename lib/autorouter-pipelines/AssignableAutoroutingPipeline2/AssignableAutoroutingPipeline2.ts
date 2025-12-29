@@ -262,7 +262,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
               // NODE_PF_MAX_PENALTY: 10,
               // RANDOM_WALK_DISTANCE: 50,
               NODE_PF_FACTOR: 10000,
-              FORCE_OFF_BOARD_FREQUENCY: 0.3,
+              // FORCE_OFF_BOARD_FREQUENCY: 0, // 0.3,
               CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
               FORCE_CENTER_FIRST: true,
             },

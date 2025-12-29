@@ -1139,7 +1139,9 @@ export class PortPointPathingSolver extends BaseSolver {
       // Determine if this connection should route off-board based on frequency and seed
       if (this.FORCE_OFF_BOARD_FREQUENCY > 0) {
         const random = seededRandom(
-          this.FORCE_OFF_BOARD_SEED + this.currentConnectionIndex,
+          (this.hyperParameters.SHUFFLE_SEED ?? 0) * 17 +
+            this.FORCE_OFF_BOARD_SEED +
+            this.currentConnectionIndex,
         )
         this.currentConnectionShouldRouteOffBoard =
           random() < this.FORCE_OFF_BOARD_FREQUENCY
@@ -1359,6 +1361,11 @@ export class PortPointPathingSolver extends BaseSolver {
         connectionName,
         rootConnectionName,
       )
+
+      // Don't add candidates whose g cost would cause the board to drop below MIN_ALLOWED_BOARD_SCORE
+      if (g > -this.MIN_ALLOWED_BOARD_SCORE) {
+        continue
+      }
 
       const distanceTraveled =
         currentCandidate.distanceTraveled +
