@@ -24,6 +24,7 @@ export interface TraceWidthSolverInput {
   colorMap?: Record<string, string>
   nominalTraceWidth?: number
   minTraceWidth: number
+  obstacleMargin?: number
 }
 
 /**
@@ -43,6 +44,7 @@ export class TraceWidthSolver extends BaseSolver {
 
   nominalTraceWidth: number
   minTraceWidth: number
+  obstacleMargin: number
   TRACE_WIDTH_SCHEDULE: number[]
 
   unprocessedRoutes: HighDensityRoute[] = []
@@ -75,6 +77,7 @@ export class TraceWidthSolver extends BaseSolver {
     this.hdRoutes = [...input.hdRoutes]
     this.minTraceWidth = input.minTraceWidth
     this.nominalTraceWidth = input.nominalTraceWidth ?? input.minTraceWidth * 2
+    this.obstacleMargin = input.obstacleMargin ?? 0.15
 
     // Build the width schedule: [nominal, mid]
     // minTraceWidth is not in schedule - it's the fallback when all schedule options fail
@@ -153,8 +156,8 @@ export class TraceWidthSolver extends BaseSolver {
     // Check clearance at current cursor position
     const clearance = this.getClearanceAtPosition(this.cursorPosition!)
 
-    // Check if there's enough clearance for the current target width
-    const requiredClearance = this.currentTargetWidth / 2
+    // Check if there's enough clearance for the current target width + obstacle margin
+    const requiredClearance = this.currentTargetWidth / 2 + this.obstacleMargin
     if (clearance < requiredClearance) {
       this.hasInsufficientClearance = true
       // Early exit: try the next width immediately
@@ -309,8 +312,10 @@ export class TraceWidthSolver extends BaseSolver {
         )
         const distToObstacle = Math.sqrt(dx * dx + dy * dy)
 
-        // Track obstacles that are within the current target width
-        if (distToObstacle < this.currentTargetWidth / 2) {
+        // Track obstacles that would violate clearance (width/2 + margin)
+        const requiredObstacleClearance =
+          this.currentTargetWidth / 2 + this.obstacleMargin
+        if (distToObstacle < requiredObstacleClearance) {
           this.lastCollidingObstacles.push(obstacle)
         }
 
@@ -341,8 +346,10 @@ export class TraceWidthSolver extends BaseSolver {
       const otherTraceHalfWidth = (conflictingRoute.traceThickness ?? 0.15) / 2
       const clearance = distance - otherTraceHalfWidth
 
-      // Track routes that are within the current target width
-      if (clearance < this.currentTargetWidth / 2) {
+      // Track routes that would violate clearance (width/2 + margin)
+      const requiredTraceClearance =
+        this.currentTargetWidth / 2 + this.obstacleMargin
+      if (clearance < requiredTraceClearance) {
         this.lastCollidingRoutes.push(conflictingRoute)
       }
 
@@ -392,7 +399,7 @@ export class TraceWidthSolver extends BaseSolver {
       circles: [],
       rects: [],
       coordinateSystem: "cartesian",
-      title: `Trace Width Solver (schedule: [${scheduleStr}]mm, fallback: ${this.minTraceWidth.toFixed(2)}mm)`,
+      title: `Trace Width Solver (schedule: [${scheduleStr}]mm, fallback: ${this.minTraceWidth.toFixed(2)}mm, margin: ${this.obstacleMargin.toFixed(2)}mm)`,
     }
 
     // Build set of colliding obstacle IDs for quick lookup

@@ -364,6 +364,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
         colorMap: cms.colorMap,
         nominalTraceWidth: cms.srj.nominalTraceWidth,
         minTraceWidth: cms.minTraceWidth,
+        obstacleMargin: 0.15,
       },
     ]),
   ]
