@@ -3,7 +3,7 @@ import { AutoroutingPipelineSolver2_PortPointPathing } from "lib/autorouter-pipe
 import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
 import { getDrcErrors } from "lib/testing/getDrcErrors"
 import type { SimpleRouteJson } from "lib/types"
-import srj from "./pcb-trace-should-return-root-connection-name.srj.json"
+import srj from "./pcb_trace_id-should-return-root-connection-name.srj.json"
 import { mergeGraphics, Text } from "graphics-debug"
 import { getLastStepGraphicsObject } from "tests/fixtures/getLastStepGraphicsObject"
 
