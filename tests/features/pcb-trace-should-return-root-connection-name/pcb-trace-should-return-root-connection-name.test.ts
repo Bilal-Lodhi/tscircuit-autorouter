@@ -4,7 +4,7 @@ import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
 import { getDrcErrors } from "lib/testing/getDrcErrors"
 import type { SimpleRouteJson } from "lib/types"
 import srj from "./pcb-trace-should-return-root-connection-name.srj.json"
-import { mergeGraphics } from "graphics-debug"
+import { mergeGraphics, Text } from "graphics-debug"
 import { getLastStepGraphicsObject } from "tests/fixtures/getLastStepGraphicsObject"
 
 const boardSrj = srj as SimpleRouteJson
@@ -37,17 +37,20 @@ test("board#23 trace keeps original connection name", () => {
   expect(errors.length).toBeGreaterThan(0)
   let mixedErrorVIz = getLastStepGraphicsObject(solver.visualize())
   if (errors.length > 0) {
-    mixedErrorVIz = mergeGraphics(mixedErrorVIz, {
-      texts: [
-        {
-          text: "has DRC errors",
-          x: 0,
-          y: 0,
-          fontSize: 1,
-          color: "red",
-        },
-      ],
-    })
+    const texts: Text[] = []
+    const lineHeight = 1.2
+    let lineNumber = 0
+    for (const error of errors) {
+      texts.push({
+        text: error.message,
+        x: 0,
+        y: lineNumber * lineHeight,
+        fontSize: .3,
+        color: "red",
+      })
+      lineNumber++
+    }
+    mixedErrorVIz = mergeGraphics(mixedErrorVIz, {texts})
   }
   let finalviz = mixedErrorVIz
   expect(finalviz).toMatchGraphicsSvg(import.meta.path)
