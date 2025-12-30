@@ -236,11 +236,11 @@ export class PortPointPathingSolver extends BaseSolver {
   MAX_CANDIDATES_IN_MEMORY = 1000
 
   get MAX_ITERATIONS_PER_PATH() {
-    return this.hyperParameters.MAX_ITERATIONS_PER_PATH ?? 500
+    return this.hyperParameters.MAX_ITERATIONS_PER_PATH ?? 4000
   }
 
-  ITERATIONS_PER_MM_FOR_PATH = 5
-  BASE_ITERATIONS_PER_PATH = 20
+  ITERATIONS_PER_MM_FOR_PATH = 25
+  BASE_ITERATIONS_PER_PATH = 600
 
   get MIN_ALLOWED_BOARD_SCORE() {
     return this.hyperParameters.MIN_ALLOWED_BOARD_SCORE ?? -10000
