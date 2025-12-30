@@ -14,6 +14,74 @@ const BORDER_FORCE_STRENGTH = 0.1
 const MOVABLE_POINT_OFFSET = 0.1
 
 /**
+ * Calculate the cross product direction for three points
+ */
+function direction(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  cx: number,
+  cy: number,
+): number {
+  return (cx - ax) * (by - ay) - (cy - ay) * (bx - ax)
+}
+
+/**
+ * Check if point c lies on segment ab (assuming collinear)
+ */
+function onSegment(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  cx: number,
+  cy: number,
+): boolean {
+  return (
+    Math.min(ax, bx) <= cx &&
+    cx <= Math.max(ax, bx) &&
+    Math.min(ay, by) <= cy &&
+    cy <= Math.max(ay, by)
+  )
+}
+
+/**
+ * Check if two line segments (p1-p2 and p3-p4) intersect
+ * Returns true if the segments intersect
+ */
+function segmentsIntersect(
+  p1x: number,
+  p1y: number,
+  p2x: number,
+  p2y: number,
+  p3x: number,
+  p3y: number,
+  p4x: number,
+  p4y: number,
+): boolean {
+  const d1 = direction(p3x, p3y, p4x, p4y, p1x, p1y)
+  const d2 = direction(p3x, p3y, p4x, p4y, p2x, p2y)
+  const d3 = direction(p1x, p1y, p2x, p2y, p3x, p3y)
+  const d4 = direction(p1x, p1y, p2x, p2y, p4x, p4y)
+
+  if (
+    ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+    ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))
+  ) {
+    return true
+  }
+
+  // Check collinear cases
+  if (d1 === 0 && onSegment(p3x, p3y, p4x, p4y, p1x, p1y)) return true
+  if (d2 === 0 && onSegment(p3x, p3y, p4x, p4y, p2x, p2y)) return true
+  if (d3 === 0 && onSegment(p1x, p1y, p2x, p2y, p3x, p3y)) return true
+  if (d4 === 0 && onSegment(p1x, p1y, p2x, p2y, p4x, p4y)) return true
+
+  return false
+}
+
+/**
  * Find the closest point on line segment AB to point P
  * Returns the closest point and the squared distance to it
  */
@@ -415,6 +483,100 @@ export class SimpleHighDensitySolver extends BaseSolver {
       }
     }
 
+    // Helper to get current coordinates of a segment point
+    const getSegmentPointCoords = (
+      segPoint: SegmentInfo,
+    ): { x: number; y: number } => {
+      if (segPoint.movablePoint) {
+        return { x: segPoint.movablePoint.x, y: segPoint.movablePoint.y }
+      }
+      return { x: segPoint.x, y: segPoint.y }
+    }
+
+    // Check if a point's current position causes intersection with other connections
+    const wouldCauseIntersection = (point: MovablePoint): boolean => {
+      // Find the route this point belongs to
+      let pointRoute: RouteInProgress | null = null
+      for (const route of this.routesInProgress) {
+        if (route.movablePoints.includes(point)) {
+          pointRoute = route
+          break
+        }
+      }
+      if (!pointRoute) return false
+
+      const pointSegments = routeSegments.get(pointRoute)!
+
+      // Find index of this point in the segment points
+      let pointIndex = -1
+      for (let i = 0; i < pointSegments.length; i++) {
+        if (pointSegments[i].movablePoint === point) {
+          pointIndex = i
+          break
+        }
+      }
+      if (pointIndex === -1) return false
+
+      // Get segments involving this point (before and after)
+      const segmentsToCheck: Array<{
+        ax: number
+        ay: number
+        bx: number
+        by: number
+      }> = []
+
+      if (pointIndex > 0) {
+        const prevPoint = getSegmentPointCoords(pointSegments[pointIndex - 1])
+        segmentsToCheck.push({
+          ax: prevPoint.x,
+          ay: prevPoint.y,
+          bx: point.x,
+          by: point.y,
+        })
+      }
+      if (pointIndex < pointSegments.length - 1) {
+        const nextPoint = getSegmentPointCoords(pointSegments[pointIndex + 1])
+        segmentsToCheck.push({
+          ax: point.x,
+          ay: point.y,
+          bx: nextPoint.x,
+          by: nextPoint.y,
+        })
+      }
+
+      // Check against all segments from other connections (different rootConnectionName)
+      for (const otherRoute of this.routesInProgress) {
+        if (otherRoute.rootConnectionName === pointRoute.rootConnectionName)
+          continue
+
+        const otherSegments = routeSegments.get(otherRoute)!
+
+        for (let i = 0; i < otherSegments.length - 1; i++) {
+          const segA = getSegmentPointCoords(otherSegments[i])
+          const segB = getSegmentPointCoords(otherSegments[i + 1])
+
+          for (const seg of segmentsToCheck) {
+            if (
+              segmentsIntersect(
+                seg.ax,
+                seg.ay,
+                seg.bx,
+                seg.by,
+                segA.x,
+                segA.y,
+                segB.x,
+                segB.y,
+              )
+            ) {
+              return true
+            }
+          }
+        }
+      }
+
+      return false
+    }
+
     // Apply accumulated forces to all points
     for (const point of allMovablePoints) {
       const pointForce = forces.get(point)!
@@ -423,6 +585,10 @@ export class SimpleHighDensitySolver extends BaseSolver {
       point.forceX = pointForce.fx
       point.forceY = pointForce.fy
 
+      // Save original position
+      const origX = point.x
+      const origY = point.y
+
       // Apply forces
       point.x += pointForce.fx
       point.y += pointForce.fy
@@ -430,6 +596,13 @@ export class SimpleHighDensitySolver extends BaseSolver {
       // Clamp to bounds
       point.x = Math.max(bounds.minX, Math.min(bounds.maxX, point.x))
       point.y = Math.max(bounds.minY, Math.min(bounds.maxY, point.y))
+
+      // Check if new position causes intersection with other connections
+      if (wouldCauseIntersection(point)) {
+        // Revert to original position
+        point.x = origX
+        point.y = origY
+      }
     }
   }
 
