@@ -1217,7 +1217,7 @@ export class PortPointPathingSolver extends BaseSolver {
       return
     }
 
-    // Mark current port point as visited immediately (Fix B: mark visited early)
+    // Mark current port point as visited immediately
     if (currentCandidate.portPoint && this.visitedPortPoints) {
       const visitedKey = this.getVisitedPortPointKey(
         currentCandidate.portPoint.portPointId,
@@ -1308,11 +1308,13 @@ export class PortPointPathingSolver extends BaseSolver {
 
     for (const portPoint of availablePortPoints) {
       // Don't revisit port points in this path chain
-      if (
-        this.isPortPointInPathChain(currentCandidate, portPoint.portPointId)
-      ) {
-        continue
-      }
+      // if (
+      //   this.isPortPointInPathChain(currentCandidate, portPoint.portPointId)
+      // ) {
+      //   continue
+      // }
+
+      if (this.visitedPortPoints?.has(portPoint.portPointId)) continue
 
       // Get the node we'd enter via this port point
       const nextNodeId = this.getOtherNodeId(
