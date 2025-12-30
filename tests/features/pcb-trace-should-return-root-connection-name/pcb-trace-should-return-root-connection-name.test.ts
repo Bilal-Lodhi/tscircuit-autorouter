@@ -45,12 +45,12 @@ test("board#23 trace keeps original connection name", () => {
         text: error.message,
         x: 0,
         y: lineNumber * lineHeight,
-        fontSize: .3,
+        fontSize: 0.3,
         color: "red",
       })
       lineNumber++
     }
-    mixedErrorVIz = mergeGraphics(mixedErrorVIz, {texts})
+    mixedErrorVIz = mergeGraphics(mixedErrorVIz, { texts })
   }
   let finalviz = mixedErrorVIz
   expect(finalviz).toMatchGraphicsSvg(import.meta.path)
