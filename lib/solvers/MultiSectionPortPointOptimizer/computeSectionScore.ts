@@ -1,6 +1,7 @@
 import type { CapacityMeshNode, CapacityMeshNodeId } from "../../types"
 import type { NodeWithPortPoints } from "../../types/high-density-types"
 import { getIntraNodeCrossings } from "../../utils/getIntraNodeCrossings"
+import { getIntraNodeCrossingsUsingCircle } from "../../utils/getIntraNodeCrossingsUsingCircle"
 import { calculateNodeProbabilityOfFailure } from "../UnravelSolver/calculateCrossingProbabilityOfFailure"
 
 /**
@@ -35,7 +36,7 @@ export function computeSectionScore(
     if (node._containsTarget) continue
 
     // Compute crossings for this node
-    const crossings = getIntraNodeCrossings(nodeWithPortPoints)
+    const crossings = getIntraNodeCrossingsUsingCircle(nodeWithPortPoints)
 
     // Compute probability of failure
     const estPf = Math.min(

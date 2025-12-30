@@ -6,6 +6,7 @@ import type { PortPointCandidate } from "./PortPointPathingSolver"
 import type { PortPoint } from "../../types/high-density-types"
 import { calculateNodeProbabilityOfFailure } from "../UnravelSolver/calculateCrossingProbabilityOfFailure"
 import type { MultiSectionPortPointOptimizer } from "../MultiSectionPortPointOptimizer"
+import { getIntraNodeCrossingsUsingCircle } from "lib/utils/getIntraNodeCrossingsUsingCircle"
 
 type Edge = "top" | "right" | "bottom" | "left" | "interior"
 
@@ -129,7 +130,7 @@ export function visualizePointPathSolver(
       pf = solver.computeNodePf(node)
       memPf = solver.nodeMemoryPfMap.get(node.capacityMeshNodeId) ?? 0
       const nodeWithPortPoints = solver.buildNodeWithPortPointsForCrossing(node)
-      crossings = getIntraNodeCrossings(nodeWithPortPoints)
+      crossings = getIntraNodeCrossingsUsingCircle(nodeWithPortPoints)
     } else {
       // For MultiSectionPortPointOptimizer, use nodePfMap
       pf = solver.nodePfMap.get(node.capacityMeshNodeId) ?? 0
@@ -143,7 +144,7 @@ export function visualizePointPathSolver(
         portPoints,
         availableZ: node.availableZ,
       }
-      crossings = getIntraNodeCrossings(nodeWithPortPoints)
+      crossings = getIntraNodeCrossingsUsingCircle(nodeWithPortPoints)
     }
 
     const red = Math.min(255, Math.floor(pf * 512))

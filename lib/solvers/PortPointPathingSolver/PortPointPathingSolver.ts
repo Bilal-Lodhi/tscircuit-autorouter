@@ -24,6 +24,7 @@ import {
   clonePrecomputedMutableParams,
 } from "./precomputeSharedParams"
 import { getConnectionsWithNodes as getConnectionsWithNodesShared } from "./getConnectionsWithNodes"
+import { getIntraNodeCrossings } from "lib/utils/getIntraNodeCrossings"
 
 export interface PortPointPathingHyperParameters {
   SHUFFLE_SEED?: number

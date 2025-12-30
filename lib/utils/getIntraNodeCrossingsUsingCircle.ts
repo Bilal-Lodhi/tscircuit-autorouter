@@ -58,40 +58,19 @@ function perimeterT(
 }
 
 /**
- * Fenwick tree (Binary Indexed Tree) for efficient range queries
+ * Check if two perimeter coordinates are coincident (within epsilon)
  */
-class FenwickTree {
-  private bit: number[]
-
-  constructor(n: number) {
-    this.bit = new Array(n + 2).fill(0)
-  }
-
-  add(i: number, delta: number = 1) {
-    for (let idx = i + 1; idx < this.bit.length; idx += idx & -idx) {
-      this.bit[idx] += delta
-    }
-  }
-
-  sum(i: number): number {
-    let s = 0
-    for (let idx = i + 1; idx > 0; idx -= idx & -idx) {
-      s += this.bit[idx]
-    }
-    return s
-  }
-
-  rangeSum(l: number, r: number): number {
-    if (r < l) return 0
-    return this.sum(r) - (l > 0 ? this.sum(l - 1) : 0)
-  }
+function areCoincident(t1: number, t2: number, eps: number = 1e-6): boolean {
+  return Math.abs(t1 - t2) < eps
 }
 
 /**
  * Count necessary crossings between chords on a circle using the interleaving criterion.
  * Two chords (a,b) and (c,d) with a < b and c < d cross iff: a < c < b < d OR c < a < d < b
  *
- * Uses a Fenwick tree for O(n log n) complexity.
+ * Chords that share a coincident endpoint do NOT count as crossing.
+ *
+ * Uses O(n^2) algorithm to correctly handle coincident endpoints.
  */
 function countChordCrossings(chords: Array<[number, number]>): number {
   if (chords.length < 2) return 0
@@ -101,33 +80,29 @@ function countChordCrossings(chords: Array<[number, number]>): number {
     t1 < t2 ? ([t1, t2] as [number, number]) : ([t2, t1] as [number, number]),
   )
 
-  // Coordinate compress all endpoints to ranks 0..M-1
-  const allCoords = Array.from(
-    new Set(normalizedChords.flatMap(([a, b]) => [a, b])),
-  ).sort((a, b) => a - b)
-
-  const coordToRank = new Map<number, number>()
-  allCoords.forEach((v, i) => coordToRank.set(v, i))
-
-  // Convert chords to ranked form and sort by first endpoint
-  const rankedChords = normalizedChords
-    .map(
-      ([a, b]) =>
-        [coordToRank.get(a)!, coordToRank.get(b)!] as [number, number],
-    )
-    .sort((c1, c2) => c1[0] - c2[0])
-
-  const fw = new FenwickTree(allCoords.length)
   let crossings = 0
 
-  for (const [a, b] of rankedChords) {
-    // Count previous b's strictly between a and b
-    // A chord (a_prev, b_prev) crosses current (a, b) when:
-    // a_prev < a < b_prev < b
-    // Since we sorted by a, we know a_prev <= a.
-    // So we need b_prev in range (a, b)
-    crossings += fw.rangeSum(a + 1, b - 1)
-    fw.add(b)
+  // Check all pairs of chords
+  for (let i = 0; i < normalizedChords.length; i++) {
+    const [a, b] = normalizedChords[i]
+    for (let j = i + 1; j < normalizedChords.length; j++) {
+      const [c, d] = normalizedChords[j]
+
+      // Skip if chords share a coincident endpoint
+      if (
+        areCoincident(a, c) ||
+        areCoincident(a, d) ||
+        areCoincident(b, c) ||
+        areCoincident(b, d)
+      ) {
+        continue
+      }
+
+      // Two chords cross iff their endpoints interleave: a < c < b < d OR c < a < d < b
+      if ((a < c && c < b && b < d) || (c < a && a < d && d < b)) {
+        crossings++
+      }
+    }
   }
 
   return crossings
