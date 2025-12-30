@@ -7,6 +7,98 @@ import type { PortPoint } from "../../types/high-density-types"
 import { calculateNodeProbabilityOfFailure } from "../UnravelSolver/calculateCrossingProbabilityOfFailure"
 import type { MultiSectionPortPointOptimizer } from "../MultiSectionPortPointOptimizer"
 
+type Edge = "top" | "right" | "bottom" | "left" | "interior"
+
+/**
+ * Determine which edge of a node a point is on (or "interior" if not on an edge)
+ */
+function getEdge(
+  point: { x: number; y: number },
+  nodeCenter: { x: number; y: number },
+  nodeWidth: number,
+  nodeHeight: number,
+): Edge {
+  const xmin = nodeCenter.x - nodeWidth / 2
+  const xmax = nodeCenter.x + nodeWidth / 2
+  const ymin = nodeCenter.y - nodeHeight / 2
+  const ymax = nodeCenter.y + nodeHeight / 2
+  const eps = 1e-6
+
+  const distTop = Math.abs(point.y - ymax)
+  const distRight = Math.abs(point.x - xmax)
+  const distBottom = Math.abs(point.y - ymin)
+  const distLeft = Math.abs(point.x - xmin)
+
+  const minDist = Math.min(distTop, distRight, distBottom, distLeft)
+
+  // Only consider it on an edge if it's very close
+  if (minDist > eps * 1000) return "interior"
+
+  if (minDist === distTop) return "top"
+  if (minDist === distRight) return "right"
+  if (minDist === distBottom) return "bottom"
+  return "left"
+}
+
+/**
+ * Check if two points are on the same edge of a node
+ */
+function areOnSameEdge(
+  p1: { x: number; y: number },
+  p2: { x: number; y: number },
+  nodeCenter: { x: number; y: number },
+  nodeWidth: number,
+  nodeHeight: number,
+): boolean {
+  const edge1 = getEdge(p1, nodeCenter, nodeWidth, nodeHeight)
+  const edge2 = getEdge(p2, nodeCenter, nodeWidth, nodeHeight)
+  return edge1 !== "interior" && edge1 === edge2
+}
+
+/**
+ * Calculate the bend point for two points on the same edge.
+ * The bend point is positioned between the midpoint of the two points
+ * and the node center, based on what fraction of the edge the points span.
+ */
+function calculateBendPoint(
+  p1: { x: number; y: number },
+  p2: { x: number; y: number },
+  nodeCenter: { x: number; y: number },
+  nodeWidth: number,
+  nodeHeight: number,
+): { x: number; y: number } {
+  const edge = getEdge(p1, nodeCenter, nodeWidth, nodeHeight)
+
+  // Calculate what fraction of the edge the points span
+  let edgeFraction: number
+  if (edge === "top" || edge === "bottom") {
+    // Horizontal edge - use x coordinates
+    const edgeLength = nodeWidth
+    const span = Math.abs(p2.x - p1.x)
+    edgeFraction = span / edgeLength
+  } else {
+    // Vertical edge (left/right) - use y coordinates
+    const edgeLength = nodeHeight
+    const span = Math.abs(p2.y - p1.y)
+    edgeFraction = span / edgeLength
+  }
+
+  // Clamp to [0, 1]
+  edgeFraction = Math.min(1, Math.max(0, edgeFraction))
+
+  // Calculate midpoint of the two points
+  const midpoint = {
+    x: (p1.x + p2.x) / 2,
+    y: (p1.y + p2.y) / 2,
+  }
+
+  // Interpolate between midpoint and node center based on edge fraction
+  return {
+    x: midpoint.x + (nodeCenter.x - midpoint.x) * edgeFraction,
+    y: midpoint.y + (nodeCenter.y - midpoint.y) * edgeFraction,
+  }
+}
+
 function isPortPointPathingSolver(
   solver: PortPointPathingSolver | MultiSectionPortPointOptimizer,
 ): solver is PortPointPathingSolver {
@@ -112,13 +204,20 @@ export function visualizePointPathSolver(
     const connection = result.connection
     const color = solver.colorMap[connection.name] ?? "blue"
 
-    // Build segment points from path
-    const segmentPoints: Array<{ x: number; y: number; z: number }> = []
+    // Build segment points from path, inserting node centers when consecutive
+    // points are on the same edge (to visualize the bend through the center)
+    const segmentPoints: Array<{
+      x: number
+      y: number
+      z: number
+      nodeId?: string
+    }> = []
     for (const candidate of result.path) {
       segmentPoints.push({
         x: candidate.point.x,
         y: candidate.point.y,
         z: candidate.z,
+        nodeId: candidate.currentNodeId,
       })
     }
 
@@ -141,14 +240,49 @@ export function visualizePointPathSolver(
         strokeDash = "3 3 10"
       }
 
-      graphics.lines!.push({
-        points: [
-          { x: pointA.x, y: pointA.y },
-          { x: pointB.x, y: pointB.y },
-        ],
-        strokeColor: color,
-        strokeDash,
-      })
+      // Check if both points are on the same edge of the node they share
+      // The segment from pointA to pointB travels through pointA's node
+      const node = pointA.nodeId ? solver.nodeMap.get(pointA.nodeId) : null
+
+      if (
+        node &&
+        areOnSameEdge(pointA, pointB, node.center, node.width, node.height)
+      ) {
+        // Points are on the same edge - bend based on edge span
+        const bendPoint = calculateBendPoint(
+          pointA,
+          pointB,
+          node.center,
+          node.width,
+          node.height,
+        )
+        graphics.lines!.push({
+          points: [
+            { x: pointA.x, y: pointA.y },
+            { x: bendPoint.x, y: bendPoint.y },
+          ],
+          strokeColor: color,
+          strokeDash,
+        })
+        graphics.lines!.push({
+          points: [
+            { x: bendPoint.x, y: bendPoint.y },
+            { x: pointB.x, y: pointB.y },
+          ],
+          strokeColor: color,
+          strokeDash,
+        })
+      } else {
+        // Points are on different edges - draw direct line
+        graphics.lines!.push({
+          points: [
+            { x: pointA.x, y: pointA.y },
+            { x: pointB.x, y: pointB.y },
+          ],
+          strokeColor: color,
+          strokeDash,
+        })
+      }
     }
   }
 
@@ -221,7 +355,7 @@ export function visualizePointPathSolver(
 
     const sortedCandidates = [...solver.candidates]
       .sort((a, b) => a.f - b.f)
-      .slice(0, 30)
+      .slice(0, 1) //30)
 
     for (const candidate of sortedCandidates) {
       const candidatePath: Array<{
@@ -229,6 +363,7 @@ export function visualizePointPathSolver(
         y: number
         z: number
         lastMoveWasOffBoard?: boolean
+        nodeId?: string
       }> = []
       let current: PortPointCandidate | null = candidate
       while (current) {
@@ -237,6 +372,7 @@ export function visualizePointPathSolver(
           y: current.point.y,
           z: current.z,
           lastMoveWasOffBoard: current.lastMoveWasOffBoard,
+          nodeId: current.currentNodeId,
         })
         current = current.prevCandidate
       }
@@ -258,14 +394,48 @@ export function visualizePointPathSolver(
           strokeDash = "3 3 10"
         }
 
-        graphics.lines!.push({
-          points: [
-            { x: pointA.x + pointA.z * 0.02, y: pointA.y + pointA.z * 0.02 },
-            { x: pointB.x + pointB.z * 0.02, y: pointB.y + pointB.z * 0.02 },
-          ],
-          strokeColor: safeTransparentize(connectionColor, 0.25),
-          strokeDash,
-        })
+        // Check if both points are on the same edge of the node
+        const node = pointA.nodeId ? solver.nodeMap.get(pointA.nodeId) : null
+        const zOffset = pointA.z * 0.02
+
+        if (
+          node &&
+          areOnSameEdge(pointA, pointB, node.center, node.width, node.height)
+        ) {
+          // Points are on the same edge - bend based on edge span
+          const bendPoint = calculateBendPoint(
+            pointA,
+            pointB,
+            node.center,
+            node.width,
+            node.height,
+          )
+          graphics.lines!.push({
+            points: [
+              { x: pointA.x + zOffset, y: pointA.y + zOffset },
+              { x: bendPoint.x + zOffset, y: bendPoint.y + zOffset },
+            ],
+            strokeColor: safeTransparentize(connectionColor, 0.25),
+            strokeDash,
+          })
+          graphics.lines!.push({
+            points: [
+              { x: bendPoint.x + zOffset, y: bendPoint.y + zOffset },
+              { x: pointB.x + zOffset, y: pointB.y + zOffset },
+            ],
+            strokeColor: safeTransparentize(connectionColor, 0.25),
+            strokeDash,
+          })
+        } else {
+          graphics.lines!.push({
+            points: [
+              { x: pointA.x + zOffset, y: pointA.y + zOffset },
+              { x: pointB.x + zOffset, y: pointB.y + zOffset },
+            ],
+            strokeColor: safeTransparentize(connectionColor, 0.25),
+            strokeDash,
+          })
+        }
       }
 
       if (candidatePath.length >= 1) {

@@ -8,7 +8,7 @@ import type {
 import type { GraphicsObject } from "graphics-debug"
 import { distance } from "@tscircuit/math-utils"
 import { calculateNodeProbabilityOfFailure } from "../UnravelSolver/calculateCrossingProbabilityOfFailure"
-import { getIntraNodeCrossings } from "../../utils/getIntraNodeCrossings"
+import { getIntraNodeCrossingsUsingCircle } from "../../utils/getIntraNodeCrossingsUsingCircle"
 import type {
   PortPoint,
   NodeWithPortPoints,
@@ -495,7 +495,7 @@ export class PortPointPathingSolver extends BaseSolver {
       node,
       additionalPortPoints,
     )
-    const crossings = getIntraNodeCrossings(nodeWithPortPoints)
+    const crossings = getIntraNodeCrossingsUsingCircle(nodeWithPortPoints)
 
     return calculateNodeProbabilityOfFailure(
       this.capacityMeshNodeMap.get(node.capacityMeshNodeId)!,
