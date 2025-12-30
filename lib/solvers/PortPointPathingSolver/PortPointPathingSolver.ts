@@ -1308,11 +1308,11 @@ export class PortPointPathingSolver extends BaseSolver {
 
     for (const portPoint of availablePortPoints) {
       // Don't revisit port points in this path chain
-      // if (
-      //   this.isPortPointInPathChain(currentCandidate, portPoint.portPointId)
-      // ) {
-      //   continue
-      // }
+      if (
+        this.isPortPointInPathChain(currentCandidate, portPoint.portPointId)
+      ) {
+        continue
+      }
 
       if (this.visitedPortPoints?.has(portPoint.portPointId)) continue
 
