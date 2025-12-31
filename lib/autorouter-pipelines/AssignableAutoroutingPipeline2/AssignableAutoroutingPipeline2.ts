@@ -265,7 +265,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
               NODE_PF_FACTOR: 10000,
               // MIN_ALLOWED_BOARD_SCORE: -1,
               // FORCE_OFF_BOARD_FREQUENCY: 0, // 0.3,
-              CENTER_OFFSET_DIST_PENALTY_FACTOR: 1,
+              CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
               FORCE_CENTER_FIRST: true,
             },
           } as HyperPortPointPathingSolverParams,

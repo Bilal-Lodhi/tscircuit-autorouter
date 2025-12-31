@@ -790,13 +790,43 @@ export class PortPointPathingSolver extends BaseSolver {
         continue
       }
 
-      const unassignedOnSide: InputPortPoint[] = []
-      for (let i = 1; i < portsOnSameEdge.length; i++) {
-        if (this.assignedPortPoints.has(portsOnSameEdge[i].portPointId))
-          continue
-        unassignedOnSide.push(portsOnSameEdge[i])
+      // Sort all ports by position to identify contiguous ranges
+      const allPortsSorted = [...portsOnSameEdge].sort((a, b) => {
+        if (a.x !== b.x) return a.x - b.x
+        return a.y - b.y
+      })
+
+      // Find contiguous ranges of available ports (separated by occupied ports)
+      const ranges: InputPortPoint[][] = []
+      let currentRange: InputPortPoint[] = []
+
+      for (const pp of allPortsSorted) {
+        const assignment = this.assignedPortPoints.get(pp.portPointId)
+        const isAvailable =
+          !assignment ||
+          assignment.rootConnectionName === currentRootConnectionName
+
+        if (isAvailable) {
+          currentRange.push(pp)
+        } else {
+          // Port occupied by different net - ends current range
+          if (currentRange.length > 0) {
+            ranges.push(currentRange)
+            currentRange = []
+          }
+        }
       }
-      result.push(...unassignedOnSide)
+
+      // Don't forget the last range
+      if (currentRange.length > 0) {
+        ranges.push(currentRange)
+      }
+
+      // Return the median (centermost) of each contiguous range
+      for (const range of ranges) {
+        const medianIndex = Math.floor(range.length / 2)
+        result.push(range[medianIndex])
+      }
     }
 
     return result
