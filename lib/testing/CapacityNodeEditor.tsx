@@ -21,7 +21,7 @@ import {
 } from "./capacity-node-editor/helpers"
 import { MetricsCard } from "./capacity-node-editor/MetricsCard"
 import { PortPoint } from "./capacity-node-editor/PortPoint"
-import { isHighDensityNodeSolvable } from "lib/utils/isHighDensityNodeSolvable"
+import { getIntraNodeCrossings } from "lib/utils/getIntraNodeCrossings"
 
 export interface CapacityNodeEditorProps {
   onNodeChange?: (node: NodeWithPortPoints) => void
@@ -497,11 +497,7 @@ export default function CapacityNodeEditor({
       height: heightMm,
       portPoints,
     }
-    const diagnostics = isHighDensityNodeSolvable({
-      node: nodeForCheck,
-      viaDiameter,
-      traceWidth,
-    })
+    const diagnostics = getIntraNodeCrossings(nodeForCheck)
 
     return {
       totalConnections,

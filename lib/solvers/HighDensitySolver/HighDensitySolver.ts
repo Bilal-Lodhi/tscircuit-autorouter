@@ -11,7 +11,6 @@ import { combineVisualizations } from "lib/utils/combineVisualizations"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import { mergeRouteSegments } from "lib/utils/mergeRouteSegments"
 import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
-import { isHighDensityNodeSolvable } from "lib/utils/isHighDensityNodeSolvable"
 
 export class HighDensitySolver extends BaseSolver {
   unsolvedNodePortPoints: NodeWithPortPoints[]
@@ -86,47 +85,6 @@ export class HighDensitySolver extends BaseSolver {
       return
     }
     const node = this.unsolvedNodePortPoints.pop()!
-
-    // Check if node is obviously impossible before attempting to solve
-    const diagnostics = isHighDensityNodeSolvable({
-      node,
-      viaDiameter: this.viaDiameter,
-      traceWidth: this.traceWidth,
-    })
-    // @ts-ignore TURN ON WHEN e.g. e2e3 passes
-    if (false && !diagnostics.isSolvable) {
-      // Build descriptive error message based on what failed
-      // NOTE: Error message format is consumed by upstream error reporting.
-      // Maintain stability: "Impossible Node: <reason>" pattern
-      let errorMsg = "Impossible Node"
-      if (diagnostics.numOverlaps > 0) {
-        const tolerance = this.traceWidth
-          ? (1.5 * this.traceWidth).toFixed(2)
-          : (diagnostics.viaDiameter / 2 + diagnostics.obstacleMargin).toFixed(
-              2,
-            )
-        errorMsg += `: ${diagnostics.numOverlaps} port overlap(s) detected (ports closer than ${tolerance}mm on same layer)`
-      } else if (
-        diagnostics.nodeWidth < diagnostics.requiredSpan &&
-        diagnostics.nodeHeight < diagnostics.requiredSpan
-      ) {
-        errorMsg += `: node dimensions ${diagnostics.nodeWidth.toFixed(2)}mm x ${diagnostics.nodeHeight.toFixed(2)}mm cannot fit required span ${diagnostics.requiredSpan.toFixed(2)}mm for ${diagnostics.effectiveViasUsed} vias (${diagnostics.totalCrossings} crossings + ${diagnostics.numLayerChangeConnections} layer changes)`
-      }
-
-      // Create a mock failed solver to maintain consistency with existing error reporting flow.
-      // This allows upstream consumers (e.g. visualization, error aggregation) to treat
-      // pre-validated impossible nodes the same as nodes that failed during solving.
-      const mockFailedSolver = {
-        nodeWithPortPoints: node,
-        failed: true,
-        solved: false,
-        error: errorMsg,
-      } as any
-
-      this.failedSolvers.push(mockFailedSolver)
-      this.updateCacheStats()
-      return
-    }
 
     this.activeSubSolver = new HyperSingleIntraNodeSolver({
       nodeWithPortPoints: node,

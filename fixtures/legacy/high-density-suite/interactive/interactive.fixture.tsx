@@ -2,18 +2,29 @@ import { useState } from "react"
 import defaultJson from "tests/high-density-suite/assets/highdensitysuite1.json"
 import { HighDensityInteractiveNodeDebugger } from "lib/testing/HighDensityInteractiveNodeDebugger"
 
-const getNodeWithPortPointsFromJson = (inputJson: any) => {
-  if (inputJson?.nodeWithPortPoints) return inputJson.nodeWithPortPoints
-  if (inputJson?.capacityMeshNodeId && inputJson?.portPoints) return inputJson
-  if (inputJson?.capacityMeshNode && inputJson?.portPoints) {
-    const node = inputJson.capacityMeshNode
+const getNodeWithPortPointsFromJson = (inputData: {
+  nodeId?: string
+  nodeWithPortPoints?: any
+  capacityMeshNodeId?: string
+  capacityMeshNode?: {
+    capacityMeshNodeId?: string
+    center: [number, number]
+    width: number
+    height: number
+  }
+  portPoints?: Array<number>
+}) => {
+  if (inputData?.nodeWithPortPoints) return inputData.nodeWithPortPoints
+  if (inputData?.capacityMeshNodeId && inputData?.portPoints) return inputData
+  if (inputData?.capacityMeshNode && inputData?.portPoints) {
+    const node = inputData.capacityMeshNode
     return {
       capacityMeshNodeId:
-        node.capacityMeshNodeId ?? inputJson.nodeId ?? "interactive-node",
+        node.capacityMeshNodeId ?? inputData.nodeId ?? "interactive-node",
       center: node.center,
       width: node.width,
       height: node.height,
-      portPoints: inputJson.portPoints,
+      portPoints: inputData.portPoints,
     }
   }
   return null
