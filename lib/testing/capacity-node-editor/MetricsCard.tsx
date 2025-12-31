@@ -26,15 +26,15 @@ export function MetricsCard(props: MetricsCardProps) {
 
   const crossingMetrics = [
     {
-      label: "Same Layer",
+      label: "Same Layer (XSame)",
       value: diagnostics.numSameLayerCrossings.toString(),
     },
     {
-      label: "Entry/Exit Changes",
+      label: "Entry/Exit Changes (XLC) ",
       value: diagnostics.numEntryExitLayerChanges.toString(),
     },
     {
-      label: "Transition Crossings",
+      label: "Transition Crossings (XTransition)",
       value: diagnostics.numTransitionPairCrossings.toString(),
     },
   ]
