@@ -701,7 +701,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
         const hdRoute = hdRoutes[i]
         const simplifiedPcbTrace: SimplifiedPcbTrace = {
           type: "pcb_trace",
-          pcb_trace_id: `${connection.name}_${i}`,
+          pcb_trace_id: `${connection.rootConnectionName}_${i}`,
           connection_name:
             netConnectionName ??
             connection.rootConnectionName ??
