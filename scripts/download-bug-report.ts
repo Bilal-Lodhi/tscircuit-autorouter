@@ -38,7 +38,7 @@ if (bugReportArg.includes("autorouting_bug_report_id=")) {
 const downloadUrl = `https://api.tscircuit.com/autorouting/bug_reports/get?autorouting_bug_report_id=${uuid}&download=true`
 
 // Create directory for bug reports if it doesn't exist
-const bugReportsDir = path.join("examples", "bug-reports")
+const bugReportsDir = path.join("fixtures", "bug-reports")
 if (!fs.existsSync(bugReportsDir)) {
   fs.mkdirSync(bugReportsDir, { recursive: true })
 }
