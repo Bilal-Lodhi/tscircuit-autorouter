@@ -15,6 +15,7 @@ import type {
   PortPointCandidate,
 } from "../PortPointPathingSolver/PortPointPathingSolver"
 import { PortPointPathingSolver } from "../PortPointPathingSolver/PortPointPathingSolver"
+import { precomputeSharedParams } from "../PortPointPathingSolver/precomputeSharedParams"
 import {
   createPortPointSection,
   type CreatePortPointSectionInput,
@@ -27,9 +28,10 @@ import type {
   NodeWithPortPoints,
 } from "../../types/high-density-types"
 import { computeSectionScore, computeNodePf } from "./computeSectionScore"
+import { doSegmentsIntersect } from "@tscircuit/math-utils"
 import { visualizeSection } from "./visualizeSection"
-import { HyperPortPointPathingSolver } from "../PortPointPathingSolver/HyperPortPointPathingSolver"
 import { visualizePointPathSolver } from "../PortPointPathingSolver/visualizePointPathSolver"
+import { HyperPortPointPathingSolver } from "../PortPointPathingSolver/HyperPortPointPathingSolver"
 
 export interface MultiSectionPortPointOptimizerParams {
   simpleRouteJson: SimpleRouteJson
@@ -47,6 +49,43 @@ export interface MultiSectionPortPointOptimizerParams {
   /** Node assigned port points from initial run */
   initialNodeAssignedPortPoints: Map<CapacityMeshNodeId, PortPoint[]>
   effort?: number
+  /**
+   * Fraction of connections in a section to rip/replace (0-1).
+   * Default 1 means rip all connections. Values less than 1 keep some traces.
+   */
+  FRACTION_TO_REPLACE?: number
+  /**
+   * If true, always rip connections that have same-layer intersections,
+   * even if they would otherwise be kept due to FRACTION_TO_REPLACE.
+   */
+  ALWAYS_RIP_INTERSECTIONS?: boolean
+}
+
+/**
+ * Simple seeded pseudo-random number generator (mulberry32)
+ */
+function seededRandom(seed: number): () => number {
+  let state = seed
+  return () => {
+    state = state + 0x6d2b79f5
+    let t = state
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+/**
+ * Shuffle an array in place using a seeded random
+ */
+function seededShuffle<T>(array: T[], seed: number): T[] {
+  const random = seededRandom(seed)
+  const result = [...array]
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1))
+    ;[result[i], result[j]] = [result[j], result[i]]
+  }
+  return result
 }
 
 // Generate optimization schedule with multiple shuffle seeds per expansion degree
@@ -60,6 +99,29 @@ const OPTIMIZATION_SCHEDULE: (PortPointPathingHyperParameters & {
     MEMORY_PF_FACTOR: 0,
     EXPANSION_DEGREES: 4,
     FORCE_CENTER_FIRST: true,
+    FORCE_OFF_BOARD_FREQUENCY: 0,
+    CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
+    // MAX_ITERATIONS_PER_PATH: 300,
+  },
+  {
+    SHUFFLE_SEED: 100,
+    NODE_PF_FACTOR: 100,
+    NODE_PF_MAX_PENALTY: 100,
+    MEMORY_PF_FACTOR: 20,
+    EXPANSION_DEGREES: 4,
+    FORCE_CENTER_FIRST: true,
+    FORCE_OFF_BOARD_FREQUENCY: 0,
+    CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
+    // MAX_ITERATIONS_PER_PATH: 300,
+  },
+  {
+    SHUFFLE_SEED: 100,
+    NODE_PF_FACTOR: 100,
+    NODE_PF_MAX_PENALTY: 100,
+    MEMORY_PF_FACTOR: 0,
+    EXPANSION_DEGREES: 4,
+    FORCE_CENTER_FIRST: true,
+    FORCE_OFF_BOARD_FREQUENCY: 0.2,
     CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
     // MAX_ITERATIONS_PER_PATH: 300,
   },
@@ -146,13 +208,25 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
   sectionAttempts: number = 0
 
   /** Maximum number of attempts per node */
-  MAX_ATTEMPTS_PER_NODE = OPTIMIZATION_SCHEDULE.length
+  MAX_ATTEMPTS_PER_NODE = OPTIMIZATION_SCHEDULE.length * 3
 
   /** Maximum total number of section optimization attempts */
-  MAX_SECTION_ATTEMPTS = 50
+  MAX_SECTION_ATTEMPTS = 500
 
   /** Acceptable probability of failure threshold */
   ACCEPTABLE_PF = 0.05
+
+  /**
+   * Fraction of connections in a section to rip/replace (0-1).
+   * Default 1 means rip all connections. Values less than 1 keep some traces.
+   */
+  FRACTION_TO_REPLACE = 0.6
+
+  /**
+   * If true, always rip connections that have same-layer intersections,
+   * even if they would otherwise be kept due to FRACTION_TO_REPLACE.
+   */
+  ALWAYS_RIP_INTERSECTIONS = true
 
   effort: number = 1
 
@@ -165,6 +239,12 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     this.capacityMeshEdges = params.capacityMeshEdges
     this.colorMap = params.colorMap ?? {}
     this.effort = params.effort ?? 1
+    if (params.FRACTION_TO_REPLACE !== undefined) {
+      this.FRACTION_TO_REPLACE = params.FRACTION_TO_REPLACE
+    }
+    if (params.ALWAYS_RIP_INTERSECTIONS !== undefined) {
+      this.ALWAYS_RIP_INTERSECTIONS = params.ALWAYS_RIP_INTERSECTIONS
+    }
 
     this.MAX_SECTION_ATTEMPTS *= this.effort
 
@@ -187,6 +267,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     const initialBoardScore = this.computeBoardScore()
 
     // Initialize stats
+    this.stats.FRACTION_TO_REPLACE = this.FRACTION_TO_REPLACE
     this.stats.successfulOptimizations = 0
     this.stats.failedOptimizations = 0
     this.stats.nodesExamined = 0
@@ -336,6 +417,81 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
   }
 
   /**
+   * Find connections that have same-layer intersections within a section.
+   * Returns a set of connection names that are involved in any same-layer crossing.
+   */
+  findConnectionsWithSameLayerIntersections(
+    section: PortPointSection,
+  ): Set<string> {
+    const connectionsWithIntersections = new Set<string>()
+
+    // For each node in the section, check for same-layer crossings
+    for (const nodeId of section.nodeIds) {
+      const portPoints = this.nodeAssignedPortPoints.get(nodeId) ?? []
+      if (portPoints.length < 2) continue
+
+      // Group port points by connection, keeping only same-layer pairs
+      const connectionSegments: Map<
+        string,
+        { points: { x: number; y: number; z: number }[]; z: number }
+      > = new Map()
+
+      for (const pp of portPoints) {
+        if (!connectionSegments.has(pp.connectionName)) {
+          connectionSegments.set(pp.connectionName, {
+            points: [{ x: pp.x, y: pp.y, z: pp.z }],
+            z: pp.z,
+          })
+        } else {
+          const segment = connectionSegments.get(pp.connectionName)!
+          segment.points.push({ x: pp.x, y: pp.y, z: pp.z })
+        }
+      }
+
+      // Filter to only segments with exactly 2 points on same layer
+      const validSegments: Array<{
+        connectionName: string
+        points: { x: number; y: number; z: number }[]
+        z: number
+      }> = []
+
+      for (const [connectionName, segment] of connectionSegments.entries()) {
+        if (segment.points.length === 2) {
+          // Check if both points are on same layer
+          if (segment.points[0].z === segment.points[1].z) {
+            validSegments.push({ connectionName, ...segment })
+          }
+        }
+      }
+
+      // Check for intersections between segments on the same layer
+      for (let i = 0; i < validSegments.length; i++) {
+        for (let j = i + 1; j < validSegments.length; j++) {
+          const seg1 = validSegments[i]
+          const seg2 = validSegments[j]
+
+          // Only check if on same layer
+          if (seg1.z !== seg2.z) continue
+
+          if (
+            doSegmentsIntersect(
+              seg1.points[0],
+              seg1.points[1],
+              seg2.points[0],
+              seg2.points[1],
+            )
+          ) {
+            connectionsWithIntersections.add(seg1.connectionName)
+            connectionsWithIntersections.add(seg2.connectionName)
+          }
+        }
+      }
+    }
+
+    return connectionsWithIntersections
+  }
+
+  /**
    * Find the node with the highest probability of failure
    */
   findHighestPfNode(): CapacityMeshNodeId | null {
@@ -369,17 +525,71 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     }
   > = new Map()
 
+  /** Port points from connections that are being kept (not ripped) in the current section */
+  currentSectionKeptPortPoints: Map<CapacityMeshNodeId, PortPoint[]> = new Map()
+
+  /** Connection results for connections being kept (not ripped) - used for visualization */
+  currentSectionFixedRoutes: ConnectionPathResult[] = []
+
+  /**
+   * Determine which connections to rip based on FRACTION_TO_REPLACE and ALWAYS_RIP_INTERSECTIONS.
+   * Returns a set of connection names that should be ripped (re-routed).
+   */
+  determineConnectionsToRip(
+    section: PortPointSection,
+    allConnectionNames: string[],
+  ): Set<string> {
+    // Seed based on section attempt count for deterministic but varying selection
+    const seed = this.sectionAttempts * 31337
+
+    // If FRACTION_TO_REPLACE is 1, rip all connections
+    if (this.FRACTION_TO_REPLACE >= 1) {
+      return new Set(allConnectionNames)
+    }
+
+    // Shuffle connections deterministically
+    const shuffled = seededShuffle(allConnectionNames, seed)
+
+    // Select fraction to rip
+    const numToRip = Math.max(
+      1,
+      Math.ceil(shuffled.length * this.FRACTION_TO_REPLACE),
+    )
+    const connectionsToRip = new Set(shuffled.slice(0, numToRip))
+
+    // If ALWAYS_RIP_INTERSECTIONS is true, add any connections with same-layer intersections
+    if (this.ALWAYS_RIP_INTERSECTIONS) {
+      const intersectingConnections =
+        this.findConnectionsWithSameLayerIntersections(section)
+      for (const connName of intersectingConnections) {
+        if (allConnectionNames.includes(connName)) {
+          connectionsToRip.add(connName)
+        }
+      }
+    }
+
+    return connectionsToRip
+  }
+
   /**
    * Create a SimpleRouteJson for just the section's connections.
    * Includes both fully contained connections AND cut paths (partial connections
    * that pass through the section).
+   *
+   * Respects FRACTION_TO_REPLACE and ALWAYS_RIP_INTERSECTIONS to determine which
+   * connections to include for re-routing.
    */
   createSectionSimpleRouteJson(section: PortPointSection): SimpleRouteJson {
     const connections: SimpleRouteConnection[] = []
     this.currentSectionCutPathInfo.clear()
+    this.currentSectionKeptPortPoints.clear()
+    this.currentSectionFixedRoutes = []
 
-    // Find connections that are FULLY contained in the section
-    // (both start and end target nodes must be in the section)
+    // First, collect all connection names in this section
+    const allConnectionNames: string[] = []
+
+    // Fully contained connections
+    const fullyContainedResults: ConnectionPathResult[] = []
     for (const result of this.connectionResults) {
       if (!result.path || result.path.length === 0) continue
 
@@ -390,14 +600,18 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
       const endInSection = section.nodeIds.has(endNodeId)
 
       if (startInSection && endInSection) {
-        connections.push(result.connection)
+        fullyContainedResults.push(result)
+        allConnectionNames.push(result.connection.name)
       }
     }
 
-    // Add cut paths as synthetic connections
+    // Cut path connections
+    const cutPathCandidates: Array<{
+      sectionPath: SectionPath
+      originalResult: ConnectionPathResult
+    }> = []
     for (const sectionPath of section.sectionPaths) {
-      // Skip paths that are fully contained (they're already handled above
-      // via the original connection)
+      // Skip paths that are fully contained
       if (!sectionPath.hasEntryFromOutside && !sectionPath.hasExitToOutside) {
         continue
       }
@@ -412,6 +626,32 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
         (r) => r.connection.name === sectionPath.connectionName,
       )
       if (!originalResult) continue
+
+      cutPathCandidates.push({ sectionPath, originalResult })
+      // Add the original connection name (not the cut name)
+      if (!allConnectionNames.includes(sectionPath.connectionName)) {
+        allConnectionNames.push(sectionPath.connectionName)
+      }
+    }
+
+    // Determine which connections to rip
+    const connectionsToRip = this.determineConnectionsToRip(
+      section,
+      allConnectionNames,
+    )
+
+    // Add fully contained connections that should be ripped
+    for (const result of fullyContainedResults) {
+      if (connectionsToRip.has(result.connection.name)) {
+        connections.push(result.connection)
+      }
+    }
+
+    // Add cut paths for connections that should be ripped
+    for (const { sectionPath, originalResult } of cutPathCandidates) {
+      if (!connectionsToRip.has(sectionPath.connectionName)) {
+        continue
+      }
 
       // Create synthetic connection for this cut path
       const cutConnectionName = `__cut__${sectionPath.connectionName}__${sectionPath.originalStartIndex}`
@@ -445,6 +685,68 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
         sectionPath,
         originalConnectionResult: originalResult,
       })
+    }
+
+    // Collect port points from connections that are being KEPT (not ripped)
+    // These need to be passed to the solver so it knows they're occupied
+    const keptConnectionNames = new Set(
+      allConnectionNames.filter((name) => !connectionsToRip.has(name)),
+    )
+
+    if (keptConnectionNames.size > 0) {
+      for (const nodeId of section.nodeIds) {
+        const nodePortPoints = this.nodeAssignedPortPoints.get(nodeId) ?? []
+        const keptPortPoints = nodePortPoints.filter((pp) =>
+          keptConnectionNames.has(pp.connectionName),
+        )
+        if (keptPortPoints.length > 0) {
+          this.currentSectionKeptPortPoints.set(nodeId, keptPortPoints)
+        }
+      }
+
+      // Add kept fully-contained connections to fixedRoutes for visualization
+      for (const result of fullyContainedResults) {
+        if (keptConnectionNames.has(result.connection.name)) {
+          this.currentSectionFixedRoutes.push(result)
+        }
+      }
+
+      // Add kept cut path connections to fixedRoutes
+      // We need to create a synthetic result for the portion within the section
+      for (const { sectionPath, originalResult } of cutPathCandidates) {
+        if (keptConnectionNames.has(sectionPath.connectionName)) {
+          // Create a synthetic connection result for visualization
+          // The path needs point.x, point.y, z, and currentNodeId for the visualizer
+          const syntheticResult: ConnectionPathResult = {
+            connection: {
+              name: sectionPath.connectionName,
+              rootConnectionName: sectionPath.rootConnectionName,
+              pointsToConnect: originalResult.connection.pointsToConnect,
+            },
+            path: sectionPath.points.map((p) => ({
+              prevCandidate: null,
+              portPoint: null,
+              currentNodeId: p.nodeId,
+              point: { x: p.x, y: p.y },
+              z: p.z,
+              f: 0,
+              g: 0,
+              h: 0,
+              distanceTraveled: 0,
+            })) as PortPointCandidate[],
+            portPoints: sectionPath.points.map((p) => ({
+              x: p.x,
+              y: p.y,
+              z: p.z,
+              connectionName: sectionPath.connectionName,
+              rootConnectionName: sectionPath.rootConnectionName,
+            })),
+            nodeIds: originalResult.nodeIds,
+            straightLineDistance: originalResult.straightLineDistance,
+          }
+          this.currentSectionFixedRoutes.push(syntheticResult)
+        }
+      }
     }
 
     return {
@@ -510,17 +812,36 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     const sectionSrj = this.createSectionSimpleRouteJson(section)
     const preparedInputNodes = this.prepareSectionInputNodesForCutPaths(section)
 
+    // Precompute shared params and add kept port points
+    const precomputedParams = precomputeSharedParams(
+      sectionSrj,
+      preparedInputNodes,
+    )
+
+    // Add kept port points (from connections not being ripped) to the precomputed params
+    // This ensures the solver knows these port points are occupied
+    for (const [nodeId, keptPortPoints] of this.currentSectionKeptPortPoints) {
+      const existing =
+        precomputedParams.nodeAssignedPortPoints.get(nodeId) ?? []
+      precomputedParams.nodeAssignedPortPoints.set(nodeId, [
+        ...existing,
+        ...keptPortPoints,
+      ])
+    }
+
     return new HyperPortPointPathingSolver({
       simpleRouteJson: sectionSrj,
       inputNodes: preparedInputNodes,
       capacityMeshNodes: section.capacityMeshNodes,
       colorMap: this.colorMap,
       nodeMemoryPfMap: this.nodePfMap,
-      numShuffleSeeds: 20 * this.effort,
+      numShuffleSeeds: 50 * this.effort,
       hyperParameters: this.getHyperParametersForScheduleIndex(
         this.currentScheduleIndex,
         this.sectionAttempts,
       ),
+      precomputedInitialParams: precomputedParams,
+      fixedRoutes: this.currentSectionFixedRoutes,
     }) as unknown as PortPointPathingSolver
   }
 

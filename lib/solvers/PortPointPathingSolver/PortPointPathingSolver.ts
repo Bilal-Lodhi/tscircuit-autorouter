@@ -283,6 +283,7 @@ export class PortPointPathingSolver extends BaseSolver {
     nodeMemoryPfMap,
     hyperParameters,
     precomputedInitialParams,
+    fixedRoutes,
   }: {
     simpleRouteJson: SimpleRouteJson
     capacityMeshNodes: CapacityMeshNode[]
@@ -291,6 +292,8 @@ export class PortPointPathingSolver extends BaseSolver {
     nodeMemoryPfMap?: Map<CapacityMeshNodeId, number>
     hyperParameters?: Partial<PortPointPathingHyperParameters>
     precomputedInitialParams?: PrecomputedInitialParams
+    /** Pre-routed connections that should not be re-routed but should appear in results */
+    fixedRoutes?: ConnectionPathResult[]
   }) {
     super()
     this.MAX_ITERATIONS = 50e3
@@ -372,6 +375,26 @@ export class PortPointPathingSolver extends BaseSolver {
         this.getConnectionsWithNodes()
       this.connectionsWithResults = connectionsWithResults
       this.connectionNameToGoalNodeIds = connectionNameToGoalNodeIds
+    }
+
+    // Add fixed routes (pre-routed connections) to the results
+    // These are connections that should not be re-routed but should appear in visualization
+    if (fixedRoutes && fixedRoutes.length > 0) {
+      for (const fixedRoute of fixedRoutes) {
+        // Add to connectionsWithResults so they appear in visualization
+        this.connectionsWithResults.push(fixedRoute)
+
+        // Mark their port points as assigned so the solver routes around them
+        if (fixedRoute.portPoints) {
+          for (const pp of fixedRoute.portPoints) {
+            const portPointId = `${pp.x},${pp.y},${pp.z}`
+            this.assignedPortPoints.set(portPointId, {
+              connectionName: pp.connectionName,
+              rootConnectionName: pp.rootConnectionName,
+            })
+          }
+        }
+      }
     }
   }
 
@@ -1133,6 +1156,12 @@ export class PortPointPathingSolver extends BaseSolver {
         return
       }
       this.solved = true
+      return
+    }
+
+    // Skip connections that already have a path (fixed routes)
+    if (nextConnection.path) {
+      this.currentConnectionIndex++
       return
     }
 

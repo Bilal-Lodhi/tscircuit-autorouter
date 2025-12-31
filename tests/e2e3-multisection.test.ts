@@ -239,6 +239,7 @@ test("createSectionSimpleRouteJson includes cut paths with low expansion degrees
   console.log(`Cut paths (with >= 2 points): ${cutPaths.length}`)
 
   // Create a MultiSectionPortPointOptimizer to test the cut path handling
+  // Use FRACTION_TO_REPLACE: 1 to test all connections being ripped
   const multiSectionOptimizer = new MultiSectionPortPointOptimizer({
     simpleRouteJson: simpleSrj,
     inputNodes: portPointSolver.inputNodes,
@@ -248,6 +249,7 @@ test("createSectionSimpleRouteJson includes cut paths with low expansion degrees
     initialConnectionResults: portPointSolver.connectionsWithResults,
     initialAssignedPortPoints: portPointSolver.assignedPortPoints,
     initialNodeAssignedPortPoints: portPointSolver.nodeAssignedPortPoints,
+    FRACTION_TO_REPLACE: 1,
   })
 
   // Create section and SimpleRouteJson

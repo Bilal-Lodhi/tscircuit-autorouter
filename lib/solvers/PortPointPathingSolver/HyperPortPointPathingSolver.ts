@@ -19,6 +19,7 @@ import {
   precomputeSharedParams,
   type PrecomputedInitialParams,
 } from "./precomputeSharedParams"
+import type { ConnectionPathResult } from "./PortPointPathingSolver"
 
 export interface HyperPortPointPathingSolverParams {
   simpleRouteJson: SimpleRouteJson
@@ -29,6 +30,10 @@ export interface HyperPortPointPathingSolverParams {
   numShuffleSeeds?: number
   minAllowedBoardScore?: number
   hyperParameters?: Partial<PortPointPathingHyperParameters>
+  /** Pre-routed connections that should not be re-routed but should appear in results */
+  fixedRoutes?: ConnectionPathResult[]
+  /** Custom precomputed params (if provided, skips internal precomputation) */
+  precomputedInitialParams?: PrecomputedInitialParams
 }
 
 export class HyperPortPointPathingSolver extends HyperParameterSupervisorSolver<PortPointPathingSolver> {
@@ -44,11 +49,10 @@ export class HyperPortPointPathingSolver extends HyperParameterSupervisorSolver<
     // This allows early scores to diverge before switching, enabling better decisions
     this.MIN_SUBSTEPS = 50
 
-    // Precompute shared params once for all solver instances
-    this.precomputedInitialParams = precomputeSharedParams(
-      params.simpleRouteJson,
-      params.inputNodes,
-    )
+    // Use provided precomputed params or compute them
+    this.precomputedInitialParams =
+      params.precomputedInitialParams ??
+      precomputeSharedParams(params.simpleRouteJson, params.inputNodes)
   }
 
   getHyperParameterDefs(): Array<HyperParameterDef> {
@@ -116,6 +120,7 @@ export class HyperPortPointPathingSolver extends HyperParameterSupervisorSolver<
           this.params.hyperParameters?.MIN_ALLOWED_BOARD_SCORE,
       },
       precomputedInitialParams: this.precomputedInitialParams,
+      fixedRoutes: this.params.fixedRoutes,
     })
   }
 
