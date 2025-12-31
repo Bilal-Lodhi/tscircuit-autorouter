@@ -22,6 +22,13 @@ import {
 import { MetricsCard } from "./capacity-node-editor/MetricsCard"
 import { PortPoint } from "./capacity-node-editor/PortPoint"
 import { getIntraNodeCrossings } from "lib/utils/getIntraNodeCrossings"
+import { CapacityMeshNode } from "lib/types"
+
+function assert(condition: unknown, message: string): asserts condition {
+  if (!condition) {
+    throw new Error(message)
+  }
+}
 
 export interface CapacityNodeEditorProps {
   onNodeChange?: (node: NodeWithPortPoints) => void
@@ -426,47 +433,14 @@ export default function CapacityNodeEditor({
 
   // Calculate metrics
   const metrics = useMemo(() => {
-    const totalConnections = pairs.length
-
-    // Count layer changes
-    let layerChanges = 0
-    pairs.forEach((pair) => {
-      const entryLayers = new Set(pair.entry.layers)
-      const exitLayers = new Set(pair.exit.layers)
-      const hasLayerChange = !Array.from(entryLayers).some((l) =>
-        exitLayers.has(l),
-      )
-      if (hasLayerChange) layerChanges++
-    })
-
-    // Calculate capacity
     const widthMm = rect.width / SCALE
     const heightMm = rect.height / SCALE
-    const capacity = getTunedTotalCapacity1({
-      width: Math.min(widthMm, heightMm),
-    })
-
-    // Calculate probability of failure
-    // Approximate crossings based on pairs
-    const numSameLayerCrossings = pairs.length * 0.5
-    const numEntryExitLayerChanges = layerChanges
-    const numTransitionCrossings = pairs.length * 0.3
 
     const mockNode: any = {
       width: Math.min(widthMm, heightMm),
       _containsTarget: false,
     }
-    const probabilityOfFailure = calculateNodeProbabilityOfFailure(
-      mockNode,
-      numSameLayerCrossings,
-      numEntryExitLayerChanges,
-      numTransitionCrossings,
-    )
 
-    // Build NodeWithPortPoints for solvability check
-    // Convert SVG pixel coordinates to node-centered mm coordinates.
-    // SCALE converts px→mm, centering makes coordinates relative to node center (0,0).
-    // This matches the coordinate system expected by isHighDensityNodeSolvable.
     const svgCenterX = rect.x + rect.width / 2
     const svgCenterY = rect.y + rect.height / 2
     const portPoints = pairs.flatMap((pair, i) => {
@@ -490,6 +464,7 @@ export default function CapacityNodeEditor({
       }))
       return [...entryPorts, ...exitPorts]
     })
+
     const nodeForCheck: NodeWithPortPoints = {
       capacityMeshNodeId: "interactive-node",
       center: { x: 0, y: 0 },
@@ -497,16 +472,20 @@ export default function CapacityNodeEditor({
       height: heightMm,
       portPoints,
     }
+
     const diagnostics = getIntraNodeCrossings(nodeForCheck)
+    const probabilityOfFailure = calculateNodeProbabilityOfFailure(
+      mockNode,
+      diagnostics.numSameLayerCrossings,
+      diagnostics.numEntryExitLayerChanges,
+      diagnostics.numTransitionPairCrossings,
+    )
 
     return {
-      totalConnections,
-      layerChanges,
-      capacity: capacity.toFixed(2),
-      probabilityOfFailure: (probabilityOfFailure * 100).toFixed(1),
-      diagnostics,
+      ...diagnostics,
+      probabilityOfFailure,
     }
-  }, [pairs, rect, viaDiameter])
+  }, [pairs, rect, viaDiameter, initialNode])
 
   // Transform solver coordinates to SVG coordinates
   const svgCenterX = rect.x + rect.width / 2
@@ -798,11 +777,10 @@ export default function CapacityNodeEditor({
 
           {/* Metrics Card - Fixed position at top-left */}
           <MetricsCard
-            totalConnections={metrics.totalConnections}
-            layerChanges={metrics.layerChanges}
-            capacity={metrics.capacity}
+            numEntryExitLayerChanges={metrics.numEntryExitLayerChanges}
+            numSameLayerCrossings={metrics.numSameLayerCrossings}
+            numTransitionPairCrossings={metrics.numTransitionPairCrossings}
             probabilityOfFailure={metrics.probabilityOfFailure}
-            diagnostics={metrics.diagnostics}
           />
         </svg>
 
