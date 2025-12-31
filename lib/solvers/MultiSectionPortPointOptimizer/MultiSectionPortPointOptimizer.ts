@@ -94,35 +94,14 @@ const OPTIMIZATION_SCHEDULE: (PortPointPathingHyperParameters & {
 })[] = [
   {
     SHUFFLE_SEED: 100,
-    NODE_PF_FACTOR: 100,
-    NODE_PF_MAX_PENALTY: 100,
+    NODE_PF_FACTOR: 10000,
+    // NODE_PF_MAX_PENALTY: 100,
     MEMORY_PF_FACTOR: 0,
-    EXPANSION_DEGREES: 4,
+    EXPANSION_DEGREES: 10,
     FORCE_CENTER_FIRST: true,
     FORCE_OFF_BOARD_FREQUENCY: 0,
     CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
-    // MAX_ITERATIONS_PER_PATH: 300,
-  },
-  {
-    SHUFFLE_SEED: 100,
-    NODE_PF_FACTOR: 100,
-    NODE_PF_MAX_PENALTY: 100,
-    MEMORY_PF_FACTOR: 20,
-    EXPANSION_DEGREES: 4,
-    FORCE_CENTER_FIRST: true,
-    FORCE_OFF_BOARD_FREQUENCY: 0,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
-    // MAX_ITERATIONS_PER_PATH: 300,
-  },
-  {
-    SHUFFLE_SEED: 100,
-    NODE_PF_FACTOR: 100,
-    NODE_PF_MAX_PENALTY: 100,
-    MEMORY_PF_FACTOR: 0,
-    EXPANSION_DEGREES: 4,
-    FORCE_CENTER_FIRST: true,
-    FORCE_OFF_BOARD_FREQUENCY: 0.2,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
+    MIN_ALLOWED_BOARD_SCORE: -1,
     // MAX_ITERATIONS_PER_PATH: 300,
   },
   // {
@@ -220,7 +199,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
    * Fraction of connections in a section to rip/replace (0-1).
    * Default 1 means rip all connections. Values less than 1 keep some traces.
    */
-  FRACTION_TO_REPLACE = 0.6
+  FRACTION_TO_REPLACE = 1
 
   /**
    * If true, always rip connections that have same-layer intersections,
@@ -829,17 +808,20 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
       ])
     }
 
-    return new HyperPortPointPathingSolver({
+    return new PortPointPathingSolver({
       simpleRouteJson: sectionSrj,
       inputNodes: preparedInputNodes,
       capacityMeshNodes: section.capacityMeshNodes,
       colorMap: this.colorMap,
       nodeMemoryPfMap: this.nodePfMap,
-      numShuffleSeeds: 50 * this.effort,
-      hyperParameters: this.getHyperParametersForScheduleIndex(
-        this.currentScheduleIndex,
-        this.sectionAttempts,
-      ),
+      // numShuffleSeeds: 10000 * this.effort,
+      hyperParameters: {
+        ...this.getHyperParametersForScheduleIndex(
+          this.currentScheduleIndex,
+          this.sectionAttempts,
+        ),
+        SHUFFLE_SEED: 150,
+      },
       precomputedInitialParams: precomputedParams,
       fixedRoutes: this.currentSectionFixedRoutes,
     }) as unknown as PortPointPathingSolver

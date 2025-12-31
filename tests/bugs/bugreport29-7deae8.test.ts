@@ -13,6 +13,11 @@ test(
   () => {
     const solver = new AssignableAutoroutingPipeline2(srj)
     solver.solve()
+
+    // Should have a perfect score
+    expect(
+      solver.multiSectionPortPointOptimizer?.stats.currentBoardScore,
+    ).toEqual(0)
     expect(getLastStepSvg(solver.visualize())).toMatchSvgSnapshot(
       import.meta.path,
     )
