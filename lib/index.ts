@@ -18,6 +18,7 @@ export { convertSrjToGraphicsObject } from "./utils/convertSrjToGraphicsObject"
 // Jumper-based solvers for single-layer PCBs
 export { IntraNodeSolverWithJumpers } from "./solvers/HighDensitySolver/IntraNodeSolverWithJumpers"
 export { SingleHighDensityRouteWithJumpersSolver } from "./solvers/HighDensitySolver/SingleHighDensityRouteWithJumpersSolver"
+export { HighDensitySolver } from "./autorouter-pipelines/AssignableAutoroutingPipeline2/HighDensitySolver"
 export type {
   Jumper,
   HighDensityIntraNodeRouteWithJumpers,

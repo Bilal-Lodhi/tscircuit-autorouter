@@ -1,11 +1,18 @@
 import { SimplifiedPcbTraces } from "lib/types"
-import { HighDensityIntraNodeRoute } from "lib/types/high-density-types"
+import { HighDensityIntraNodeRoute, Jumper } from "lib/types/high-density-types"
 import { mapZToLayerName } from "./mapZToLayerName"
 
 type Point = { x: number; y: number; z: number }
 
+/**
+ * Extended HD route type that may contain jumpers (from HighDensitySolver)
+ */
+type HdRouteWithOptionalJumpers = HighDensityIntraNodeRoute & {
+  jumpers?: Jumper[]
+}
+
 export const convertHdRouteToSimplifiedRoute = (
-  hdRoute: HighDensityIntraNodeRoute,
+  hdRoute: HdRouteWithOptionalJumpers,
   layerCount: number,
 ): SimplifiedPcbTraces[number]["route"] => {
   const result: SimplifiedPcbTraces[number]["route"] = []
@@ -73,6 +80,20 @@ export const convertHdRouteToSimplifiedRoute = (
       width: hdRoute.traceThickness,
       layer: layerName,
     })
+  }
+
+  // Add jumpers if present
+  if (hdRoute.jumpers && hdRoute.jumpers.length > 0) {
+    const jumperLayerName = mapZToLayerName(hdRoute.route[0]?.z ?? 0, layerCount)
+    for (const jumper of hdRoute.jumpers) {
+      result.push({
+        route_type: "jumper",
+        start: jumper.start,
+        end: jumper.end,
+        footprint: jumper.footprint,
+        layer: jumperLayerName,
+      })
+    }
   }
 
   return result
