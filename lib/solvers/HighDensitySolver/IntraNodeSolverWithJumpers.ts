@@ -47,6 +47,7 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
   traceWidth: number
 
   activeSubSolver: SingleHighDensityRouteWithJumpersSolver | null = null
+  lastActiveSubSolver: SingleHighDensityRouteWithJumpersSolver | null = null
   connMap?: ConnectivityMap
 
   // Legacy compat
@@ -134,9 +135,11 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
       this.progress = this.computeProgress()
       if (this.activeSubSolver.solved) {
         this.solvedRoutes.push(this.activeSubSolver.solvedPath!)
+        this.lastActiveSubSolver = this.activeSubSolver
         this.activeSubSolver = null
       } else if (this.activeSubSolver.failed) {
         this.failedSubSolvers.push(this.activeSubSolver)
+        this.lastActiveSubSolver = this.activeSubSolver
         this.activeSubSolver = null
         this.error = this.failedSubSolvers.map((s) => s.error).join("\n")
         this.failed = true
@@ -190,6 +193,7 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
 
   /**
    * Draw the two pads of an 0805 jumper
+   * Pad dimensions are rotated based on jumper orientation
    */
   private drawJumperPads(
     graphics: GraphicsObject,
@@ -197,8 +201,18 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
     color: string,
     step?: number,
   ) {
+    const dx = jumper.end.x - jumper.start.x
+    const dy = jumper.end.y - jumper.start.y
+
     const padLength = JUMPER_0805.padLength
     const padWidth = JUMPER_0805.padWidth
+
+    // Determine if jumper is horizontal or vertical
+    // Horizontal: dx != 0, dy ~= 0 -> pads are taller than wide (width=padLength, height=padWidth)
+    // Vertical: dx ~= 0, dy != 0 -> pads are wider than tall (width=padWidth, height=padLength)
+    const isHorizontal = Math.abs(dx) > Math.abs(dy)
+    const rectWidth = isHorizontal ? padLength : padWidth
+    const rectHeight = isHorizontal ? padWidth : padLength
 
     // Start pad
     graphics.rects!.push({
@@ -206,8 +220,8 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
         x: jumper.start.x,
         y: jumper.start.y,
       },
-      width: padLength,
-      height: padWidth,
+      width: rectWidth,
+      height: rectHeight,
       fill: color,
       stroke: "rgba(0, 0, 0, 0.5)",
       layer: "jumper",
@@ -220,8 +234,8 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
         x: jumper.end.x,
         y: jumper.end.y,
       },
-      width: padLength,
-      height: padWidth,
+      width: rectWidth,
+      height: rectHeight,
       fill: color,
       stroke: "rgba(0, 0, 0, 0.5)",
       layer: "jumper",
@@ -241,6 +255,10 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
   visualize(): GraphicsObject {
     if (this.activeSubSolver) {
       return this.activeSubSolver.visualize()
+    }
+    // When failed, show the last active sub-solver's visualization
+    if (this.failed && this.lastActiveSubSolver) {
+      return this.lastActiveSubSolver.visualize()
     }
     const graphics: GraphicsObject = {
       lines: [],
