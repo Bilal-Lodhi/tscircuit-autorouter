@@ -73,6 +73,10 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
   FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY = 12 // mm - proximity threshold
   FUTURE_CONNECTION_JUMPER_PAD_PENALTY = 100 // penalty factor
 
+  /** Jumper-to-jumper pad proximity penalty parameters */
+  JUMPER_JUMPER_PAD_PROXIMITY = 5 // mm - proximity threshold
+  JUMPER_JUMPER_PAD_PENALTY = 10 // penalty factor
+
   /** Obstacle proximity penalty parameters (repulsive field) */
   OBSTACLE_PROX_PENALTY_FACTOR: number
   OBSTACLE_PROX_SIGMA: number
@@ -137,7 +141,13 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     this.FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY =
       this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY ?? 10
     this.FUTURE_CONNECTION_JUMPER_PAD_PENALTY =
-      this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PENALTY ?? 1000
+      this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PENALTY ?? 100
+
+    // Initialize jumper-to-jumper pad penalty parameters
+    this.JUMPER_JUMPER_PAD_PROXIMITY =
+      this.hyperParameters.JUMPER_JUMPER_PAD_PROXIMITY ?? 5
+    this.JUMPER_JUMPER_PAD_PENALTY =
+      this.hyperParameters.JUMPER_JUMPER_PAD_PENALTY ?? 10
 
     // Initialize obstacle proximity penalty parameters
     // These are "soft" penalties that prefer high-clearance paths but don't block routes
