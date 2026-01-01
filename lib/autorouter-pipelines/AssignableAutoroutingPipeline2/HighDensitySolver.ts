@@ -12,6 +12,7 @@ import { safeTransparentize } from "../../solvers/colors"
 import { mergeRouteSegments } from "lib/utils/mergeRouteSegments"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import { HighDensityHyperParameters } from "../../solvers/HighDensitySolver/HighDensityHyperParameters"
+import { getIntraNodeCrossingsUsingCircle } from "lib/utils/getIntraNodeCrossingsUsingCircle"
 
 /**
  * A unified route type that can represent both regular routes (with vias)
@@ -27,7 +28,9 @@ export type UnifiedHighDensityRoute =
  */
 function convertJumperRouteToStandard(
   route: HighDensityIntraNodeRouteWithJumpers,
-): HighDensityIntraNodeRoute & { jumpers?: HighDensityIntraNodeRouteWithJumpers["jumpers"] } {
+): HighDensityIntraNodeRoute & {
+  jumpers?: HighDensityIntraNodeRouteWithJumpers["jumpers"]
+} {
   return {
     connectionName: route.connectionName,
     rootConnectionName: route.rootConnectionName,
@@ -57,7 +60,9 @@ interface NodeAnalysis {
 export class HighDensitySolver extends BaseSolver {
   allNodes: NodeWithPortPoints[]
   nodeAnalyses: NodeAnalysis[]
-  routes: (HighDensityIntraNodeRoute & { jumpers?: HighDensityIntraNodeRouteWithJumpers["jumpers"] })[]
+  routes: (HighDensityIntraNodeRoute & {
+    jumpers?: HighDensityIntraNodeRouteWithJumpers["jumpers"]
+  })[]
   colorMap: Record<string, string>
   traceWidth: number
   viaDiameter: number
@@ -121,7 +126,7 @@ export class HighDensitySolver extends BaseSolver {
    */
   _analyzeNodes() {
     for (const node of this.allNodes) {
-      const crossings = getIntraNodeCrossings(node)
+      const crossings = getIntraNodeCrossingsUsingCircle(node)
 
       // Check if all port points are on the same layer (single-layer node)
       const layers = new Set(node.portPoints.map((p) => p.z))
@@ -162,7 +167,8 @@ export class HighDensitySolver extends BaseSolver {
     switch (this.phase) {
       case "analyzing":
         // Already done in constructor
-        this.phase = this.nodesWithoutCrossings.length > 0 ? "simple" : "jumpers"
+        this.phase =
+          this.nodesWithoutCrossings.length > 0 ? "simple" : "jumpers"
         break
 
       case "simple":
@@ -274,7 +280,10 @@ export class HighDensitySolver extends BaseSolver {
     if (this.simpleHighDensitySolver) {
       const simpleProgress = this.simpleHighDensitySolver.solved
         ? this.nodesWithoutCrossings.length
-        : Math.floor(this.simpleHighDensitySolver.progress * this.nodesWithoutCrossings.length)
+        : Math.floor(
+            this.simpleHighDensitySolver.progress *
+              this.nodesWithoutCrossings.length,
+          )
       completedNodes += simpleProgress
     }
 
@@ -282,7 +291,8 @@ export class HighDensitySolver extends BaseSolver {
     completedNodes += this.currentJumperSolverIndex
 
     // Add progress from current jumper solver
-    const currentJumperSolver = this.jumperSolvers[this.currentJumperSolverIndex]
+    const currentJumperSolver =
+      this.jumperSolvers[this.currentJumperSolverIndex]
     if (currentJumperSolver) {
       completedNodes += currentJumperSolver.progress
     }
@@ -303,7 +313,10 @@ export class HighDensitySolver extends BaseSolver {
       return this.simpleHighDensitySolver.visualize()
     }
 
-    if (this.phase === "jumpers" && this.jumperSolvers[this.currentJumperSolverIndex]) {
+    if (
+      this.phase === "jumpers" &&
+      this.jumperSolvers[this.currentJumperSolverIndex]
+    ) {
       return this.jumperSolvers[this.currentJumperSolverIndex].visualize()
     }
 
@@ -334,7 +347,10 @@ export class HighDensitySolver extends BaseSolver {
         graphics.circles!.push({
           center: via,
           radius: route.viaDiameter / 2,
-          fill: safeTransparentize(this.colorMap[route.connectionName] ?? "gray", 0.5),
+          fill: safeTransparentize(
+            this.colorMap[route.connectionName] ?? "gray",
+            0.5,
+          ),
           layer: "via",
         })
       }
@@ -390,8 +406,8 @@ export class HighDensitySolver extends BaseSolver {
         width: node.width,
         height: node.height,
         fill: analysis.hasCrossings
-          ? "rgba(255, 200, 0, 0.1)"  // Yellow for crossings
-          : "rgba(0, 200, 0, 0.1)",   // Green for no crossings
+          ? "rgba(255, 200, 0, 0.1)" // Yellow for crossings
+          : "rgba(0, 200, 0, 0.1)", // Green for no crossings
         stroke: analysis.hasCrossings
           ? "rgba(255, 150, 0, 0.5)"
           : "rgba(0, 150, 0, 0.5)",

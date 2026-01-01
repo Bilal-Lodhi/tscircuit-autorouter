@@ -1,0 +1,27 @@
+import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"
+import { HighDensitySolver } from "lib/autorouter-pipelines/AssignableAutoroutingPipeline2/HighDensitySolver"
+import { generateColorMapFromNodeWithPortPoints } from "lib/utils/generateColorMapFromNodeWithPortPoints"
+import input from "./jumper-high-density01-input.json"
+
+export default () => {
+  const createSolver = () => {
+    const nodePortPoints = (input as any[]).flatMap(
+      (item: any) => item.nodePortPoints,
+    )
+
+    const colorMap: Record<string, string> = {}
+    for (const node of nodePortPoints) {
+      const nodeColorMap = generateColorMapFromNodeWithPortPoints(node)
+      for (const [key, value] of Object.entries(nodeColorMap)) {
+        colorMap[key] = value
+      }
+    }
+
+    return new HighDensitySolver({
+      nodePortPoints,
+      colorMap,
+    })
+  }
+
+  return <GenericSolverDebugger createSolver={createSolver} />
+}
