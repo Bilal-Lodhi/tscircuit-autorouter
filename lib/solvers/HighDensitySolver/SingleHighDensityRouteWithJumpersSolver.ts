@@ -58,15 +58,26 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
   obstacleMargin: number
   minCellSize = 0.05
   cellStep = 0.05
-  GREEDY_MULTIPLER = 1.1
+  GREEDY_MULTIPLER = 2
   numRoutes: number
 
   /** Penalty factor for using a jumper (relative to distance) */
-  JUMPER_PENALTY_FACTOR = 0.5
+  JUMPER_PENALTY_FACTOR = 0.1
 
   /** Future connection proximity parameters */
   FUTURE_CONNECTION_PROX_TRACE_PENALTY_FACTOR = 2
   FUTURE_CONNECTION_PROXIMITY_VD = 10
+
+  /** Obstacle proximity penalty parameters (repulsive field) */
+  OBSTACLE_PROX_PENALTY_FACTOR: number
+  OBSTACLE_PROX_SIGMA: number
+
+  /** Edge proximity penalty parameters */
+  EDGE_PROX_PENALTY_FACTOR: number
+  EDGE_PROX_SIGMA: number
+
+  /** Whether to allow diagonal movement in pathfinding */
+  ALLOW_DIAGONAL: boolean
 
   CELL_SIZE_FACTOR: number
 
@@ -116,6 +127,26 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
       this.hyperParameters.FUTURE_CONNECTION_PROX_TRACE_PENALTY_FACTOR ?? 2
     this.FUTURE_CONNECTION_PROXIMITY_VD =
       this.hyperParameters.FUTURE_CONNECTION_PROXIMITY_VD ?? 10
+
+    // Initialize obstacle proximity penalty parameters
+    // These are "soft" penalties that prefer high-clearance paths but don't block routes
+    this.OBSTACLE_PROX_PENALTY_FACTOR =
+      this.hyperParameters.OBSTACLE_PROX_PENALTY_FACTOR ?? 4
+    this.OBSTACLE_PROX_SIGMA =
+      this.hyperParameters.OBSTACLE_PROX_SIGMA ??
+      (opts.traceThickness ?? 0.15) * 20
+
+    // Initialize edge proximity penalty parameters
+    // Keep lower than obstacle penalty since edges are less problematic than trace collisions
+    // and to avoid issues in tight spaces where start/end points are near edges
+    this.EDGE_PROX_PENALTY_FACTOR =
+      this.hyperParameters.EDGE_PROX_PENALTY_FACTOR ?? 4
+    this.EDGE_PROX_SIGMA =
+      this.hyperParameters.EDGE_PROX_SIGMA ?? (opts.traceThickness ?? 0.15) * 10
+
+    // Initialize diagonal movement setting
+    this.ALLOW_DIAGONAL = this.hyperParameters.ALLOW_DIAGONAL ?? false
+
     this.boundsSize = {
       width: this.bounds.maxX - this.bounds.minX,
       height: this.bounds.maxY - this.bounds.minY,
@@ -286,8 +317,10 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
     // Determine if jumper is horizontal or vertical for pad dimensions
     const isHorizontal = Math.abs(dx) > Math.abs(dy)
-    const padHalfWidth = (isHorizontal ? JUMPER_0805.padLength : JUMPER_0805.padWidth) / 2 + margin
-    const padHalfHeight = (isHorizontal ? JUMPER_0805.padWidth : JUMPER_0805.padLength) / 2 + margin
+    const padHalfWidth =
+      (isHorizontal ? JUMPER_0805.padLength : JUMPER_0805.padWidth) / 2 + margin
+    const padHalfHeight =
+      (isHorizontal ? JUMPER_0805.padWidth : JUMPER_0805.padLength) / 2 + margin
 
     // Check against start pad
     if (
@@ -368,16 +401,34 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
     // Determine if jumper is horizontal or vertical for pad dimensions
     const isHorizontal = Math.abs(dx) > Math.abs(dy)
-    const padHalfWidth = (isHorizontal ? JUMPER_0805.padLength : JUMPER_0805.padWidth) / 2 + margin
-    const padHalfHeight = (isHorizontal ? JUMPER_0805.padWidth : JUMPER_0805.padLength) / 2 + margin
+    const padHalfWidth =
+      (isHorizontal ? JUMPER_0805.padLength : JUMPER_0805.padWidth) / 2 + margin
+    const padHalfHeight =
+      (isHorizontal ? JUMPER_0805.padWidth : JUMPER_0805.padLength) / 2 + margin
 
     // Check intersection with start pad
-    if (this.doesSegmentIntersectRect(p1, p2, jumper.start, padHalfWidth, padHalfHeight)) {
+    if (
+      this.doesSegmentIntersectRect(
+        p1,
+        p2,
+        jumper.start,
+        padHalfWidth,
+        padHalfHeight,
+      )
+    ) {
       return true
     }
 
     // Check intersection with end pad
-    if (this.doesSegmentIntersectRect(p1, p2, jumper.end, padHalfWidth, padHalfHeight)) {
+    if (
+      this.doesSegmentIntersectRect(
+        p1,
+        p2,
+        jumper.end,
+        padHalfWidth,
+        padHalfHeight,
+      )
+    ) {
       return true
     }
 
@@ -400,8 +451,10 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     const maxY = center.y + halfHeight
 
     // Check if either endpoint is inside the rectangle
-    if (p1.x >= minX && p1.x <= maxX && p1.y >= minY && p1.y <= maxY) return true
-    if (p2.x >= minX && p2.x <= maxX && p2.y >= minY && p2.y <= maxY) return true
+    if (p1.x >= minX && p1.x <= maxX && p1.y >= minY && p1.y <= maxY)
+      return true
+    if (p2.x >= minX && p2.x <= maxX && p2.y >= minY && p2.y <= maxY)
+      return true
 
     // Check if line segment intersects any of the rectangle's edges
     const rectEdges = [
@@ -451,22 +504,33 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
   }
 
   computeH(node: JumperNode) {
-    return distance(node, this.B) + this.getFutureConnectionPenalty(node)
+    // Include a smaller portion of density penalties in H to help "pull away" earlier
+    const densityPenaltyInH =
+      0.25 *
+      (this.getObstacleProximityPenalty(node) +
+        this.getEdgeProximityPenalty(node))
+    return (
+      distance(node, this.B) +
+      this.getFutureConnectionPenalty(node) +
+      densityPenaltyInH
+    )
   }
 
   computeG(node: JumperNode) {
     const baseG = (node.parent?.g ?? 0) + distance(node, node.parent!)
 
+    // Density penalty to push routes away from obstacles/edges
+    const densityPenalty =
+      this.getObstacleProximityPenalty(node) +
+      this.getEdgeProximityPenalty(node) +
+      this.getFutureConnectionPenalty(node)
+
     // Add jumper penalty if this node was reached via a jumper
     if (node.isJumperExit) {
-      return (
-        baseG +
-        this.jumperPenaltyDistance +
-        this.getFutureConnectionPenalty(node)
-      )
+      return baseG + this.jumperPenaltyDistance + densityPenalty
     }
 
-    return baseG + this.getFutureConnectionPenalty(node)
+    return baseG + densityPenalty
   }
 
   computeF(g: number, h: number) {
@@ -507,9 +571,109 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     return futureConnectionPenalty
   }
 
+  /**
+   * Compute the minimum distance from a node to any obstacle (trace segments and jumper pads)
+   */
+  getClearanceToObstacles(node: { x: number; y: number }): number {
+    let minD = Infinity
+
+    for (const route of this.obstacleRoutes) {
+      const connected = this.connMap?.areIdsConnected?.(
+        this.connectionName,
+        route.connectionName,
+      )
+      if (connected) continue
+
+      // Check distance to trace segments
+      for (const seg of getSameLayerPointPairs(route)) {
+        minD = Math.min(minD, pointToSegmentDistance(node, seg.A, seg.B))
+      }
+
+      // Jumper pads are solid obstacles
+      for (const j of route.jumpers || []) {
+        minD = Math.min(minD, this.distanceToJumperPads(node, j))
+      }
+    }
+
+    return minD
+  }
+
+  /**
+   * Compute distance from a point to the nearest jumper pad
+   */
+  distanceToJumperPads(p: { x: number; y: number }, j: Jumper): number {
+    const dx = j.end.x - j.start.x
+    const dy = j.end.y - j.start.y
+    const isHorizontal = Math.abs(dx) > Math.abs(dy)
+
+    const padHalfW =
+      (isHorizontal ? JUMPER_0805.padLength : JUMPER_0805.padWidth) / 2
+    const padHalfH =
+      (isHorizontal ? JUMPER_0805.padWidth : JUMPER_0805.padLength) / 2
+
+    return Math.min(
+      this.pointToRectDistance(p, j.start, padHalfW, padHalfH),
+      this.pointToRectDistance(p, j.end, padHalfW, padHalfH),
+    )
+  }
+
+  /**
+   * Compute distance from a point to an axis-aligned rectangle (0 if inside)
+   */
+  pointToRectDistance(
+    p: { x: number; y: number },
+    c: { x: number; y: number },
+    halfW: number,
+    halfH: number,
+  ): number {
+    const dx = Math.max(Math.abs(p.x - c.x) - halfW, 0)
+    const dy = Math.max(Math.abs(p.y - c.y) - halfH, 0)
+    return Math.hypot(dx, dy)
+  }
+
+  /**
+   * Compute minimum distance from a node to the nearest boundary edge
+   */
+  getClearanceToEdge(node: { x: number; y: number }): number {
+    return Math.min(
+      node.x - this.bounds.minX,
+      this.bounds.maxX - node.x,
+      node.y - this.bounds.minY,
+      this.bounds.maxY - node.y,
+    )
+  }
+
+  /**
+   * Compute the obstacle proximity penalty (repulsive field)
+   * Returns a high value near obstacles, ~0 far away
+   */
+  getObstacleProximityPenalty(node: JumperNode): number {
+    const c = this.getClearanceToObstacles(node)
+
+    // Treat "effective clearance" relative to trace thickness + margin
+    const effective = Math.max(
+      0,
+      c - (this.traceThickness + this.obstacleMargin),
+    )
+
+    // Repulsive potential: big near obstacles, tiny far away
+    const sigma = this.OBSTACLE_PROX_SIGMA
+    return this.OBSTACLE_PROX_PENALTY_FACTOR * Math.exp(-effective / sigma)
+  }
+
+  /**
+   * Compute the edge proximity penalty (repulsive field near boundaries)
+   * Returns a high value near edges, ~0 far away
+   */
+  getEdgeProximityPenalty(node: JumperNode): number {
+    const c = this.getClearanceToEdge(node)
+    const sigma = this.EDGE_PROX_SIGMA
+    return this.EDGE_PROX_PENALTY_FACTOR * Math.exp(-c / sigma)
+  }
+
   getNodeKey(node: JumperNode) {
     const jumperSuffix = node.isJumperExit ? "_j" : ""
-    return `${Math.round(node.x / this.cellStep) * this.cellStep},${Math.round(node.y / this.cellStep) * this.cellStep},${node.z}${jumperSuffix}`
+    return `${Math.floor(node.x / this.cellStep) * this.cellStep},${Math.floor(node.y / this.cellStep) * this.cellStep},${node.z}${jumperSuffix}`
   }
 
   /**
@@ -521,9 +685,9 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     // Look for obstacles in horizontal and vertical directions only
     // (jumpers must be arranged horizontally or vertically)
     const directions = [
-      { dx: 1, dy: 0 },  // right (horizontal)
+      { dx: 1, dy: 0 }, // right (horizontal)
       { dx: -1, dy: 0 }, // left (horizontal)
-      { dx: 0, dy: 1 },  // up (vertical)
+      { dx: 0, dy: 1 }, // up (vertical)
       { dx: 0, dy: -1 }, // down (vertical)
     ]
 
@@ -618,14 +782,19 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
   /**
    * Check if a jumper's pads are too close to obstacle traces
    */
-  isJumperTooCloseToTraces(entry: { x: number; y: number }, exit: { x: number; y: number }): boolean {
+  isJumperTooCloseToTraces(
+    entry: { x: number; y: number },
+    exit: { x: number; y: number },
+  ): boolean {
     const dx = exit.x - entry.x
     const dy = exit.y - entry.y
     const isHorizontal = Math.abs(dx) > Math.abs(dy)
 
     // Get pad dimensions based on jumper orientation
-    const padHalfWidth = (isHorizontal ? JUMPER_0805.padLength : JUMPER_0805.padWidth) / 2
-    const padHalfHeight = (isHorizontal ? JUMPER_0805.padWidth : JUMPER_0805.padLength) / 2
+    const padHalfWidth =
+      (isHorizontal ? JUMPER_0805.padLength : JUMPER_0805.padWidth) / 2
+    const padHalfHeight =
+      (isHorizontal ? JUMPER_0805.padWidth : JUMPER_0805.padLength) / 2
     const margin = this.obstacleMargin
 
     // Check both entry and exit pad positions against all obstacle traces
@@ -665,13 +834,15 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
           }
 
           // Also check if the trace segment passes through the pad rectangle
-          if (this.doesSegmentIntersectRect(
-            pointPair.A,
-            pointPair.B,
-            padCenter,
-            padHalfWidth + margin,
-            padHalfHeight + margin
-          )) {
+          if (
+            this.doesSegmentIntersectRect(
+              pointPair.A,
+              pointPair.B,
+              padCenter,
+              padHalfWidth + margin,
+              padHalfHeight + margin,
+            )
+          ) {
             return true
           }
         }
@@ -779,6 +950,9 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     for (let x = -1; x <= 1; x++) {
       for (let y = -1; y <= 1; y++) {
         if (x === 0 && y === 0) continue
+
+        // Skip diagonal moves if not allowed
+        if (!this.ALLOW_DIAGONAL && x !== 0 && y !== 0) continue
 
         const neighbor: JumperNode = {
           ...node,
