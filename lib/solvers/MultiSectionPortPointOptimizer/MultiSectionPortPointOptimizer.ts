@@ -797,6 +797,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
               distanceTraveled: 0,
             })) as PortPointCandidate[],
             portPoints: sectionPath.points.map((p) => ({
+              portPointId: p.portPointId,
               x: p.x,
               y: p.y,
               z: p.z,

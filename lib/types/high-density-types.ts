@@ -1,6 +1,7 @@
 export type PortPoint = {
   connectionName: string
   rootConnectionName?: string
+  portPointId?: string
   x: number
   y: number
   z: number

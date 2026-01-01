@@ -26,7 +26,13 @@ export interface SectionPath {
   /** Root connection name if applicable */
   rootConnectionName?: string
   /** The cut path points (only the portion within the section) */
-  points: Array<{ x: number; y: number; z: number; nodeId: CapacityMeshNodeId }>
+  points: Array<{
+    x: number
+    y: number
+    z: number
+    nodeId: CapacityMeshNodeId
+    portPointId?: string
+  }>
   /** Index in original path where this segment starts */
   originalStartIndex: number
   /** Index in original path where this segment ends */
@@ -240,6 +246,7 @@ function cutPathsToSection(
               y: c.point.y,
               z: c.z,
               nodeId: c.currentNodeId,
+              portPointId: c.portPoint?.portPointId,
             })),
             originalStartIndex: currentSegmentStart,
             originalEndIndex: i - 1,
@@ -262,6 +269,7 @@ function cutPathsToSection(
           y: c.point.y,
           z: c.z,
           nodeId: c.currentNodeId,
+          portPointId: c.portPoint?.portPointId,
         })),
         originalStartIndex: currentSegmentStart,
         originalEndIndex: result.path.length - 1,

@@ -387,11 +387,12 @@ export class PortPointPathingSolver extends BaseSolver {
         // Mark their port points as assigned so the solver routes around them
         if (fixedRoute.portPoints) {
           for (const pp of fixedRoute.portPoints) {
-            const portPointId = `${pp.x},${pp.y},${pp.z}`
-            this.assignedPortPoints.set(portPointId, {
-              connectionName: pp.connectionName,
-              rootConnectionName: pp.rootConnectionName,
-            })
+            if (pp.portPointId) {
+              this.assignedPortPoints.set(pp.portPointId, {
+                connectionName: pp.connectionName,
+                rootConnectionName: pp.rootConnectionName,
+              })
+            }
           }
         }
       }
@@ -766,7 +767,7 @@ export class PortPointPathingSolver extends BaseSolver {
     hasTouchedOffBoardNode?: boolean,
   ): InputPortPoint[] {
     const portPoints = this.nodePortPointsMap.get(nodeId) ?? []
-    const currentNode = this.nodeMap.get(nodeId)
+    // const currentNode = this.nodeMap.get(nodeId)
     const currentConnection =
       this.connectionsWithResults[this.currentConnectionIndex]
     const currentRootConnectionName =
@@ -1027,6 +1028,7 @@ export class PortPointPathingSolver extends BaseSolver {
       })
 
       const portPoint: PortPoint = {
+        portPointId: pp.portPointId,
         x: pp.x,
         y: pp.y,
         z: pp.z,
