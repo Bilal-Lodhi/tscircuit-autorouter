@@ -196,7 +196,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     this.CELL_SIZE_FACTOR = this.hyperParameters.CELL_SIZE_FACTOR ?? 1
     this.JUMPER_PENALTY_FACTOR = 0.2
     this.FUTURE_CONNECTION_START_END_PROXIMITY ??= 5
-    this.FUTURE_CONNECTION_START_END_PENALTY ??= 0
+    this.FUTURE_CONNECTION_START_END_PENALTY ??= 1
 
     // Initialize future connection jumper pad penalty parameters
     this.FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY =
@@ -212,7 +212,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
     // Initialize future connection line penalty parameters
     this.FUTURE_CONNECTION_LINE_PROXIMITY =
-      this.hyperParameters.FUTURE_CONNECTION_LINE_PROXIMITY ?? 1
+      this.hyperParameters.FUTURE_CONNECTION_LINE_PROXIMITY ?? 10
     this.FUTURE_CONNECTION_LINE_PENALTY =
       this.hyperParameters.FUTURE_CONNECTION_LINE_PENALTY ?? 10
 
@@ -226,8 +226,8 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     // Keep lower than obstacle penalty since edges are less problematic than trace collisions
     // and to avoid issues in tight spaces where start/end points are near edges
     this.EDGE_PROX_PENALTY_FACTOR =
-      this.hyperParameters.EDGE_PROX_PENALTY_FACTOR ?? 0
-    this.EDGE_PROX_SIGMA = this.hyperParameters.EDGE_PROX_SIGMA ?? 4
+      this.hyperParameters.EDGE_PROX_PENALTY_FACTOR ?? 1
+    this.EDGE_PROX_SIGMA = this.hyperParameters.EDGE_PROX_SIGMA ?? 2
 
     // Initialize diagonal movement setting
     this.ALLOW_DIAGONAL = this.hyperParameters.ALLOW_DIAGONAL ?? false
@@ -655,7 +655,10 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
       const rateDerivative = (currentRate - parentRate) / stepDist
 
       // Project rate at goal (clamped to >= 0)
-      const projectedGoalRate = Math.max(0, currentRate + rateDerivative * goalDist)
+      const projectedGoalRate = Math.max(
+        0,
+        currentRate + rateDerivative * goalDist,
+      )
 
       // Expected average rate is midpoint between current and projected goal rate
       return (currentRate + projectedGoalRate) / 2
@@ -816,7 +819,8 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     const closestFuturePoint = this.getClosestFutureConnectionPoint(node)
     const goalDist = distance(node, this.B)
     if (closestFuturePoint) {
-      const distToFuturePoint = distance(node, closestFuturePoint) - goalDist
+      const distToFuturePoint =
+        distance(node, closestFuturePoint) - goalDist / 2
       if (distToFuturePoint > this.FUTURE_CONNECTION_START_END_PROXIMITY)
         return 0
       const distRatio =
@@ -852,7 +856,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
       closestLineDist = Math.min(closestLineDist, distToLine)
     }
 
-    closestLineDist -= goalDist
+    closestLineDist -= goalDist / 2
 
     // Apply penalty if within proximity threshold
     if (closestLineDist < this.FUTURE_CONNECTION_LINE_PROXIMITY) {
