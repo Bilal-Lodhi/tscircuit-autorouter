@@ -234,7 +234,6 @@ export class JumperHighDensitySolver extends BaseSolver {
           ...this.hyperParameters,
           FUTURE_CONNECTION_PROXIMITY_VD: 50,
           FUTURE_CONNECTION_PROX_TRACE_PENALTY_FACTOR: 1,
-          FUTURE_CONNECTION_PROX_VIA_PENALTY_FACTOR: 5,
         },
       })
       this.jumperSolvers.push(solver)

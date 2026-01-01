@@ -52,6 +52,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
   boundsCenter: { x: number; y: number }
   A: { x: number; y: number; z: number }
   B: { x: number; y: number; z: number }
+  roundedGoalPosition: { x: number; y: number; z: number }
   straightLineDistance: number
 
   traceThickness: number
@@ -66,7 +67,11 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
   /** Future connection proximity parameters */
   FUTURE_CONNECTION_PROX_TRACE_PENALTY_FACTOR = 2
-  FUTURE_CONNECTION_PROXIMITY_VD = 10
+  FUTURE_CONNECTION_TRACE_PROXIMITY = 10
+
+  /** Future connection jumper pad penalty parameters */
+  FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY = 12 // mm - proximity threshold
+  FUTURE_CONNECTION_JUMPER_PAD_PENALTY = 100 // penalty factor
 
   /** Obstacle proximity penalty parameters (repulsive field) */
   OBSTACLE_PROX_PENALTY_FACTOR: number
@@ -125,8 +130,14 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     this.CELL_SIZE_FACTOR = this.hyperParameters.CELL_SIZE_FACTOR ?? 1
     this.FUTURE_CONNECTION_PROX_TRACE_PENALTY_FACTOR =
       this.hyperParameters.FUTURE_CONNECTION_PROX_TRACE_PENALTY_FACTOR ?? 2
-    this.FUTURE_CONNECTION_PROXIMITY_VD =
-      this.hyperParameters.FUTURE_CONNECTION_PROXIMITY_VD ?? 10
+    this.FUTURE_CONNECTION_TRACE_PROXIMITY =
+      this.hyperParameters.FUTURE_CONNECTION_TRACE_PROXIMITY ?? 10
+
+    // Initialize future connection jumper pad penalty parameters
+    this.FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY =
+      this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY ?? 10
+    this.FUTURE_CONNECTION_JUMPER_PAD_PENALTY =
+      this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PENALTY ?? 1000
 
     // Initialize obstacle proximity penalty parameters
     // These are "soft" penalties that prefer high-clearance paths but don't block routes
@@ -214,8 +225,8 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     }
 
     const initialNodePosition = {
-      x: Math.round(opts.A.x / (this.cellStep / 2)) * (this.cellStep / 2),
-      y: Math.round(opts.A.y / (this.cellStep / 2)) * (this.cellStep / 2),
+      x: Math.round(opts.A.x / this.cellStep) * this.cellStep,
+      y: Math.round(opts.A.y / this.cellStep) * this.cellStep,
     }
     this.initialNodeGridOffset = {
       x:
@@ -224,6 +235,11 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
       y:
         initialNodePosition.y -
         Math.round(opts.A.y / this.cellStep) * this.cellStep,
+    }
+    this.roundedGoalPosition = {
+      x: Math.round(opts.B.x / this.cellStep) * this.cellStep,
+      y: Math.round(opts.B.y / this.cellStep) * this.cellStep,
+      z: 0,
     }
     this.candidates = new SingleRouteCandidatePriorityQueue([
       {
@@ -510,7 +526,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
       (this.getObstacleProximityPenalty(node) +
         this.getEdgeProximityPenalty(node))
     return (
-      distance(node, this.B) +
+      distance(node, this.roundedGoalPosition) +
       this.getFutureConnectionPenalty(node) +
       densityPenaltyInH
     )
@@ -527,7 +543,15 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
     // Add jumper penalty if this node was reached via a jumper
     if (node.isJumperExit) {
-      return baseG + this.jumperPenaltyDistance + densityPenalty
+      // Add penalty for jumper pads near future connection points
+      const jumperPadFutureConnectionPenalty =
+        this.getJumperPadFutureConnectionPenalty(node)
+      return (
+        baseG +
+        this.jumperPenaltyDistance +
+        densityPenalty +
+        jumperPadFutureConnectionPenalty
+      )
     }
 
     return baseG + densityPenalty
@@ -561,7 +585,8 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     if (closestFuturePoint) {
       const distToFuturePoint = distance(node, closestFuturePoint)
       if (goalDist <= distToFuturePoint) return 0
-      const maxDist = this.traceThickness * this.FUTURE_CONNECTION_PROXIMITY_VD
+      const maxDist =
+        this.traceThickness * this.FUTURE_CONNECTION_TRACE_PROXIMITY
       const distRatio = distToFuturePoint / maxDist
       const maxPenalty =
         this.straightLineDistance *
@@ -569,6 +594,48 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
       futureConnectionPenalty = maxPenalty * Math.exp(-distRatio * 5)
     }
     return futureConnectionPenalty
+  }
+
+  /**
+   * Calculate penalty for jumper pads placed near future connection start/end points.
+   * This disincentivizes placing jumper pads in areas that will be needed for future routing.
+   * The distance is calculated as the minimum distance from either jumper pad to any future connection point.
+   */
+  getJumperPadFutureConnectionPenalty(node: JumperNode): number {
+    // Only apply to jumper exits
+    if (!node.isJumperExit || !node.jumperEntry) {
+      return 0
+    }
+
+    const startPad = node.jumperEntry // The entry point (start pad)
+    const endPad = { x: node.x, y: node.y } // The current node (end pad)
+
+    let minDistToFutureConnection = Infinity
+
+    // Find the minimum distance from either pad to any future connection start/end point
+    for (const futureConnection of this.futureConnections) {
+      for (const point of futureConnection.points) {
+        const distFromStartPad = distance(startPad, point)
+        const distFromEndPad = distance(endPad, point)
+        const minDistFromPads = Math.min(distFromStartPad, distFromEndPad)
+        minDistToFutureConnection = Math.min(
+          minDistToFutureConnection,
+          minDistFromPads,
+        )
+      }
+    }
+
+    // Apply penalty if within proximity threshold
+    if (
+      minDistToFutureConnection < this.FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY
+    ) {
+      const distRatio =
+        minDistToFutureConnection / this.FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY
+      // Penalty is higher when closer to future connection points
+      return this.FUTURE_CONNECTION_JUMPER_PAD_PENALTY * (1 - distRatio)
+    }
+
+    return 0
   }
 
   /**
@@ -672,14 +739,19 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
     // Reduce penalty as we get closer to the goal (goal is always on an edge)
     const goalDist = distance(node, this.B)
-    const goalProximityFactor = Math.min(1, goalDist / (this.EDGE_PROX_SIGMA * 2))
+    const goalProximityFactor = Math.min(
+      1,
+      goalDist / (this.EDGE_PROX_SIGMA * 2),
+    )
 
-    return this.EDGE_PROX_PENALTY_FACTOR * Math.exp(-c / sigma) * goalProximityFactor
+    return (
+      this.EDGE_PROX_PENALTY_FACTOR * Math.exp(-c / sigma) * goalProximityFactor
+    )
   }
 
   getNodeKey(node: JumperNode) {
     const jumperSuffix = node.isJumperExit ? "_j" : ""
-    return `${Math.floor(node.x / this.cellStep) * this.cellStep},${Math.floor(node.y / this.cellStep) * this.cellStep},${node.z}${jumperSuffix}`
+    return `${Math.round(node.x / this.cellStep) * this.cellStep},${Math.round(node.y / this.cellStep) * this.cellStep},${node.z}${jumperSuffix}`
   }
 
   /**
@@ -960,11 +1032,16 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
         // Skip diagonal moves if not allowed
         if (!this.ALLOW_DIAGONAL && x !== 0 && y !== 0) continue
 
+        const rawX = node.x + x * this.cellStep
+        const rawY = node.y + y * this.cellStep
+        const clampedX = clamp(rawX, minX, maxX)
+        const clampedY = clamp(rawY, minY, maxY)
+
         const neighbor: JumperNode = {
           ...node,
           parent: node,
-          x: clamp(node.x + x * this.cellStep, minX, maxX),
-          y: clamp(node.y + y * this.cellStep, minY, maxY),
+          x: clampedX,
+          y: clampedY,
           isJumperExit: false,
           jumperEntry: undefined,
           jumperCount: node.jumperCount ?? 0,
@@ -1076,7 +1153,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     this.exploredNodes.add(currentNodeKey)
     this.debug_exploredNodesOrdered.push(currentNodeKey)
 
-    const goalDist = distance(currentNode, this.B)
+    const goalDist = distance(currentNode, this.roundedGoalPosition)
 
     this.progress = this.computeProgress(currentNode, goalDist)
 
