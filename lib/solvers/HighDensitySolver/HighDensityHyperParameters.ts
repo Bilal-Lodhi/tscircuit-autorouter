@@ -43,4 +43,9 @@ export interface HighDensityHyperParameters {
   // Jumper-to-jumper pad proximity penalty parameters
   JUMPER_JUMPER_PAD_PROXIMITY?: number // mm - proximity threshold for jumper pads to other jumper pads
   JUMPER_JUMPER_PAD_PENALTY?: number // penalty factor for jumper pads near other jumper pads
+
+  // Future connection line proximity penalty parameters
+  // Penalizes nodes that are close to the direct line between future connection start/end points
+  FUTURE_CONNECTION_LINE_PROXIMITY?: number // mm - proximity threshold
+  FUTURE_CONNECTION_LINE_PENALTY?: number // penalty factor
 }

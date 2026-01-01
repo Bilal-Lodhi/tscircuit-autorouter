@@ -77,6 +77,10 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
   JUMPER_JUMPER_PAD_PROXIMITY = 5 // mm - proximity threshold
   JUMPER_JUMPER_PAD_PENALTY = 10 // penalty factor
 
+  /** Future connection line proximity penalty parameters */
+  FUTURE_CONNECTION_LINE_PROXIMITY = 5 // mm - proximity threshold
+  FUTURE_CONNECTION_LINE_PENALTY = 10 // penalty factor
+
   /** Obstacle proximity penalty parameters (repulsive field) */
   OBSTACLE_PROX_PENALTY_FACTOR: number
   OBSTACLE_PROX_SIGMA: number
@@ -139,15 +143,21 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
     // Initialize future connection jumper pad penalty parameters
     this.FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY =
-      this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY ?? 10
+      this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY ?? 20
     this.FUTURE_CONNECTION_JUMPER_PAD_PENALTY =
-      this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PENALTY ?? 100
+      this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PENALTY ?? 1000
 
     // Initialize jumper-to-jumper pad penalty parameters
     this.JUMPER_JUMPER_PAD_PROXIMITY =
       this.hyperParameters.JUMPER_JUMPER_PAD_PROXIMITY ?? 5
     this.JUMPER_JUMPER_PAD_PENALTY =
       this.hyperParameters.JUMPER_JUMPER_PAD_PENALTY ?? 10
+
+    // Initialize future connection line penalty parameters
+    this.FUTURE_CONNECTION_LINE_PROXIMITY =
+      this.hyperParameters.FUTURE_CONNECTION_LINE_PROXIMITY ?? 50
+    this.FUTURE_CONNECTION_LINE_PENALTY =
+      this.hyperParameters.FUTURE_CONNECTION_LINE_PENALTY ?? 1000
 
     // Initialize obstacle proximity penalty parameters
     // These are "soft" penalties that prefer high-clearance paths but don't block routes
@@ -534,7 +544,8 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     const densityPenaltyInH =
       0.25 *
       (this.getObstacleProximityPenalty(node) +
-        this.getEdgeProximityPenalty(node))
+        this.getEdgeProximityPenalty(node) +
+        this.getFutureConnectionLinePenalty(node))
     return (
       distance(node, this.roundedGoalPosition) +
       this.getFutureConnectionPenalty(node) +
@@ -549,7 +560,8 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     const densityPenalty =
       this.getObstacleProximityPenalty(node) +
       this.getEdgeProximityPenalty(node) +
-      this.getFutureConnectionPenalty(node)
+      this.getFutureConnectionPenalty(node) +
+      this.getFutureConnectionLinePenalty(node)
 
     // Add jumper penalty if this node was reached via a jumper
     if (node.isJumperExit) {
@@ -604,6 +616,41 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
       futureConnectionPenalty = maxPenalty * Math.exp(-distRatio * 5)
     }
     return futureConnectionPenalty
+  }
+
+  /**
+   * Calculate penalty for being close to future connection line segments.
+   * This penalty is computed by summing the segment-to-point distance between
+   * the node and all unrouted future connection start-to-end segments.
+   * The penalty helps routes avoid crossing directly over future connection paths.
+   */
+  getFutureConnectionLinePenalty(node: JumperNode): number {
+    if (this.futureConnections.length === 0) {
+      return 0
+    }
+
+    let totalPenalty = 0
+    const proximity = this.FUTURE_CONNECTION_LINE_PROXIMITY
+
+    for (const futureConnection of this.futureConnections) {
+      if (futureConnection.points.length < 2) continue
+
+      // Get the start and end points of the future connection
+      const start = futureConnection.points[0]
+      const end = futureConnection.points[futureConnection.points.length - 1]
+
+      // Calculate the point-to-segment distance
+      const distToLine = pointToSegmentDistance(node, start, end)
+
+      // Apply penalty if within proximity threshold
+      if (distToLine < proximity) {
+        const distRatio = distToLine / proximity
+        // Penalty is higher when closer to the line
+        totalPenalty += this.FUTURE_CONNECTION_LINE_PENALTY * (1 - distRatio)
+      }
+    }
+
+    return totalPenalty
   }
 
   /**
