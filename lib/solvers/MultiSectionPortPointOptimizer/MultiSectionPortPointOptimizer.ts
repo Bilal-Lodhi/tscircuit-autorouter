@@ -198,7 +198,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
    * Fraction of connections in a section to rip/replace (0-1).
    * Default 1 means rip all connections. Values less than 1 keep some traces.
    */
-  FRACTION_TO_REPLACE = 0.01
+  FRACTION_TO_REPLACE = 0.2
 
   /**
    * If true, always rip connections that have same-layer intersections,
