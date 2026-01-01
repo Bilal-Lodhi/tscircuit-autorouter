@@ -312,8 +312,8 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
       (cms) => [
         {
           nodePortPoints:
-            cms.portPointPathingSolver?.getNodesWithPortPoints() ??
             cms.multiSectionPortPointOptimizer?.getNodesWithPortPoints() ??
+            cms.portPointPathingSolver?.getNodesWithPortPoints() ??
             [],
           colorMap: cms.colorMap,
           viaDiameter: cms.viaDiameter,
