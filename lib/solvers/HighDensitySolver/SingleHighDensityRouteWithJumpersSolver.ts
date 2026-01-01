@@ -273,33 +273,39 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
   }
 
   /**
-   * Check if a node is too close to a jumper component
+   * Check if a node is too close to a jumper's pads
+   * Traces CAN route under the body of the jumper, just not under the pads
    */
   isNodeTooCloseToJumper(
     node: { x: number; y: number },
     jumper: Jumper,
     margin: number,
   ): boolean {
-    // Calculate jumper center and orientation
-    const centerX = (jumper.start.x + jumper.end.x) / 2
-    const centerY = (jumper.start.y + jumper.end.y) / 2
     const dx = jumper.end.x - jumper.start.x
     const dy = jumper.end.y - jumper.start.y
-    const length = Math.sqrt(dx * dx + dy * dy)
 
-    // Normalize direction
-    const dirX = dx / length
-    const dirY = dy / length
+    // Determine if jumper is horizontal or vertical for pad dimensions
+    const isHorizontal = Math.abs(dx) > Math.abs(dy)
+    const padHalfWidth = (isHorizontal ? JUMPER_0805.padLength : JUMPER_0805.padWidth) / 2 + margin
+    const padHalfHeight = (isHorizontal ? JUMPER_0805.padWidth : JUMPER_0805.padLength) / 2 + margin
 
-    // Transform point to jumper's local coordinate system
-    const localX = (node.x - centerX) * dirX + (node.y - centerY) * dirY
-    const localY = -(node.x - centerX) * dirY + (node.y - centerY) * dirX
+    // Check against start pad
+    if (
+      Math.abs(node.x - jumper.start.x) < padHalfWidth &&
+      Math.abs(node.y - jumper.start.y) < padHalfHeight
+    ) {
+      return true
+    }
 
-    // Check if point is within jumper bounds (with margin)
-    const halfLength = JUMPER_0805.length / 2 + margin
-    const halfWidth = JUMPER_0805.width / 2 + margin
+    // Check against end pad
+    if (
+      Math.abs(node.x - jumper.end.x) < padHalfWidth &&
+      Math.abs(node.y - jumper.end.y) < padHalfHeight
+    ) {
+      return true
+    }
 
-    return Math.abs(localX) < halfLength && Math.abs(localY) < halfWidth
+    return false
   }
 
   isNodeTooCloseToEdge(node: JumperNode) {
@@ -336,7 +342,81 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
           return true
         }
       }
+
+      // Check if path crosses any jumper pads (but can pass under jumper body)
+      for (const jumper of route.jumpers || []) {
+        if (this.doesSegmentIntersectJumperPads(node, parent, jumper)) {
+          return true
+        }
+      }
     }
+    return false
+  }
+
+  /**
+   * Check if a line segment intersects with a jumper's pads
+   * Segments CAN pass under the jumper body, just not through the pads
+   */
+  doesSegmentIntersectJumperPads(
+    p1: { x: number; y: number },
+    p2: { x: number; y: number },
+    jumper: Jumper,
+  ): boolean {
+    const margin = this.obstacleMargin
+    const dx = jumper.end.x - jumper.start.x
+    const dy = jumper.end.y - jumper.start.y
+
+    // Determine if jumper is horizontal or vertical for pad dimensions
+    const isHorizontal = Math.abs(dx) > Math.abs(dy)
+    const padHalfWidth = (isHorizontal ? JUMPER_0805.padLength : JUMPER_0805.padWidth) / 2 + margin
+    const padHalfHeight = (isHorizontal ? JUMPER_0805.padWidth : JUMPER_0805.padLength) / 2 + margin
+
+    // Check intersection with start pad
+    if (this.doesSegmentIntersectRect(p1, p2, jumper.start, padHalfWidth, padHalfHeight)) {
+      return true
+    }
+
+    // Check intersection with end pad
+    if (this.doesSegmentIntersectRect(p1, p2, jumper.end, padHalfWidth, padHalfHeight)) {
+      return true
+    }
+
+    return false
+  }
+
+  /**
+   * Check if a line segment intersects with an axis-aligned rectangle
+   */
+  doesSegmentIntersectRect(
+    p1: { x: number; y: number },
+    p2: { x: number; y: number },
+    center: { x: number; y: number },
+    halfWidth: number,
+    halfHeight: number,
+  ): boolean {
+    const minX = center.x - halfWidth
+    const maxX = center.x + halfWidth
+    const minY = center.y - halfHeight
+    const maxY = center.y + halfHeight
+
+    // Check if either endpoint is inside the rectangle
+    if (p1.x >= minX && p1.x <= maxX && p1.y >= minY && p1.y <= maxY) return true
+    if (p2.x >= minX && p2.x <= maxX && p2.y >= minY && p2.y <= maxY) return true
+
+    // Check if line segment intersects any of the rectangle's edges
+    const rectEdges = [
+      { A: { x: minX, y: minY }, B: { x: maxX, y: minY } }, // bottom
+      { A: { x: maxX, y: minY }, B: { x: maxX, y: maxY } }, // right
+      { A: { x: maxX, y: maxY }, B: { x: minX, y: maxY } }, // top
+      { A: { x: minX, y: maxY }, B: { x: minX, y: minY } }, // left
+    ]
+
+    for (const edge of rectEdges) {
+      if (doSegmentsIntersect(p1, p2, edge.A, edge.B)) {
+        return true
+      }
+    }
+
     return false
   }
 
@@ -958,11 +1038,33 @@ function getSameLayerPointPairs(route: HighDensityIntraNodeRouteWithJumpers) {
 
   for (let i = 0; i < route.route.length - 1; i++) {
     if (route.route[i].z === route.route[i + 1].z) {
-      pointPairs.push({
-        z: route.route[i].z,
-        A: route.route[i],
-        B: route.route[i + 1],
+      const A = route.route[i]
+      const B = route.route[i + 1]
+
+      // Check if this segment is covered by a jumper
+      // If so, skip it because the actual connection is elevated via the jumper
+      // and traces can pass underneath
+      const isCoveredByJumper = route.jumpers?.some((jumper) => {
+        const matchesForward =
+          Math.abs(jumper.start.x - A.x) < 0.001 &&
+          Math.abs(jumper.start.y - A.y) < 0.001 &&
+          Math.abs(jumper.end.x - B.x) < 0.001 &&
+          Math.abs(jumper.end.y - B.y) < 0.001
+        const matchesReverse =
+          Math.abs(jumper.start.x - B.x) < 0.001 &&
+          Math.abs(jumper.start.y - B.y) < 0.001 &&
+          Math.abs(jumper.end.x - A.x) < 0.001 &&
+          Math.abs(jumper.end.y - A.y) < 0.001
+        return matchesForward || matchesReverse
       })
+
+      if (!isCoveredByJumper) {
+        pointPairs.push({
+          z: A.z,
+          A,
+          B,
+        })
+      }
     }
   }
 
