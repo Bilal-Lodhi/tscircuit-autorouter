@@ -108,6 +108,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
   /** For debugging/animating the exploration */
   debug_exploredNodesOrdered: string[]
+  debug_exploredNodeValues: Map<string, { g: number; h: number; f: number }>
   debug_nodesTooCloseToObstacle: Set<string>
   debug_nodePathToParentIntersectsObstacle: Set<string>
 
@@ -198,6 +199,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     this.MAX_ITERATIONS = 10e3
 
     this.debug_exploredNodesOrdered = []
+    this.debug_exploredNodeValues = new Map()
     this.debug_nodesTooCloseToObstacle = new Set()
     this.debug_nodePathToParentIntersectsObstacle = new Set()
     this.numRoutes = this.obstacleRoutes.length + this.futureConnections.length
@@ -539,18 +541,37 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     return obstacles
   }
 
+  computeHComponents(node: JumperNode): {
+    distanceToGoal: number
+    obstacleProximity: number
+    edgeProximity: number
+    futureConnectionPoint: number
+    futureConnectionLine: number
+    total: number
+  } {
+    const distanceToGoal = distance(node, this.roundedGoalPosition)
+    const obstacleProximity = this.getObstacleProximityPenalty(node)
+    const edgeProximity = this.getEdgeProximityPenalty(node)
+    const futureConnectionPoint = this.getFutureConnectionPenalty(node)
+    const futureConnectionLine = this.getFutureConnectionLinePenalty(node)
+    const total =
+      distanceToGoal +
+      obstacleProximity +
+      edgeProximity +
+      futureConnectionPoint +
+      futureConnectionLine
+    return {
+      distanceToGoal,
+      obstacleProximity,
+      edgeProximity,
+      futureConnectionPoint,
+      futureConnectionLine,
+      total,
+    }
+  }
+
   computeH(node: JumperNode) {
-    // Include a smaller portion of density penalties in H to help "pull away" earlier
-    const densityPenaltyInH =
-      0.25 *
-      (this.getObstacleProximityPenalty(node) +
-        this.getEdgeProximityPenalty(node) +
-        this.getFutureConnectionLinePenalty(node))
-    return (
-      distance(node, this.roundedGoalPosition) +
-      this.getFutureConnectionPenalty(node) +
-      densityPenaltyInH
-    )
+    return this.computeHComponents(node).total
   }
 
   computeG(node: JumperNode) {
@@ -646,7 +667,8 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
       if (distToLine < proximity) {
         const distRatio = distToLine / proximity
         // Penalty is higher when closer to the line
-        totalPenalty += this.FUTURE_CONNECTION_LINE_PENALTY * (1 - distRatio)
+        totalPenalty +=
+          this.FUTURE_CONNECTION_LINE_PENALTY * (1 - distRatio) ** 2
       }
     }
 
@@ -1191,6 +1213,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
   _step() {
     let currentNode = this.candidates.dequeue() as JumperNode | null
+    console.log("currentNode", currentNode?.f)
     let currentNodeKey = currentNode ? this.getNodeKey(currentNode) : undefined
 
     while (
@@ -1209,6 +1232,11 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     }
     this.exploredNodes.add(currentNodeKey)
     this.debug_exploredNodesOrdered.push(currentNodeKey)
+    this.debug_exploredNodeValues.set(currentNodeKey, {
+      g: currentNode.g,
+      h: currentNode.h,
+      f: currentNode.f,
+    })
 
     const goalDist = distance(currentNode, this.roundedGoalPosition)
 
@@ -1352,6 +1380,21 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
       }
     }
 
+    // Show future connections as blue lines from start to end
+    for (let i = 0; i < this.futureConnections.length; i++) {
+      const fc = this.futureConnections[i]
+      if (fc.points.length < 2) continue
+      const start = fc.points[0]
+      const end = fc.points[fc.points.length - 1]
+      graphics.lines!.push({
+        points: [start, end],
+        strokeColor: "rgba(0, 100, 255, 0.6)",
+        strokeWidth: this.traceThickness,
+        label: `Future: ${fc.connectionName}`,
+        layer: `future-connection-${i}`,
+      })
+    }
+
     // Visualize explored nodes
     for (let i = 0; i < this.debug_exploredNodesOrdered.length; i++) {
       const nodeKey = this.debug_exploredNodesOrdered[i]
@@ -1360,6 +1403,32 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
       const [x, y] = nodeKey.split(",").map(Number)
       const isJumperNode = nodeKey.endsWith("_j")
+
+      // Create a minimal node to compute H components
+      const tempNode: JumperNode = {
+        x: x + this.initialNodeGridOffset.x,
+        y: y + this.initialNodeGridOffset.y,
+        z: 0,
+        g: 0,
+        h: 0,
+        f: 0,
+        parent: null,
+        isJumperExit: isJumperNode,
+      }
+      const hComponents = this.computeHComponents(tempNode)
+      const nodeValues = this.debug_exploredNodeValues.get(nodeKey)
+
+      const label = [
+        isJumperNode ? "Explored (jumper)" : "Explored",
+        `g: ${nodeValues?.g.toFixed(2) ?? "?"}`,
+        `dist: ${hComponents.distanceToGoal.toFixed(2)}`,
+        `obst: ${hComponents.obstacleProximity.toFixed(2)}`,
+        `edge: ${hComponents.edgeProximity.toFixed(2)}`,
+        `fcPt: ${hComponents.futureConnectionPoint.toFixed(2)}`,
+        `fcLn: ${hComponents.futureConnectionLine.toFixed(2)}`,
+        `h: ${nodeValues?.h.toFixed(2) ?? hComponents.total.toFixed(2)}`,
+        `f: ${nodeValues?.f.toFixed(2) ?? "?"}`,
+      ].join("\n")
 
       graphics.rects!.push({
         center: {
@@ -1371,7 +1440,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
           : `rgba(255,0,255,${0.3 - (i / this.debug_exploredNodesOrdered.length) * 0.2})`,
         width: this.cellStep * 0.9,
         height: this.cellStep * 0.9,
-        label: isJumperNode ? "Explored (jumper)" : "Explored",
+        label,
       })
     }
 
