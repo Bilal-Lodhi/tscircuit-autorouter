@@ -438,16 +438,13 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
   getJumperNeighbors(node: JumperNode): JumperNode[] {
     const neighbors: JumperNode[] = []
 
-    // Look for obstacles in various directions from current position
+    // Look for obstacles in horizontal and vertical directions only
+    // (jumpers must be arranged horizontally or vertically)
     const directions = [
-      { dx: 1, dy: 0 },
-      { dx: -1, dy: 0 },
-      { dx: 0, dy: 1 },
-      { dx: 0, dy: -1 },
-      { dx: 1, dy: 1 },
-      { dx: -1, dy: 1 },
-      { dx: 1, dy: -1 },
-      { dx: -1, dy: -1 },
+      { dx: 1, dy: 0 },  // right (horizontal)
+      { dx: -1, dy: 0 }, // left (horizontal)
+      { dx: 0, dy: 1 },  // up (vertical)
+      { dx: 0, dy: -1 }, // down (vertical)
     ]
 
     for (const dir of directions) {
@@ -773,6 +770,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
   /**
    * Draw the two pads of an 0805 jumper
+   * Pad dimensions are rotated based on jumper orientation
    */
   private drawJumperPads(
     graphics: GraphicsObject,
@@ -783,27 +781,25 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
   ) {
     const dx = jumper.end.x - jumper.start.x
     const dy = jumper.end.y - jumper.start.y
-    const length = Math.sqrt(dx * dx + dy * dy)
-
-    // Normalize direction
-    const dirX = dx / length
-    const dirY = dy / length
-
-    // Perpendicular direction
-    const perpX = -dirY
-    const perpY = dirX
 
     const padLength = JUMPER_0805.padLength
     const padWidth = JUMPER_0805.padWidth
 
-    // Start pad (two rectangles representing the actual pads)
+    // Determine if jumper is horizontal or vertical
+    // Horizontal: dx != 0, dy ~= 0 -> pads are taller than wide (width=padLength, height=padWidth)
+    // Vertical: dx ~= 0, dy != 0 -> pads are wider than tall (width=padWidth, height=padLength)
+    const isHorizontal = Math.abs(dx) > Math.abs(dy)
+    const rectWidth = isHorizontal ? padLength : padWidth
+    const rectHeight = isHorizontal ? padWidth : padLength
+
+    // Start pad
     graphics.rects!.push({
       center: {
         x: jumper.start.x,
         y: jumper.start.y,
       },
-      width: padLength,
-      height: padWidth,
+      width: rectWidth,
+      height: rectHeight,
       fill: color,
       stroke: "rgba(0, 0, 0, 0.5)",
       layer: layer ?? "jumper",
@@ -816,8 +812,8 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
         x: jumper.end.x,
         y: jumper.end.y,
       },
-      width: padLength,
-      height: padWidth,
+      width: rectWidth,
+      height: rectHeight,
       fill: color,
       stroke: "rgba(0, 0, 0, 0.5)",
       layer: layer ?? "jumper",
