@@ -351,6 +351,33 @@ export function visualizePointPathSolver(
           stroke: connectionColor,
           label: `Goal: ${currentConnection.connection.name}`,
         })
+
+        // Draw pushing point if active
+        if (solver.currentPushingPoint && solver.PUSHING_POINT_STRENGTH > 0) {
+          const pushPt = solver.currentPushingPoint
+
+          // Draw the pushing point as a red point
+          graphics.points!.push({
+            x: pushPt.x,
+            y: pushPt.y,
+            color: "red",
+            label: `Pushing Point\nstrength: ${solver.PUSHING_POINT_STRENGTH}`,
+          })
+
+          // Draw dashed line from start to pushing point
+          graphics.lines!.push({
+            points: [start, pushPt],
+            strokeColor: "red",
+            strokeDash: "3 3",
+          })
+
+          // Draw dashed line from pushing point to end
+          graphics.lines!.push({
+            points: [pushPt, end],
+            strokeColor: "red",
+            strokeDash: "3 3",
+          })
+        }
       }
     }
 

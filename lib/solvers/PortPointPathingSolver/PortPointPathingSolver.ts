@@ -46,6 +46,8 @@ export interface PortPointPathingHyperParameters {
 
   FORCE_OFF_BOARD_FREQUENCY?: number
   FORCE_OFF_BOARD_SEED?: number
+
+  PUSHING_POINT_STRENGTH?: number
 }
 
 /**
@@ -217,6 +219,10 @@ export class PortPointPathingSolver extends BaseSolver {
     return this.hyperParameters.FORCE_OFF_BOARD_SEED ?? 0
   }
 
+  get PUSHING_POINT_STRENGTH() {
+    return this.hyperParameters.PUSHING_POINT_STRENGTH ?? 10
+  }
+
   get NODE_MAX_PF() {
     const NODE_MAX_PF = Math.min(
       0.99999,
@@ -266,6 +272,9 @@ export class PortPointPathingSolver extends BaseSolver {
 
   /** Whether the current connection should be forced to route off-board */
   currentConnectionShouldRouteOffBoard = false
+
+  /** The pushing point for the current connection (used with PUSHING_POINT_STRENGTH) */
+  currentPushingPoint?: { x: number; y: number }
 
   activeCandidateStraightLineDistance?: number
 
@@ -707,8 +716,21 @@ export class PortPointPathingSolver extends BaseSolver {
       this.CENTER_OFFSET_DIST_PENALTY_FACTOR *
       point.distToCentermostPortOnZ ** 2
 
+    // Pushing point penalty: inverse distance to the pushing point
+    let pushingPointPenalty = 0
+    if (this.currentPushingPoint && this.PUSHING_POINT_STRENGTH > 0) {
+      const distToPushingPoint = distance(point, this.currentPushingPoint)
+      // Use inverse distance (add small epsilon to avoid division by zero)
+      pushingPointPenalty =
+        (1 / (distToPushingPoint + 0.001)) * this.PUSHING_POINT_STRENGTH
+    }
+
     return (
-      distanceToGoal + estStepCost + memRiskForHop + centerOffsetDistPenalty
+      distanceToGoal +
+      estStepCost +
+      memRiskForHop +
+      centerOffsetDistPenalty +
+      pushingPointPenalty
     )
   }
 
@@ -1213,6 +1235,43 @@ export class PortPointPathingSolver extends BaseSolver {
           random() < this.FORCE_OFF_BOARD_FREQUENCY
       } else {
         this.currentConnectionShouldRouteOffBoard = false
+      }
+
+      // Compute the pushing point for this connection
+      if (this.PUSHING_POINT_STRENGTH > 0) {
+        const startPt = startPoint ?? startNode.center
+        const endPt =
+          nextConnection.connection.pointsToConnect[
+            nextConnection.connection.pointsToConnect.length - 1
+          ] ?? endNode.center
+        const midpoint = {
+          x: (startPt.x + endPt.x) / 2,
+          y: (startPt.y + endPt.y) / 2,
+        }
+        const startEndDist = distance(startPt, endPt)
+
+        // Compute random offset along the perpendicular (orthogonal) direction
+        const random = seededRandom(
+          (this.hyperParameters.SHUFFLE_SEED ?? 0) * 31 +
+            this.currentConnectionIndex,
+        )
+        // Random distance from -startEndDist to +startEndDist
+        const randomDist = (random() * 2 - 1) * startEndDist
+
+        // Perpendicular direction to start-end line (normalized)
+        if (startEndDist > 0) {
+          const dx = (endPt.x - startPt.x) / startEndDist
+          const dy = (endPt.y - startPt.y) / startEndDist
+          // Perpendicular: rotate 90 degrees -> (-dy, dx)
+          this.currentPushingPoint = {
+            x: midpoint.x + -dy * randomDist,
+            y: midpoint.y + dx * randomDist,
+          }
+        } else {
+          this.currentPushingPoint = midpoint
+        }
+      } else {
+        this.currentPushingPoint = undefined
       }
 
       // Create initial candidates for each available z layer on the start node
