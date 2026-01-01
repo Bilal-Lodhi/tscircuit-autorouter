@@ -28,7 +28,6 @@ import type {
   NodeWithPortPoints,
 } from "../../types/high-density-types"
 import { computeSectionScore, computeNodePf } from "./computeSectionScore"
-import { doSegmentsIntersect } from "@tscircuit/math-utils"
 import { visualizeSection } from "./visualizeSection"
 import { visualizePointPathSolver } from "../PortPointPathingSolver/visualizePointPathSolver"
 import { HyperPortPointPathingSolver } from "../PortPointPathingSolver/HyperPortPointPathingSolver"
@@ -199,18 +198,17 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
    * Fraction of connections in a section to rip/replace (0-1).
    * Default 1 means rip all connections. Values less than 1 keep some traces.
    */
-  FRACTION_TO_REPLACE = 0.1
+  FRACTION_TO_REPLACE = 0.01
 
   /**
    * If true, always rip connections that have same-layer intersections,
    * even if they would otherwise be kept due to FRACTION_TO_REPLACE.
    *
-   * NOTE: There is a bug where it will rip every connection involved in an
-   * intersection rather than rip "just enough" connections to fix the
-   * intersection- when we eventually fix this it should choose which connection
-   * of the intersection to rip based on the shuffle seed.
+   * Uses a greedy vertex cover approach: for each intersection, only one
+   * connection is ripped (chosen based on the shuffle seed), rather than
+   * ripping all connections involved in intersections.
    */
-  ALWAYS_RIP_INTERSECTIONS = false
+  ALWAYS_RIP_INTERSECTIONS = true
 
   effort: number = 1
 
@@ -251,7 +249,6 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     const initialBoardScore = this.computeBoardScore()
 
     // Initialize stats
-    this.stats.FRACTION_TO_REPLACE = this.FRACTION_TO_REPLACE
     this.stats.successfulOptimizations = 0
     this.stats.failedOptimizations = 0
     this.stats.nodesExamined = 0
@@ -401,78 +398,139 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
   }
 
   /**
-   * Find connections that have same-layer intersections within a section.
-   * Returns a set of connection names that are involved in any same-layer crossing.
+   * Maps a boundary point to a 1D perimeter coordinate (clockwise from top-left).
    */
-  findConnectionsWithSameLayerIntersections(
-    section: PortPointSection,
-  ): Set<string> {
-    const connectionsWithIntersections = new Set<string>()
+  private perimeterT(
+    p: { x: number; y: number },
+    xmin: number,
+    xmax: number,
+    ymin: number,
+    ymax: number,
+  ): number {
+    const W = xmax - xmin
+    const H = ymax - ymin
+    const eps = 1e-6
 
-    // For each node in the section, check for same-layer crossings
+    if (Math.abs(p.y - ymax) < eps) return p.x - xmin // Top edge
+    if (Math.abs(p.x - xmax) < eps) return W + (ymax - p.y) // Right edge
+    if (Math.abs(p.y - ymin) < eps) return W + H + (xmax - p.x) // Bottom edge
+    if (Math.abs(p.x - xmin) < eps) return 2 * W + H + (p.y - ymin) // Left edge
+
+    // Point not on boundary - find closest edge
+    const distTop = Math.abs(p.y - ymax)
+    const distRight = Math.abs(p.x - xmax)
+    const distBottom = Math.abs(p.y - ymin)
+    const distLeft = Math.abs(p.x - xmin)
+    const minDist = Math.min(distTop, distRight, distBottom, distLeft)
+
+    if (minDist === distTop) return Math.max(0, Math.min(W, p.x - xmin))
+    if (minDist === distRight) return W + Math.max(0, Math.min(H, ymax - p.y))
+    if (minDist === distBottom)
+      return W + H + Math.max(0, Math.min(W, xmax - p.x))
+    return 2 * W + H + Math.max(0, Math.min(H, p.y - ymin))
+  }
+
+  /**
+   * Find connections that have same-layer crossings within a section.
+   * Uses circle/perimeter mapping approach (like getIntraNodeCrossingsUsingCircle).
+   * Only analyzes nodes with pf > ACCEPTABLE_PF.
+   * Returns a list of crossing pairs (each pair contains two connection names that cross).
+   */
+  findConnectionIntersectionPairs(
+    section: PortPointSection,
+  ): Array<[string, string]> {
+    const intersectionPairs: Array<[string, string]> = []
+
+    // Only analyze nodes with high probability of failure
     for (const nodeId of section.nodeIds) {
+      const pf = this.nodePfMap.get(nodeId) ?? 0
+      if (pf <= this.ACCEPTABLE_PF) continue
+
+      const capacityNode = this.capacityMeshNodeMap.get(nodeId)
+      if (!capacityNode) continue
+
       const portPoints = this.nodeAssignedPortPoints.get(nodeId) ?? []
       if (portPoints.length < 2) continue
 
-      // Group port points by connection, keeping only same-layer pairs
-      const connectionSegments: Map<
+      // Compute node bounds
+      const xmin = capacityNode.center.x - capacityNode.width / 2
+      const xmax = capacityNode.center.x + capacityNode.width / 2
+      const ymin = capacityNode.center.y - capacityNode.height / 2
+      const ymax = capacityNode.center.y + capacityNode.height / 2
+
+      // Group port points by connection
+      const connectionPointsMap = new Map<
         string,
-        { points: { x: number; y: number; z: number }[]; z: number }
-      > = new Map()
+        Array<{ x: number; y: number; z: number }>
+      >()
 
       for (const pp of portPoints) {
-        if (!connectionSegments.has(pp.connectionName)) {
-          connectionSegments.set(pp.connectionName, {
-            points: [{ x: pp.x, y: pp.y, z: pp.z }],
-            z: pp.z,
-          })
-        } else {
-          const segment = connectionSegments.get(pp.connectionName)!
-          segment.points.push({ x: pp.x, y: pp.y, z: pp.z })
+        const points = connectionPointsMap.get(pp.connectionName) ?? []
+        if (!points.some((p) => p.x === pp.x && p.y === pp.y && p.z === pp.z)) {
+          points.push({ x: pp.x, y: pp.y, z: pp.z })
         }
+        connectionPointsMap.set(pp.connectionName, points)
       }
 
-      // Filter to only segments with exactly 2 points on same layer
-      const validSegments: Array<{
-        connectionName: string
-        points: { x: number; y: number; z: number }[]
-        z: number
-      }> = []
+      // Build same-layer chords by layer, storing connection name with each chord
+      const sameLayerChordsByZ = new Map<
+        number,
+        Array<{ connectionName: string; t1: number; t2: number }>
+      >()
 
-      for (const [connectionName, segment] of connectionSegments.entries()) {
-        if (segment.points.length === 2) {
-          // Check if both points are on same layer
-          if (segment.points[0].z === segment.points[1].z) {
-            validSegments.push({ connectionName, ...segment })
-          }
-        }
+      for (const [connectionName, points] of connectionPointsMap) {
+        if (points.length < 2) continue
+
+        const p1 = points[0]
+        const p2 = points[1]
+
+        // Only care about same-layer pairs
+        if (p1.z !== p2.z) continue
+
+        const t1 = this.perimeterT(p1, xmin, xmax, ymin, ymax)
+        const t2 = this.perimeterT(p2, xmin, xmax, ymin, ymax)
+        const z = p1.z
+
+        const chords = sameLayerChordsByZ.get(z) ?? []
+        chords.push({ connectionName, t1, t2 })
+        sameLayerChordsByZ.set(z, chords)
       }
 
-      // Check for intersections between segments on the same layer
-      for (let i = 0; i < validSegments.length; i++) {
-        for (let j = i + 1; j < validSegments.length; j++) {
-          const seg1 = validSegments[i]
-          const seg2 = validSegments[j]
+      // Find crossing pairs using chord interleaving criterion
+      const eps = 1e-6
+      for (const [, chords] of sameLayerChordsByZ) {
+        // Normalize chords so t1 < t2
+        const normalized = chords.map((c) => ({
+          connectionName: c.connectionName,
+          a: Math.min(c.t1, c.t2),
+          b: Math.max(c.t1, c.t2),
+        }))
 
-          // Only check if on same layer
-          if (seg1.z !== seg2.z) continue
+        for (let i = 0; i < normalized.length; i++) {
+          const { connectionName: name1, a, b } = normalized[i]
+          for (let j = i + 1; j < normalized.length; j++) {
+            const { connectionName: name2, a: c, b: d } = normalized[j]
 
-          if (
-            doSegmentsIntersect(
-              seg1.points[0],
-              seg1.points[1],
-              seg2.points[0],
-              seg2.points[1],
-            )
-          ) {
-            connectionsWithIntersections.add(seg1.connectionName)
-            connectionsWithIntersections.add(seg2.connectionName)
+            // Skip if chords share a coincident endpoint
+            if (
+              Math.abs(a - c) < eps ||
+              Math.abs(a - d) < eps ||
+              Math.abs(b - c) < eps ||
+              Math.abs(b - d) < eps
+            ) {
+              continue
+            }
+
+            // Two chords cross iff: a < c < b < d OR c < a < d < b
+            if ((a < c && c < b && b < d) || (c < a && a < d && d < b)) {
+              intersectionPairs.push([name1, name2])
+            }
           }
         }
       }
     }
 
-    return connectionsWithIntersections
+    return intersectionPairs
   }
 
   /**
@@ -525,6 +583,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
   ): Set<string> {
     // Seed based on section attempt count for deterministic but varying selection
     const seed = this.sectionAttempts * 31337
+    const random = seededRandom(seed)
 
     // If FRACTION_TO_REPLACE is 1, rip all connections
     if (this.FRACTION_TO_REPLACE >= 1) {
@@ -535,22 +594,41 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     const shuffled = seededShuffle(allConnectionNames, seed)
 
     // Select fraction to rip
-    const numToRip = Math.max(
+    const ripCount = Math.max(
       1,
       Math.ceil(shuffled.length * this.FRACTION_TO_REPLACE),
     )
-    const connectionsToRip = new Set(shuffled.slice(0, numToRip))
+    const connectionsToRip = new Set(shuffled.slice(0, ripCount))
 
-    // If ALWAYS_RIP_INTERSECTIONS is true, add any connections with same-layer intersections
+    // If ALWAYS_RIP_INTERSECTIONS is true, use greedy vertex cover approach:
+    // For each intersection pair, pick ONE connection to rip (not both)
     if (this.ALWAYS_RIP_INTERSECTIONS) {
-      const intersectingConnections =
-        this.findConnectionsWithSameLayerIntersections(section)
-      for (const connName of intersectingConnections) {
-        if (allConnectionNames.includes(connName)) {
-          connectionsToRip.add(connName)
+      const intersectionPairs = this.findConnectionIntersectionPairs(section)
+
+      // Greedy vertex cover: for each uncovered intersection, pick one connection to rip
+      // The choice is deterministic based on the shuffle seed
+      for (const [conn1, conn2] of intersectionPairs) {
+        // Skip if this intersection is already covered (one of the connections will be ripped)
+        if (connectionsToRip.has(conn1) || connectionsToRip.has(conn2)) {
+          continue
+        }
+
+        // Both connections are in section - pick one based on seed
+        const conn1InSection = allConnectionNames.includes(conn1)
+        const conn2InSection = allConnectionNames.includes(conn2)
+
+        if (conn1InSection && conn2InSection) {
+          // Pick one randomly using the seeded random
+          const pickFirst = random() < 0.5
+          connectionsToRip.add(pickFirst ? conn1 : conn2)
+        } else if (conn1InSection) {
+          connectionsToRip.add(conn1)
+        } else if (conn2InSection) {
+          connectionsToRip.add(conn2)
         }
       }
     }
+    this.stats.lastRipCount = connectionsToRip.size
 
     return connectionsToRip
   }
@@ -1234,6 +1312,9 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
   }
 
   visualize(): GraphicsObject {
+    if (this.solved) {
+      return visualizePointPathSolver(this)
+    }
     // If we have an active sub-solver, delegate to it
     if (this.activeSubSolver) {
       return this.activeSubSolver.visualize()
