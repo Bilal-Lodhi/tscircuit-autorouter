@@ -94,14 +94,14 @@ const OPTIMIZATION_SCHEDULE: (PortPointPathingHyperParameters & {
 })[] = [
   {
     SHUFFLE_SEED: 100,
-    NODE_PF_FACTOR: 10000,
-    // NODE_PF_MAX_PENALTY: 100,
+    NODE_PF_FACTOR: 100,
+    NODE_PF_MAX_PENALTY: 100,
     MEMORY_PF_FACTOR: 0,
     EXPANSION_DEGREES: 10,
     FORCE_CENTER_FIRST: true,
     FORCE_OFF_BOARD_FREQUENCY: 0,
     CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
-    MIN_ALLOWED_BOARD_SCORE: -1,
+    // MIN_ALLOWED_BOARD_SCORE: -1,
     // MAX_ITERATIONS_PER_PATH: 300,
   },
   // {
@@ -187,7 +187,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
   sectionAttempts: number = 0
 
   /** Maximum number of attempts per node */
-  MAX_ATTEMPTS_PER_NODE = OPTIMIZATION_SCHEDULE.length * 3
+  MAX_ATTEMPTS_PER_NODE = 100
 
   /** Maximum total number of section optimization attempts */
   MAX_SECTION_ATTEMPTS = 500
@@ -199,7 +199,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
    * Fraction of connections in a section to rip/replace (0-1).
    * Default 1 means rip all connections. Values less than 1 keep some traces.
    */
-  FRACTION_TO_REPLACE = 1
+  FRACTION_TO_REPLACE = 0.1
 
   /**
    * If true, always rip connections that have same-layer intersections,
@@ -808,19 +808,18 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
       ])
     }
 
-    return new PortPointPathingSolver({
+    return new HyperPortPointPathingSolver({
       simpleRouteJson: sectionSrj,
       inputNodes: preparedInputNodes,
       capacityMeshNodes: section.capacityMeshNodes,
       colorMap: this.colorMap,
       nodeMemoryPfMap: this.nodePfMap,
-      // numShuffleSeeds: 10000 * this.effort,
+      numShuffleSeeds: 100 * this.effort,
       hyperParameters: {
         ...this.getHyperParametersForScheduleIndex(
           this.currentScheduleIndex,
           this.sectionAttempts,
         ),
-        SHUFFLE_SEED: 150,
       },
       precomputedInitialParams: precomputedParams,
       fixedRoutes: this.currentSectionFixedRoutes,
@@ -1089,12 +1088,14 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
         )
 
         const attemptKey = `attempt${this.sectionAttempts}`
+        this.stats.lastSectionScore = newSectionScore
 
         // Compare section scores first (higher is better)
         // Use filteredBeforeScore to compare only connections that were re-routed
         if (newSectionScore > filteredBeforeScore) {
           // Section score improved - tentatively apply and check board score
           const previousBoardScore = this.stats.currentBoardScore as number
+          this.stats.lastBoardScore = previousBoardScore
 
           // Save state before applying changes (for potential revert)
           const savedConnectionResults = [...this.connectionResults]
