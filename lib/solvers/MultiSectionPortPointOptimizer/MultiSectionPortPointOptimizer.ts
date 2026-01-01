@@ -204,8 +204,13 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
   /**
    * If true, always rip connections that have same-layer intersections,
    * even if they would otherwise be kept due to FRACTION_TO_REPLACE.
+   *
+   * NOTE: There is a bug where it will rip every connection involved in an
+   * intersection rather than rip "just enough" connections to fix the
+   * intersection- when we eventually fix this it should choose which connection
+   * of the intersection to rip based on the shuffle seed.
    */
-  ALWAYS_RIP_INTERSECTIONS = true
+  ALWAYS_RIP_INTERSECTIONS = false
 
   effort: number = 1
 
@@ -814,7 +819,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
       capacityMeshNodes: section.capacityMeshNodes,
       colorMap: this.colorMap,
       nodeMemoryPfMap: this.nodePfMap,
-      numShuffleSeeds: 100 * this.effort,
+      numShuffleSeeds: sectionSrj.connections.length * 2 * this.effort,
       hyperParameters: {
         ...this.getHyperParametersForScheduleIndex(
           this.currentScheduleIndex,
