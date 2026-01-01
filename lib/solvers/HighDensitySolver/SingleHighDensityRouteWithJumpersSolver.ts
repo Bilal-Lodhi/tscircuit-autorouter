@@ -34,6 +34,42 @@ const JUMPER_0805 = {
 }
 
 /**
+ * Components that make up the g (cost so far) calculation
+ */
+type GComponents = {
+  /** Total path distance traveled from start */
+  distFromStart: number
+  /** Cumulative weighted penalty for being near obstacles */
+  weightedMmNearObstacle: number
+  /** Cumulative weighted penalty for being near edges */
+  weightedMmNearEdge: number
+  /** Cumulative weighted penalty for being near future connection start/end points */
+  weightedMmNearFutureConnectionStartEnd: number
+  /** Cumulative weighted penalty for being near future connection lines */
+  weightedMmNearFutureConnectionLine: number
+  /** Cumulative penalty for direction changes */
+  directionChangePenalty: number
+  /** Cumulative jumper penalty (includes jumper distance + penalty factor) */
+  jumperPenalty: number
+  /** Cumulative penalty for jumper pads near future connections */
+  jumperPadFutureConnectionPenalty: number
+  /** Total g value (sum of all components) */
+  total: number
+}
+
+/**
+ * Components that make up the h (heuristic) calculation
+ */
+type HComponents = {
+  distanceToGoal: number
+  obstacleProximity: number
+  edgeProximity: number
+  futureConnectionStartEndProximityPenalty: number
+  futureConnectionLine: number
+  total: number
+}
+
+/**
  * Extended node type that tracks jumper usage
  */
 type JumperNode = Node & {
@@ -43,6 +79,10 @@ type JumperNode = Node & {
   isJumperExit?: boolean
   /** Count of jumpers used to reach this node */
   jumperCount?: number
+  /** Stored g components for debugging/visualization */
+  gComponents?: GComponents
+  /** Stored h components for debugging/visualization */
+  hComponents?: HComponents
 }
 
 export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
@@ -111,7 +151,16 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
   /** For debugging/animating the exploration */
   debug_exploredNodesOrdered: string[]
-  debug_exploredNodeValues: Map<string, { g: number; h: number; f: number }>
+  debug_exploredNodeValues: Map<
+    string,
+    {
+      g: number
+      h: number
+      f: number
+      gComponents?: GComponents
+      hComponents?: HComponents
+    }
+  >
   debug_nodesTooCloseToObstacle: Set<string>
   debug_nodePathToParentIntersectsObstacle: Set<string>
 
@@ -158,9 +207,9 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
     // Initialize future connection line penalty parameters
     this.FUTURE_CONNECTION_LINE_PROXIMITY =
-      this.hyperParameters.FUTURE_CONNECTION_LINE_PROXIMITY ?? 12
+      this.hyperParameters.FUTURE_CONNECTION_LINE_PROXIMITY ?? 1
     this.FUTURE_CONNECTION_LINE_PENALTY =
-      this.hyperParameters.FUTURE_CONNECTION_LINE_PENALTY ?? 0
+      this.hyperParameters.FUTURE_CONNECTION_LINE_PENALTY ?? 10
 
     // Initialize obstacle proximity penalty parameters
     // These are "soft" penalties that prefer high-clearance paths but don't block routes
@@ -179,7 +228,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     this.ALLOW_DIAGONAL = this.hyperParameters.ALLOW_DIAGONAL ?? false
 
     // Initialize direction change penalty
-    this.CHANGE_DIR_PENALTY = this.hyperParameters.CHANGE_DIR_PENALTY ?? 0.1
+    this.CHANGE_DIR_PENALTY = this.hyperParameters.CHANGE_DIR_PENALTY ?? 0
 
     this.boundsSize = {
       width: this.bounds.maxX - this.bounds.minX,
@@ -265,6 +314,25 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
       y: Math.round(opts.B.y / this.cellStep) * this.cellStep,
       z: 0,
     }
+    const initialGComponents: GComponents = {
+      distFromStart: 0,
+      weightedMmNearObstacle: 0,
+      weightedMmNearEdge: 0,
+      weightedMmNearFutureConnectionStartEnd: 0,
+      weightedMmNearFutureConnectionLine: 0,
+      directionChangePenalty: 0,
+      jumperPenalty: 0,
+      jumperPadFutureConnectionPenalty: 0,
+      total: 0,
+    }
+    const initialHComponents: HComponents = {
+      distanceToGoal: 0,
+      obstacleProximity: 0,
+      edgeProximity: 0,
+      futureConnectionStartEndProximityPenalty: 0,
+      futureConnectionLine: 0,
+      total: 0,
+    }
     this.candidates = new SingleRouteCandidatePriorityQueue([
       {
         ...opts.A,
@@ -274,12 +342,16 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
         h: 0,
         f: 0,
         jumperCount: 0,
+        gComponents: initialGComponents,
+        hComponents: initialHComponents,
         parent: {
           ...opts.A,
           z: 0,
           g: 0,
           h: 0,
           f: 0,
+          gComponents: initialGComponents,
+          hComponents: initialHComponents,
           parent: null,
         },
       },
@@ -586,38 +658,84 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     return this.computeHComponents(node).total
   }
 
-  computeG(node: JumperNode) {
-    const stepDist = distance(node, node.parent!)
-    const baseG = (node.parent?.g ?? 0) + stepDist
+  computeGComponents(node: JumperNode): GComponents {
+    const parent = node.parent as JumperNode | null
+    const stepDist = parent ? distance(node, parent) : 0
 
-    // Density penalty rates (per mm) to push routes away from obstacles/edges
-    const densityPenaltyRate =
-      this.getObstacleProximityPenalty(node) +
-      this.getEdgeProximityPenalty(node) +
-      this.getFutureConnectionPenalty(node) +
-      this.getFutureConnectionLinePenalty(node)
-
-    // Scale penalty by step distance
-    const densityPenalty = densityPenaltyRate * stepDist
-
-    // Direction change penalty to prefer straighter paths
-    const directionChangePenalty = this.getDirectionChangePenalty(node)
-
-    // Add jumper penalty if this node was reached via a jumper
-    if (node.isJumperExit) {
-      // Add penalty for jumper pads near future connection points
-      const jumperPadFutureConnectionPenalty =
-        this.getJumperPadFutureConnectionPenalty(node)
-      return (
-        baseG +
-        this.jumperPenaltyDistance +
-        densityPenalty +
-        directionChangePenalty +
-        jumperPadFutureConnectionPenalty
-      )
+    // Get parent's g components (or zeros if no parent)
+    const parentGComponents = parent?.gComponents ?? {
+      distFromStart: 0,
+      weightedMmNearObstacle: 0,
+      weightedMmNearEdge: 0,
+      weightedMmNearFutureConnectionStartEnd: 0,
+      weightedMmNearFutureConnectionLine: 0,
+      directionChangePenalty: 0,
+      jumperPenalty: 0,
+      jumperPadFutureConnectionPenalty: 0,
+      total: 0,
     }
 
-    return baseG + densityPenalty + directionChangePenalty
+    // Compute cumulative distance from start
+    const distFromStart = parentGComponents.distFromStart + stepDist
+
+    // Compute cumulative weighted penalties (penalty rate * step distance)
+    const weightedMmNearObstacle =
+      parentGComponents.weightedMmNearObstacle +
+      this.getObstacleProximityPenalty(node) * stepDist
+
+    const weightedMmNearEdge =
+      parentGComponents.weightedMmNearEdge +
+      this.getEdgeProximityPenalty(node) * stepDist
+
+    const weightedMmNearFutureConnectionStartEnd =
+      parentGComponents.weightedMmNearFutureConnectionStartEnd +
+      this.getFutureConnectionPenalty(node) * stepDist
+
+    const weightedMmNearFutureConnectionLine =
+      parentGComponents.weightedMmNearFutureConnectionLine +
+      this.getFutureConnectionLinePenalty(node) * stepDist
+
+    // Direction change penalty (cumulative)
+    const directionChangePenalty =
+      parentGComponents.directionChangePenalty +
+      this.getDirectionChangePenalty(node)
+
+    // Jumper penalties
+    let jumperPenalty = parentGComponents.jumperPenalty
+    let jumperPadFutureConnectionPenalty =
+      parentGComponents.jumperPadFutureConnectionPenalty
+
+    if (node.isJumperExit) {
+      jumperPenalty += this.jumperPenaltyDistance
+      jumperPadFutureConnectionPenalty +=
+        this.getJumperPadFutureConnectionPenalty(node)
+    }
+
+    const total =
+      distFromStart +
+      weightedMmNearObstacle +
+      weightedMmNearEdge +
+      weightedMmNearFutureConnectionStartEnd +
+      weightedMmNearFutureConnectionLine +
+      directionChangePenalty +
+      jumperPenalty +
+      jumperPadFutureConnectionPenalty
+
+    return {
+      distFromStart,
+      weightedMmNearObstacle,
+      weightedMmNearEdge,
+      weightedMmNearFutureConnectionStartEnd,
+      weightedMmNearFutureConnectionLine,
+      directionChangePenalty,
+      jumperPenalty,
+      jumperPadFutureConnectionPenalty,
+      total,
+    }
+  }
+
+  computeG(node: JumperNode) {
+    return this.computeGComponents(node).total
   }
 
   computeF(g: number, h: number) {
@@ -688,7 +806,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     if (closestLineDist < this.FUTURE_CONNECTION_LINE_PROXIMITY) {
       const distRatio = closestLineDist / this.FUTURE_CONNECTION_LINE_PROXIMITY
       // Penalty is higher when closer to the line
-      return this.FUTURE_CONNECTION_LINE_PENALTY * (1 - distRatio) ** 2
+      return this.FUTURE_CONNECTION_LINE_PENALTY * (1 - distRatio)
     }
 
     return 0
@@ -935,8 +1053,12 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
               !this.isNodeTooCloseToEdge(jumperNeighbor) &&
               this.isJumperPlacementValid(node, jumperNeighbor)
             ) {
-              jumperNeighbor.g = this.computeG(jumperNeighbor)
-              jumperNeighbor.h = this.computeH(jumperNeighbor)
+              jumperNeighbor.gComponents =
+                this.computeGComponents(jumperNeighbor)
+              jumperNeighbor.hComponents =
+                this.computeHComponents(jumperNeighbor)
+              jumperNeighbor.g = jumperNeighbor.gComponents.total
+              jumperNeighbor.h = jumperNeighbor.hComponents.total
               jumperNeighbor.f = this.computeF(
                 jumperNeighbor.g,
                 jumperNeighbor.h,
@@ -1211,8 +1333,10 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
           continue
         }
 
-        neighbor.g = this.computeG(neighbor)
-        neighbor.h = this.computeH(neighbor)
+        neighbor.gComponents = this.computeGComponents(neighbor)
+        neighbor.hComponents = this.computeHComponents(neighbor)
+        neighbor.g = neighbor.gComponents.total
+        neighbor.h = neighbor.hComponents.total
         neighbor.f = this.computeF(neighbor.g, neighbor.h)
 
         neighbors.push(neighbor)
@@ -1298,6 +1422,8 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
       g: currentNode.g,
       h: currentNode.h,
       f: currentNode.f,
+      gComponents: currentNode.gComponents,
+      hComponents: currentNode.hComponents,
     })
 
     const goalDist = distance(currentNode, this.roundedGoalPosition)
@@ -1466,32 +1592,56 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
       const [x, y] = nodeKey.split(",").map(Number)
       const isJumperNode = nodeKey.endsWith("_j")
 
-      // Create a minimal node to compute H components
-      const tempNode: JumperNode = {
-        x: x + this.initialNodeGridOffset.x,
-        y: y + this.initialNodeGridOffset.y,
-        z: 0,
-        g: 0,
-        h: 0,
-        f: 0,
-        parent: null,
-        isJumperExit: isJumperNode,
-      }
-      const hComponents = this.computeHComponents(tempNode)
       const nodeValues = this.debug_exploredNodeValues.get(nodeKey)
+      const gComp = nodeValues?.gComponents
+      const hComp = nodeValues?.hComponents
 
-      const goalDist = hComponents.distanceToGoal
-      const label = [
-        isJumperNode ? "Explored (jumper)" : "Explored",
-        `g: ${nodeValues?.g.toFixed(2) ?? "?"}`,
-        `goalDist: ${goalDist.toFixed(2)}`,
-        `h.obstacleProx: ${hComponents.obstacleProximity.toFixed(2)} (${goalDist > 0 ? (hComponents.obstacleProximity / goalDist).toFixed(3) : 0}/mm)`,
-        `h.edgeProx: ${hComponents.edgeProximity.toFixed(2)} (${goalDist > 0 ? (hComponents.edgeProximity / goalDist).toFixed(3) : 0}/mm)`,
-        `h.futureConnPt: ${hComponents.futureConnectionStartEndProximityPenalty.toFixed(2)} (${goalDist > 0 ? (hComponents.futureConnectionStartEndProximityPenalty / goalDist).toFixed(3) : 0}/mm)`,
-        `h.futureConnLine: ${hComponents.futureConnectionLine.toFixed(2)} (${goalDist > 0 ? (hComponents.futureConnectionLine / goalDist).toFixed(3) : 0}/mm)`,
-        `h: ${nodeValues?.h.toFixed(2) ?? hComponents.total.toFixed(2)}`,
-        `f: ${nodeValues?.f.toFixed(2) ?? "?"}`,
-      ].join("\n")
+      const goalDist = hComp?.distanceToGoal ?? 0
+      const labelParts = [isJumperNode ? "Explored (jumper)" : "Explored"]
+
+      // G components
+      labelParts.push(
+        `g.distFromStart: ${gComp?.distFromStart.toFixed(2) ?? "?"}`,
+      )
+      labelParts.push(
+        `g.nearObstacle: ${gComp?.weightedMmNearObstacle.toFixed(2) ?? "?"}`,
+      )
+      labelParts.push(
+        `g.nearEdge: ${gComp?.weightedMmNearEdge.toFixed(2) ?? "?"}`,
+      )
+      labelParts.push(
+        `g.nearFutureConnPt: ${gComp?.weightedMmNearFutureConnectionStartEnd.toFixed(2) ?? "?"}`,
+      )
+      labelParts.push(
+        `g.nearFutureConnLine: ${gComp?.weightedMmNearFutureConnectionLine.toFixed(2) ?? "?"}`,
+      )
+      labelParts.push(
+        `g.dirChange: ${gComp?.directionChangePenalty.toFixed(2) ?? "?"}`,
+      )
+      labelParts.push(`g.jumper: ${gComp?.jumperPenalty.toFixed(2) ?? "?"}`)
+      labelParts.push(
+        `g.jumperPadFutureConn: ${gComp?.jumperPadFutureConnectionPenalty.toFixed(2) ?? "?"}`,
+      )
+      labelParts.push(`g: ${nodeValues?.g.toFixed(2) ?? "?"}`)
+
+      // H components
+      labelParts.push(`h.goalDist: ${goalDist.toFixed(2)}`)
+      labelParts.push(
+        `h.obstacleProx: ${hComp?.obstacleProximity.toFixed(2) ?? "?"} (${goalDist > 0 ? ((hComp?.obstacleProximity ?? 0) / goalDist).toFixed(3) : 0}/mm)`,
+      )
+      labelParts.push(
+        `h.edgeProx: ${hComp?.edgeProximity.toFixed(2) ?? "?"} (${goalDist > 0 ? ((hComp?.edgeProximity ?? 0) / goalDist).toFixed(3) : 0}/mm)`,
+      )
+      labelParts.push(
+        `h.futureConnPt: ${hComp?.futureConnectionStartEndProximityPenalty.toFixed(2) ?? "?"} (${goalDist > 0 ? ((hComp?.futureConnectionStartEndProximityPenalty ?? 0) / goalDist).toFixed(3) : 0}/mm)`,
+      )
+      labelParts.push(
+        `h.futureConnLine: ${hComp?.futureConnectionLine.toFixed(2) ?? "?"} (${goalDist > 0 ? ((hComp?.futureConnectionLine ?? 0) / goalDist).toFixed(3) : 0}/mm)`,
+      )
+      labelParts.push(`h: ${nodeValues?.h.toFixed(2) ?? "?"}`)
+      labelParts.push(`f: ${nodeValues?.f.toFixed(2) ?? "?"}`)
+
+      const label = labelParts.join("\n")
 
       graphics.rects!.push({
         center: {
@@ -1519,6 +1669,71 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
         width: this.cellStep * 0.9,
         height: this.cellStep * 0.9,
         label: "Next",
+      })
+    }
+
+    // Visualize top 5 candidates with gray points
+    const topCandidates = this.candidates.getTopN(5)
+    for (let i = 0; i < topCandidates.length; i++) {
+      const candidate = topCandidates[i] as JumperNode
+      const isJumperNode = candidate.isJumperExit ?? false
+      const gComp = candidate.gComponents
+      const hComp = candidate.hComponents
+      const goalDist = hComp?.distanceToGoal ?? 0
+
+      const labelParts = [
+        `Candidate #${i + 1}${isJumperNode ? " (jumper)" : ""}`,
+      ]
+
+      // G components
+      labelParts.push(
+        `g.distFromStart: ${gComp?.distFromStart.toFixed(2) ?? "?"}`,
+      )
+      labelParts.push(
+        `g.nearObstacle: ${gComp?.weightedMmNearObstacle.toFixed(2) ?? "?"}`,
+      )
+      labelParts.push(
+        `g.nearEdge: ${gComp?.weightedMmNearEdge.toFixed(2) ?? "?"}`,
+      )
+      labelParts.push(
+        `g.nearFutureConnPt: ${gComp?.weightedMmNearFutureConnectionStartEnd.toFixed(2) ?? "?"}`,
+      )
+      labelParts.push(
+        `g.nearFutureConnLine: ${gComp?.weightedMmNearFutureConnectionLine.toFixed(2) ?? "?"}`,
+      )
+      labelParts.push(
+        `g.dirChange: ${gComp?.directionChangePenalty.toFixed(2) ?? "?"}`,
+      )
+      labelParts.push(`g.jumper: ${gComp?.jumperPenalty.toFixed(2) ?? "?"}`)
+      labelParts.push(
+        `g.jumperPadFutureConn: ${gComp?.jumperPadFutureConnectionPenalty.toFixed(2) ?? "?"}`,
+      )
+      labelParts.push(`g: ${candidate.g.toFixed(2)}`)
+
+      // H components
+      labelParts.push(`h.goalDist: ${goalDist.toFixed(2)}`)
+      labelParts.push(
+        `h.obstacleProx: ${hComp?.obstacleProximity.toFixed(2) ?? "?"} (${goalDist > 0 ? ((hComp?.obstacleProximity ?? 0) / goalDist).toFixed(3) : 0}/mm)`,
+      )
+      labelParts.push(
+        `h.edgeProx: ${hComp?.edgeProximity.toFixed(2) ?? "?"} (${goalDist > 0 ? ((hComp?.edgeProximity ?? 0) / goalDist).toFixed(3) : 0}/mm)`,
+      )
+      labelParts.push(
+        `h.futureConnPt: ${hComp?.futureConnectionStartEndProximityPenalty.toFixed(2) ?? "?"} (${goalDist > 0 ? ((hComp?.futureConnectionStartEndProximityPenalty ?? 0) / goalDist).toFixed(3) : 0}/mm)`,
+      )
+      labelParts.push(
+        `h.futureConnLine: ${hComp?.futureConnectionLine.toFixed(2) ?? "?"} (${goalDist > 0 ? ((hComp?.futureConnectionLine ?? 0) / goalDist).toFixed(3) : 0}/mm)`,
+      )
+      labelParts.push(`h: ${candidate.h.toFixed(2)}`)
+      labelParts.push(`f: ${candidate.f.toFixed(2)}`)
+
+      const label = labelParts.join("\n")
+
+      graphics.points!.push({
+        x: candidate.x,
+        y: candidate.y,
+        color: "gray",
+        label,
       })
     }
 

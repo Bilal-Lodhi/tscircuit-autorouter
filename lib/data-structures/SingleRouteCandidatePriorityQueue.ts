@@ -115,4 +115,11 @@ export class SingleRouteCandidatePriorityQueue<T extends Node = Node> {
       index = smallerChildIndex
     }
   }
+
+  /**
+   * Returns the top N candidates sorted by f value (lowest first)
+   */
+  getTopN(n: number): T[] {
+    return [...this.heap].sort((a, b) => a.f - b.f).slice(0, n)
+  }
 }
