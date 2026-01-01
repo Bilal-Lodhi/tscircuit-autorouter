@@ -51,4 +51,7 @@ export interface HighDensityHyperParameters {
 
   // Direction change penalty - penalizes changing movement direction from previous step
   CHANGE_DIR_PENALTY?: number // penalty factor for changing direction
+
+  // Distance after which changing direction becomes free (no penalty)
+  CHANGE_DIR_FREE_DIST?: number // mm - distance threshold
 }

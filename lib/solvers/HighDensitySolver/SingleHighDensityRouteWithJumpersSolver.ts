@@ -59,7 +59,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
   obstacleMargin: number
   minCellSize = 0.05
   cellStep = 0.05
-  GREEDY_MULTIPLER = 1
+  GREEDY_MULTIPLER = 1.2
   numRoutes: number
 
   /** Penalty factor for using a jumper (relative to distance) */
@@ -142,13 +142,13 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     this.CELL_SIZE_FACTOR = this.hyperParameters.CELL_SIZE_FACTOR ?? 1
     this.JUMPER_PENALTY_FACTOR = 0.2
     this.FUTURE_CONNECTION_START_END_PROXIMITY ??= 5
-    this.FUTURE_CONNECTION_START_END_PENALTY ??= 10
+    this.FUTURE_CONNECTION_START_END_PENALTY ??= 0
 
     // Initialize future connection jumper pad penalty parameters
     this.FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY =
       this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY ?? 5
     this.FUTURE_CONNECTION_JUMPER_PAD_PENALTY =
-      this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PENALTY ?? 2000
+      this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PENALTY ?? 0
 
     // Initialize jumper-to-jumper pad penalty parameters
     this.JUMPER_JUMPER_PAD_PROXIMITY =
@@ -160,7 +160,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     this.FUTURE_CONNECTION_LINE_PROXIMITY =
       this.hyperParameters.FUTURE_CONNECTION_LINE_PROXIMITY ?? 12
     this.FUTURE_CONNECTION_LINE_PENALTY =
-      this.hyperParameters.FUTURE_CONNECTION_LINE_PENALTY ?? 50
+      this.hyperParameters.FUTURE_CONNECTION_LINE_PENALTY ?? 0
 
     // Initialize obstacle proximity penalty parameters
     // These are "soft" penalties that prefer high-clearance paths but don't block routes
@@ -172,14 +172,14 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     // Keep lower than obstacle penalty since edges are less problematic than trace collisions
     // and to avoid issues in tight spaces where start/end points are near edges
     this.EDGE_PROX_PENALTY_FACTOR =
-      this.hyperParameters.EDGE_PROX_PENALTY_FACTOR ?? 4
+      this.hyperParameters.EDGE_PROX_PENALTY_FACTOR ?? 0
     this.EDGE_PROX_SIGMA = this.hyperParameters.EDGE_PROX_SIGMA ?? 4
 
     // Initialize diagonal movement setting
-    this.ALLOW_DIAGONAL = this.hyperParameters.ALLOW_DIAGONAL ?? true
+    this.ALLOW_DIAGONAL = this.hyperParameters.ALLOW_DIAGONAL ?? false
 
     // Initialize direction change penalty
-    this.CHANGE_DIR_PENALTY = this.hyperParameters.CHANGE_DIR_PENALTY ?? 0
+    this.CHANGE_DIR_PENALTY = this.hyperParameters.CHANGE_DIR_PENALTY ?? 0.1
 
     this.boundsSize = {
       width: this.bounds.maxX - this.bounds.minX,
@@ -551,20 +551,29 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     futureConnectionLine: number
     total: number
   } {
-    const distanceToGoal = distance(node, this.roundedGoalPosition)
-    const obstacleProximity = this.getObstacleProximityPenalty(node)
-    const edgeProximity = this.getEdgeProximityPenalty(node)
+    const goalDist = distance(node, this.roundedGoalPosition)
+
+    // Get current penalty rates (per mm)
+    const obstacleProximityRate = this.getObstacleProximityPenalty(node)
+    const edgeProximityRate = this.getEdgeProximityPenalty(node)
+    const futureConnectionRate = this.getFutureConnectionPenalty(node)
+    const futureConnectionLineRate = this.getFutureConnectionLinePenalty(node)
+
+    // Estimate remaining penalties by multiplying rate by remaining distance
+    const obstacleProximity = obstacleProximityRate * goalDist
+    const edgeProximity = edgeProximityRate * goalDist
     const futureConnectionStartEndProximityPenalty =
-      this.getFutureConnectionPenalty(node)
-    const futureConnectionLine = this.getFutureConnectionLinePenalty(node)
+      futureConnectionRate * goalDist
+    const futureConnectionLine = futureConnectionLineRate * goalDist
+
     const total =
-      distanceToGoal +
+      goalDist +
       obstacleProximity +
       edgeProximity +
       futureConnectionStartEndProximityPenalty +
       futureConnectionLine
     return {
-      distanceToGoal,
+      distanceToGoal: goalDist,
       obstacleProximity,
       edgeProximity,
       futureConnectionStartEndProximityPenalty,
@@ -578,14 +587,18 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
   }
 
   computeG(node: JumperNode) {
-    const baseG = (node.parent?.g ?? 0) + distance(node, node.parent!)
+    const stepDist = distance(node, node.parent!)
+    const baseG = (node.parent?.g ?? 0) + stepDist
 
-    // Density penalty to push routes away from obstacles/edges
-    const densityPenalty =
+    // Density penalty rates (per mm) to push routes away from obstacles/edges
+    const densityPenaltyRate =
       this.getObstacleProximityPenalty(node) +
       this.getEdgeProximityPenalty(node) +
       this.getFutureConnectionPenalty(node) +
       this.getFutureConnectionLinePenalty(node)
+
+    // Scale penalty by step distance
+    const densityPenalty = densityPenaltyRate * stepDist
 
     // Direction change penalty to prefer straighter paths
     const directionChangePenalty = this.getDirectionChangePenalty(node)
@@ -1467,14 +1480,15 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
       const hComponents = this.computeHComponents(tempNode)
       const nodeValues = this.debug_exploredNodeValues.get(nodeKey)
 
+      const goalDist = hComponents.distanceToGoal
       const label = [
         isJumperNode ? "Explored (jumper)" : "Explored",
         `g: ${nodeValues?.g.toFixed(2) ?? "?"}`,
-        `distanceToGoal: ${hComponents.distanceToGoal.toFixed(2)}`,
-        `obstacleProximity: ${hComponents.obstacleProximity.toFixed(2)}`,
-        `edgeProximity: ${hComponents.edgeProximity.toFixed(2)}`,
-        `futureConnectionPoint: ${hComponents.futureConnectionStartEndProximityPenalty.toFixed(2)}`,
-        `futureConnectionLine: ${hComponents.futureConnectionLine.toFixed(2)}`,
+        `goalDist: ${goalDist.toFixed(2)}`,
+        `h.obstacleProx: ${hComponents.obstacleProximity.toFixed(2)} (${goalDist > 0 ? (hComponents.obstacleProximity / goalDist).toFixed(3) : 0}/mm)`,
+        `h.edgeProx: ${hComponents.edgeProximity.toFixed(2)} (${goalDist > 0 ? (hComponents.edgeProximity / goalDist).toFixed(3) : 0}/mm)`,
+        `h.futureConnPt: ${hComponents.futureConnectionStartEndProximityPenalty.toFixed(2)} (${goalDist > 0 ? (hComponents.futureConnectionStartEndProximityPenalty / goalDist).toFixed(3) : 0}/mm)`,
+        `h.futureConnLine: ${hComponents.futureConnectionLine.toFixed(2)} (${goalDist > 0 ? (hComponents.futureConnectionLine / goalDist).toFixed(3) : 0}/mm)`,
         `h: ${nodeValues?.h.toFixed(2) ?? hComponents.total.toFixed(2)}`,
         `f: ${nodeValues?.f.toFixed(2) ?? "?"}`,
       ].join("\n")
