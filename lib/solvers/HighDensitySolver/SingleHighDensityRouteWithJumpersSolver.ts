@@ -196,7 +196,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     this.CELL_SIZE_FACTOR = this.hyperParameters.CELL_SIZE_FACTOR ?? 1
     this.JUMPER_PENALTY_FACTOR = 0.2
     this.FUTURE_CONNECTION_START_END_PROXIMITY ??= 5
-    this.FUTURE_CONNECTION_START_END_PENALTY ??= 1
+    this.FUTURE_CONNECTION_START_END_PENALTY ??= 10
 
     // Initialize future connection jumper pad penalty parameters
     this.FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY =
@@ -233,7 +233,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     this.ALLOW_DIAGONAL = this.hyperParameters.ALLOW_DIAGONAL ?? false
 
     // Initialize direction change penalty
-    this.CHANGE_DIR_PENALTY = this.hyperParameters.CHANGE_DIR_PENALTY ?? 0
+    this.CHANGE_DIR_PENALTY = this.hyperParameters.CHANGE_DIR_PENALTY ?? 10
 
     this.boundsSize = {
       width: this.bounds.maxX - this.bounds.minX,
