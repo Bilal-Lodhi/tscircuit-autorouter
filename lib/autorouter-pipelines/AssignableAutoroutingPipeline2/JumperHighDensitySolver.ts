@@ -230,7 +230,11 @@ export class JumperHighDensitySolver extends BaseSolver {
         colorMap: this.colorMap,
         connMap: this.connMap,
         traceWidth: this.traceWidth,
-        hyperParameters: this.hyperParameters,
+        hyperParameters: {
+          ...this.hyperParameters,
+          FUTURE_CONNECTION_PROXIMITY_VD: 30,
+          FUTURE_CONNECTION_PROX_TRACE_PENALTY_FACTOR: 10,
+        },
       })
       this.jumperSolvers.push(solver)
     }

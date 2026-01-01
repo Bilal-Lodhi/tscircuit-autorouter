@@ -64,6 +64,10 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
   /** Penalty factor for using a jumper (relative to distance) */
   JUMPER_PENALTY_FACTOR = 0.5
 
+  /** Future connection proximity parameters */
+  FUTURE_CONNECTION_PROX_TRACE_PENALTY_FACTOR = 2
+  FUTURE_CONNECTION_PROXIMITY_VD = 10
+
   CELL_SIZE_FACTOR: number
 
   exploredNodes: Set<string>
@@ -108,6 +112,10 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     this.connMap = opts.connMap
     this.hyperParameters = opts.hyperParameters ?? {}
     this.CELL_SIZE_FACTOR = this.hyperParameters.CELL_SIZE_FACTOR ?? 1
+    this.FUTURE_CONNECTION_PROX_TRACE_PENALTY_FACTOR =
+      this.hyperParameters.FUTURE_CONNECTION_PROX_TRACE_PENALTY_FACTOR ?? 2
+    this.FUTURE_CONNECTION_PROXIMITY_VD =
+      this.hyperParameters.FUTURE_CONNECTION_PROXIMITY_VD ?? 10
     this.boundsSize = {
       width: this.bounds.maxX - this.bounds.minX,
       height: this.bounds.maxY - this.bounds.minY,
@@ -223,7 +231,8 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
   get jumperPenaltyDistance() {
     return (
-      JUMPER_0805.length + this.straightLineDistance * this.JUMPER_PENALTY_FACTOR
+      JUMPER_0805.length +
+      this.straightLineDistance * this.JUMPER_PENALTY_FACTOR
     )
   }
 
@@ -362,7 +371,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
   }
 
   computeH(node: JumperNode) {
-    return distance(node, this.B)
+    return distance(node, this.B) + this.getFutureConnectionPenalty(node)
   }
 
   computeG(node: JumperNode) {
@@ -370,14 +379,52 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
     // Add jumper penalty if this node was reached via a jumper
     if (node.isJumperExit) {
-      return baseG + this.jumperPenaltyDistance
+      return (
+        baseG +
+        this.jumperPenaltyDistance +
+        this.getFutureConnectionPenalty(node)
+      )
     }
 
-    return baseG
+    return baseG + this.getFutureConnectionPenalty(node)
   }
 
   computeF(g: number, h: number) {
     return g + h * this.GREEDY_MULTIPLER
+  }
+
+  getClosestFutureConnectionPoint(node: JumperNode) {
+    let minDist = Infinity
+    let closestPoint = null
+
+    for (const futureConnection of this.futureConnections) {
+      for (const point of futureConnection.points) {
+        const dist = distance(node, point)
+        if (dist < minDist) {
+          minDist = dist
+          closestPoint = point
+        }
+      }
+    }
+
+    return closestPoint
+  }
+
+  getFutureConnectionPenalty(node: JumperNode) {
+    let futureConnectionPenalty = 0
+    const closestFuturePoint = this.getClosestFutureConnectionPoint(node)
+    const goalDist = distance(node, this.B)
+    if (closestFuturePoint) {
+      const distToFuturePoint = distance(node, closestFuturePoint)
+      if (goalDist <= distToFuturePoint) return 0
+      const maxDist = this.traceThickness * this.FUTURE_CONNECTION_PROXIMITY_VD
+      const distRatio = distToFuturePoint / maxDist
+      const maxPenalty =
+        this.straightLineDistance *
+        this.FUTURE_CONNECTION_PROX_TRACE_PENALTY_FACTOR
+      futureConnectionPenalty = maxPenalty * Math.exp(-distRatio * 5)
+    }
+    return futureConnectionPenalty
   }
 
   getNodeKey(node: JumperNode) {
@@ -418,7 +465,10 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
         // Calculate a jumper position that would clear the obstacle
         for (const obstacle of obstacles) {
           const jumperNeighbor = this.calculateJumperExit(node, obstacle, dir)
-          if (jumperNeighbor && !this.exploredNodes.has(this.getNodeKey(jumperNeighbor))) {
+          if (
+            jumperNeighbor &&
+            !this.exploredNodes.has(this.getNodeKey(jumperNeighbor))
+          ) {
             // Verify the jumper exit is valid
             if (
               !this.isNodeTooCloseToObstacle(jumperNeighbor) &&
@@ -427,7 +477,10 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
             ) {
               jumperNeighbor.g = this.computeG(jumperNeighbor)
               jumperNeighbor.h = this.computeH(jumperNeighbor)
-              jumperNeighbor.f = this.computeF(jumperNeighbor.g, jumperNeighbor.h)
+              jumperNeighbor.f = this.computeF(
+                jumperNeighbor.g,
+                jumperNeighbor.h,
+              )
               neighbors.push(jumperNeighbor)
             }
           }
@@ -521,17 +574,30 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     const margin = this.obstacleMargin
 
     // Simple bounding box check
-    const j1MinX = Math.min(j1.start.x, j1.end.x) - JUMPER_0805.width / 2 - margin
-    const j1MaxX = Math.max(j1.start.x, j1.end.x) + JUMPER_0805.width / 2 + margin
-    const j1MinY = Math.min(j1.start.y, j1.end.y) - JUMPER_0805.width / 2 - margin
-    const j1MaxY = Math.max(j1.start.y, j1.end.y) + JUMPER_0805.width / 2 + margin
+    const j1MinX =
+      Math.min(j1.start.x, j1.end.x) - JUMPER_0805.width / 2 - margin
+    const j1MaxX =
+      Math.max(j1.start.x, j1.end.x) + JUMPER_0805.width / 2 + margin
+    const j1MinY =
+      Math.min(j1.start.y, j1.end.y) - JUMPER_0805.width / 2 - margin
+    const j1MaxY =
+      Math.max(j1.start.y, j1.end.y) + JUMPER_0805.width / 2 + margin
 
-    const j2MinX = Math.min(j2.start.x, j2.end.x) - JUMPER_0805.width / 2 - margin
-    const j2MaxX = Math.max(j2.start.x, j2.end.x) + JUMPER_0805.width / 2 + margin
-    const j2MinY = Math.min(j2.start.y, j2.end.y) - JUMPER_0805.width / 2 - margin
-    const j2MaxY = Math.max(j2.start.y, j2.end.y) + JUMPER_0805.width / 2 + margin
+    const j2MinX =
+      Math.min(j2.start.x, j2.end.x) - JUMPER_0805.width / 2 - margin
+    const j2MaxX =
+      Math.max(j2.start.x, j2.end.x) + JUMPER_0805.width / 2 + margin
+    const j2MinY =
+      Math.min(j2.start.y, j2.end.y) - JUMPER_0805.width / 2 - margin
+    const j2MaxY =
+      Math.max(j2.start.y, j2.end.y) + JUMPER_0805.width / 2 + margin
 
-    return !(j1MaxX < j2MinX || j1MinX > j2MaxX || j1MaxY < j2MinY || j1MinY > j2MaxY)
+    return !(
+      j1MaxX < j2MinX ||
+      j1MinX > j2MaxX ||
+      j1MaxY < j2MinY ||
+      j1MinY > j2MaxY
+    )
   }
 
   /**
@@ -874,7 +940,12 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
       // Draw solved jumpers
       for (const jumper of this.solvedPath.jumpers) {
-        this.drawJumperPads(graphics, jumper, "rgba(0, 200, 0, 0.8)", "solved-jumper")
+        this.drawJumperPads(
+          graphics,
+          jumper,
+          "rgba(0, 200, 0, 0.8)",
+          "solved-jumper",
+        )
       }
     }
 
