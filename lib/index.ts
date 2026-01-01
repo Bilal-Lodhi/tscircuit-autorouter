@@ -14,3 +14,11 @@ export * from "./cache/setupGlobalCaches"
 export * from "./cache/types"
 export * from "./autorouter-pipelines/AssignableAutoroutingPipeline1/AssignableAutoroutingPipeline1Solver"
 export { convertSrjToGraphicsObject } from "./utils/convertSrjToGraphicsObject"
+
+// Jumper-based solvers for single-layer PCBs
+export { IntraNodeSolverWithJumpers } from "./solvers/HighDensitySolver/IntraNodeSolverWithJumpers"
+export { SingleHighDensityRouteWithJumpersSolver } from "./solvers/HighDensitySolver/SingleHighDensityRouteWithJumpersSolver"
+export type {
+  Jumper,
+  HighDensityIntraNodeRouteWithJumpers,
+} from "./types/high-density-types"
