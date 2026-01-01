@@ -63,23 +63,23 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
   numRoutes: number
 
   /** Penalty factor for using a jumper (relative to distance) */
-  JUMPER_PENALTY_FACTOR = 0.1
+  JUMPER_PENALTY_FACTOR: number
 
   /** Future connection proximity parameters */
-  FUTURE_CONNECTION_PROX_TRACE_PENALTY_FACTOR = 2
-  FUTURE_CONNECTION_TRACE_PROXIMITY = 10
+  FUTURE_CONNECTION_PROX_TRACE_PENALTY_FACTOR: number
+  FUTURE_CONNECTION_TRACE_PROXIMITY: number
 
   /** Future connection jumper pad penalty parameters */
-  FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY = 12 // mm - proximity threshold
-  FUTURE_CONNECTION_JUMPER_PAD_PENALTY = 100 // penalty factor
+  FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY: number
+  FUTURE_CONNECTION_JUMPER_PAD_PENALTY: number
 
   /** Jumper-to-jumper pad proximity penalty parameters */
-  JUMPER_JUMPER_PAD_PROXIMITY = 5 // mm - proximity threshold
-  JUMPER_JUMPER_PAD_PENALTY = 10 // penalty factor
+  JUMPER_JUMPER_PAD_PROXIMITY: number
+  JUMPER_JUMPER_PAD_PENALTY: number
 
   /** Future connection line proximity penalty parameters */
-  FUTURE_CONNECTION_LINE_PROXIMITY = 5 // mm - proximity threshold
-  FUTURE_CONNECTION_LINE_PENALTY = 10 // penalty factor
+  FUTURE_CONNECTION_LINE_PROXIMITY: number
+  FUTURE_CONNECTION_LINE_PENALTY: number
 
   /** Obstacle proximity penalty parameters (repulsive field) */
   OBSTACLE_PROX_PENALTY_FACTOR: number
@@ -137,16 +137,17 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     this.connMap = opts.connMap
     this.hyperParameters = opts.hyperParameters ?? {}
     this.CELL_SIZE_FACTOR = this.hyperParameters.CELL_SIZE_FACTOR ?? 1
+    this.JUMPER_PENALTY_FACTOR = 0.1
     this.FUTURE_CONNECTION_PROX_TRACE_PENALTY_FACTOR =
       this.hyperParameters.FUTURE_CONNECTION_PROX_TRACE_PENALTY_FACTOR ?? 2
     this.FUTURE_CONNECTION_TRACE_PROXIMITY =
-      this.hyperParameters.FUTURE_CONNECTION_TRACE_PROXIMITY ?? 10
+      this.hyperParameters.FUTURE_CONNECTION_TRACE_PROXIMITY ?? 5
 
     // Initialize future connection jumper pad penalty parameters
     this.FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY =
       this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY ?? 20
     this.FUTURE_CONNECTION_JUMPER_PAD_PENALTY =
-      this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PENALTY ?? 1000
+      this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PENALTY ?? 100
 
     // Initialize jumper-to-jumper pad penalty parameters
     this.JUMPER_JUMPER_PAD_PROXIMITY =
@@ -156,25 +157,22 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
     // Initialize future connection line penalty parameters
     this.FUTURE_CONNECTION_LINE_PROXIMITY =
-      this.hyperParameters.FUTURE_CONNECTION_LINE_PROXIMITY ?? 50
+      this.hyperParameters.FUTURE_CONNECTION_LINE_PROXIMITY ?? 10
     this.FUTURE_CONNECTION_LINE_PENALTY =
-      this.hyperParameters.FUTURE_CONNECTION_LINE_PENALTY ?? 1000
+      this.hyperParameters.FUTURE_CONNECTION_LINE_PENALTY ?? 10
 
     // Initialize obstacle proximity penalty parameters
     // These are "soft" penalties that prefer high-clearance paths but don't block routes
     this.OBSTACLE_PROX_PENALTY_FACTOR =
       this.hyperParameters.OBSTACLE_PROX_PENALTY_FACTOR ?? 4
-    this.OBSTACLE_PROX_SIGMA =
-      this.hyperParameters.OBSTACLE_PROX_SIGMA ??
-      (opts.traceThickness ?? 0.15) * 20
+    this.OBSTACLE_PROX_SIGMA = this.hyperParameters.OBSTACLE_PROX_SIGMA ?? 5
 
     // Initialize edge proximity penalty parameters
     // Keep lower than obstacle penalty since edges are less problematic than trace collisions
     // and to avoid issues in tight spaces where start/end points are near edges
     this.EDGE_PROX_PENALTY_FACTOR =
       this.hyperParameters.EDGE_PROX_PENALTY_FACTOR ?? 4
-    this.EDGE_PROX_SIGMA =
-      this.hyperParameters.EDGE_PROX_SIGMA ?? (opts.traceThickness ?? 0.15) * 10
+    this.EDGE_PROX_SIGMA = this.hyperParameters.EDGE_PROX_SIGMA ?? 10
 
     // Initialize diagonal movement setting
     this.ALLOW_DIAGONAL = this.hyperParameters.ALLOW_DIAGONAL ?? false
