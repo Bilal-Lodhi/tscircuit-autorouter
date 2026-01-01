@@ -616,9 +616,80 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
   }
 
   /**
-   * Verify that a jumper placement is valid (doesn't overlap with existing jumpers)
+   * Check if a jumper's pads are too close to obstacle traces
+   */
+  isJumperTooCloseToTraces(entry: { x: number; y: number }, exit: { x: number; y: number }): boolean {
+    const dx = exit.x - entry.x
+    const dy = exit.y - entry.y
+    const isHorizontal = Math.abs(dx) > Math.abs(dy)
+
+    // Get pad dimensions based on jumper orientation
+    const padHalfWidth = (isHorizontal ? JUMPER_0805.padLength : JUMPER_0805.padWidth) / 2
+    const padHalfHeight = (isHorizontal ? JUMPER_0805.padWidth : JUMPER_0805.padLength) / 2
+    const margin = this.obstacleMargin
+
+    // Check both entry and exit pad positions against all obstacle traces
+    const padCenters = [entry, exit]
+
+    for (const padCenter of padCenters) {
+      // Check each corner and edge midpoint of the pad for proximity to traces
+      const checkPoints = [
+        padCenter, // center
+        { x: padCenter.x - padHalfWidth, y: padCenter.y - padHalfHeight }, // corners
+        { x: padCenter.x + padHalfWidth, y: padCenter.y - padHalfHeight },
+        { x: padCenter.x - padHalfWidth, y: padCenter.y + padHalfHeight },
+        { x: padCenter.x + padHalfWidth, y: padCenter.y + padHalfHeight },
+        { x: padCenter.x - padHalfWidth, y: padCenter.y }, // edge midpoints
+        { x: padCenter.x + padHalfWidth, y: padCenter.y },
+        { x: padCenter.x, y: padCenter.y - padHalfHeight },
+        { x: padCenter.x, y: padCenter.y + padHalfHeight },
+      ]
+
+      for (const route of this.obstacleRoutes) {
+        const connectedToObstacle = this.connMap?.areIdsConnected?.(
+          this.connectionName,
+          route.connectionName,
+        )
+        if (connectedToObstacle) continue
+
+        const pointPairs = getSameLayerPointPairs(route)
+        for (const pointPair of pointPairs) {
+          // Check if any check point is too close to the trace segment
+          for (const checkPoint of checkPoints) {
+            if (
+              pointToSegmentDistance(checkPoint, pointPair.A, pointPair.B) <
+              this.traceThickness + margin
+            ) {
+              return true
+            }
+          }
+
+          // Also check if the trace segment passes through the pad rectangle
+          if (this.doesSegmentIntersectRect(
+            pointPair.A,
+            pointPair.B,
+            padCenter,
+            padHalfWidth + margin,
+            padHalfHeight + margin
+          )) {
+            return true
+          }
+        }
+      }
+    }
+
+    return false
+  }
+
+  /**
+   * Verify that a jumper placement is valid (doesn't overlap with existing jumpers or traces)
    */
   isJumperPlacementValid(entry: JumperNode, exit: JumperNode): boolean {
+    // Check that jumper pads aren't too close to existing traces
+    if (this.isJumperTooCloseToTraces(entry, exit)) {
+      return false
+    }
+
     // Check that the jumper doesn't overlap with existing jumpers
     const proposedJumper: Jumper = {
       route_type: "jumper",
