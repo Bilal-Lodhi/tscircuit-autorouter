@@ -67,6 +67,11 @@ type HComponents = {
   futureConnectionStartEndProximityPenalty: number
   futureConnectionLine: number
   total: number
+  /** Stored rates (penalty per mm) for derivative computation */
+  obstacleProximityRate: number
+  edgeProximityRate: number
+  futureConnectionStartEndProximityRate: number
+  futureConnectionLineRate: number
 }
 
 /**
@@ -332,6 +337,10 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
       futureConnectionStartEndProximityPenalty: 0,
       futureConnectionLine: 0,
       total: 0,
+      obstacleProximityRate: 0,
+      edgeProximityRate: 0,
+      futureConnectionStartEndProximityRate: 0,
+      futureConnectionLineRate: 0,
     }
     this.candidates = new SingleRouteCandidatePriorityQueue([
       {
@@ -615,28 +624,66 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     return obstacles
   }
 
-  computeHComponents(node: JumperNode): {
-    distanceToGoal: number
-    obstacleProximity: number
-    edgeProximity: number
-    futureConnectionStartEndProximityPenalty: number
-    futureConnectionLine: number
-    total: number
-  } {
+  computeHComponents(node: JumperNode): HComponents {
     const goalDist = distance(node, this.roundedGoalPosition)
 
     // Get current penalty rates (per mm)
     const obstacleProximityRate = this.getObstacleProximityPenalty(node)
     const edgeProximityRate = this.getEdgeProximityPenalty(node)
-    const futureConnectionRate = this.getFutureConnectionPenalty(node)
+    const futureConnectionStartEndProximityRate =
+      this.getFutureConnectionPenalty(node)
     const futureConnectionLineRate = this.getFutureConnectionLinePenalty(node)
 
-    // Estimate remaining penalties by multiplying rate by remaining distance
-    const obstacleProximity = obstacleProximityRate * goalDist
-    const edgeProximity = edgeProximityRate * goalDist
+    // Get parent's rates and compute step distance for derivative calculation
+    const parent = node.parent as JumperNode | null
+    const parentHComponents = parent?.hComponents
+    const stepDist = parent ? distance(node, parent) : 0
+
+    // Compute expected average rates based on derivative (rate of change)
+    // If rate is decreasing, we expect lower average over remaining distance
+    // If rate is increasing, we expect higher average
+    const computeExpectedAvgRate = (
+      currentRate: number,
+      parentRate: number | undefined,
+    ): number => {
+      if (parentRate === undefined || stepDist < 1e-9 || goalDist < 1e-9) {
+        // No derivative info available, use current rate
+        return currentRate
+      }
+
+      // Compute derivative: how much the rate changes per mm traveled
+      const rateDerivative = (currentRate - parentRate) / stepDist
+
+      // Project rate at goal (clamped to >= 0)
+      const projectedGoalRate = Math.max(0, currentRate + rateDerivative * goalDist)
+
+      // Expected average rate is midpoint between current and projected goal rate
+      return (currentRate + projectedGoalRate) / 2
+    }
+
+    const avgObstacleRate = computeExpectedAvgRate(
+      obstacleProximityRate,
+      parentHComponents?.obstacleProximityRate,
+    )
+    const avgEdgeRate = computeExpectedAvgRate(
+      edgeProximityRate,
+      parentHComponents?.edgeProximityRate,
+    )
+    const avgFutureConnectionRate = computeExpectedAvgRate(
+      futureConnectionStartEndProximityRate,
+      parentHComponents?.futureConnectionStartEndProximityRate,
+    )
+    const avgFutureConnectionLineRate = computeExpectedAvgRate(
+      futureConnectionLineRate,
+      parentHComponents?.futureConnectionLineRate,
+    )
+
+    // Estimate remaining penalties using expected average rates
+    const obstacleProximity = avgObstacleRate * goalDist
+    const edgeProximity = avgEdgeRate * goalDist
     const futureConnectionStartEndProximityPenalty =
-      futureConnectionRate * goalDist
-    const futureConnectionLine = futureConnectionLineRate * goalDist
+      avgFutureConnectionRate * goalDist
+    const futureConnectionLine = avgFutureConnectionLineRate * goalDist
 
     const total =
       goalDist +
@@ -651,6 +698,11 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
       futureConnectionStartEndProximityPenalty,
       futureConnectionLine,
       total,
+      // Store current rates for derivative computation in child nodes
+      obstacleProximityRate,
+      edgeProximityRate,
+      futureConnectionStartEndProximityRate,
+      futureConnectionLineRate,
     }
   }
 
