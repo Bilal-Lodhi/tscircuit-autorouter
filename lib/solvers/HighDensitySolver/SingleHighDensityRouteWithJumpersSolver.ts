@@ -664,11 +664,17 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
   /**
    * Compute the edge proximity penalty (repulsive field near boundaries)
    * Returns a high value near edges, ~0 far away
+   * Penalty is reduced as we approach the goal (which is always on an edge)
    */
   getEdgeProximityPenalty(node: JumperNode): number {
     const c = this.getClearanceToEdge(node)
     const sigma = this.EDGE_PROX_SIGMA
-    return this.EDGE_PROX_PENALTY_FACTOR * Math.exp(-c / sigma)
+
+    // Reduce penalty as we get closer to the goal (goal is always on an edge)
+    const goalDist = distance(node, this.B)
+    const goalProximityFactor = Math.min(1, goalDist / (this.EDGE_PROX_SIGMA * 2))
+
+    return this.EDGE_PROX_PENALTY_FACTOR * Math.exp(-c / sigma) * goalProximityFactor
   }
 
   getNodeKey(node: JumperNode) {
