@@ -15,7 +15,7 @@ import { CapacityMeshEdgeSolver } from "../../solvers/CapacityMeshSolver/Capacit
 import { getColorMap } from "../../solvers/colors"
 import { HighDensitySolver as LegacyHighDensitySolver } from "../../solvers/HighDensitySolver/HighDensitySolver"
 import { SimpleHighDensitySolver } from "./SimpleHighDensitySolver"
-import { HighDensitySolver } from "./HighDensitySolver"
+import { JumperHighDensitySolver } from "./JumperHighDensitySolver"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import { getConnectivityMapFromSimpleRouteJson } from "lib/utils/getConnectivityMapFromSimpleRouteJson"
 import { CapacityNodeTargetMerger } from "../../solvers/CapacityNodeTargetMerger/CapacityNodeTargetMerger"
@@ -104,7 +104,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
   highDensityRouteSolver?: LegacyHighDensitySolver
   /** @deprecated Use highDensitySolver instead */
   simpleHighDensityRouteSolver?: SimpleHighDensitySolver
-  highDensitySolver?: HighDensitySolver
+  highDensitySolver?: JumperHighDensitySolver
   highDensityStitchSolver?: MultipleHighDensityRouteStitchSolver
   singleLayerNodeMerger?: SingleLayerNodeMergerSolver
   offboardPathFragmentSolver?: PortPointOffboardPathFragmentSolver
@@ -308,22 +308,18 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
         ]
       },
     ),
-    definePipelineStep(
-      "highDensitySolver",
-      HighDensitySolver,
-      (cms) => [
-        {
-          nodePortPoints:
-            cms.multiSectionPortPointOptimizer?.getNodesWithPortPoints() ??
-            cms.portPointPathingSolver?.getNodesWithPortPoints() ??
-            [],
-          colorMap: cms.colorMap,
-          viaDiameter: cms.viaDiameter,
-          traceWidth: cms.minTraceWidth,
-          connMap: cms.connMap,
-        },
-      ],
-    ),
+    definePipelineStep("highDensitySolver", JumperHighDensitySolver, (cms) => [
+      {
+        nodePortPoints:
+          cms.multiSectionPortPointOptimizer?.getNodesWithPortPoints() ??
+          cms.portPointPathingSolver?.getNodesWithPortPoints() ??
+          [],
+        colorMap: cms.colorMap,
+        viaDiameter: cms.viaDiameter,
+        traceWidth: cms.minTraceWidth,
+        connMap: cms.connMap,
+      },
+    ]),
     definePipelineStep(
       "highDensityStitchSolver",
       MultipleHighDensityRouteStitchSolver,
@@ -689,7 +685,9 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
   getOutputSimplifiedPcbTraces(): SimplifiedPcbTraces {
     if (
       !this.solved ||
-      (!this.highDensityRouteSolver && !this.simpleHighDensityRouteSolver && !this.highDensitySolver)
+      (!this.highDensityRouteSolver &&
+        !this.simpleHighDensityRouteSolver &&
+        !this.highDensitySolver)
     ) {
       throw new Error("Cannot get output before solving is complete")
     }

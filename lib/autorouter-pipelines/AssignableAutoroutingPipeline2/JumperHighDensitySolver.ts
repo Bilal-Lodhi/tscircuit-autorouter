@@ -57,7 +57,7 @@ interface NodeAnalysis {
  *
  * This solver processes nodes in batches based on their characteristics.
  */
-export class HighDensitySolver extends BaseSolver {
+export class JumperHighDensitySolver extends BaseSolver {
   allNodes: NodeWithPortPoints[]
   nodeAnalyses: NodeAnalysis[]
   routes: (HighDensityIntraNodeRoute & {

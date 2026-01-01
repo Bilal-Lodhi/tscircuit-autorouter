@@ -239,6 +239,9 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
   }
 
   visualize(): GraphicsObject {
+    if (this.activeSubSolver) {
+      return this.activeSubSolver.visualize()
+    }
     const graphics: GraphicsObject = {
       lines: [],
       points: [],

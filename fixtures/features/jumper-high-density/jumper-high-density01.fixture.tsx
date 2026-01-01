@@ -1,5 +1,5 @@
 import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"
-import { HighDensitySolver } from "lib/autorouter-pipelines/AssignableAutoroutingPipeline2/HighDensitySolver"
+import { JumperHighDensitySolver } from "lib/autorouter-pipelines/AssignableAutoroutingPipeline2/JumperHighDensitySolver"
 import { generateColorMapFromNodeWithPortPoints } from "lib/utils/generateColorMapFromNodeWithPortPoints"
 import input from "./jumper-high-density01-input.json"
 
@@ -17,7 +17,7 @@ export default () => {
       }
     }
 
-    return new HighDensitySolver({
+    return new JumperHighDensitySolver({
       nodePortPoints,
       colorMap,
     })
