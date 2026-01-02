@@ -606,11 +606,11 @@ export class PortPointPathingSolver extends BaseSolver {
 
     while (queue.length > 0) {
       const nodeId = queue.shift()!
-      const negihborCapcityNodeIds = this.getNeighborNodeIdsForSingleLayerBfs({
+      const neighborCapacityNodeIds = this.getNeighborNodeIdsForSingleLayerBfs({
         nodeId,
         rootConnectionName,
       })
-      for (const neighborId of negihborCapcityNodeIds) {
+      for (const neighborId of neighborCapacityNodeIds) {
         if (visited.has(neighborId)) continue
         const neighborCapcityNode = this.nodeMap.get(neighborId)
         if (!neighborCapcityNode) continue
