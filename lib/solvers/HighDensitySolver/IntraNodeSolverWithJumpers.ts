@@ -263,10 +263,9 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
   }
 
   visualize(): GraphicsObject {
-    if (this.activeSubSolver) {
+    if (this.activeSubSolver && !this.solved) {
       return this.activeSubSolver.visualize()
     }
-    // When failed, show the last active sub-solver's visualization
     if (this.failed && this.lastActiveSubSolver) {
       return this.lastActiveSubSolver.visualize()
     }
