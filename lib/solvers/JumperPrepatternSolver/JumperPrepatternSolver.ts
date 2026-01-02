@@ -262,7 +262,6 @@ export class JumperPrepatternSolver extends BaseSolver {
               CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
               FORCE_OFF_BOARD_FREQUENCY: 0.8,
               MIN_ALLOWED_BOARD_SCORE: -1,
-              GREEDY_MULTIPLIER: 1,
               FORCE_CENTER_FIRST: true,
             },
           } as HyperPortPointPathingSolverParams,

@@ -69,14 +69,18 @@ export function alternatingGrid(jps: JumperPrepatternSolver): PatternResult {
   const prepatternJumpers: PrepatternJumper[] = []
   const jumperPadObstacles: Obstacle[] = []
 
-  const padding = 0.2
+  const padding = 0.8
   const node = jps.nodeWithPortPoints
   const bounds = {
     minX: node.center.x - node.width / 2 + padding,
     maxX: node.center.x + node.width / 2 - padding,
     minY: node.center.y - node.height / 2 + padding,
     maxY: node.center.y + node.height / 2 - padding,
+    width: 0,
+    height: 0,
   }
+  bounds.width = bounds.maxX - bounds.minX
+  bounds.height = bounds.maxY - bounds.minY
 
   const dims = JUMPER_DIMENSIONS[jps.jumperFootprint]
   const jumperLength = dims.length
@@ -95,8 +99,8 @@ export function alternatingGrid(jps: JumperPrepatternSolver): PatternResult {
 
   let jumperIndex = 0
 
-  const gridOffsetX = (node.width - numCols * cellSize) / 2
-  const gridOffsetY = (node.height - numRows * cellSize) / 2
+  const gridOffsetX = (bounds.width - numCols * cellSize) / 2
+  const gridOffsetY = (bounds.height - numRows * cellSize) / 2
 
   const createJumperObstacles = (
     jumperId: string,
