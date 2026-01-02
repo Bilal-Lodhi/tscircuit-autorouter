@@ -32,8 +32,8 @@ export class HyperIntraNodeSolverWithJumpers extends HyperParameterSupervisorSol
   getHyperParameterDefs() {
     return [
       {
-        name: "orderings500",
-        possibleValues: Array.from({ length: 500 }, (_, i) => ({
+        name: "orderings100",
+        possibleValues: Array.from({ length: 100 }, (_, i) => ({
           SHUFFLE_SEED: i,
         })),
       },
@@ -41,7 +41,7 @@ export class HyperIntraNodeSolverWithJumpers extends HyperParameterSupervisorSol
   }
 
   getCombinationDefs() {
-    return [["orderings500"]]
+    return [["orderings100"]]
   }
 
   _step() {
