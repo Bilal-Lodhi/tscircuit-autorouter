@@ -49,6 +49,7 @@ export interface PortPointPathingHyperParameters {
 
   RIPPING_ENABLED?: boolean
   RIPPING_PF_THRESHOLD?: number
+  MAX_RIPS?: number
 }
 
 /**
@@ -256,8 +257,15 @@ export class PortPointPathingSolver extends BaseSolver {
     return this.hyperParameters.RIPPING_PF_THRESHOLD ?? 0.3
   }
 
+  get MAX_RIPS() {
+    return this.hyperParameters.MAX_RIPS ?? 100
+  }
+
   /** Tracks which connections have been test-ripped for each node to avoid retesting */
   testedRipConnections: Map<CapacityMeshNodeId, Set<string>> = new Map()
+
+  /** Tracks total number of connections that have been ripped/requeued */
+  totalRipCount = 0
 
   get MIN_ALLOWED_BOARD_SCORE() {
     return this.hyperParameters.MIN_ALLOWED_BOARD_SCORE ?? -10000
@@ -1662,8 +1670,18 @@ export class PortPointPathingSolver extends BaseSolver {
    * Requeue a connection by moving it to the unprocessed queue for re-routing.
    * If already processed, moves it from processed to unprocessed.
    * If still unprocessed, moves it to the front for priority re-routing.
+   * Returns false if MAX_RIPS exceeded (solver should fail).
    */
-  requeueConnection(connectionResult: ConnectionPathResult): void {
+  requeueConnection(connectionResult: ConnectionPathResult): boolean {
+    this.totalRipCount++
+
+    // Check if we've exceeded MAX_RIPS
+    if (this.totalRipCount > this.MAX_RIPS) {
+      this.failed = true
+      this.error = `Exceeded MAX_RIPS (${this.MAX_RIPS}) - too many connections ripped`
+      return false
+    }
+
     // Check if this connection is in the processed queue (already routed)
     const processedIndex =
       this.processedConnectionQueue.indexOf(connectionResult)
@@ -1671,7 +1689,7 @@ export class PortPointPathingSolver extends BaseSolver {
       // Remove from processed queue and add to unprocessed for re-routing
       this.processedConnectionQueue.splice(processedIndex, 1)
       this.unprocessedConnectionQueue.push(connectionResult)
-      return
+      return true
     }
 
     // Check if in unprocessed queue - move to front for priority
@@ -1681,6 +1699,7 @@ export class PortPointPathingSolver extends BaseSolver {
       this.unprocessedConnectionQueue.splice(unprocessedIndex, 1)
       this.unprocessedConnectionQueue.unshift(connectionResult)
     }
+    return true
   }
 
   /**
@@ -1696,6 +1715,9 @@ export class PortPointPathingSolver extends BaseSolver {
     const nodeIds = Array.from(new Set(path.map((c) => c.currentNodeId)))
 
     for (const nodeId of nodeIds) {
+      // Stop if solver already failed (e.g., MAX_RIPS exceeded)
+      if (this.failed) return
+
       const node = this.nodeMap.get(nodeId)
       if (!node) continue
 
@@ -1740,7 +1762,8 @@ export class PortPointPathingSolver extends BaseSolver {
 
         // If pf decreases rip the connection
         this.ripConnection(connResult)
-        this.requeueConnection(connResult)
+        const success = this.requeueConnection(connResult)
+        if (!success) return // MAX_RIPS exceeded, solver failed
         currentPf = pfWithoutConn
 
         // Clear cost caches since state changed
