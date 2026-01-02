@@ -276,6 +276,7 @@ export class JumperPrepatternSolver extends BaseSolver {
               NODE_PF_FACTOR: 100,
               NODE_PF_MAX_PENALTY: 100,
               CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
+              FORCE_OFF_BOARD_FREQUENCY: 0.8,
               MIN_ALLOWED_BOARD_SCORE: -1,
               GREEDY_MULTIPLIER: 1,
               FORCE_CENTER_FIRST: true,
@@ -531,12 +532,13 @@ export class JumperPrepatternSolver extends BaseSolver {
   _generatePrepatternJumpers() {
     // Generate prepattern jumpers based on the node layout
     // Alternates between horizontal (0°) and vertical (90°) orientations
+    const padding = 0.2
     const node = this.nodeWithPortPoints
     const bounds = {
-      minX: node.center.x - node.width / 2,
-      maxX: node.center.x + node.width / 2,
-      minY: node.center.y - node.height / 2,
-      maxY: node.center.y + node.height / 2,
+      minX: node.center.x - node.width / 2 + padding,
+      maxX: node.center.x + node.width / 2 - padding,
+      minY: node.center.y - node.height / 2 + padding,
+      maxY: node.center.y + node.height / 2 - padding,
     }
 
     const dims = JUMPER_DIMENSIONS[this.jumperFootprint]
@@ -551,11 +553,16 @@ export class JumperPrepatternSolver extends BaseSolver {
 
     let jumperIndex = 0
 
+    const gridOffsetX = (node.width - numCols * cellSize) / 2
+    const gridOffsetY = (node.height - numRows * cellSize) / 2
+
     for (let row = 0; row < numRows; row++) {
       for (let col = 0; col < numCols; col++) {
         // Center of this grid cell
-        const cellCenterX = bounds.minX + cellSize / 2 + col * cellSize
-        const cellCenterY = bounds.minY + cellSize / 2 + row * cellSize
+        const cellCenterX =
+          bounds.minX + cellSize / 2 + col * cellSize + gridOffsetX
+        const cellCenterY =
+          bounds.minY + cellSize / 2 + row * cellSize + gridOffsetY
 
         // Alternate orientation based on checkerboard pattern
         const isVertical = (row + col) % 2 === 1
