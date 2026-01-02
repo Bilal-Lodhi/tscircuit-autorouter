@@ -67,9 +67,7 @@ type JumperFootprint = "0603" | "1206"
 
 export interface JumperPrepatternSolverHyperParameters {
   /** 0 = horizontal first, 1 = vertical first */
-  FIRST_ORIENTATION?: 0 | 1
-  /** 0 = single jumper per cell, 1 = double jumpers in alternating cells */
-  IMPROVED_DENSITY?: 0 | 1
+  FIRST_ORIENTATION?: "horizontal" | "vertical"
 }
 
 export interface JumperPrepatternSolverParams {
@@ -200,7 +198,7 @@ export class JumperPrepatternSolver extends BaseSolver {
     ),
     definePipelineStep(
       "portPointPathingSolver",
-      HyperPortPointPathingSolver,
+      PortPointPathingSolver,
       (solver) => {
         // Build input nodes with port points from the segment solver
         const inputNodes: InputNodeWithPortPoints[] = solver.capacityNodes.map(
@@ -257,7 +255,7 @@ export class JumperPrepatternSolver extends BaseSolver {
             inputNodes,
             capacityMeshNodes: solver.capacityNodes,
             colorMap: solver.colorMap,
-            numShuffleSeeds: 1000,
+            numShuffleSeeds: 5000,
             hyperParameters: {
               NODE_PF_FACTOR: 100,
               NODE_PF_MAX_PENALTY: 100,

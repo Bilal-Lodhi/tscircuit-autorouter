@@ -33,7 +33,7 @@ const JUMPER_DIMENSIONS: Record<JumperFootprint, typeof JUMPER_0603> = {
 /**
  * Default margin between jumpers in mm
  */
-const JUMPER_MARGIN = 1
+const JUMPER_MARGIN = 0.6
 
 export interface Obstacle {
   type: "rect"
@@ -64,7 +64,6 @@ export interface PatternResult {
  *
  * Hyperparameters:
  * - FIRST_ORIENTATION: "horizontal" (0) or "vertical" (1) - determines which orientation starts at (0,0)
- * - IMPROVED_DENSITY: boolean (0 or 1) - if enabled, every other cell has two stacked jumpers
  */
 export function alternatingGrid(jps: JumperPrepatternSolver): PatternResult {
   const prepatternJumpers: PrepatternJumper[] = []
@@ -84,9 +83,8 @@ export function alternatingGrid(jps: JumperPrepatternSolver): PatternResult {
 
   // Get hyperparameters with defaults
   // FIRST_ORIENTATION: 0 = horizontal first, 1 = vertical first
-  const firstOrientationVertical = jps.hyperParameters.FIRST_ORIENTATION === 1
-  // IMPROVED_DENSITY: 0 = single jumper per cell, 1 = double jumpers in alternating cells
-  const improvedDensity = jps.hyperParameters.IMPROVED_DENSITY === 1
+  const firstOrientationVertical =
+    jps.hyperParameters.FIRST_ORIENTATION === "vertical"
 
   // Cell size for the grid - each cell fits one jumper (either orientation)
   // Use the larger dimension plus margin to ensure no overlap
@@ -162,7 +160,6 @@ export function alternatingGrid(jps: JumperPrepatternSolver): PatternResult {
     end: { x: number; y: number },
   ) => {
     // Check bounds
-    const minCoord = Math.min(start.x, end.x, start.y, end.y)
     const maxX = Math.max(start.x, end.x)
     const maxY = Math.max(start.y, end.y)
 
@@ -215,78 +212,24 @@ export function alternatingGrid(jps: JumperPrepatternSolver): PatternResult {
       // Alternate orientation based on checkerboard pattern
       // XOR with firstOrientationVertical to flip the pattern if needed
       const baseIsVertical = (row + col) % 2 === 1
-      const isVertical = firstOrientationVertical ? !baseIsVertical : baseIsVertical
+      const isVertical = firstOrientationVertical
+        ? !baseIsVertical
+        : baseIsVertical
 
-      if (improvedDensity && !isVertical) {
-        // For horizontal cells in improved density mode, place two vertical jumpers stacked
-        // This creates higher density by putting two jumpers where one would normally go
-        const stackSpacing = dims.width + 0.3 // Space between the two stacked jumpers
+      let start: { x: number; y: number }
+      let end: { x: number; y: number }
 
-        // Upper jumper (vertical)
-        const upperStart = {
-          x: cellCenterX,
-          y: cellCenterY - stackSpacing / 2 - jumperLength / 2,
-        }
-        const upperEnd = {
-          x: cellCenterX,
-          y: cellCenterY - stackSpacing / 2 + jumperLength / 2,
-        }
-
-        // Lower jumper (vertical)
-        const lowerStart = {
-          x: cellCenterX,
-          y: cellCenterY + stackSpacing / 2 - jumperLength / 2,
-        }
-        const lowerEnd = {
-          x: cellCenterX,
-          y: cellCenterY + stackSpacing / 2 + jumperLength / 2,
-        }
-
-        addJumper(upperStart, upperEnd)
-        addJumper(lowerStart, lowerEnd)
-      } else if (improvedDensity && isVertical) {
-        // For vertical cells in improved density mode, place two horizontal jumpers stacked
-        const stackSpacing = dims.width + 0.3
-
-        // Left jumper (horizontal)
-        const leftStart = {
-          x: cellCenterX - stackSpacing / 2 - jumperLength / 2,
-          y: cellCenterY,
-        }
-        const leftEnd = {
-          x: cellCenterX - stackSpacing / 2 + jumperLength / 2,
-          y: cellCenterY,
-        }
-
-        // Right jumper (horizontal)
-        const rightStart = {
-          x: cellCenterX + stackSpacing / 2 - jumperLength / 2,
-          y: cellCenterY,
-        }
-        const rightEnd = {
-          x: cellCenterX + stackSpacing / 2 + jumperLength / 2,
-          y: cellCenterY,
-        }
-
-        addJumper(leftStart, leftEnd)
-        addJumper(rightStart, rightEnd)
+      if (isVertical) {
+        // Vertical jumper (90°)
+        start = { x: cellCenterX, y: cellCenterY - jumperLength / 2 }
+        end = { x: cellCenterX, y: cellCenterY + jumperLength / 2 }
       } else {
-        // Standard single jumper per cell
-        let start: { x: number; y: number }
-        let end: { x: number; y: number }
-
-        if (isVertical) {
-          // Vertical jumper (90°)
-          start = { x: cellCenterX, y: cellCenterY - jumperLength / 2 }
-          end = { x: cellCenterX, y: cellCenterY + jumperLength / 2 }
-        } else {
-          // Horizontal jumper (0°)
-          start = { x: cellCenterX - jumperLength / 2, y: cellCenterY }
-          end = { x: cellCenterX + jumperLength / 2, y: cellCenterY }
-        }
-
-        addJumper(start, end)
+        // Horizontal jumper (0°)
+        start = { x: cellCenterX - jumperLength / 2, y: cellCenterY }
+        end = { x: cellCenterX + jumperLength / 2, y: cellCenterY }
       }
+
+      addJumper(start, end)
     }
   }
 
