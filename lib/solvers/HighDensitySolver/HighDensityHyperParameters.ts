@@ -48,4 +48,7 @@ export interface HighDensityHyperParameters {
   // Penalizes nodes that are close to the direct line between future connection start/end points
   FUTURE_CONNECTION_LINE_PROXIMITY?: number // mm - proximity threshold
   FUTURE_CONNECTION_LINE_PENALTY?: number // penalty factor
+
+  // Minimum travel distance before allowing jumper neighbors
+  MIN_TRAVEL_BEFORE_JUMPER?: number // mm - default: 3
 }
