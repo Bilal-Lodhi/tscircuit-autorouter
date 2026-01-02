@@ -235,7 +235,6 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
       fill: color,
       stroke: "rgba(0, 0, 0, 0.5)",
       layer: "jumper",
-      step,
     })
 
     // End pad
@@ -249,7 +248,6 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
       fill: color,
       stroke: "rgba(0, 0, 0, 0.5)",
       layer: "jumper",
-      step,
     })
 
     // Draw a line connecting the pads (representing the jumper body)
@@ -258,7 +256,6 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
       strokeColor: "rgba(100, 100, 100, 0.8)",
       strokeWidth: padWidth * 0.3,
       layer: "jumper-body",
-      step,
     })
   }
 
@@ -305,7 +302,6 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
             points: [p1, p2],
             strokeColor: safeTransparentize(routeColor, 0.2),
             layer: "route-layer-0",
-            step: routeIndex,
             strokeWidth: route.traceThickness,
           })
         }
