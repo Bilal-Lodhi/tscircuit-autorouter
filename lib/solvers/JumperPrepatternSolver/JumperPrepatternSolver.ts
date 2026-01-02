@@ -71,6 +71,11 @@ const JUMPER_DIMENSIONS: Record<JumperFootprint, typeof JUMPER_0805> = {
   "1206": JUMPER_1206,
 }
 
+/**
+ * Default margin between jumpers in mm
+ */
+const JUMPER_MARGIN = 1
+
 type JumperFootprint = "0805" | "0603" | "1206"
 
 interface PrepatternJumper {
@@ -523,6 +528,7 @@ export class JumperPrepatternSolver extends BaseSolver {
 
   _generatePrepatternJumpers() {
     // Generate prepattern jumpers based on the node layout
+    // Alternates between horizontal (0°) and vertical (90°) orientations
     const node = this.nodeWithPortPoints
     const bounds = {
       minX: node.center.x - node.width / 2,
@@ -533,33 +539,49 @@ export class JumperPrepatternSolver extends BaseSolver {
 
     const dims = JUMPER_DIMENSIONS[this.jumperFootprint]
     const jumperLength = dims.length
-    const jumperSpacing = jumperLength * 2.5
 
-    const numHorizontalJumpers = Math.floor(
-      (bounds.maxX - bounds.minX - jumperLength) / jumperSpacing,
-    )
+    // Cell size for the grid - each cell fits one jumper (either orientation)
+    // Use the larger dimension plus margin to ensure no overlap
+    const cellSize = jumperLength + JUMPER_MARGIN
 
-    const rowSpacing = dims.width * 3
-    const numRows = Math.floor(
-      (bounds.maxY - bounds.minY - dims.width) / rowSpacing,
-    )
+    const numCols = Math.floor((bounds.maxX - bounds.minX) / cellSize)
+    const numRows = Math.floor((bounds.maxY - bounds.minY) / cellSize)
 
     let jumperIndex = 0
 
     for (let row = 0; row < numRows; row++) {
-      const y = bounds.minY + dims.width + row * rowSpacing
-      const isOddRow = row % 2 === 1
-      const startX =
-        bounds.minX + jumperLength / 2 + (isOddRow ? jumperSpacing / 2 : 0)
+      for (let col = 0; col < numCols; col++) {
+        // Center of this grid cell
+        const cellCenterX = bounds.minX + cellSize / 2 + col * cellSize
+        const cellCenterY = bounds.minY + cellSize / 2 + row * cellSize
 
-      for (let col = 0; col < numHorizontalJumpers; col++) {
-        const x = startX + col * jumperSpacing
-        if (x + jumperLength / 2 > bounds.maxX) break
+        // Alternate orientation based on checkerboard pattern
+        const isVertical = (row + col) % 2 === 1
 
-        const overlapsPortPoint = this._jumperOverlapsPortPoint(
-          { x, y },
-          { x: x + jumperLength, y },
-        )
+        let start: { x: number; y: number }
+        let end: { x: number; y: number }
+
+        if (isVertical) {
+          // Vertical jumper (90°)
+          start = { x: cellCenterX, y: cellCenterY - jumperLength / 2 }
+          end = { x: cellCenterX, y: cellCenterY + jumperLength / 2 }
+        } else {
+          // Horizontal jumper (0°)
+          start = { x: cellCenterX - jumperLength / 2, y: cellCenterY }
+          end = { x: cellCenterX + jumperLength / 2, y: cellCenterY }
+        }
+
+        // Check bounds
+        if (
+          start.x < bounds.minX ||
+          end.x > bounds.maxX ||
+          start.y < bounds.minY ||
+          end.y > bounds.maxY
+        ) {
+          continue
+        }
+
+        const overlapsPortPoint = this._jumperOverlapsPortPoint(start, end)
 
         if (!overlapsPortPoint) {
           const jumperId = `jumper_${jumperIndex}`
@@ -567,8 +589,8 @@ export class JumperPrepatternSolver extends BaseSolver {
 
           this.prepatternJumpers.push({
             jumperId,
-            start: { x, y },
-            end: { x: x + jumperLength, y },
+            start,
+            end,
             footprint: this.jumperFootprint,
             offBoardConnectionId,
           })
