@@ -20,7 +20,6 @@ import {
 } from "../PortPointPathingSolver/HyperPortPointPathingSolver"
 import { MultiSectionPortPointOptimizer } from "../MultiSectionPortPointOptimizer"
 import { safeTransparentize } from "../colors"
-import { distance } from "@tscircuit/math-utils"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { SimpleRouteJson, SimpleRouteConnection } from "../../types"
 import { AvailableSegmentPointSolver } from "../AvailableSegmentPointSolver/AvailableSegmentPointSolver"
@@ -31,6 +30,11 @@ import { getConnectivityMapFromSimpleRouteJson } from "../../utils/getConnectivi
 import { getColorMap } from "../colors"
 import { RelateNodesToOffBoardConnectionsSolver } from "../../autorouter-pipelines/AssignableAutoroutingPipeline2/RelateNodesToOffBoardConnectionsSolver"
 import { updateConnMapWithOffboardObstacleConnections } from "../../autorouter-pipelines/AssignableAutoroutingPipeline2/updateConnMapWithOffboardObstacleConnections"
+import {
+  alternatingGrid,
+  type PatternResult,
+  type PrepatternJumper,
+} from "./patterns/alternatingGrid"
 
 /**
  * 0603 footprint dimensions in mm
@@ -59,20 +63,13 @@ const JUMPER_DIMENSIONS: Record<JumperFootprint, typeof JUMPER_0603> = {
   "1206": JUMPER_1206,
 }
 
-/**
- * Default margin between jumpers in mm
- */
-const JUMPER_MARGIN = 1
-
 type JumperFootprint = "0603" | "1206"
 
-interface PrepatternJumper {
-  jumperId: string
-  start: { x: number; y: number }
-  end: { x: number; y: number }
-  footprint: JumperFootprint
-  /** Shared offBoardConnectsTo ID for both pads */
-  offBoardConnectionId: string
+export interface JumperPrepatternSolverHyperParameters {
+  /** 0 = horizontal first, 1 = vertical first */
+  FIRST_ORIENTATION?: 0 | 1
+  /** 0 = single jumper per cell, 1 = double jumpers in alternating cells */
+  IMPROVED_DENSITY?: 0 | 1
 }
 
 export interface JumperPrepatternSolverParams {
@@ -80,7 +77,7 @@ export interface JumperPrepatternSolverParams {
   colorMap?: Record<string, string>
   traceWidth?: number
   jumperFootprint?: JumperFootprint
-  hyperParameters?: Record<string, number>
+  hyperParameters?: JumperPrepatternSolverHyperParameters
   connMap?: ConnectivityMap
 }
 
@@ -120,11 +117,12 @@ export class JumperPrepatternSolver extends BaseSolver {
   colorMap: Record<string, string>
   traceWidth: number
   jumperFootprint: JumperFootprint
-  hyperParameters: Record<string, number>
+  hyperParameters: JumperPrepatternSolverHyperParameters
   connMap: ConnectivityMap
 
   // Generated data
   prepatternJumpers: PrepatternJumper[] = []
+  patternResult: PatternResult | null = null
   capacityNodes: CapacityMeshNode[] = []
   capacityEdges: CapacityMeshEdge[] = []
   inputNodes: InputNodeWithPortPoints[] = []
@@ -350,8 +348,9 @@ export class JumperPrepatternSolver extends BaseSolver {
     this.hyperParameters = params.hyperParameters ?? {}
     this.MAX_ITERATIONS = 100_000
 
-    // Generate jumpers first (before creating SimpleRouteJson since it needs the obstacles)
-    this._generatePrepatternJumpers()
+    // Generate jumpers using the pattern function (before creating SimpleRouteJson since it needs the obstacles)
+    this.patternResult = alternatingGrid(this)
+    this.prepatternJumpers = this.patternResult.prepatternJumpers
 
     // Initialize data before pipeline starts
     this.srjWithPointPairs = this._createSimpleRouteJson()
@@ -458,45 +457,8 @@ export class JumperPrepatternSolver extends BaseSolver {
   }
 
   _createJumperPadObstacles(): SimpleRouteJson["obstacles"] {
-    const obstacles: SimpleRouteJson["obstacles"] = []
-
-    for (const jumper of this.prepatternJumpers) {
-      const dims = JUMPER_DIMENSIONS[jumper.footprint]
-
-      // Determine pad orientation based on jumper direction
-      const dx = jumper.end.x - jumper.start.x
-      const dy = jumper.end.y - jumper.start.y
-      const isHorizontal = Math.abs(dx) > Math.abs(dy)
-
-      const padWidth = isHorizontal ? dims.padLength : dims.padWidth
-      const padHeight = isHorizontal ? dims.padWidth : dims.padLength
-
-      // Start pad obstacle
-      obstacles.push({
-        type: "rect",
-        obstacleId: `${jumper.jumperId}_pad_start`,
-        layers: ["top"],
-        center: { x: jumper.start.x, y: jumper.start.y },
-        width: padWidth,
-        height: padHeight,
-        connectedTo: [],
-        offBoardConnectsTo: [jumper.offBoardConnectionId],
-      })
-
-      // End pad obstacle
-      obstacles.push({
-        type: "rect",
-        obstacleId: `${jumper.jumperId}_pad_end`,
-        layers: ["top"],
-        center: { x: jumper.end.x, y: jumper.end.y },
-        width: padWidth,
-        height: padHeight,
-        connectedTo: [],
-        offBoardConnectsTo: [jumper.offBoardConnectionId],
-      })
-    }
-
-    return obstacles
+    // Return obstacles from the pattern result
+    return this.patternResult?.jumperPadObstacles ?? []
   }
 
   _addPortPointObstacles(obstacles: SimpleRouteJson["obstacles"]) {
@@ -515,105 +477,6 @@ export class JumperPrepatternSolver extends BaseSolver {
         connectedTo: [pp.connectionName],
       })
     }
-  }
-
-  _generatePrepatternJumpers() {
-    // Generate prepattern jumpers based on the node layout
-    // Alternates between horizontal (0°) and vertical (90°) orientations
-    const padding = 0.2
-    const node = this.nodeWithPortPoints
-    const bounds = {
-      minX: node.center.x - node.width / 2 + padding,
-      maxX: node.center.x + node.width / 2 - padding,
-      minY: node.center.y - node.height / 2 + padding,
-      maxY: node.center.y + node.height / 2 - padding,
-    }
-
-    const dims = JUMPER_DIMENSIONS[this.jumperFootprint]
-    const jumperLength = dims.length
-
-    // Cell size for the grid - each cell fits one jumper (either orientation)
-    // Use the larger dimension plus margin to ensure no overlap
-    const cellSize = jumperLength + JUMPER_MARGIN
-
-    const numCols = Math.floor((bounds.maxX - bounds.minX) / cellSize)
-    const numRows = Math.floor((bounds.maxY - bounds.minY) / cellSize)
-
-    let jumperIndex = 0
-
-    const gridOffsetX = (node.width - numCols * cellSize) / 2
-    const gridOffsetY = (node.height - numRows * cellSize) / 2
-
-    for (let row = 0; row < numRows; row++) {
-      for (let col = 0; col < numCols; col++) {
-        // Center of this grid cell
-        const cellCenterX =
-          bounds.minX + cellSize / 2 + col * cellSize + gridOffsetX
-        const cellCenterY =
-          bounds.minY + cellSize / 2 + row * cellSize + gridOffsetY
-
-        // Alternate orientation based on checkerboard pattern
-        const isVertical = (row + col) % 2 === 1
-
-        let start: { x: number; y: number }
-        let end: { x: number; y: number }
-
-        if (isVertical) {
-          // Vertical jumper (90°)
-          start = { x: cellCenterX, y: cellCenterY - jumperLength / 2 }
-          end = { x: cellCenterX, y: cellCenterY + jumperLength / 2 }
-        } else {
-          // Horizontal jumper (0°)
-          start = { x: cellCenterX - jumperLength / 2, y: cellCenterY }
-          end = { x: cellCenterX + jumperLength / 2, y: cellCenterY }
-        }
-
-        // Check bounds
-        if (
-          start.x < bounds.minX ||
-          end.x > bounds.maxX ||
-          start.y < bounds.minY ||
-          end.y > bounds.maxY
-        ) {
-          continue
-        }
-
-        const overlapsPortPoint = this._jumperOverlapsPortPoint(start, end)
-
-        if (!overlapsPortPoint) {
-          const jumperId = `jumper_${jumperIndex}`
-          const offBoardConnectionId = `jumper_conn_${jumperIndex}`
-
-          this.prepatternJumpers.push({
-            jumperId,
-            start,
-            end,
-            footprint: this.jumperFootprint,
-            offBoardConnectionId,
-          })
-
-          jumperIndex++
-        }
-      }
-    }
-  }
-
-  _jumperOverlapsPortPoint(
-    start: { x: number; y: number },
-    end: { x: number; y: number },
-  ): boolean {
-    const dims = JUMPER_DIMENSIONS[this.jumperFootprint]
-    const margin = dims.width / 2 + this.traceWidth * 2
-
-    for (const pp of this.nodeWithPortPoints.portPoints) {
-      const distToStart = distance(pp, start)
-      if (distToStart < margin) return true
-
-      const distToEnd = distance(pp, end)
-      if (distToEnd < margin) return true
-    }
-
-    return false
   }
 
   _combineResults() {
@@ -636,7 +499,7 @@ export class JumperPrepatternSolver extends BaseSolver {
     }
   }
 
-  _findJumpersForRoute(hdRoute: HighDensityIntraNodeRoute): Jumper[] {
+  _findJumpersForRoute(_hdRoute: HighDensityIntraNodeRoute): Jumper[] {
     // For now, return empty - jumper assignment logic can be added later
     return []
   }
