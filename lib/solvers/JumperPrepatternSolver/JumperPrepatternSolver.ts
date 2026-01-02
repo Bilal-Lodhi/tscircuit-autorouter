@@ -257,10 +257,10 @@ export class JumperPrepatternSolver extends BaseSolver {
             colorMap: solver.colorMap,
             numShuffleSeeds: 5000,
             hyperParameters: {
-              NODE_PF_FACTOR: 100,
-              NODE_PF_MAX_PENALTY: 100,
+              NODE_PF_FACTOR: 20,
+              NODE_PF_MAX_PENALTY: 20,
               CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
-              FORCE_OFF_BOARD_FREQUENCY: 0.8,
+              FORCE_OFF_BOARD_FREQUENCY: 0,
               MIN_ALLOWED_BOARD_SCORE: -1,
               FORCE_CENTER_FIRST: true,
             },
@@ -381,7 +381,6 @@ export class JumperPrepatternSolver extends BaseSolver {
       } else if (this.activeSubSolver.failed) {
         this.error = this.activeSubSolver?.error
         this.failed = true
-        this.activeSubSolver = null
       }
       return
     }

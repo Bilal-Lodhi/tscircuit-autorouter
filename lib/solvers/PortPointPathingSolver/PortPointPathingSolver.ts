@@ -248,11 +248,16 @@ export class PortPointPathingSolver extends BaseSolver {
   ITERATIONS_PER_MM_FOR_PATH = 30
   BASE_ITERATIONS_PER_PATH = 10000
 
-  RIPPING_ENABLED = true
+  get RIPPING_ENABLED() {
+    return this.hyperParameters.RIPPING_ENABLED ?? true
+  }
 
   get RIPPING_PF_THRESHOLD() {
     return this.hyperParameters.RIPPING_PF_THRESHOLD ?? 0.3
   }
+
+  /** Tracks which connections have been test-ripped for each node to avoid retesting */
+  testedRipConnections: Map<CapacityMeshNodeId, Set<string>> = new Map()
 
   get MIN_ALLOWED_BOARD_SCORE() {
     return this.hyperParameters.MIN_ALLOWED_BOARD_SCORE ?? -10000
@@ -1347,6 +1352,11 @@ export class PortPointPathingSolver extends BaseSolver {
       // Committed state changed -> invalidate caches
       this.clearCostCaches()
 
+      // Process ripping if enabled
+      if (this.RIPPING_ENABLED) {
+        this.processRippingForPath(path, connectionName)
+      }
+
       this.currentConnectionIndex++
       this.progress =
         this.currentConnectionIndex / this.connectionsWithResults.length
@@ -1512,6 +1522,177 @@ export class PortPointPathingSolver extends BaseSolver {
     }
 
     return result
+  }
+
+  /**
+   * Get all connections that pass through a given node (excluding a specific connection).
+   */
+  getConnectionsInNode(
+    nodeId: CapacityMeshNodeId,
+    excludeConnectionName?: string,
+  ): ConnectionPathResult[] {
+    const connections: ConnectionPathResult[] = []
+    const seenConnectionNames = new Set<string>()
+
+    for (const connResult of this.connectionsWithResults) {
+      if (!connResult.path) continue
+      if (connResult.connection.name === excludeConnectionName) continue
+      if (seenConnectionNames.has(connResult.connection.name)) continue
+
+      // Check if this connection passes through the node
+      for (const candidate of connResult.path) {
+        if (candidate.currentNodeId === nodeId) {
+          connections.push(connResult)
+          seenConnectionNames.add(connResult.connection.name)
+          break
+        }
+      }
+    }
+
+    return connections
+  }
+
+  /**
+   * Compute the pf of a node with a specific connection removed (for test-ripping).
+   */
+  computeNodePfWithoutConnection(
+    node: InputNodeWithPortPoints,
+    connectionNameToRemove: string,
+  ): number {
+    if (node._containsTarget) return 0
+
+    const existingPortPoints =
+      this.nodeAssignedPortPoints.get(node.capacityMeshNodeId) ?? []
+
+    // Filter out port points for the connection we're testing removal of
+    const filteredPortPoints = existingPortPoints.filter(
+      (pp) => pp.connectionName !== connectionNameToRemove,
+    )
+
+    const nodeWithPortPoints: NodeWithPortPoints = {
+      capacityMeshNodeId: node.capacityMeshNodeId,
+      center: node.center,
+      width: node.width,
+      height: node.height,
+      portPoints: filteredPortPoints,
+      availableZ: node.availableZ,
+    }
+
+    const crossings = getIntraNodeCrossingsUsingCircle(nodeWithPortPoints)
+
+    return calculateNodeProbabilityOfFailure(
+      this.capacityMeshNodeMap.get(node.capacityMeshNodeId)!,
+      crossings.numSameLayerCrossings,
+      crossings.numEntryExitLayerChanges,
+      crossings.numTransitionPairCrossings,
+    )
+  }
+
+  /**
+   * Rip a connection: unassign all its port points and clear its path.
+   * The connection will be re-routed later.
+   */
+  ripConnection(connectionResult: ConnectionPathResult): void {
+    const connectionName = connectionResult.connection.name
+
+    // Remove port points from assignedPortPoints map
+    for (const [portPointId, assignment] of this.assignedPortPoints.entries()) {
+      if (assignment.connectionName === connectionName) {
+        this.assignedPortPoints.delete(portPointId)
+      }
+    }
+
+    // Remove port points from nodeAssignedPortPoints
+    for (const [nodeId, portPoints] of this.nodeAssignedPortPoints.entries()) {
+      const filteredPortPoints = portPoints.filter(
+        (pp) => pp.connectionName !== connectionName,
+      )
+      this.nodeAssignedPortPoints.set(nodeId, filteredPortPoints)
+    }
+
+    // Clear the path and portPoints so it gets re-routed
+    connectionResult.path = undefined
+    connectionResult.portPoints = undefined
+  }
+
+  /**
+   * Requeue a connection by moving it to after the current connection index.
+   * This ensures it gets re-routed after the current batch.
+   */
+  requeueConnection(connectionResult: ConnectionPathResult): void {
+    const currentIndex = this.connectionsWithResults.indexOf(connectionResult)
+    if (currentIndex === -1 || currentIndex <= this.currentConnectionIndex) {
+      return // Already processed or not found
+    }
+
+    // Move the connection to right after current index
+    this.connectionsWithResults.splice(currentIndex, 1)
+    this.connectionsWithResults.splice(
+      this.currentConnectionIndex + 1,
+      0,
+      connectionResult,
+    )
+  }
+
+  /**
+   * Process ripping for high-pf nodes after a path is solved.
+   * For each node with pf > RIPPING_PF_THRESHOLD that the path goes through,
+   * test-rip connections until pf is below threshold.
+   */
+  processRippingForPath(path: PortPointCandidate[], justRoutedConnectionName: string): void {
+    // Get unique nodes in the path
+    const nodeIds = Array.from(new Set(path.map((c) => c.currentNodeId)))
+
+    for (const nodeId of nodeIds) {
+      const node = this.nodeMap.get(nodeId)
+      if (!node) continue
+
+      // Check current pf
+      let currentPf = this.computeNodePf(node)
+      if (currentPf <= this.RIPPING_PF_THRESHOLD) continue
+
+      // Initialize tested connections set for this node if needed
+      if (!this.testedRipConnections.has(nodeId)) {
+        this.testedRipConnections.set(nodeId, new Set())
+      }
+      const testedForNode = this.testedRipConnections.get(nodeId)!
+
+      // Get connections in this node (excluding the one we just routed)
+      const connectionsInNode = this.getConnectionsInNode(
+        nodeId,
+        justRoutedConnectionName,
+      )
+
+      // Shuffle connections pseudo-randomly for test order
+      const shuffledConnections = cloneAndShuffleArray(
+        connectionsInNode,
+        (this.hyperParameters.SHUFFLE_SEED ?? 0) + this.currentConnectionIndex,
+      )
+
+      // Test-rip connections until pf is below threshold
+      for (const connResult of shuffledConnections) {
+        if (currentPf <= this.RIPPING_PF_THRESHOLD) break
+
+        const connName = connResult.connection.name
+
+        // Skip if we've already tested this connection for this node
+        if (testedForNode.has(connName)) continue
+        testedForNode.add(connName)
+
+        // Compute pf without this connection
+        const pfWithoutConn = this.computeNodePfWithoutConnection(node, connName)
+
+        // If pf decreases, rip the connection
+        if (pfWithoutConn < currentPf) {
+          this.ripConnection(connResult)
+          this.requeueConnection(connResult)
+          currentPf = pfWithoutConn
+
+          // Clear cost caches since state changed
+          this.clearCostCaches()
+        }
+      }
+    }
   }
 
   visualize(): GraphicsObject {
