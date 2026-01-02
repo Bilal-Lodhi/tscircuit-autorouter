@@ -26,7 +26,7 @@ export type FutureConnection = {
  * 0.8mm x 0.95mm pads, 1.65mm center-to-center
  */
 const JUMPER_0603 = {
-  length: 1.65, // mm (center-to-center distance)
+  length: 1.8, // mm (center-to-center distance)
   width: 0.95, // mm (perpendicular to jumper direction)
   padLength: 0.8, // mm (pad at each end)
   padWidth: 0.95, // mm
@@ -192,6 +192,12 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     this.bounds = opts.bounds
     this.connMap = opts.connMap
     this.hyperParameters = opts.hyperParameters ?? {}
+
+    const diagonalNodeSize = Math.sqrt(
+      (opts.bounds.maxX - opts.bounds.minX) ** 2 +
+        (opts.bounds.maxY - opts.bounds.minY) ** 2,
+    )
+
     this.CELL_SIZE_FACTOR = this.hyperParameters.CELL_SIZE_FACTOR ?? 1
     this.JUMPER_PENALTY_FACTOR = 0.2
     this.FUTURE_CONNECTION_START_END_PROXIMITY ??= 8
@@ -199,9 +205,10 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
     // Initialize future connection jumper pad penalty parameters
     this.FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY =
-      this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY ?? 6
+      this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY ??
+      diagonalNodeSize / 4
     this.FUTURE_CONNECTION_JUMPER_PAD_PENALTY =
-      this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PENALTY ?? 100
+      this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PENALTY ?? 1000
 
     // Initialize jumper-to-jumper pad penalty parameters
     this.JUMPER_JUMPER_PAD_PROXIMITY =
@@ -1106,8 +1113,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     direction: { dx: number; dy: number },
   ): JumperNode | null {
     // Calculate the jumper length needed to clear the obstacle
-    const clearance = this.traceThickness + this.obstacleMargin
-    const jumpDistance = JUMPER_0603.length + clearance * 2
+    const jumpDistance = JUMPER_0603.length
 
     // Normalize direction
     const dirLength = Math.sqrt(
