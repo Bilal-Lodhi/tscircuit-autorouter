@@ -165,66 +165,12 @@ export class AvailableSegmentPointSolver extends BaseSolver {
       // If one node has offBoardConnectionId and the other doesn't,
       // check if the other is connected to the same offBoardConnectionId via another node
       if (node1._offBoardConnectionId && !node2._offBoardConnectionId) {
-        const node2Edges = this.nodeEdgeMap.get(node2.capacityMeshNodeId) ?? []
-        for (const e of node2Edges) {
-          const otherNodeId =
-            e.nodeIds[0] === node2.capacityMeshNodeId
-              ? e.nodeIds[1]
-              : e.nodeIds[0]
-          if (otherNodeId === node1.capacityMeshNodeId) continue
-          const otherNode = this.nodeMap.get(otherNodeId)
-          if (otherNode?._offBoardConnectionId === node1._offBoardConnectionId) {
-            // Check that exactly 2 nodes have this offBoardConnectionId
-            const nodesWithSameOffBoardId = this.nodes.filter(
-              (n) => n._offBoardConnectionId === node1._offBoardConnectionId,
-            )
-            if (nodesWithSameOffBoardId.length !== 2) continue
-
-            // Check that the midpoint of the two off-board nodes is inside node2
-            const midpoint = {
-              x: (node1.center.x + otherNode.center.x) / 2,
-              y: (node1.center.y + otherNode.center.y) / 2,
-            }
-            const insideNode2 =
-              midpoint.x >= node2.center.x - node2.width / 2 &&
-              midpoint.x <= node2.center.x + node2.width / 2 &&
-              midpoint.y >= node2.center.y - node2.height / 2 &&
-              midpoint.y <= node2.center.y + node2.height / 2
-            if (insideNode2) {
-              return null // Don't add port point
-            }
-          }
+        if (this.shouldSkipOffBoardPortPoint(node1, node2)) {
+          return null
         }
       } else if (node2._offBoardConnectionId && !node1._offBoardConnectionId) {
-        const node1Edges = this.nodeEdgeMap.get(node1.capacityMeshNodeId) ?? []
-        for (const e of node1Edges) {
-          const otherNodeId =
-            e.nodeIds[0] === node1.capacityMeshNodeId
-              ? e.nodeIds[1]
-              : e.nodeIds[0]
-          if (otherNodeId === node2.capacityMeshNodeId) continue
-          const otherNode = this.nodeMap.get(otherNodeId)
-          if (otherNode?._offBoardConnectionId === node2._offBoardConnectionId) {
-            // Check that exactly 2 nodes have this offBoardConnectionId
-            const nodesWithSameOffBoardId = this.nodes.filter(
-              (n) => n._offBoardConnectionId === node2._offBoardConnectionId,
-            )
-            if (nodesWithSameOffBoardId.length !== 2) continue
-
-            // Check that the midpoint of the two off-board nodes is inside node1
-            const midpoint = {
-              x: (node2.center.x + otherNode.center.x) / 2,
-              y: (node2.center.y + otherNode.center.y) / 2,
-            }
-            const insideNode1 =
-              midpoint.x >= node1.center.x - node1.width / 2 &&
-              midpoint.x <= node1.center.x + node1.width / 2 &&
-              midpoint.y >= node1.center.y - node1.height / 2 &&
-              midpoint.y <= node1.center.y + node1.height / 2
-            if (insideNode1) {
-              return null // Don't add port point
-            }
-          }
+        if (this.shouldSkipOffBoardPortPoint(node2, node1)) {
+          return null
         }
       }
       maxPortPoints = 1
@@ -302,6 +248,50 @@ export class AvailableSegmentPointSolver extends BaseSolver {
       availableZ,
       portPoints,
     }
+  }
+
+  /**
+   * Check if we should skip creating port points between an off-board node and a middle node.
+   * Returns true if the middle node is connected to another node with the same offBoardConnectionId,
+   * exactly 2 nodes have that ID, and their midpoint is inside the middle node.
+   */
+  private shouldSkipOffBoardPortPoint(
+    offBoardNode: CapacityMeshNode,
+    middleNode: CapacityMeshNode,
+  ): boolean {
+    const middleNodeEdges =
+      this.nodeEdgeMap.get(middleNode.capacityMeshNodeId) ?? []
+    for (const e of middleNodeEdges) {
+      const otherNodeId =
+        e.nodeIds[0] === middleNode.capacityMeshNodeId
+          ? e.nodeIds[1]
+          : e.nodeIds[0]
+      if (otherNodeId === offBoardNode.capacityMeshNodeId) continue
+      const otherNode = this.nodeMap.get(otherNodeId)
+      if (otherNode?._offBoardConnectionId !== offBoardNode._offBoardConnectionId)
+        continue
+
+      // Check that exactly 2 nodes have this offBoardConnectionId
+      const nodesWithSameOffBoardId = this.nodes.filter(
+        (n) => n._offBoardConnectionId === offBoardNode._offBoardConnectionId,
+      )
+      if (nodesWithSameOffBoardId.length !== 2) continue
+
+      // Check that the midpoint of the two off-board nodes is inside the middle node
+      const midpoint = {
+        x: (offBoardNode.center.x + otherNode.center.x) / 2,
+        y: (offBoardNode.center.y + otherNode.center.y) / 2,
+      }
+      const insideMiddleNode =
+        midpoint.x >= middleNode.center.x - middleNode.width / 2 &&
+        midpoint.x <= middleNode.center.x + middleNode.width / 2 &&
+        midpoint.y >= middleNode.center.y - middleNode.height / 2 &&
+        midpoint.y <= middleNode.center.y + middleNode.height / 2
+      if (insideMiddleNode) {
+        return true
+      }
+    }
+    return false
   }
 
   private findOverlappingSegment(
