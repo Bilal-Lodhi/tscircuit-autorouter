@@ -9,7 +9,7 @@ export default () => {
       nodeWithPortPoints: input.nodeWithPortPoints as any,
       colorMap: input.colorMap,
       traceWidth: input.traceWidth,
-      hyperParameters: input.hyperParameters,
+      hyperParameters: input.hyperParameters as any,
     })
   }, [])
 
