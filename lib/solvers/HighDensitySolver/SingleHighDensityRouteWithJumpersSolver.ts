@@ -622,7 +622,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     const obstacleProximityRate = this.getObstacleProximityPenalty(node)
     const edgeProximityRate = this.getEdgeProximityPenalty(node)
     const futureConnectionStartEndProximityRate =
-      this.getFutureConnectionPenalty(node)
+      this.getFutureConnectionStartEndPenalty(node)
     const futureConnectionLineRate = this.getFutureConnectionLinePenalty(node)
 
     // Get parent's rates and compute step distance for derivative calculation
@@ -734,7 +734,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
     const weightedMmNearFutureConnectionStartEnd =
       parentGComponents.weightedMmNearFutureConnectionStartEnd +
-      this.getFutureConnectionPenalty(node) * stepDist
+      this.getFutureConnectionStartEndPenalty(node) * stepDist
 
     const weightedMmNearFutureConnectionLine =
       parentGComponents.weightedMmNearFutureConnectionLine +
@@ -797,13 +797,13 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     return closestPoint
   }
 
-  getFutureConnectionPenalty(node: JumperNode) {
+  getFutureConnectionStartEndPenalty(node: JumperNode) {
     let futureConnectionPenalty = 0
     const closestFuturePoint = this.getClosestFutureConnectionPoint(node)
     const goalDist = distance(node, this.B)
     if (closestFuturePoint) {
       const distToFuturePoint =
-        distance(node, closestFuturePoint) - goalDist * 0.9
+        distance(node, closestFuturePoint) - goalDist * 0.5
       if (distToFuturePoint > this.FUTURE_CONNECTION_START_END_PROXIMITY)
         return 0
       const distRatio =
