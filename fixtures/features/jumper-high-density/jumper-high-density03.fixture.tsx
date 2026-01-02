@@ -13,5 +13,5 @@ export default () => {
     })
   }
 
-  return <GenericSolverDebugger createSolver={createSolver} />
+  return <GenericSolverDebugger autoStepOnce createSolver={createSolver} />
 }

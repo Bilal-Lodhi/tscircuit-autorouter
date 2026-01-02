@@ -9,6 +9,7 @@ import {
 } from "../HyperParameterSupervisorSolver"
 import type { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { HighDensityHyperParameters } from "./HighDensityHyperParameters"
+import type { GraphicsObject } from "graphics-debug"
 
 export class HyperIntraNodeSolverWithJumpers extends HyperParameterSupervisorSolver<IntraNodeSolverWithJumpers> {
   constructorParams: ConstructorParameters<typeof IntraNodeSolverWithJumpers>[0]
@@ -31,8 +32,8 @@ export class HyperIntraNodeSolverWithJumpers extends HyperParameterSupervisorSol
   getHyperParameterDefs() {
     return [
       {
-        name: "orderings6",
-        possibleValues: Array.from({ length: 6 }, (_, i) => ({
+        name: "orderings500",
+        possibleValues: Array.from({ length: 500 }, (_, i) => ({
           SHUFFLE_SEED: i,
         })),
       },
@@ -40,7 +41,13 @@ export class HyperIntraNodeSolverWithJumpers extends HyperParameterSupervisorSol
   }
 
   getCombinationDefs() {
-    return [["orderings6"]]
+    return [["orderings500"]]
+  }
+
+  _step() {
+    super._step()
+    this.stats.bestFitnessHyperParameters =
+      this.getSupervisedSolverWithBestFitness()?.hyperParameters
   }
 
   computeG(solver: IntraNodeSolverWithJumpers) {
@@ -65,5 +72,16 @@ export class HyperIntraNodeSolverWithJumpers extends HyperParameterSupervisorSol
 
   onSolve(solver: SupervisedSolver<IntraNodeSolverWithJumpers>) {
     this.solvedRoutes = solver.solver.solvedRoutes
+  }
+
+  visualize(): GraphicsObject {
+    // Use winning solver if available, otherwise fall back to best fitness solver
+    if (this.winningSolver) {
+      return this.winningSolver.visualize()
+    }
+    if (this.activeSubSolver) {
+      return this.activeSubSolver.visualize()
+    }
+    return super.visualize()
   }
 }

@@ -22,16 +22,24 @@ interface GenericSolverDebuggerProps {
   onSolverStarted?: (solver: BaseSolver) => void
   onSolverCompleted?: (solver: BaseSolver) => void
   showDeepestVisualizationInitial?: boolean
+  autoStepOnce?: boolean
 }
 
 export const GenericSolverDebugger = ({
   createSolver,
   animationSpeed = 10,
+  autoStepOnce = false,
   onSolverStarted,
   onSolverCompleted,
   showDeepestVisualizationInitial = false,
 }: GenericSolverDebuggerProps) => {
-  const [mainSolver, setMainSolver] = useState<BaseSolver>(() => createSolver())
+  const [mainSolver, setMainSolver] = useState<BaseSolver>(() => {
+    const solver = createSolver()
+    if (autoStepOnce) {
+      solver.step()
+    }
+    return solver
+  })
   const [previewMode, setPreviewMode] = useState(false)
   const [objectSelectionEnabled, setObjectSelectionEnabled] = useState(false)
   const [forcedUpdates, setForceUpdate] = useState(0)
@@ -82,6 +90,9 @@ export const GenericSolverDebugger = ({
   // Reset solver
   const resetSolver = () => {
     setMainSolver(createSolver())
+    if (autoStepOnce) {
+      mainSolver.step()
+    }
     setSelectedSolverKey("main")
     setSelectedStatKey(null)
   }
