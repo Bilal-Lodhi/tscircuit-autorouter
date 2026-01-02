@@ -1553,13 +1553,13 @@ export class PortPointPathingSolver extends BaseSolver {
   }
 
   /**
-   * Compute the pf of a node with a specific connection removed (for test-ripping).
+   * Compute the pf and crossing count of a node with a specific connection removed (for test-ripping).
    */
   computeNodePfWithoutConnection(
     node: InputNodeWithPortPoints,
     connectionNameToRemove: string,
-  ): number {
-    if (node._containsTarget) return 0
+  ): { pf: number; totalCrossings: number } {
+    if (node._containsTarget) return { pf: 0, totalCrossings: 0 }
 
     const existingPortPoints =
       this.nodeAssignedPortPoints.get(node.capacityMeshNodeId) ?? []
@@ -1579,13 +1579,27 @@ export class PortPointPathingSolver extends BaseSolver {
     }
 
     const crossings = getIntraNodeCrossingsUsingCircle(nodeWithPortPoints)
+    const totalCrossings = crossings.numSameLayerCrossings + crossings.numEntryExitLayerChanges + crossings.numTransitionPairCrossings
 
-    return calculateNodeProbabilityOfFailure(
+    const pf = calculateNodeProbabilityOfFailure(
       this.capacityMeshNodeMap.get(node.capacityMeshNodeId)!,
       crossings.numSameLayerCrossings,
       crossings.numEntryExitLayerChanges,
       crossings.numTransitionPairCrossings,
     )
+
+    return { pf, totalCrossings }
+  }
+
+  /**
+   * Compute the current crossing count for a node.
+   */
+  computeNodeCrossings(node: InputNodeWithPortPoints): number {
+    if (node._containsTarget) return 0
+
+    const nodeWithPortPoints = this.buildNodeWithPortPointsForCrossing(node)
+    const crossings = getIntraNodeCrossingsUsingCircle(nodeWithPortPoints)
+    return crossings.numSameLayerCrossings + crossings.numEntryExitLayerChanges + crossings.numTransitionPairCrossings
   }
 
   /**
@@ -1647,8 +1661,9 @@ export class PortPointPathingSolver extends BaseSolver {
       const node = this.nodeMap.get(nodeId)
       if (!node) continue
 
-      // Check current pf
+      // Check current pf and crossings
       let currentPf = this.computeNodePf(node)
+      let currentCrossings = this.computeNodeCrossings(node)
       if (currentPf <= this.RIPPING_PF_THRESHOLD) continue
 
       // Initialize tested connections set for this node if needed
@@ -1679,14 +1694,15 @@ export class PortPointPathingSolver extends BaseSolver {
         if (testedForNode.has(connName)) continue
         testedForNode.add(connName)
 
-        // Compute pf without this connection
-        const pfWithoutConn = this.computeNodePfWithoutConnection(node, connName)
+        // Compute pf and crossings without this connection
+        const { pf: pfWithoutConn, totalCrossings: crossingsWithoutConn } = this.computeNodePfWithoutConnection(node, connName)
 
-        // If pf decreases, rip the connection
-        if (pfWithoutConn < currentPf) {
+        // If pf decreases OR crossings decrease (helps with single-layer boards where pf stays at 1.0), rip the connection
+        if (pfWithoutConn < currentPf || crossingsWithoutConn < currentCrossings) {
           this.ripConnection(connResult)
           this.requeueConnection(connResult)
           currentPf = pfWithoutConn
+          currentCrossings = crossingsWithoutConn
 
           // Clear cost caches since state changed
           this.clearCostCaches()
