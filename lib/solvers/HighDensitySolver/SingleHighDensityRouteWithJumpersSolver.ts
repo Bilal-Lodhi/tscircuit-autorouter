@@ -22,15 +22,14 @@ export type FutureConnection = {
 }
 
 /**
- * 0805 footprint dimensions in mm
- * Actual 0805: 2.0mm x 1.25mm
- * We use slightly larger values for routing clearance
+ * 0603 footprint dimensions in mm
+ * 0.8mm x 0.95mm pads, 1.65mm center-to-center
  */
-const JUMPER_0805 = {
-  length: 2.0, // mm (along the jumper direction)
-  width: 1.25, // mm (perpendicular to jumper direction)
-  padLength: 0.5, // mm (pad at each end)
-  padWidth: 1.25, // mm
+const JUMPER_0603 = {
+  length: 1.65, // mm (center-to-center distance)
+  width: 0.95, // mm (perpendicular to jumper direction)
+  padLength: 0.8, // mm (pad at each end)
+  padWidth: 0.95, // mm
 }
 
 /**
@@ -384,7 +383,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
   get jumperPenaltyDistance() {
     return (
-      JUMPER_0805.length +
+      JUMPER_0603.length +
       this.straightLineDistance * this.JUMPER_PENALTY_FACTOR
     )
   }
@@ -440,9 +439,9 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     // Determine if jumper is horizontal or vertical for pad dimensions
     const isHorizontal = Math.abs(dx) > Math.abs(dy)
     const padHalfWidth =
-      (isHorizontal ? JUMPER_0805.padLength : JUMPER_0805.padWidth) / 2 + margin
+      (isHorizontal ? JUMPER_0603.padLength : JUMPER_0603.padWidth) / 2 + margin
     const padHalfHeight =
-      (isHorizontal ? JUMPER_0805.padWidth : JUMPER_0805.padLength) / 2 + margin
+      (isHorizontal ? JUMPER_0603.padWidth : JUMPER_0603.padLength) / 2 + margin
 
     // Check against start pad
     if (
@@ -527,9 +526,9 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     // Determine if jumper is horizontal or vertical for pad dimensions
     const isHorizontal = Math.abs(dx) > Math.abs(dy)
     const padHalfWidth =
-      (isHorizontal ? JUMPER_0805.padLength : JUMPER_0805.padWidth) / 2 + margin
+      (isHorizontal ? JUMPER_0603.padLength : JUMPER_0603.padWidth) / 2 + margin
     const padHalfHeight =
-      (isHorizontal ? JUMPER_0805.padWidth : JUMPER_0805.padLength) / 2 + margin
+      (isHorizontal ? JUMPER_0603.padWidth : JUMPER_0603.padLength) / 2 + margin
 
     // Check intersection with start pad
     if (
@@ -948,9 +947,9 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     const isHorizontal = Math.abs(dx) > Math.abs(dy)
 
     const padHalfW =
-      (isHorizontal ? JUMPER_0805.padLength : JUMPER_0805.padWidth) / 2
+      (isHorizontal ? JUMPER_0603.padLength : JUMPER_0603.padWidth) / 2
     const padHalfH =
-      (isHorizontal ? JUMPER_0805.padWidth : JUMPER_0805.padLength) / 2
+      (isHorizontal ? JUMPER_0603.padWidth : JUMPER_0603.padLength) / 2
 
     return Math.min(
       this.pointToRectDistance(p, j.start, padHalfW, padHalfH),
@@ -1055,7 +1054,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
     for (const dir of directions) {
       // Check if there's an obstacle in this direction within jumper range
-      const checkDist = JUMPER_0805.length * 2
+      const checkDist = JUMPER_0603.length * 2
       const targetX = node.x + dir.dx * checkDist
       const targetY = node.y + dir.dy * checkDist
 
@@ -1108,7 +1107,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
   ): JumperNode | null {
     // Calculate the jumper length needed to clear the obstacle
     const clearance = this.traceThickness + this.obstacleMargin
-    const jumpDistance = JUMPER_0805.length + clearance * 2
+    const jumpDistance = JUMPER_0603.length + clearance * 2
 
     // Normalize direction
     const dirLength = Math.sqrt(
@@ -1158,9 +1157,9 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
     // Get pad dimensions based on jumper orientation
     const padHalfWidth =
-      (isHorizontal ? JUMPER_0805.padLength : JUMPER_0805.padWidth) / 2
+      (isHorizontal ? JUMPER_0603.padLength : JUMPER_0603.padWidth) / 2
     const padHalfHeight =
-      (isHorizontal ? JUMPER_0805.padWidth : JUMPER_0805.padLength) / 2
+      (isHorizontal ? JUMPER_0603.padWidth : JUMPER_0603.padLength) / 2
     const margin = this.obstacleMargin
 
     // Check both entry and exit pad positions against all obstacle traces
@@ -1232,7 +1231,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
       route_type: "jumper",
       start: { x: entry.x, y: entry.y },
       end: { x: exit.x, y: exit.y },
-      footprint: "0805",
+      footprint: "0603",
     }
 
     for (const existingJumper of this.existingJumpers) {
@@ -1260,22 +1259,22 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
     // Simple bounding box check
     const j1MinX =
-      Math.min(j1.start.x, j1.end.x) - JUMPER_0805.width / 2 - margin
+      Math.min(j1.start.x, j1.end.x) - JUMPER_0603.width / 2 - margin
     const j1MaxX =
-      Math.max(j1.start.x, j1.end.x) + JUMPER_0805.width / 2 + margin
+      Math.max(j1.start.x, j1.end.x) + JUMPER_0603.width / 2 + margin
     const j1MinY =
-      Math.min(j1.start.y, j1.end.y) - JUMPER_0805.width / 2 - margin
+      Math.min(j1.start.y, j1.end.y) - JUMPER_0603.width / 2 - margin
     const j1MaxY =
-      Math.max(j1.start.y, j1.end.y) + JUMPER_0805.width / 2 + margin
+      Math.max(j1.start.y, j1.end.y) + JUMPER_0603.width / 2 + margin
 
     const j2MinX =
-      Math.min(j2.start.x, j2.end.x) - JUMPER_0805.width / 2 - margin
+      Math.min(j2.start.x, j2.end.x) - JUMPER_0603.width / 2 - margin
     const j2MaxX =
-      Math.max(j2.start.x, j2.end.x) + JUMPER_0805.width / 2 + margin
+      Math.max(j2.start.x, j2.end.x) + JUMPER_0603.width / 2 + margin
     const j2MinY =
-      Math.min(j2.start.y, j2.end.y) - JUMPER_0805.width / 2 - margin
+      Math.min(j2.start.y, j2.end.y) - JUMPER_0603.width / 2 - margin
     const j2MaxY =
-      Math.max(j2.start.y, j2.end.y) + JUMPER_0805.width / 2 + margin
+      Math.max(j2.start.y, j2.end.y) + JUMPER_0603.width / 2 + margin
 
     return !(
       j1MaxX < j2MinX ||
@@ -1298,7 +1297,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
           route_type: "jumper",
           start: current.jumperEntry,
           end: { x: current.x, y: current.y },
-          footprint: "0805",
+          footprint: "0603",
         })
       }
       current = current.parent as JumperNode
@@ -1397,7 +1396,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
           route_type: "jumper",
           start: pathNode.jumperEntry,
           end: { x: pathNode.x, y: pathNode.y },
-          footprint: "0805",
+          footprint: "0603",
         })
       }
     }
@@ -1475,7 +1474,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
   }
 
   /**
-   * Draw the two pads of an 0805 jumper
+   * Draw the two pads of an 0603 jumper
    * Pad dimensions are rotated based on jumper orientation
    */
   private drawJumperPads(
@@ -1488,8 +1487,8 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     const dx = jumper.end.x - jumper.start.x
     const dy = jumper.end.y - jumper.start.y
 
-    const padLength = JUMPER_0805.padLength
-    const padWidth = JUMPER_0805.padWidth
+    const padLength = JUMPER_0603.padLength
+    const padWidth = JUMPER_0603.padWidth
 
     // Determine if jumper is horizontal or vertical
     // Horizontal: dx != 0, dy ~= 0 -> pads are taller than wide (width=padLength, height=padWidth)

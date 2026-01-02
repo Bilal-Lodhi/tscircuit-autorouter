@@ -45,13 +45,13 @@ const JUMPER_0805 = {
 
 /**
  * 0603 footprint dimensions in mm
- * Actual 0603: 1.6mm x 0.8mm
+ * 0.8mm x 0.95mm pads, 1.65mm center-to-center
  */
 const JUMPER_0603 = {
-  length: 1.6,
-  width: 0.8,
-  padLength: 0.4,
-  padWidth: 0.8,
+  length: 1.65,
+  width: 0.95,
+  padLength: 0.8,
+  padWidth: 0.95,
 }
 
 /**
