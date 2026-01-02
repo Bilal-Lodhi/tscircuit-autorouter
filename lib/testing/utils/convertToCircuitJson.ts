@@ -16,28 +16,32 @@ function convertSimplifiedPcbTraceToCircuitJson(
     type: "pcb_trace",
     pcb_trace_id: simplifiedTrace.pcb_trace_id,
     source_trace_id: connectionName,
-    route: simplifiedTrace.route.map((segment) => {
-      if (segment.route_type === "wire") {
-        return {
-          route_type: "wire",
-          x: segment.x,
-          y: segment.y,
-          width: segment.width,
-          layer: segment.layer as LayerName,
-          start_pcb_port_id: (segment as any).start_pcb_port_id,
-          end_pcb_port_id: (segment as any).end_pcb_port_id,
+    route: simplifiedTrace.route
+      .map((segment) => {
+        if (segment.route_type === "wire") {
+          return {
+            route_type: "wire" as const,
+            x: segment.x,
+            y: segment.y,
+            width: segment.width,
+            layer: segment.layer as LayerName,
+            start_pcb_port_id: (segment as any).start_pcb_port_id,
+            end_pcb_port_id: (segment as any).end_pcb_port_id,
+          }
+        } else if (segment.route_type === "via") {
+          return {
+            route_type: "via" as const,
+            x: segment.x,
+            y: segment.y,
+            from_layer: segment.from_layer,
+            to_layer: segment.to_layer,
+          }
+        } else {
+          // jumper - skip for now as circuit-json doesn't support jumper route type
+          return null
         }
-      } else {
-        // via
-        return {
-          route_type: "via",
-          x: segment.x,
-          y: segment.y,
-          from_layer: segment.from_layer,
-          to_layer: segment.to_layer,
-        }
-      }
-    }),
+      })
+      .filter((segment) => segment !== null),
   }
 }
 
@@ -109,9 +113,19 @@ function createSourceTraces(
         connection.name,
     )
     if (hdRoute) {
+      const getPointFromSegment = (segment: (typeof hdRoute.route)[0]) => {
+        if ("route_type" in segment && segment.route_type === "jumper") {
+          return segment.start
+        }
+        if ("x" in segment && "y" in segment) {
+          return { x: segment.x, y: segment.y }
+        }
+        return { x: 0, y: 0 }
+      }
+
       const endpoints = [
-        hdRoute.route[0],
-        hdRoute.route[hdRoute.route.length - 1],
+        getPointFromSegment(hdRoute.route[0]),
+        getPointFromSegment(hdRoute.route[hdRoute.route.length - 1]),
       ]
 
       for (const endpoint of endpoints) {

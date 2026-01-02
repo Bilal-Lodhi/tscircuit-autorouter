@@ -80,7 +80,9 @@ export class CapacityMeshAutorouterCoreBinding
         } else {
           this.emitEvent({
             type: "complete",
-            traces: this.solver.getOutputSimpleRouteJson().traces || [],
+            traces:
+              (this.solver.getOutputSimpleRouteJson().traces as SimplifiedPcbTrace[]) ||
+              [],
           })
         }
         this.isRouting = false
@@ -212,6 +214,6 @@ export class CapacityMeshAutorouterCoreBinding
       throw new Error(this.solver.error || "Routing failed")
     }
 
-    return this.solver.getOutputSimpleRouteJson().traces || []
+    return (this.solver.getOutputSimpleRouteJson().traces as SimplifiedPcbTrace[]) || []
   }
 }

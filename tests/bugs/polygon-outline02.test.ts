@@ -162,9 +162,15 @@ describe.skip("polygon outline path simplification", () => {
     const simplifiedTraces = solver.getOutputSimplifiedPcbTraces()
 
     for (const trace of simplifiedTraces) {
-      for (let i = 0; i < trace.route.length - 1; i++) {
-        const start = trace.route[i]
-        const end = trace.route[i + 1]
+      // Filter to only wire and via segments that have direct x/y coordinates
+      const pointSegments = trace.route.filter(
+        (s): s is Extract<typeof s, { x: number; y: number }> =>
+          s.route_type === "wire" || s.route_type === "via",
+      )
+
+      for (let i = 0; i < pointSegments.length - 1; i++) {
+        const start = pointSegments[i]
+        const end = pointSegments[i + 1]
 
         const crossesOutline = doesSegmentCrossPolygonBoundary({
           start: { x: start.x, y: start.y },
