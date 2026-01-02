@@ -6,7 +6,7 @@ import input from "../../fixtures/features/jumper-high-density/jumper-high-densi
 }
 
 test("HyperIntraNodeSolverWithJumpers03 - solves high density routes with jumpers", () => {
-  const solver = new HyperIntraNodeSolverWithJumpers({
+  const solver = new IntraNodeSolverWithJumpers({
     nodeWithPortPoints: input.nodeWithPortPoints as any,
     colorMap: input.colorMap,
     hyperParameters: input.hyperParameters,
@@ -18,8 +18,8 @@ test("HyperIntraNodeSolverWithJumpers03 - solves high density routes with jumper
   console.log("solver.solved:", solver.solved)
   console.log("solver.failed:", solver.failed)
   console.log("solver.error:", solver.error)
-  console.log("solver.winningSolver:", !!solver.winningSolver)
-  console.log("solver.solvedRoutes.length:", solver.solvedRoutes.length)
+  // console.log("solver.winningSolver:", !!solver.winningSolver)
+  // console.log("solver.solvedRoutes.length:", solver.solvedRoutes.length)
 
   expect(solver.solved).toBe(true)
   expect(solver.visualize()).toMatchGraphicsSvg(import.meta.path)
