@@ -271,7 +271,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     let numYCells = this.boundsSize.height / this.cellStep
 
     while (numXCells * numYCells > bestRowOrColumnCount ** 2) {
-      if (this.cellStep * 2 > opts.minDistBetweenEnteringPoints) {
+      if (this.cellStep > opts.minDistBetweenEnteringPoints) {
         break
       }
       this.cellStep *= 2
@@ -301,8 +301,8 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     }
 
     const initialNodePosition = {
-      x: Math.round(opts.A.x / this.cellStep) * this.cellStep,
-      y: Math.round(opts.A.y / this.cellStep) * this.cellStep,
+      x: opts.A.x,
+      y: opts.A.y,
     }
     this.initialNodeGridOffset = {
       x:
