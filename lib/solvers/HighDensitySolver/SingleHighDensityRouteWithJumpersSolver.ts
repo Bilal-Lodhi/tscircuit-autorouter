@@ -193,14 +193,14 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     this.hyperParameters = opts.hyperParameters ?? {}
     this.CELL_SIZE_FACTOR = this.hyperParameters.CELL_SIZE_FACTOR ?? 1
     this.JUMPER_PENALTY_FACTOR = 0.2
-    this.FUTURE_CONNECTION_START_END_PROXIMITY ??= 5
-    this.FUTURE_CONNECTION_START_END_PENALTY ??= 0
+    this.FUTURE_CONNECTION_START_END_PROXIMITY ??= 8
+    this.FUTURE_CONNECTION_START_END_PENALTY ??= 3
 
     // Initialize future connection jumper pad penalty parameters
     this.FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY =
-      this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY ?? 5
+      this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PROXIMITY ?? 6
     this.FUTURE_CONNECTION_JUMPER_PAD_PENALTY =
-      this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PENALTY ?? 20
+      this.hyperParameters.FUTURE_CONNECTION_JUMPER_PAD_PENALTY ?? 100
 
     // Initialize jumper-to-jumper pad penalty parameters
     this.JUMPER_JUMPER_PAD_PROXIMITY =
@@ -217,8 +217,8 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     // Initialize obstacle proximity penalty parameters
     // These are "soft" penalties that prefer high-clearance paths but don't block routes
     this.OBSTACLE_PROX_PENALTY_FACTOR =
-      this.hyperParameters.OBSTACLE_PROX_PENALTY_FACTOR ?? 0
-    this.OBSTACLE_PROX_SIGMA = this.hyperParameters.OBSTACLE_PROX_SIGMA ?? 5
+      this.hyperParameters.OBSTACLE_PROX_PENALTY_FACTOR ?? 2
+    this.OBSTACLE_PROX_SIGMA = this.hyperParameters.OBSTACLE_PROX_SIGMA ?? 2
 
     // Initialize edge proximity penalty parameters
     // Keep lower than obstacle penalty since edges are less problematic than trace collisions
