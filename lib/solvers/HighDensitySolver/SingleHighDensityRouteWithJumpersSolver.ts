@@ -454,7 +454,10 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
   }
 
   isNodeTooCloseToEdge(node: JumperNode) {
-    const margin = this.obstacleMargin / 2
+    const margin =
+      (node.gComponents?.distFromStart ?? 0 < this.obstacleMargin / 2)
+        ? -this.obstacleMargin / 2
+        : this.obstacleMargin / 2
     const tooClose =
       node.x < this.bounds.minX + margin ||
       node.x > this.bounds.maxX - margin ||
@@ -1319,7 +1322,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
         }
 
         if (this.isNodeTooCloseToEdge(neighbor)) {
-          this.exploredNodes.add(neighborKey)
+          this.debug_nodesTooCloseToObstacle.add(neighborKey)
           continue
         }
 
@@ -1746,6 +1749,22 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
         )
       }
     }
+
+    // Draw border around the bounds
+    const { minX, minY, maxX, maxY } = this.bounds
+
+    graphics.lines!.push({
+      points: [
+        { x: minX, y: minY },
+        { x: maxX, y: minY },
+        { x: maxX, y: maxY },
+        { x: minX, y: maxY },
+        { x: minX, y: minY },
+      ],
+      strokeColor: "rgba(255, 0, 0, 0.25)",
+      strokeDash: "4 4",
+      layer: "border",
+    })
 
     return graphics
   }
