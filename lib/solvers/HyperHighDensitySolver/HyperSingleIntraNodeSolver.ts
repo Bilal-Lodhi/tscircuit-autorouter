@@ -224,31 +224,22 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
 
   private computeShuffleSeedCountsForNode() {
     const portCount = this.nodeWithPortPoints.portPoints.length
-    const uniqueConnections = new Set(
+    const uniqueConnectionsCount = new Set(
       this.nodeWithPortPoints.portPoints.map((p) => p.connectionName),
     ).size
     const area = Math.max(
       1,
       this.nodeWithPortPoints.width * this.nodeWithPortPoints.height,
     )
-    const normalizedArea = Math.sqrt(area)
-    // Blend connection count, total ports, and footprint area to approximate
-    // how challenging the node is so we can scale shuffle attempts accordingly.
-    const complexityScore =
-      uniqueConnections * 4 + portCount * 2 + normalizedArea
+    const normalizedArea = Math.round(Math.sqrt(area))
+    const score = uniqueConnectionsCount + portCount + normalizedArea
+    const smallSeedCount = this.clampSeedCount(Math.max(6, score), 6, 40)
+    const largeSeedCount = this.clampSeedCount(Math.max(20, score), 20, 200)
 
-    const smallSeedCount = this.clampSeedCount(
-      Math.round(Math.max(6, complexityScore / 6)),
-      6,
-      40,
-    )
-    const largeSeedCount = this.clampSeedCount(
-      Math.round(Math.max(20, complexityScore / 2)),
-      20,
-      200,
-    )
-
-    return { smallSeedCount, largeSeedCount }
+    return {
+      smallSeedCount,
+      largeSeedCount,
+    }
   }
 
   private clampSeedCount(value: number, min: number, max: number) {
