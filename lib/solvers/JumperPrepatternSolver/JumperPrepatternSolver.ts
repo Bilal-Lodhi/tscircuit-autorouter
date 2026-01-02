@@ -442,6 +442,9 @@ export class JumperPrepatternSolver extends BaseSolver {
     // Create obstacles for jumper pads
     const obstacles = this._createJumperPadObstacles()
 
+    // Add obstacles for port points (the pads/pins that traces connect to)
+    this._addPortPointObstacles(obstacles)
+
     const node = this.nodeWithPortPoints
     return {
       layerCount: 1,
@@ -497,6 +500,24 @@ export class JumperPrepatternSolver extends BaseSolver {
     }
 
     return obstacles
+  }
+
+  _addPortPointObstacles(obstacles: SimpleRouteJson["obstacles"]) {
+    // Add an obstacle for each port point so the autorouter knows
+    // these are connection terminals that traces can connect to
+    const padSize = this.traceWidth * 2
+
+    for (const pp of this.nodeWithPortPoints.portPoints) {
+      obstacles.push({
+        type: "rect",
+        obstacleId: `port_${pp.connectionName}_${pp.x.toFixed(3)}_${pp.y.toFixed(3)}`,
+        layers: ["top"],
+        center: { x: pp.x, y: pp.y },
+        width: padSize,
+        height: padSize,
+        connectedTo: [pp.connectionName],
+      })
+    }
   }
 
   _generatePrepatternJumpers() {
