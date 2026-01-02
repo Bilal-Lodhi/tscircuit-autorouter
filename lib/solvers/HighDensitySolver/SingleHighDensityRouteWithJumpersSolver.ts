@@ -803,16 +803,23 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
   getFutureConnectionStartEndPenalty(node: JumperNode) {
     let futureConnectionPenalty = 0
     const closestFuturePoint = this.getClosestFutureConnectionPoint(node)
-    const goalDist = distance(node, this.B)
+    /**
+     * When close to the goal, this approaches 0, when far away it's ~1
+     */
+    const closeGoalFactor = Math.min(
+      1,
+      (node.hComponents?.distanceToGoal ?? 0) /
+        this.FUTURE_CONNECTION_START_END_PROXIMITY,
+    )
     if (closestFuturePoint) {
-      const distToFuturePoint =
-        distance(node, closestFuturePoint) - goalDist * 0.5
+      const distToFuturePoint = distance(node, closestFuturePoint)
       if (distToFuturePoint > this.FUTURE_CONNECTION_START_END_PROXIMITY)
         return 0
       const distRatio =
         distToFuturePoint / this.FUTURE_CONNECTION_START_END_PROXIMITY
       futureConnectionPenalty =
-        this.FUTURE_CONNECTION_START_END_PENALTY * (1 - distRatio) ** 2
+        this.FUTURE_CONNECTION_START_END_PENALTY *
+        Math.max(0, closeGoalFactor - distRatio) ** 2
     }
     return futureConnectionPenalty
   }
@@ -829,7 +836,12 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     }
 
     let closestLineDist = Infinity
-    const goalDist = distance(node, this.B)
+    const closeGoalFactor =
+      Math.min(
+        1,
+        (node.hComponents?.distanceToGoal ?? 0) /
+          this.FUTURE_CONNECTION_LINE_PROXIMITY,
+      ) ** 2
 
     for (const futureConnection of this.futureConnections) {
       if (futureConnection.points.length < 2) continue
@@ -842,7 +854,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
       closestLineDist = Math.min(closestLineDist, distToLine)
     }
 
-    closestLineDist -= goalDist * 0.9
+    closestLineDist *= closeGoalFactor
 
     // Apply penalty if within proximity threshold
     if (closestLineDist < this.FUTURE_CONNECTION_LINE_PROXIMITY) {
@@ -1398,7 +1410,6 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
   _step() {
     let currentNode = this.candidates.dequeue() as JumperNode | null
-    console.log("currentNode", currentNode?.f)
     let currentNodeKey = currentNode ? this.getNodeKey(currentNode) : undefined
 
     while (
@@ -1609,16 +1620,15 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
         `g.nearEdge: ${gComp?.weightedMmNearEdge.toFixed(2) ?? "?"}`,
       )
       labelParts.push(
-        `g.nearFutureConnPt: ${gComp?.weightedMmNearFutureConnectionStartEnd.toFixed(2) ?? "?"}`,
+        `g.nearFutStrtEnd: ${gComp?.weightedMmNearFutureConnectionStartEnd.toFixed(2) ?? "?"}`,
       )
       labelParts.push(
-        `g.nearFutureConnLine: ${gComp?.weightedMmNearFutureConnectionLine.toFixed(2) ?? "?"}`,
+        `g.nearFutLine: ${gComp?.weightedMmNearFutureConnectionLine.toFixed(2) ?? "?"}`,
       )
       labelParts.push(`g.jumper: ${gComp?.jumperPenalty.toFixed(2) ?? "?"}`)
       labelParts.push(
-        `g.jumperPadFutureConn: ${gComp?.jumperPadFutureConnectionPenalty.toFixed(2) ?? "?"}`,
+        `g.jumperPadFutPenalty: ${gComp?.jumperPadFutureConnectionPenalty.toFixed(2) ?? "?"}`,
       )
-      labelParts.push(`g: ${nodeValues?.g.toFixed(2) ?? "?"}`)
 
       // H components
       labelParts.push(`h.goalDist: ${goalDist.toFixed(2)}`)
@@ -1634,6 +1644,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
       labelParts.push(
         `h.futureConnLine: ${hComp?.futureConnectionLine.toFixed(2) ?? "?"} (${goalDist > 0 ? ((hComp?.futureConnectionLine ?? 0) / goalDist).toFixed(3) : 0}/mm)`,
       )
+      labelParts.push(`g: ${nodeValues?.g.toFixed(2) ?? "?"}`)
       labelParts.push(`h: ${nodeValues?.h.toFixed(2) ?? "?"}`)
       labelParts.push(`f: ${nodeValues?.f.toFixed(2) ?? "?"}`)
 
