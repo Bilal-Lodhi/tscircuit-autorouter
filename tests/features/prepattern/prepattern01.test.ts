@@ -14,6 +14,11 @@ test("JumperPrepatternSolver01 - solves prepattern routes", () => {
 
   solver.solve()
 
+  if (!solver.solved) {
+    console.log("solver.error:", solver.error)
+    console.log("portPointPathingSolver.error:", solver.portPointPathingSolver?.error)
+  }
+
   expect(solver.solved).toBe(true)
   expect(solver.visualize()).toMatchGraphicsSvg(import.meta.path)
 })

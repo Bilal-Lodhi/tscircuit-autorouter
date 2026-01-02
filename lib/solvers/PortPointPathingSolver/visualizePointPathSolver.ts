@@ -314,8 +314,7 @@ export function visualizePointPathSolver(
     solver.candidates &&
     solver.candidates.length > 0
   ) {
-    const currentConnection =
-      solver.connectionsWithResults[solver.currentConnectionIndex]
+    const currentConnection = solver.currentConnection
     const connectionColor = currentConnection
       ? (solver.colorMap[currentConnection.connection.name] ?? "blue")
       : "blue"
@@ -472,7 +471,7 @@ export function visualizePointPathSolver(
         const targetNode = solver.nodeMap.get(
           candidate.prevCandidate?.currentNodeId!,
         )
-        if (targetNode && candidate.prevCandidate && candidate.portPoint) {
+        if (targetNode && candidate.prevCandidate && candidate.portPoint && currentConnection) {
           const connectionName = currentConnection.connection.name
 
           // Create hypothetical port points for crossing calculation
@@ -520,6 +519,7 @@ export function visualizePointPathSolver(
         }
 
         // Compute heuristic components
+        if (!currentConnection) continue
         const [_startNodeId, endNodeId] = currentConnection.nodeIds
         const endNode = solver.nodeMap.get(endNodeId)
         const distanceToGoal = endNode
