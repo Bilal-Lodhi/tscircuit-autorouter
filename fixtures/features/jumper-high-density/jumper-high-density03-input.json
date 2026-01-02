@@ -185,9 +185,7 @@
         "rootConnectionName": "source_net_2"
       }
     ],
-    "availableZ": [
-      0
-    ]
+    "availableZ": [0]
   },
   "colorMap": {
     "source_net_1_mst2": "hsl(90, 100%, 50%)",

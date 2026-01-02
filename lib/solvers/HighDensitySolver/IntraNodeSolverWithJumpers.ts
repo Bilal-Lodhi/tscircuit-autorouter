@@ -80,11 +80,19 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
 
     const unsolvedConnectionsMap: Map<
       string,
-      { rootConnectionName?: string; points: { x: number; y: number; z: number }[] }
+      {
+        rootConnectionName?: string
+        points: { x: number; y: number; z: number }[]
+      }
     > = new Map()
 
     // For single-layer, force all port points to z=0
-    for (const { connectionName, rootConnectionName, x, y } of nodeWithPortPoints.portPoints) {
+    for (const {
+      connectionName,
+      rootConnectionName,
+      x,
+      y,
+    } of nodeWithPortPoints.portPoints) {
       const existing = unsolvedConnectionsMap.get(connectionName)
       unsolvedConnectionsMap.set(connectionName, {
         rootConnectionName: existing?.rootConnectionName ?? rootConnectionName,
@@ -93,11 +101,13 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
     }
 
     this.unsolvedConnections = Array.from(
-      unsolvedConnectionsMap.entries().map(([connectionName, { rootConnectionName, points }]) => ({
-        connectionName,
-        rootConnectionName,
-        points,
-      })),
+      unsolvedConnectionsMap
+        .entries()
+        .map(([connectionName, { rootConnectionName, points }]) => ({
+          connectionName,
+          rootConnectionName,
+          points,
+        })),
     )
 
     if (this.hyperParameters.SHUFFLE_SEED) {
@@ -194,7 +204,10 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
       },
       obstacleRoutes: this.solvedRoutes.filter((sr) => {
         // Skip routes with same root connection
-        if (rootConnectionName && sr.rootConnectionName === rootConnectionName) {
+        if (
+          rootConnectionName &&
+          sr.rootConnectionName === rootConnectionName
+        ) {
           return false
         }
         // Skip routes that are connected via connMap

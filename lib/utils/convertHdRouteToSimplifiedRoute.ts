@@ -84,7 +84,10 @@ export const convertHdRouteToSimplifiedRoute = (
 
   // Add jumpers if present
   if (hdRoute.jumpers && hdRoute.jumpers.length > 0) {
-    const jumperLayerName = mapZToLayerName(hdRoute.route[0]?.z ?? 0, layerCount)
+    const jumperLayerName = mapZToLayerName(
+      hdRoute.route[0]?.z ?? 0,
+      layerCount,
+    )
     for (const jumper of hdRoute.jumpers) {
       result.push({
         route_type: "jumper",
