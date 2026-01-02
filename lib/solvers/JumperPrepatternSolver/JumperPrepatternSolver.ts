@@ -265,7 +265,7 @@ export class JumperPrepatternSolver extends BaseSolver {
               FORCE_CENTER_FIRST: true,
               RIPPING_ENABLED: true,
               RIPPING_PF_THRESHOLD: 0.3,
-              MAX_RIPS: 10000,
+              MAX_RIPS: 1000,
             },
           } as HyperPortPointPathingSolverParams,
         ]
@@ -346,7 +346,7 @@ export class JumperPrepatternSolver extends BaseSolver {
     this.traceWidth = params.traceWidth ?? 0.15
     this.jumperFootprint = params.jumperFootprint ?? "0603"
     this.hyperParameters = params.hyperParameters ?? {}
-    this.MAX_ITERATIONS = 100_000
+    this.MAX_ITERATIONS = 1e6
 
     // Generate jumpers using the pattern function (before creating SimpleRouteJson since it needs the obstacles)
     this.patternResult = alternatingGrid(this)
