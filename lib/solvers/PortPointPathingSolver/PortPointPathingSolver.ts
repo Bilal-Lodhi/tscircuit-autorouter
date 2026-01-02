@@ -245,6 +245,8 @@ export class PortPointPathingSolver extends BaseSolver {
   ITERATIONS_PER_MM_FOR_PATH = 30
   BASE_ITERATIONS_PER_PATH = 10000
 
+  RIPPING_ENABLED = true
+
   get MIN_ALLOWED_BOARD_SCORE() {
     return this.hyperParameters.MIN_ALLOWED_BOARD_SCORE ?? -10000
   }
@@ -1432,7 +1434,7 @@ export class PortPointPathingSolver extends BaseSolver {
       )
 
       // Don't add candidates whose g cost would cause the board to drop below MIN_ALLOWED_BOARD_SCORE
-      if (g > -this.MIN_ALLOWED_BOARD_SCORE) {
+      if (!this.RIPPING_ENABLED && g > -this.MIN_ALLOWED_BOARD_SCORE) {
         continue
       }
 
