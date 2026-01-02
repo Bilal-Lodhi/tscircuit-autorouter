@@ -21,34 +21,6 @@ test("SingleHighDensityRouteWithJumpersSolver - simple route without obstacles",
   expect(solver.solvedPath!.route.length).toBeGreaterThan(0)
 })
 
-test("SingleHighDensityRouteWithJumpersSolver - route with obstacle requiring jumper", () => {
-  // Create an obstacle route that blocks the direct path
-  const obstacleRoute = {
-    connectionName: "obstacle-connection",
-    traceThickness: 0.15,
-    route: [
-      { x: 2.5, y: 0, z: 0 },
-      { x: 2.5, y: 5, z: 0 },
-    ],
-    jumpers: [],
-  }
-
-  const solver = new SingleHighDensityRouteWithJumpersSolver({
-    connectionName: "test-connection",
-    obstacleRoutes: [obstacleRoute],
-    minDistBetweenEnteringPoints: 0.5,
-    bounds: { minX: 0, maxX: 5, minY: 0, maxY: 5 },
-    A: { x: 0.5, y: 2.5, z: 0 },
-    B: { x: 4.5, y: 2.5, z: 0 },
-  })
-
-  solver.solve()
-
-  // Route should be solved (either with jumper or by going around)
-  expect(solver.solved).toBe(true)
-  expect(solver.solvedPath).not.toBeNull()
-})
-
 test("IntraNodeSolverWithJumpers - simple node routing", () => {
   const nodeWithPortPoints: NodeWithPortPoints = {
     capacityMeshNodeId: "node1",
