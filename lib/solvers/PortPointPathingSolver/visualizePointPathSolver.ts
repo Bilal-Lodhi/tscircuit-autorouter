@@ -471,7 +471,12 @@ export function visualizePointPathSolver(
         const targetNode = solver.nodeMap.get(
           candidate.prevCandidate?.currentNodeId!,
         )
-        if (targetNode && candidate.prevCandidate && candidate.portPoint && currentConnection) {
+        if (
+          targetNode &&
+          candidate.prevCandidate &&
+          candidate.portPoint &&
+          currentConnection
+        ) {
           const connectionName = currentConnection.connection.name
 
           // Create hypothetical port points for crossing calculation
