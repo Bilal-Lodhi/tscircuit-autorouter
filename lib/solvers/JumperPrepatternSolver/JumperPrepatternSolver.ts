@@ -120,18 +120,6 @@ function definePipelineStep<
   }
 }
 
-/**
- * JumperPrepatternSolver is a pipeline solver that:
- * 1. Generates prepattern 0ohm jumpers based on the node with port points
- * 2. Runs RectDiffPipeline to generate capacity mesh nodes
- * 3. Runs CapacityMeshEdgeSolver to generate edges
- * 4. Constructs available port points
- * 5. Runs PortPointPathingSolver to find paths
- * 6. Runs MultiSectionPortPointOptimizer to optimize
- * 7. Runs SimpleHighDensitySolver for intra-node routing
- * 8. Runs MultipleHighDensityRouteStitchSolver to stitch routes
- * 9. Combines all routes and jumpers into the final output
- */
 export class JumperPrepatternSolver extends BaseSolver {
   // Input parameters
   nodeWithPortPoints: NodeWithPortPoints
