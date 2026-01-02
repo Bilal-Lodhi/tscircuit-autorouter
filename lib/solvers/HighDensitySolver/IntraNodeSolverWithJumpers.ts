@@ -14,18 +14,18 @@ import { getBoundsFromNodeWithPortPoints } from "lib/utils/getBoundsFromNodeWith
 import { getMinDistBetweenEnteringPoints } from "lib/utils/getMinDistBetweenEnteringPoints"
 
 /**
- * 0805 footprint dimensions in mm for visualization
+ * 0603 footprint dimensions in mm for visualization
  */
-const JUMPER_0805 = {
-  length: 2.0,
-  width: 1.25,
-  padLength: 0.5,
-  padWidth: 1.25,
+const JUMPER_0603 = {
+  length: 1.65,
+  width: 0.95,
+  padLength: 0.8,
+  padWidth: 0.95,
 }
 
 /**
  * IntraNodeSolverWithJumpers is designed for single-layer nodes that use
- * 0805 jumpers to allow traces to jump over each other.
+ * 0603 jumpers to allow traces to jump over each other.
  *
  * Unlike the standard IntraNodeRouteSolver which uses vias to change layers,
  * this solver operates on a single layer and uses physical jumper components
@@ -224,7 +224,7 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
   }
 
   /**
-   * Draw the two pads of an 0805 jumper
+   * Draw the two pads of an 0603 jumper
    * Pad dimensions are rotated based on jumper orientation
    */
   private drawJumperPads(
@@ -236,8 +236,8 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
     const dx = jumper.end.x - jumper.start.x
     const dy = jumper.end.y - jumper.start.y
 
-    const padLength = JUMPER_0805.padLength
-    const padWidth = JUMPER_0805.padWidth
+    const padLength = JUMPER_0603.padLength
+    const padWidth = JUMPER_0603.padWidth
 
     // Determine if jumper is horizontal or vertical
     // Horizontal: dx != 0, dy ~= 0 -> pads are taller than wide (width=padLength, height=padWidth)

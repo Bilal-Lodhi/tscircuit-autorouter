@@ -43,7 +43,7 @@ export type HighDensityRoute = HighDensityIntraNodeRoute
 
 /**
  * A jumper component used to allow traces to cross on single-layer PCBs.
- * Uses a 0805 footprint (2.0mm x 1.25mm / 0.08" x 0.05").
+ * Uses a 0603 footprint
  */
 export type Jumper = {
   route_type: "jumper"
@@ -51,8 +51,8 @@ export type Jumper = {
   start: { x: number; y: number }
   /** Ending point of the jumper */
   end: { x: number; y: number }
-  /** Footprint size, typically "0805" */
-  footprint: "0805" | "0603" | "1206"
+  /** Footprint size, typically "0603" */
+  footprint: "0603" | "1206"
 }
 
 /**

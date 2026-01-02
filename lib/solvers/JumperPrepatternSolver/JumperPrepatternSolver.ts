@@ -33,17 +33,6 @@ import { RelateNodesToOffBoardConnectionsSolver } from "../../autorouter-pipelin
 import { updateConnMapWithOffboardObstacleConnections } from "../../autorouter-pipelines/AssignableAutoroutingPipeline2/updateConnMapWithOffboardObstacleConnections"
 
 /**
- * 0805 footprint dimensions in mm
- * Actual 0805: 2.0mm x 1.25mm
- */
-const JUMPER_0805 = {
-  length: 2.0,
-  width: 1.25,
-  padLength: 0.5,
-  padWidth: 1.25,
-}
-
-/**
  * 0603 footprint dimensions in mm
  * 0.8mm x 0.95mm pads, 1.65mm center-to-center
  */
@@ -65,8 +54,7 @@ const JUMPER_1206 = {
   padWidth: 1.6,
 }
 
-const JUMPER_DIMENSIONS: Record<JumperFootprint, typeof JUMPER_0805> = {
-  "0805": JUMPER_0805,
+const JUMPER_DIMENSIONS: Record<JumperFootprint, typeof JUMPER_0603> = {
   "0603": JUMPER_0603,
   "1206": JUMPER_1206,
 }
@@ -76,7 +64,7 @@ const JUMPER_DIMENSIONS: Record<JumperFootprint, typeof JUMPER_0805> = {
  */
 const JUMPER_MARGIN = 1
 
-type JumperFootprint = "0805" | "0603" | "1206"
+type JumperFootprint = "0603" | "1206"
 
 interface PrepatternJumper {
   jumperId: string
@@ -358,7 +346,7 @@ export class JumperPrepatternSolver extends BaseSolver {
     this.nodeWithPortPoints = params.nodeWithPortPoints
     this.colorMap = params.colorMap ?? {}
     this.traceWidth = params.traceWidth ?? 0.15
-    this.jumperFootprint = params.jumperFootprint ?? "0805"
+    this.jumperFootprint = params.jumperFootprint ?? "0603"
     this.hyperParameters = params.hyperParameters ?? {}
     this.MAX_ITERATIONS = 100_000
 

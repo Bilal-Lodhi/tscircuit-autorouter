@@ -53,7 +53,7 @@ interface NodeAnalysis {
 /**
  * HighDensitySolver intelligently selects the appropriate solver for each node:
  * - SimpleHighDensitySolver for nodes without crossings (faster, force-directed)
- * - IntraNodeSolverWithJumpers for single-layer nodes with crossings (uses 0805 jumpers)
+ * - IntraNodeSolverWithJumpers for single-layer nodes with crossings (uses 0603 jumpers)
  *
  * This solver processes nodes in batches based on their characteristics.
  */
