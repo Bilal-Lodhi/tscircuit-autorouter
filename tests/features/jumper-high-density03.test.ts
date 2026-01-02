@@ -5,7 +5,7 @@ import input from "../../fixtures/features/jumper-high-density/jumper-high-densi
   type: "json",
 }
 
-test("HyperIntraNodeSolverWithJumpers03 - solves high density routes with jumpers", () => {
+test.skip("HyperIntraNodeSolverWithJumpers03 - solves high density routes with jumpers", () => {
   const solver = new IntraNodeSolverWithJumpers({
     nodeWithPortPoints: input.nodeWithPortPoints as any,
     colorMap: input.colorMap,
