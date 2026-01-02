@@ -36,6 +36,7 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
   colorMap: Record<string, string>
   unsolvedConnections: {
     connectionName: string
+    rootConnectionName?: string
     points: { x: number; y: number; z: number }[]
   }[]
 
@@ -79,20 +80,22 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
 
     const unsolvedConnectionsMap: Map<
       string,
-      { x: number; y: number; z: number }[]
+      { rootConnectionName?: string; points: { x: number; y: number; z: number }[] }
     > = new Map()
 
     // For single-layer, force all port points to z=0
-    for (const { connectionName, x, y } of nodeWithPortPoints.portPoints) {
-      unsolvedConnectionsMap.set(connectionName, [
-        ...(unsolvedConnectionsMap.get(connectionName) ?? []),
-        { x, y, z: 0 },
-      ])
+    for (const { connectionName, rootConnectionName, x, y } of nodeWithPortPoints.portPoints) {
+      const existing = unsolvedConnectionsMap.get(connectionName)
+      unsolvedConnectionsMap.set(connectionName, {
+        rootConnectionName: existing?.rootConnectionName ?? rootConnectionName,
+        points: [...(existing?.points ?? []), { x, y, z: 0 }],
+      })
     }
 
     this.unsolvedConnections = Array.from(
-      unsolvedConnectionsMap.entries().map(([connectionName, points]) => ({
+      unsolvedConnectionsMap.entries().map(([connectionName, { rootConnectionName, points }]) => ({
         connectionName,
+        rootConnectionName,
         points,
       })),
     )
@@ -177,9 +180,10 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
       }
     }
 
-    const { connectionName, points } = unsolvedConnection
+    const { connectionName, rootConnectionName, points } = unsolvedConnection
     this.activeSubSolver = new SingleHighDensityRouteWithJumpersSolver({
       connectionName,
+      rootConnectionName,
       minDistBetweenEnteringPoints: this.minDistBetweenEnteringPoints,
       bounds: getBoundsFromNodeWithPortPoints(this.nodeWithPortPoints),
       A: { x: points[0].x, y: points[0].y, z: 0 },
@@ -188,12 +192,17 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
         y: points[points.length - 1].y,
         z: 0,
       },
-      obstacleRoutes: this.connMap
-        ? this.solvedRoutes.filter(
-            (sr) =>
-              !this.connMap!.areIdsConnected(sr.connectionName, connectionName),
-          )
-        : this.solvedRoutes,
+      obstacleRoutes: this.solvedRoutes.filter((sr) => {
+        // Skip routes with same root connection
+        if (rootConnectionName && sr.rootConnectionName === rootConnectionName) {
+          return false
+        }
+        // Skip routes that are connected via connMap
+        if (this.connMap?.areIdsConnected(sr.connectionName, connectionName)) {
+          return false
+        }
+        return true
+      }),
       futureConnections: this.unsolvedConnections,
       hyperParameters: this.hyperParameters,
       connMap: this.connMap,

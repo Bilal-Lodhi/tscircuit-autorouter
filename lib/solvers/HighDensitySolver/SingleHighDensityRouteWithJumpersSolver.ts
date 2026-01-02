@@ -145,6 +145,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
   candidates: SingleRouteCandidatePriorityQueue<JumperNode>
 
   connectionName: string
+  rootConnectionName?: string
   solvedPath: HighDensityIntraNodeRouteWithJumpers | null = null
 
   futureConnections: FutureConnection[]
@@ -176,6 +177,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
   constructor(opts: {
     connectionName: string
+    rootConnectionName?: string
     obstacleRoutes: HighDensityIntraNodeRouteWithJumpers[]
     minDistBetweenEnteringPoints: number
     bounds: { minX: number; maxX: number; minY: number; maxY: number }
@@ -242,6 +244,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
       y: (this.bounds.minY + this.bounds.maxY) / 2,
     }
     this.connectionName = opts.connectionName
+    this.rootConnectionName = opts.rootConnectionName
     this.obstacleRoutes = opts.obstacleRoutes
     this.A = { ...opts.A, z: 0 } // Single layer, always z=0
     this.B = { ...opts.B, z: 0 } // Single layer, always z=0
@@ -369,6 +372,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
     const { A, B } = this
     this.solvedPath = {
       connectionName: this.connectionName,
+      rootConnectionName: this.rootConnectionName,
       route: [
         { x: A.x, y: A.y, z: 0 },
         { x: B.x, y: B.y, z: 0 },
@@ -1400,6 +1404,7 @@ export class SingleHighDensityRouteWithJumpersSolver extends BaseSolver {
 
     this.solvedPath = {
       connectionName: this.connectionName,
+      rootConnectionName: this.rootConnectionName,
       traceThickness: this.traceThickness,
       route: path
         .map((n) => ({ x: n.x, y: n.y, z: 0 }))
