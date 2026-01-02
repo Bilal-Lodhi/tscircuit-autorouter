@@ -48,10 +48,4 @@ export interface HighDensityHyperParameters {
   // Penalizes nodes that are close to the direct line between future connection start/end points
   FUTURE_CONNECTION_LINE_PROXIMITY?: number // mm - proximity threshold
   FUTURE_CONNECTION_LINE_PENALTY?: number // penalty factor
-
-  // Direction change penalty - penalizes changing movement direction from previous step
-  CHANGE_DIR_PENALTY?: number // penalty factor for changing direction
-
-  // Distance after which changing direction becomes free (no penalty)
-  CHANGE_DIR_FREE_DIST?: number // mm - distance threshold
 }
