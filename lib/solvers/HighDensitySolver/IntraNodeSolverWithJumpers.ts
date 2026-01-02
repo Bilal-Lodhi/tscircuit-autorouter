@@ -122,6 +122,16 @@ export class IntraNodeSolverWithJumpers extends BaseSolver {
     )
   }
 
+  getConstructorParams() {
+    return {
+      nodeWithPortPoints: this.nodeWithPortPoints,
+      colorMap: this.colorMap,
+      hyperParameters: this.hyperParameters,
+      connMap: this.connMap,
+      traceWidth: this.traceWidth,
+    }
+  }
+
   computeProgress() {
     return (
       (this.solvedRoutes.length + (this.activeSubSolver?.progress || 0)) /

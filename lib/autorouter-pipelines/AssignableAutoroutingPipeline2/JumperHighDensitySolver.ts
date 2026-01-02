@@ -248,6 +248,7 @@ export class JumperHighDensitySolver extends BaseSolver {
     }
 
     const currentSolver = this.jumperSolvers[this.currentJumperSolverIndex]
+    this.activeSubSolver = currentSolver
     if (!currentSolver) {
       this.phase = "done"
       this.solved = true
