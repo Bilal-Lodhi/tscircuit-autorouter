@@ -75,7 +75,7 @@ export function computeNodePf(
 ): number {
   if (capacityMeshNode._containsTarget) return 0
 
-  const crossings = getIntraNodeCrossings(nodeWithPortPoints)
+  const crossings = getIntraNodeCrossingsUsingCircle(nodeWithPortPoints)
 
   return calculateNodeProbabilityOfFailure(
     capacityMeshNode,
