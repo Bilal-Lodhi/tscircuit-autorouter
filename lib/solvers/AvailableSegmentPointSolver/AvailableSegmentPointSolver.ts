@@ -267,8 +267,10 @@ export class AvailableSegmentPointSolver extends BaseSolver {
           ? e.nodeIds[1]
           : e.nodeIds[0]
       if (otherNodeId === offBoardNode.capacityMeshNodeId) continue
-      const otherNode = this.nodeMap.get(otherNodeId)
-      if (otherNode?._offBoardConnectionId !== offBoardNode._offBoardConnectionId)
+      const otherNode = this.nodeMap.get(otherNodeId)!
+      if (
+        otherNode?._offBoardConnectionId !== offBoardNode._offBoardConnectionId
+      )
         continue
 
       // Check that exactly 2 nodes have this offBoardConnectionId
