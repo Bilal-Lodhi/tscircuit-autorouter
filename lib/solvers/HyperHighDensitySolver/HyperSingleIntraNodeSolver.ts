@@ -51,6 +51,11 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
   }
 
   getHyperParameterDefs() {
+    const { smallSeedCount, largeSeedCount } =
+      this.computeShuffleSeedCountsForNode()
+    const orderingsSmall = this.createShuffleSeedValues(smallSeedCount, 0)
+    const orderingsLarge = this.createShuffleSeedValues(largeSeedCount, 100)
+
     return [
       {
         name: "majorCombinations",
@@ -78,26 +83,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
       },
       {
         name: "orderings6",
-        possibleValues: [
-          {
-            SHUFFLE_SEED: 0,
-          },
-          {
-            SHUFFLE_SEED: 1,
-          },
-          {
-            SHUFFLE_SEED: 2,
-          },
-          {
-            SHUFFLE_SEED: 3,
-          },
-          {
-            SHUFFLE_SEED: 4,
-          },
-          {
-            SHUFFLE_SEED: 5,
-          },
-        ],
+        possibleValues: orderingsSmall,
       },
       {
         name: "cellSizeFactor",
@@ -129,9 +115,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
       },
       {
         name: "orderings50",
-        possibleValues: Array.from({ length: 50 }, (_, i) => ({
-          SHUFFLE_SEED: 100 + i,
-        })),
+        possibleValues: orderingsLarge,
       },
       {
         name: "closedFormTwoTrace",
@@ -236,5 +220,45 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
       }
       return route
     })
+  }
+
+  private computeShuffleSeedCountsForNode() {
+    const portCount = this.nodeWithPortPoints.portPoints.length
+    const uniqueConnections = new Set(
+      this.nodeWithPortPoints.portPoints.map((p) => p.connectionName),
+    ).size
+    const area = Math.max(
+      1,
+      this.nodeWithPortPoints.width * this.nodeWithPortPoints.height,
+    )
+    const normalizedArea = Math.sqrt(area)
+    // Blend connection count, total ports, and footprint area to approximate
+    // how challenging the node is so we can scale shuffle attempts accordingly.
+    const complexityScore =
+      uniqueConnections * 4 + portCount * 2 + normalizedArea
+
+    const smallSeedCount = this.clampSeedCount(
+      Math.round(Math.max(6, complexityScore / 6)),
+      6,
+      40,
+    )
+    const largeSeedCount = this.clampSeedCount(
+      Math.round(Math.max(20, complexityScore / 2)),
+      20,
+      200,
+    )
+
+    return { smallSeedCount, largeSeedCount }
+  }
+
+  private clampSeedCount(value: number, min: number, max: number) {
+    return Math.max(min, Math.min(max, value))
+  }
+
+  private createShuffleSeedValues(count: number, offset: number) {
+    const safeCount = Math.max(1, Math.floor(count))
+    return Array.from({ length: safeCount }, (_, i) => ({
+      SHUFFLE_SEED: offset + i,
+    }))
   }
 }
