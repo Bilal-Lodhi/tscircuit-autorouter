@@ -304,6 +304,17 @@ export class JumperHighDensitySolver extends BaseSolver {
     return completedNodes / totalNodes
   }
 
+  getConstructorParams() {
+    return {
+      nodePortPoints: this.allNodes,
+      colorMap: this.colorMap,
+      traceWidth: this.traceWidth,
+      viaDiameter: this.viaDiameter,
+      connMap: this.connMap,
+      hyperParameters: this.hyperParameters,
+    }
+  }
+
   visualize(): GraphicsObject {
     const graphics: GraphicsObject = {
       lines: [],
