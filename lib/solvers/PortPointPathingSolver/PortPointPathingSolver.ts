@@ -240,7 +240,7 @@ export class PortPointPathingSolver extends BaseSolver {
     return this.hyperParameters.GREEDY_MULTIPLIER ?? 1.3
   }
 
-  MAX_CANDIDATES_IN_MEMORY = 10000
+  MAX_CANDIDATES_IN_MEMORY = 5000
 
   get MAX_ITERATIONS_PER_PATH() {
     return this.hyperParameters.MAX_ITERATIONS_PER_PATH ?? 10000
@@ -326,7 +326,7 @@ export class PortPointPathingSolver extends BaseSolver {
     fixedRoutes?: ConnectionPathResult[]
   }) {
     super()
-    this.MAX_ITERATIONS = 50e3
+    this.MAX_ITERATIONS = 100e3
     this.simpleRouteJson = simpleRouteJson
     this.inputNodes = inputNodes
     this.colorMap = colorMap ?? {}
