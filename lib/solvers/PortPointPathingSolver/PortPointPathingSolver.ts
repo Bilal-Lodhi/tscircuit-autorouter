@@ -46,6 +46,9 @@ export interface PortPointPathingHyperParameters {
 
   FORCE_OFF_BOARD_FREQUENCY?: number
   FORCE_OFF_BOARD_SEED?: number
+
+  RIPPING_ENABLED?: boolean
+  RIPPING_PF_THRESHOLD?: number
 }
 
 /**
@@ -246,6 +249,10 @@ export class PortPointPathingSolver extends BaseSolver {
   BASE_ITERATIONS_PER_PATH = 10000
 
   RIPPING_ENABLED = true
+
+  get RIPPING_PF_THRESHOLD() {
+    return this.hyperParameters.RIPPING_PF_THRESHOLD ?? 0.3
+  }
 
   get MIN_ALLOWED_BOARD_SCORE() {
     return this.hyperParameters.MIN_ALLOWED_BOARD_SCORE ?? -10000
