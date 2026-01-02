@@ -46,6 +46,14 @@ export interface PortPointPathingHyperParameters {
 
   FORCE_OFF_BOARD_FREQUENCY?: number
   FORCE_OFF_BOARD_SEED?: number
+
+  /**
+   * Penalty added when using a port point that's already assigned to another connection.
+   * When this is set, the solver will allow "ripping" existing routes by using their
+   * port points, and re-queue the ripped connections for re-routing.
+   * When undefined, ripping is disabled (default behavior).
+   */
+  RIP_PENALTY?: number
 }
 
 /**
@@ -111,6 +119,12 @@ export interface PortPointCandidate {
   lastMoveWasOffBoard?: boolean
   /** The node we went through when making an off-board move */
   throughNodeId?: CapacityMeshNodeId
+
+  /**
+   * Connection names that would be ripped if this candidate's path is selected.
+   * Accumulated from all port points in the path that were assigned to other connections.
+   */
+  rippedConnectionNames?: Set<string>
 }
 
 export interface ConnectionPathResult {
@@ -215,6 +229,14 @@ export class PortPointPathingSolver extends BaseSolver {
 
   get FORCE_OFF_BOARD_SEED() {
     return this.hyperParameters.FORCE_OFF_BOARD_SEED ?? 0
+  }
+
+  /**
+   * Penalty for ripping (using a port point already assigned to another connection).
+   * When undefined, ripping is disabled.
+   */
+  get RIP_PENALTY(): number | undefined {
+    return this.hyperParameters.RIP_PENALTY ?? 1
   }
 
   get NODE_MAX_PF() {
@@ -560,6 +582,20 @@ export class PortPointPathingSolver extends BaseSolver {
   }
 
   /**
+   * Get the connection name that would be ripped if we use this port point.
+   * Returns null if the port point is not assigned or is assigned to the same root connection.
+   */
+  getRippedConnectionName(
+    portPointId: string,
+    currentRootConnectionName?: string,
+  ): string | null {
+    const assignment = this.assignedPortPoints.get(portPointId)
+    if (!assignment) return null
+    if (assignment.rootConnectionName === currentRootConnectionName) return null
+    return assignment.connectionName
+  }
+
+  /**
    * Exact step cost from prevCandidate to exiting current node via `exitPortPoint`.
    *
    * IMPORTANT: This charges Pf delta for the node we are *leaving* (prevCandidate.currentNodeId),
@@ -597,7 +633,19 @@ export class PortPointPathingSolver extends BaseSolver {
       exit,
     )
 
-    return prevCandidate.g + nodeDeltaCost
+    // Add rip penalty if this port point is assigned to another connection
+    let ripPenalty = 0
+    if (this.RIP_PENALTY !== undefined) {
+      const rippedConnectionName = this.getRippedConnectionName(
+        exitPortPoint.portPointId,
+        rootConnectionName,
+      )
+      if (rippedConnectionName) {
+        ripPenalty = this.RIP_PENALTY
+      }
+    }
+
+    return prevCandidate.g + nodeDeltaCost + ripPenalty
   }
 
   /**
@@ -745,7 +793,10 @@ export class PortPointPathingSolver extends BaseSolver {
         assignment &&
         assignment?.rootConnectionName !== currentRootConnectionName
       ) {
-        continue
+        // When RIP_PENALTY is defined, allow assigned port points (they'll get the rip penalty)
+        if (this.RIP_PENALTY === undefined) {
+          continue
+        }
       }
       availablePortPoints.push(pp)
     }
@@ -760,6 +811,7 @@ export class PortPointPathingSolver extends BaseSolver {
    * - For each (neighborNodeId, z) group, return the centermost (smallest dist).
    * - If that centermost port point is already assigned, also return some next-closest
    *   unassigned offsets as backups.
+   * - When RIP_PENALTY is defined, also include assigned ports (they'll get the rip penalty).
    */
   getAvailableExitPortPointsWithOmissions(
     nodeId: CapacityMeshNodeId,
@@ -767,11 +819,11 @@ export class PortPointPathingSolver extends BaseSolver {
     hasTouchedOffBoardNode?: boolean,
   ): InputPortPoint[] {
     const portPoints = this.nodePortPointsMap.get(nodeId) ?? []
-    // const currentNode = this.nodeMap.get(nodeId)
     const currentConnection =
       this.connectionsWithResults[this.currentConnectionIndex]
     const currentRootConnectionName =
       currentConnection?.connection.rootConnectionName
+    const rippingEnabled = this.RIP_PENALTY !== undefined
 
     // Group by "other side node" + z
     const portsOnSameEdgeMap = new Map<string, InputPortPoint[]>()
@@ -785,8 +837,6 @@ export class PortPointPathingSolver extends BaseSolver {
 
       const otherNodeId = this.getOtherNodeId(pp, nodeId)
       if (!otherNodeId) continue
-
-      const otherNode = this.nodeMap.get(otherNodeId)
 
       const edgeKey = `${otherNodeId}|${pp.z}`
       const arr = portsOnSameEdgeMap.get(edgeKey) ?? []
@@ -816,6 +866,11 @@ export class PortPointPathingSolver extends BaseSolver {
         continue
       }
 
+      // When ripping is enabled, include the center even if assigned
+      if (rippingEnabled) {
+        result.push(center)
+      }
+
       // Sort all ports by position to identify contiguous ranges
       const allPortsSorted = [...portsOnSameEdge].sort((a, b) => {
         if (a.x !== b.x) return a.x - b.x
@@ -823,6 +878,7 @@ export class PortPointPathingSolver extends BaseSolver {
       })
 
       // Find contiguous ranges of available ports (separated by occupied ports)
+      // When ripping is enabled, all ports are considered "available" (assigned ports get rip penalty)
       const ranges: InputPortPoint[][] = []
       let currentRange: InputPortPoint[] = []
 
@@ -830,7 +886,8 @@ export class PortPointPathingSolver extends BaseSolver {
         const assignment = this.assignedPortPoints.get(pp.portPointId)
         const isAvailable =
           !assignment ||
-          assignment.rootConnectionName === currentRootConnectionName
+          assignment.rootConnectionName === currentRootConnectionName ||
+          rippingEnabled
 
         if (isAvailable) {
           currentRange.push(pp)
@@ -851,7 +908,11 @@ export class PortPointPathingSolver extends BaseSolver {
       // Return the median (centermost) of each contiguous range
       for (const range of ranges) {
         const medianIndex = Math.floor(range.length / 2)
-        result.push(range[medianIndex])
+        const medianPort = range[medianIndex]
+        // Avoid duplicates (center was already added above when ripping)
+        if (!rippingEnabled || medianPort.portPointId !== center.portPointId) {
+          result.push(medianPort)
+        }
       }
     }
 
@@ -890,8 +951,12 @@ export class PortPointPathingSolver extends BaseSolver {
         if (
           assignment &&
           assignment.rootConnectionName !== currentRootConnectionName
-        )
-          continue
+        ) {
+          // When RIP_PENALTY is defined, allow assigned port points
+          if (this.RIP_PENALTY === undefined) {
+            continue
+          }
+        }
         availablePortPoints.push({
           ...pp,
           throughNodeId: otherNodeId,
@@ -1067,6 +1132,63 @@ export class PortPointPathingSolver extends BaseSolver {
     }
 
     return assignedPortPoints
+  }
+
+  /**
+   * Unassign all port points belonging to a connection.
+   * Used when ripping a connection to re-route it.
+   */
+  unassignConnectionPortPoints(connectionName: string) {
+    // Find the connection result
+    const connectionResult = this.connectionsWithResults.find(
+      (c) => c.connection.name === connectionName,
+    )
+    if (!connectionResult) return
+
+    // Remove from assignedPortPoints map
+    for (const [portPointId, assignment] of this.assignedPortPoints) {
+      if (assignment.connectionName === connectionName) {
+        this.assignedPortPoints.delete(portPointId)
+      }
+    }
+
+    // Remove from nodeAssignedPortPoints map
+    for (const [nodeId, portPoints] of this.nodeAssignedPortPoints) {
+      const filtered = portPoints.filter(
+        (pp) => pp.connectionName !== connectionName,
+      )
+      if (filtered.length !== portPoints.length) {
+        this.nodeAssignedPortPoints.set(nodeId, filtered)
+      }
+    }
+
+    // Clear the path and port points from the connection result
+    connectionResult.path = undefined
+    connectionResult.portPoints = undefined
+  }
+
+  /**
+   * Re-queue a connection for re-routing by moving it after the current connection.
+   */
+  requeueConnection(connectionName: string) {
+    const connectionIndex = this.connectionsWithResults.findIndex(
+      (c) => c.connection.name === connectionName,
+    )
+    if (connectionIndex === -1) return
+    if (connectionIndex <= this.currentConnectionIndex) {
+      // Connection already processed - move it to right after current index
+      const [connection] = this.connectionsWithResults.splice(
+        connectionIndex,
+        1,
+      )
+      // Insert after current connection index
+      this.connectionsWithResults.splice(
+        this.currentConnectionIndex + 1,
+        0,
+        connection,
+      )
+    }
+    // If connection is already after current index, no need to move it
   }
 
   /**
@@ -1322,6 +1444,15 @@ export class PortPointPathingSolver extends BaseSolver {
         distanceTraveled:
           currentCandidate.distanceTraveled +
           distance(currentCandidate.point, finalPoint),
+        rippedConnectionNames: currentCandidate.rippedConnectionNames,
+      }
+
+      // Handle ripping: unassign port points from ripped connections and re-queue them
+      if (currentCandidate.rippedConnectionNames?.size) {
+        for (const rippedConnectionName of currentCandidate.rippedConnectionNames) {
+          this.unassignConnectionPortPoints(rippedConnectionName)
+          this.requeueConnection(rippedConnectionName)
+        }
       }
 
       const path = this.getBacktrackedPath(finalCandidate)
@@ -1460,6 +1591,26 @@ export class PortPointPathingSolver extends BaseSolver {
         Boolean(currentNode?._offBoardConnectionId) &&
         Boolean(throughNode?._offBoardConnectionId)
 
+      // Track ripped connections for this candidate
+      let rippedConnectionNames: Set<string> | undefined
+      if (this.RIP_PENALTY !== undefined) {
+        const rippedConnectionName = this.getRippedConnectionName(
+          portPoint.portPointId,
+          rootConnectionName,
+        )
+        if (
+          rippedConnectionName ||
+          currentCandidate.rippedConnectionNames?.size
+        ) {
+          rippedConnectionNames = new Set(
+            currentCandidate.rippedConnectionNames,
+          )
+          if (rippedConnectionName) {
+            rippedConnectionNames.add(rippedConnectionName)
+          }
+        }
+      }
+
       this.candidates.push({
         prevCandidate: currentCandidate,
         portPoint,
@@ -1476,6 +1627,7 @@ export class PortPointPathingSolver extends BaseSolver {
           hasTouchedOffBoardNode ||
           Boolean(nextNode._offBoardConnectionId) ||
           Boolean(currentNode?._offBoardConnectionId),
+        rippedConnectionNames,
       })
     }
   }
