@@ -25,6 +25,8 @@ import {
 } from "./precomputeSharedParams"
 import { getConnectionsWithNodes as getConnectionsWithNodesShared } from "./getConnectionsWithNodes"
 import { getIntraNodeCrossings } from "lib/utils/getIntraNodeCrossings"
+import { start } from "node:repl"
+import viteConfig from "vite.config"
 
 export interface PortPointPathingHyperParameters {
   SHUFFLE_SEED?: number
@@ -557,6 +559,80 @@ export class PortPointPathingSolver extends BaseSolver {
     if (nodeId1 === currentNodeId) return nodeId2
     if (nodeId2 === currentNodeId) return nodeId1
     return null
+  }
+
+  private getNeighborNodeIdsForSingleLayerBfs({
+    nodeId,
+    rootConnectionName,
+  }: {
+    nodeId: CapacityMeshNodeId
+    rootConnectionName?: string
+  }) {
+    const neighbors = new Set<CapacityMeshNodeId>()
+    const portPoints = this.nodePortPointsMap.get(nodeId) ?? []
+    for (const portPoint of portPoints) {
+      // if the current port points is assigned to some other connection
+      // we check if they are the same root connection
+      // same net are allwed to have connected traces
+      const assignment = this.assignedPortPoints.get(portPoint.portPointId)
+      if (assignment && assignment.rootConnectionName !== rootConnectionName) {
+        // if diffrent net/connection we skip
+        continue
+      }
+      const otherNodeId = this.getOtherNodeId(portPoint, nodeId)
+      if (otherNodeId) neighbors.add(otherNodeId)
+    }
+
+    const node = this.nodeMap.get(nodeId)
+    for (const connectedId of node?._offBoardConnectedCapacityMeshNodeIds ??
+      []) {
+      if (connectedId !== nodeId) neighbors.add(connectedId)
+    }
+
+    return [...neighbors]
+  }
+
+  private canConnectNodesOnSingleLayer({
+    startNodeId,
+    endNodeId,
+    connectionName,
+    rootConnectionName,
+  }: {
+    startNodeId: CapacityMeshNodeId
+    endNodeId: CapacityMeshNodeId
+    connectionName: string
+    rootConnectionName?: string
+  }) {
+    if (startNodeId === endNodeId) return true
+    const visited = new Set<CapacityMeshNodeId>([startNodeId])
+    const queue: CapacityMeshNodeId[] = [startNodeId]
+
+    while (queue.length > 0) {
+      const nodeId = queue.shift()!
+      const negihborCapcityNodeIds = this.getNeighborNodeIdsForSingleLayerBfs({
+        nodeId,
+        rootConnectionName,
+      })
+      for (const neighborId of negihborCapcityNodeIds) {
+        if (visited.has(neighborId)) continue
+        const neighborCapcityNode = this.nodeMap.get(neighborId)
+        if (!neighborCapcityNode) continue
+        if (
+          neighborCapcityNode._containsObstacle &&
+          rootConnectionName &&
+          !this.canTravelThroughObstacle(
+            neighborCapcityNode,
+            connectionName,
+            rootConnectionName,
+          )
+        )
+          continue
+        if (neighborId === endNodeId) return true
+        visited.add(neighborId)
+        queue.push(neighborId)
+      }
+    }
+    return false
   }
 
   /**
@@ -1197,6 +1273,26 @@ export class PortPointPathingSolver extends BaseSolver {
     const connectionName = nextConnection.connection.name
     const rootConnectionName = nextConnection.connection.rootConnectionName
     const startPoint = nextConnection.connection.pointsToConnect[0]
+
+    if (
+      !this.candidates &&
+      this.simpleRouteJson.layerCount === 1 &&
+      !this.canConnectNodesOnSingleLayer({
+        startNodeId,
+        endNodeId,
+        connectionName,
+        rootConnectionName,
+      })
+    ) {
+      this.failedConnection = nextConnection
+      this.currentConnectionIndex++
+      this.candidates = null
+      this.visitedPortPoints = null
+      this.currentPathIterations = 0
+      this.failed = true
+      this.error = `Connection ${connectionName} is disconnected between ${startNodeId} and ${endNodeId} on single-layer board`
+      return
+    }
 
     if (!this.candidates) {
       // New connection search: clear caches (base costs depend on committed state)
