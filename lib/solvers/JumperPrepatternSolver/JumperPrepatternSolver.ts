@@ -12,6 +12,7 @@ import { MultipleHighDensityRouteStitchSolver } from "../RouteStitchingSolver/Mu
 import {
   InputNodeWithPortPoints,
   InputPortPoint,
+  PortPointPathingSolver,
 } from "../PortPointPathingSolver/PortPointPathingSolver"
 import {
   HyperPortPointPathingSolver,
@@ -208,7 +209,7 @@ export class JumperPrepatternSolver extends BaseSolver {
     ),
     definePipelineStep(
       "portPointPathingSolver",
-      HyperPortPointPathingSolver,
+      PortPointPathingSolver,
       (solver) => {
         // Build input nodes with port points from the segment solver
         const inputNodes: InputNodeWithPortPoints[] = solver.capacityNodes.map(

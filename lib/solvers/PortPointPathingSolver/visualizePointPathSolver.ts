@@ -126,11 +126,22 @@ export function visualizePointPathSolver(
       numTransitionPairCrossings: 0,
     }
 
+    let numberOfConnectionsInside = 0
     if (isPortPointPathingSolver(solver)) {
       pf = solver.computeNodePf(node)
       memPf = solver.nodeMemoryPfMap.get(node.capacityMeshNodeId) ?? 0
       const nodeWithPortPoints = solver.buildNodeWithPortPointsForCrossing(node)
       crossings = getIntraNodeCrossingsUsingCircle(nodeWithPortPoints)
+      // Count unique connections in this node
+      const connectionsInNode = new Set<string>()
+      const portPoints =
+        solver.nodeAssignedPortPoints.get(node.capacityMeshNodeId) ?? []
+      for (const pp of portPoints) {
+        if (pp.connectionName) {
+          connectionsInNode.add(pp.connectionName)
+        }
+      }
+      numberOfConnectionsInside = connectionsInNode.size
     } else {
       // For MultiSectionPortPointOptimizer, use nodePfMap
       pf = solver.nodePfMap.get(node.capacityMeshNodeId) ?? 0
@@ -145,6 +156,14 @@ export function visualizePointPathSolver(
         availableZ: node.availableZ,
       }
       crossings = getIntraNodeCrossingsUsingCircle(nodeWithPortPoints)
+      // Count unique connections in this node
+      const connectionsInNode = new Set<string>()
+      for (const pp of portPoints) {
+        if (pp.connectionName) {
+          connectionsInNode.add(pp.connectionName)
+        }
+      }
+      numberOfConnectionsInside = connectionsInNode.size
     }
 
     const red = Math.min(255, Math.floor(pf * 512))
@@ -165,7 +184,7 @@ export function visualizePointPathSolver(
       height: node.height - 0.2,
       layer: `z${node.availableZ.join(",")}`,
       fill: color,
-      label: `${node.capacityMeshNodeId}\npf: ${pf.toFixed(3)}, memPf: ${memPf.toFixed(3)}\nxSame: ${crossings.numSameLayerCrossings}, xLC: ${crossings.numEntryExitLayerChanges}, xTransition: ${crossings.numTransitionPairCrossings}\nobCmid: ${node._offBoardConnectedCapacityMeshNodeIds?.join(",")}\nobs: ${node._containsObstacle ? "yes" : "no"}`,
+      label: `${node.capacityMeshNodeId}\npf: ${pf.toFixed(3)}, memPf: ${memPf.toFixed(3)}\nC#: ${numberOfConnectionsInside}\nxSame: ${crossings.numSameLayerCrossings}, xLC: ${crossings.numEntryExitLayerChanges}, xTransition: ${crossings.numTransitionPairCrossings}\nobCmid: ${node._offBoardConnectedCapacityMeshNodeIds?.join(",")}\nobs: ${node._containsObstacle ? "yes" : "no"}`,
     })
   }
 
