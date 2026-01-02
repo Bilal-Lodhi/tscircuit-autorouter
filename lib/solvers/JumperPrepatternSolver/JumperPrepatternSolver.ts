@@ -28,6 +28,8 @@ import { RectDiffPipeline } from "@tscircuit/rectdiff"
 import { CapacityMeshEdgeSolver2_NodeTreeOptimization } from "../CapacityMeshSolver/CapacityMeshEdgeSolver2_NodeTreeOptimization"
 import { getConnectivityMapFromSimpleRouteJson } from "../../utils/getConnectivityMapFromSimpleRouteJson"
 import { getColorMap } from "../colors"
+import { RelateNodesToOffBoardConnectionsSolver } from "../../autorouter-pipelines/AssignableAutoroutingPipeline2/RelateNodesToOffBoardConnectionsSolver"
+import { updateConnMapWithOffboardObstacleConnections } from "../../autorouter-pipelines/AssignableAutoroutingPipeline2/updateConnMapWithOffboardObstacleConnections"
 
 /**
  * 0805 footprint dimensions in mm
@@ -149,6 +151,7 @@ export class JumperPrepatternSolver extends BaseSolver {
 
   // Sub-solvers
   nodeSolver?: RectDiffPipeline
+  relateNodesToOffBoardConnections?: RelateNodesToOffBoardConnectionsSolver
   edgeSolver?: CapacityMeshEdgeSolver2_NodeTreeOptimization
   availableSegmentPointSolver?: AvailableSegmentPointSolver
   portPointPathingSolver?: HyperPortPointPathingSolver
@@ -174,6 +177,22 @@ export class JumperPrepatternSolver extends BaseSolver {
       {
         onSolved: (solver) => {
           solver.capacityNodes = solver.nodeSolver?.getOutput().meshNodes ?? []
+        },
+      },
+    ),
+    definePipelineStep(
+      "relateNodesToOffBoardConnections",
+      RelateNodesToOffBoardConnectionsSolver,
+      (solver) => [
+        {
+          capacityMeshNodes: solver.capacityNodes,
+          srj: solver.srjWithPointPairs,
+        },
+      ],
+      {
+        onSolved: (solver) => {
+          solver.capacityNodes =
+            solver.relateNodesToOffBoardConnections?.getOutput().capacityNodes!
         },
       },
     ),
@@ -214,6 +233,9 @@ export class JumperPrepatternSolver extends BaseSolver {
             availableZ: node.availableZ,
             _containsTarget: node._containsTarget,
             _containsObstacle: node._containsObstacle,
+            _offBoardConnectionId: node._offBoardConnectionId,
+            _offBoardConnectedCapacityMeshNodeIds:
+              node._offBoardConnectedCapacityMeshNodeIds,
           }),
         )
 
@@ -234,6 +256,9 @@ export class JumperPrepatternSolver extends BaseSolver {
               z: segmentPortPoint.availableZ[0] ?? 0,
               connectionNodeIds: [nodeId1, nodeId2],
               distToCentermostPortOnZ: segmentPortPoint.distToCentermostPortOnZ,
+              connectsToOffBoardNode: segment.nodeIds.some(
+                (n) => nodeMap.get(n)?._offBoardConnectionId,
+              ),
             }
 
             // Add to first node
@@ -261,6 +286,18 @@ export class JumperPrepatternSolver extends BaseSolver {
             },
           } as HyperPortPointPathingSolverParams,
         ]
+      },
+      {
+        onSolved: (solver) => {
+          const pathingSolver = solver.portPointPathingSolver
+          if (!pathingSolver) return
+          updateConnMapWithOffboardObstacleConnections({
+            connMap: solver.connMap,
+            connectionsWithResults: pathingSolver.connectionsWithResults,
+            inputNodes: pathingSolver.inputNodes,
+            obstacles: solver.srjWithPointPairs.obstacles,
+          })
+        },
       },
     ),
     // definePipelineStep(
