@@ -1,11 +1,11 @@
 import { test, expect } from "bun:test"
-import { IntraNodeSolverWithJumpers } from "lib/solvers/HighDensitySolver/IntraNodeSolverWithJumpers"
+import { HyperIntraNodeSolverWithJumpers } from "lib/solvers/HighDensitySolver/HyperIntraNodeSolverWithJumpers"
 import input from "../../fixtures/features/jumper-high-density/jumper-high-density03-input.json" with {
   type: "json",
 }
 
-test("IntraNodeSolverWithJumpers03 - solves high density routes with jumpers", () => {
-  const solver = new IntraNodeSolverWithJumpers({
+test("HyperIntraNodeSolverWithJumpers03 - solves high density routes with jumpers", () => {
+  const solver = new HyperIntraNodeSolverWithJumpers({
     nodeWithPortPoints: input.nodeWithPortPoints as any,
     colorMap: input.colorMap,
     hyperParameters: input.hyperParameters,
