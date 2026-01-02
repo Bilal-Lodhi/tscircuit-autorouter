@@ -250,7 +250,7 @@ export class PortPointPathingSolver extends BaseSolver {
   BASE_ITERATIONS_PER_PATH = 10000
 
   get RIPPING_ENABLED() {
-    return this.hyperParameters.RIPPING_ENABLED ?? true
+    return this.hyperParameters.RIPPING_ENABLED ?? false
   }
 
   get RIPPING_PF_THRESHOLD() {

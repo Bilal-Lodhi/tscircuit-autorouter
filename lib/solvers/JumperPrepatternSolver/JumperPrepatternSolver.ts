@@ -263,6 +263,9 @@ export class JumperPrepatternSolver extends BaseSolver {
               FORCE_OFF_BOARD_FREQUENCY: 0,
               MIN_ALLOWED_BOARD_SCORE: -1,
               FORCE_CENTER_FIRST: true,
+              RIPPING_ENABLED: true,
+              RIPPING_PF_THRESHOLD: 0.3,
+              MAX_RIPS: 100,
             },
           } as HyperPortPointPathingSolverParams,
         ]

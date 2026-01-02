@@ -1,39 +1,13 @@
 import type { JumperPrepatternSolver } from "../JumperPrepatternSolver"
 import type { SimpleRouteJson } from "../../../types"
-
-/**
- * 0603 footprint dimensions in mm
- * 0.8mm x 0.95mm pads, 1.65mm center-to-center
- */
-const JUMPER_0603 = {
-  length: 1.65,
-  width: 0.95,
-  padLength: 0.8,
-  padWidth: 0.95,
-}
-
-/**
- * 1206 footprint dimensions in mm
- * Actual 1206: 3.2mm x 1.6mm
- */
-const JUMPER_1206 = {
-  length: 3.2,
-  width: 1.6,
-  padLength: 0.6,
-  padWidth: 1.6,
-}
-
-type JumperFootprint = "0603" | "1206"
-
-const JUMPER_DIMENSIONS: Record<JumperFootprint, typeof JUMPER_0603> = {
-  "0603": JUMPER_0603,
-  "1206": JUMPER_1206,
-}
+import { JUMPER_DIMENSIONS, JumperFootprint } from "lib/utils/jumperSizes"
 
 /**
  * Default margin between jumpers in mm
  */
-const JUMPER_MARGIN = 0.6
+const JUMPER_MARGIN = 0.8
+
+const BORDER_PADDING = 0.8
 
 export interface Obstacle {
   type: "rect"
@@ -69,13 +43,12 @@ export function alternatingGrid(jps: JumperPrepatternSolver): PatternResult {
   const prepatternJumpers: PrepatternJumper[] = []
   const jumperPadObstacles: Obstacle[] = []
 
-  const padding = 0.8
   const node = jps.nodeWithPortPoints
   const bounds = {
-    minX: node.center.x - node.width / 2 + padding,
-    maxX: node.center.x + node.width / 2 - padding,
-    minY: node.center.y - node.height / 2 + padding,
-    maxY: node.center.y + node.height / 2 - padding,
+    minX: node.center.x - node.width / 2 + BORDER_PADDING,
+    maxX: node.center.x + node.width / 2 - BORDER_PADDING,
+    minY: node.center.y - node.height / 2 + BORDER_PADDING,
+    maxY: node.center.y + node.height / 2 - BORDER_PADDING,
     width: 0,
     height: 0,
   }
