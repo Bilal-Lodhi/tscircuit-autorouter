@@ -244,9 +244,9 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
       {
         length: largeSeedCount,
       },
-      (_, i) => {
+      (_, i) => ({
         SHUFFLE_SEED: 20 + i
-      },
+      }),
     )
 
     return {
