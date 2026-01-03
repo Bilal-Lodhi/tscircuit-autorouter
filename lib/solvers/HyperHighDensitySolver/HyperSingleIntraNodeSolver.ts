@@ -51,11 +51,10 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
   }
 
   getHyperParameterDefs() {
-    const { smallSeedCount, largeSeedCount } =
-      this.computeShuffleSeedCountsForNode()
-    const orderingsSmall = this.createShuffleSeedValues(smallSeedCount, 0)
-    const orderingsLarge = this.createShuffleSeedValues(largeSeedCount, 100)
-
+    const {
+      smallShuffleSeedArray: smallShuffleSeedCount,
+      largeShuffleSeedArray: largeShuffleSeedCount,
+    } = this.computeShuffleSeedCountsForNode()
     return [
       {
         name: "majorCombinations",
@@ -83,7 +82,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
       },
       {
         name: "orderings6",
-        possibleValues: orderingsSmall,
+        possibleValues: smallShuffleSeedCount,
       },
       {
         name: "cellSizeFactor",
@@ -115,7 +114,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
       },
       {
         name: "orderings50",
-        possibleValues: orderingsLarge,
+        possibleValues: largeShuffleSeedCount,
       },
       {
         name: "closedFormTwoTrace",
@@ -223,33 +222,36 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
   }
 
   private computeShuffleSeedCountsForNode() {
-    const portCount = this.nodeWithPortPoints.portPoints.length
     const uniqueConnectionsCount = new Set(
       this.nodeWithPortPoints.portPoints.map((p) => p.connectionName),
     ).size
-    const area = Math.max(
-      1,
-      this.nodeWithPortPoints.width * this.nodeWithPortPoints.height,
+    const area = this.nodeWithPortPoints.width * this.nodeWithPortPoints.height
+    const normalizedArea = Math.sqrt(area)
+    const score = uniqueConnectionsCount + normalizedArea
+    const smallSeedCount = score * 2
+    const largeSeedCount = score * 3
+
+    const smallShuffleSeedArray = Array.from(
+      {
+        length: smallSeedCount,
+      },
+      (_, i) => {
+        SHUFFlE_SEED: 10 + i
+      },
     )
-    const normalizedArea = Math.round(Math.sqrt(area))
-    const score = uniqueConnectionsCount + portCount + normalizedArea
-    const smallSeedCount = this.clampSeedCount(Math.max(6, score), 6, 40)
-    const largeSeedCount = this.clampSeedCount(Math.max(20, score), 20, 200)
+
+    const largeShuffleSeedArray = Array.from(
+      {
+        length: largeSeedCount,
+      },
+      (_, i) => {
+        SHUFFLE_SEED: 20 + i
+      },
+    )
 
     return {
-      smallSeedCount,
-      largeSeedCount,
+      smallShuffleSeedArray,
+      largeShuffleSeedArray,
     }
-  }
-
-  private clampSeedCount(value: number, min: number, max: number) {
-    return Math.max(min, Math.min(max, value))
-  }
-
-  private createShuffleSeedValues(count: number, offset: number) {
-    const safeCount = Math.max(1, Math.floor(count))
-    return Array.from({ length: safeCount }, (_, i) => ({
-      SHUFFLE_SEED: offset + i,
-    }))
   }
 }
