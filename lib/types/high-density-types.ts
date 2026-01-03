@@ -5,6 +5,8 @@ export type PortPoint = {
   x: number
   y: number
   z: number
+  /** Order index within the path - used to ensure correct ordering when creating routes */
+  orderIndex?: number
 }
 
 export type NodeWithPortPoints = {
@@ -38,6 +40,10 @@ export type HighDensityIntraNodeRoute = {
   route: Array<{ x: number; y: number; z: number }>
   vias: Array<{ x: number; y: number }>
   jumpers?: Jumper[]
+  /** Order index of the starting port point in the original path */
+  startOrderIndex?: number
+  /** Order index of the ending port point in the original path */
+  endOrderIndex?: number
 }
 
 export type HighDensityRoute = HighDensityIntraNodeRoute

@@ -43,106 +43,154 @@ export class MultipleHighDensityRouteStitchSolver extends BaseSolver {
     this.defaultViaDiameter =
       firstRoute?.viaDiameter ?? params.defaultViaDiameter ?? 0.6
 
-    const routeIslandConnectivityMap = new ConnectivityMap({})
-    const routeIslandConnections: Array<string[]> = []
-    const routeIslands = []
-
-    const pointHashCounts = new Map<string, number>()
-
-    for (let i = 0; i < params.hdRoutes.length; i++) {
-      const hdRoute = params.hdRoutes[i]
-      const start = hdRoute.route[0]
-      const end = hdRoute.route[hdRoute.route.length - 1]
-      routeIslandConnections.push([
-        `route_island_${i}`,
-        `${hdRoute.connectionName}:${roundedPointHash(start)}`,
-        `${hdRoute.connectionName}:${roundedPointHash(end)}`,
-      ])
-    }
-    routeIslandConnectivityMap.addConnections(routeIslandConnections)
-    for (const routeIslandConnection of routeIslandConnections) {
-      for (const pointHash of routeIslandConnection.slice(1)) {
-        pointHashCounts.set(
-          pointHash,
-          (pointHashCounts.get(pointHash) ?? 0) + 1,
-        )
-      }
-    }
+    // Check if routes have orderIndex information
+    const hasOrderIndex = params.hdRoutes.some(
+      (r) => r.startOrderIndex !== undefined,
+    )
 
     this.unsolvedRoutes = []
 
-    const uniqueNets = Array.from(
-      new Set(Object.values(routeIslandConnectivityMap.idToNetMap)),
-    )
-
-    for (const netName of uniqueNets) {
-      const netMembers =
-        routeIslandConnectivityMap.getIdsConnectedToNet(netName)
-
-      const hdRoutes = params.hdRoutes.filter((r, i) =>
-        netMembers.includes(`route_island_${i}`),
-      )
-      if (hdRoutes.length === 0) continue
-
-      const connection = params.connections.find(
-        (c) => c.name === hdRoutes[0].connectionName,
-      )!
-
-      const possibleEndpoints1 = hdRoutes.flatMap((r) => [
-        r.route[0],
-        r.route[r.route.length - 1],
-      ])
-
-      const possibleEndpoints2 = []
-      for (const possibleEndpoint1 of possibleEndpoints1) {
-        const pointHash = `${hdRoutes[0].connectionName}:${roundedPointHash(possibleEndpoint1)}`
-        if (pointHashCounts.get(pointHash) === 1) {
-          possibleEndpoints2.push(possibleEndpoint1)
+    if (hasOrderIndex) {
+      // When orderIndex is available, group routes by connectionName directly
+      // (not by shared endpoints) since jumper gaps create disconnected routes
+      const routesByConnection = new Map<string, HighDensityIntraNodeRoute[]>()
+      for (const hdRoute of params.hdRoutes) {
+        const existing = routesByConnection.get(hdRoute.connectionName)
+        if (existing) {
+          existing.push(hdRoute)
+        } else {
+          routesByConnection.set(hdRoute.connectionName, [hdRoute])
         }
       }
-      // Not sure why this happens
-      // If removing, make sure off-board-assignable2 doesn't break
-      if (possibleEndpoints2.length === 0) {
-        console.log("no possible endpoints, can't stitch")
-        continue
-      }
 
-      let start: { x: number; y: number; z: number }
-      let end: { x: number; y: number; z: number }
+      for (const [connectionName, hdRoutes] of routesByConnection) {
+        const connection = params.connections.find(
+          (c) => c.name === connectionName,
+        )!
 
-      if (possibleEndpoints2.length !== 2) {
-        start = {
+        const start = {
           ...connection.pointsToConnect[0],
           z: mapLayerNameToZ(
             getConnectionPointLayer(connection.pointsToConnect[0]),
             params.layerCount,
           ),
         }
-        end = {
+        const end = {
           ...connection.pointsToConnect[1],
           z: mapLayerNameToZ(
             getConnectionPointLayer(connection.pointsToConnect[1]),
             params.layerCount,
           ),
         }
-      } else {
-        start = possibleEndpoints2[0]
-        end = possibleEndpoints2[1]
 
-        if (
-          distance(start, connection.pointsToConnect[1]) <
-          distance(end, connection.pointsToConnect[0])
-        ) {
-          ;[start, end] = [end, start]
+        this.unsolvedRoutes.push({
+          connectionName,
+          hdRoutes,
+          start,
+          end,
+        })
+      }
+    } else {
+      // Fall back to connectivity-based grouping for legacy routes without orderIndex
+      const routeIslandConnectivityMap = new ConnectivityMap({})
+      const routeIslandConnections: Array<string[]> = []
+      const routeIslands = []
+
+      const pointHashCounts = new Map<string, number>()
+
+      for (let i = 0; i < params.hdRoutes.length; i++) {
+        const hdRoute = params.hdRoutes[i]
+        const start = hdRoute.route[0]
+        const end = hdRoute.route[hdRoute.route.length - 1]
+        routeIslandConnections.push([
+          `route_island_${i}`,
+          `${hdRoute.connectionName}:${roundedPointHash(start)}`,
+          `${hdRoute.connectionName}:${roundedPointHash(end)}`,
+        ])
+      }
+      routeIslandConnectivityMap.addConnections(routeIslandConnections)
+      for (const routeIslandConnection of routeIslandConnections) {
+        for (const pointHash of routeIslandConnection.slice(1)) {
+          pointHashCounts.set(
+            pointHash,
+            (pointHashCounts.get(pointHash) ?? 0) + 1,
+          )
         }
       }
 
-      this.unsolvedRoutes.push({
-        connectionName: hdRoutes[0].connectionName,
-        hdRoutes,
-        start,
-        end,
-      })
+      const uniqueNets = Array.from(
+        new Set(Object.values(routeIslandConnectivityMap.idToNetMap)),
+      )
+
+      for (const netName of uniqueNets) {
+        const netMembers =
+          routeIslandConnectivityMap.getIdsConnectedToNet(netName)
+
+        const hdRoutes = params.hdRoutes.filter((r, i) =>
+          netMembers.includes(`route_island_${i}`),
+        )
+        if (hdRoutes.length === 0) continue
+
+        const connection = params.connections.find(
+          (c) => c.name === hdRoutes[0].connectionName,
+        )!
+
+        const possibleEndpoints1 = hdRoutes.flatMap((r) => [
+          r.route[0],
+          r.route[r.route.length - 1],
+        ])
+
+        const possibleEndpoints2 = []
+        for (const possibleEndpoint1 of possibleEndpoints1) {
+          const pointHash = `${hdRoutes[0].connectionName}:${roundedPointHash(possibleEndpoint1)}`
+          if (pointHashCounts.get(pointHash) === 1) {
+            possibleEndpoints2.push(possibleEndpoint1)
+          }
+        }
+        // Not sure why this happens
+        // If removing, make sure off-board-assignable2 doesn't break
+        if (possibleEndpoints2.length === 0) {
+          console.log("no possible endpoints, can't stitch")
+          continue
+        }
+
+        let start: { x: number; y: number; z: number }
+        let end: { x: number; y: number; z: number }
+
+        if (possibleEndpoints2.length !== 2) {
+          start = {
+            ...connection.pointsToConnect[0],
+            z: mapLayerNameToZ(
+              getConnectionPointLayer(connection.pointsToConnect[0]),
+              params.layerCount,
+            ),
+          }
+          end = {
+            ...connection.pointsToConnect[1],
+            z: mapLayerNameToZ(
+              getConnectionPointLayer(connection.pointsToConnect[1]),
+              params.layerCount,
+            ),
+          }
+        } else {
+          start = possibleEndpoints2[0]
+          end = possibleEndpoints2[1]
+
+          if (
+            distance(start, connection.pointsToConnect[1]) <
+            distance(end, connection.pointsToConnect[0])
+          ) {
+            ;[start, end] = [end, start]
+          }
+        }
+
+        this.unsolvedRoutes.push({
+          connectionName: hdRoutes[0].connectionName,
+          hdRoutes,
+          start,
+          end,
+        })
+      }
     }
 
     this.MAX_ITERATIONS = 100e3

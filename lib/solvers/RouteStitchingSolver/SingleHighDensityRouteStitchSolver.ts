@@ -14,6 +14,8 @@ export class SingleHighDensityRouteStitchSolver extends BaseSolver {
   start: { x: number; y: number; z: number }
   end: { x: number; y: number; z: number }
   colorMap: Record<string, string>
+  /** Tracks the last endOrderIndex of the merged route for orderIndex-based stitching */
+  lastMergedEndOrderIndex?: number
 
   constructor(opts: {
     connectionName: string
@@ -56,38 +58,57 @@ export class SingleHighDensityRouteStitchSolver extends BaseSolver {
       return // Early exit as there's nothing to stitch
     }
 
-    // Find the route closest to the global start or end to serve as the "seed" route.
-    // This is more robust than looking for "disjoint" ends, which can fail with small gaps.
-    let bestDist = Infinity
+    // Find the first route to use as the "seed" for stitching.
+    // Prefer using orderIndex if available, otherwise fall back to distance-based selection.
     let firstRoute = opts.hdRoutes[0]
     let orientation: "start-to-end" | "end-to-start" = "start-to-end"
 
-    for (const route of opts.hdRoutes) {
-      const firstPoint = route.route[0]
-      const lastPoint = route.route[route.route.length - 1]
+    // Check if routes have orderIndex information
+    const routesWithOrderIndex = opts.hdRoutes.filter(
+      (r) => r.startOrderIndex !== undefined,
+    )
 
-      const distStartToFirst = distance(opts.start, firstPoint)
-      const distStartToLast = distance(opts.start, lastPoint)
-      const distEndToFirst = distance(opts.end, firstPoint)
-      const distEndToLast = distance(opts.end, lastPoint)
+    if (routesWithOrderIndex.length > 0) {
+      // Find the route with the lowest startOrderIndex (should be 0 for the start)
+      let lowestStartOrderIndex = Infinity
+      for (const route of routesWithOrderIndex) {
+        if (route.startOrderIndex! < lowestStartOrderIndex) {
+          lowestStartOrderIndex = route.startOrderIndex!
+          firstRoute = route
+        }
+      }
+      // When using orderIndex, always go start-to-end
+      orientation = "start-to-end"
+    } else {
+      // Fall back to distance-based selection
+      let bestDist = Infinity
+      for (const route of opts.hdRoutes) {
+        const firstPoint = route.route[0]
+        const lastPoint = route.route[route.route.length - 1]
 
-      const minDist = Math.min(
-        distStartToFirst,
-        distStartToLast,
-        distEndToFirst,
-        distEndToLast,
-      )
+        const distStartToFirst = distance(opts.start, firstPoint)
+        const distStartToLast = distance(opts.start, lastPoint)
+        const distEndToFirst = distance(opts.end, firstPoint)
+        const distEndToLast = distance(opts.end, lastPoint)
 
-      if (minDist < bestDist) {
-        bestDist = minDist
-        firstRoute = route
-        if (
-          Math.min(distEndToFirst, distEndToLast) <
-          Math.min(distStartToFirst, distStartToLast)
-        ) {
-          orientation = "end-to-start"
-        } else {
-          orientation = "start-to-end"
+        const minDist = Math.min(
+          distStartToFirst,
+          distStartToLast,
+          distEndToFirst,
+          distEndToLast,
+        )
+
+        if (minDist < bestDist) {
+          bestDist = minDist
+          firstRoute = route
+          if (
+            Math.min(distEndToFirst, distEndToLast) <
+            Math.min(distStartToFirst, distStartToLast)
+          ) {
+            orientation = "end-to-start"
+          } else {
+            orientation = "start-to-end"
+          }
         }
       }
     }
@@ -125,6 +146,15 @@ export class SingleHighDensityRouteStitchSolver extends BaseSolver {
       jumpers: [],
       viaDiameter: firstRoute.viaDiameter,
       traceThickness: firstRoute.traceThickness,
+    }
+
+    // Initialize lastMergedEndOrderIndex based on the first route
+    // We start at the "start" side, so we want the lowest orderIndex
+    // The first route that gets merged will set this properly
+    if (firstRoute.startOrderIndex !== undefined) {
+      // Start with -1 so when the first route (startOrderIndex=0) is merged,
+      // we'll be looking for expectedStartOrderIndex = 0
+      this.lastMergedEndOrderIndex = firstRoute.startOrderIndex - 1
     }
   }
 
@@ -193,6 +223,7 @@ export class SingleHighDensityRouteStitchSolver extends BaseSolver {
     // 3. After merging, we remove it from the remaining routes
 
     // Find the next logical route to merge using prioritized selection
+    // Priority 0: Route with consecutive orderIndex (if available)
     // Priority 1: Same layer, connected (or very close)
     // Priority 2: Different layer, same X/Y (Via)
     // Priority 3: Closest endpoint (Gap bridging)
@@ -201,58 +232,117 @@ export class SingleHighDensityRouteStitchSolver extends BaseSolver {
     let matchedOn: "first" | "last" = "first"
     let bestScore = Infinity
 
-    for (let i = 0; i < this.remainingHdRoutes.length; i++) {
-      const hdRoute = this.remainingHdRoutes[i]
-      const firstPointInCandidate = hdRoute.route[0]
-      const lastPointInCandidate = hdRoute.route[hdRoute.route.length - 1]
+    // First, try to find a route with the next orderIndex in sequence
+    // Note: orderIndex values may not be consecutive (gaps exist for single-point nodes)
+    // So we find the route with the smallest orderIndex that is >= lastMergedEndOrderIndex
+    // (using >= because route N-M can be followed by route M-K, where startOrderIndex = M = lastMergedEndOrderIndex)
+    if (this.lastMergedEndOrderIndex !== undefined) {
+      let bestOrderIndexMatch: {
+        index: number
+        matchedOn: "first" | "last"
+        orderIndex: number
+      } | null = null
 
-      const distToFirst = distance(lastMergedPoint, firstPointInCandidate)
-      const distToLast = distance(lastMergedPoint, lastPointInCandidate)
+      for (let i = 0; i < this.remainingHdRoutes.length; i++) {
+        const hdRoute = this.remainingHdRoutes[i]
 
-      // Evaluate "First" end
-      let scoreFirst = Infinity
-      if (lastMergedPoint.z === firstPointInCandidate.z) {
-        if (distToFirst < GEOMETRIC_TOLERANCE) {
-          scoreFirst = distToFirst // Connected on same layer
-        } else {
-          scoreFirst = GAP_PENALTY + distToFirst // Gap on same layer
+        // Check startOrderIndex
+        if (
+          hdRoute.startOrderIndex !== undefined &&
+          hdRoute.startOrderIndex >= this.lastMergedEndOrderIndex
+        ) {
+          if (
+            bestOrderIndexMatch === null ||
+            hdRoute.startOrderIndex < bestOrderIndexMatch.orderIndex
+          ) {
+            bestOrderIndexMatch = {
+              index: i,
+              matchedOn: "first",
+              orderIndex: hdRoute.startOrderIndex,
+            }
+          }
         }
-      } else {
-        // Different Z
-        if (distToFirst < GEOMETRIC_TOLERANCE) {
-          scoreFirst = VIA_PENALTY + distToFirst // Via transition
-        } else {
-          scoreFirst = GAP_PENALTY + distToFirst // Gap on different layer
+
+        // Check endOrderIndex (for reversed routes)
+        if (
+          hdRoute.endOrderIndex !== undefined &&
+          hdRoute.endOrderIndex >= this.lastMergedEndOrderIndex
+        ) {
+          if (
+            bestOrderIndexMatch === null ||
+            hdRoute.endOrderIndex < bestOrderIndexMatch.orderIndex
+          ) {
+            bestOrderIndexMatch = {
+              index: i,
+              matchedOn: "last",
+              orderIndex: hdRoute.endOrderIndex,
+            }
+          }
         }
       }
 
-      if (scoreFirst < bestScore) {
-        bestScore = scoreFirst
-        closestRouteIndex = i
-        matchedOn = "first"
+      if (bestOrderIndexMatch !== null) {
+        closestRouteIndex = bestOrderIndexMatch.index
+        matchedOn = bestOrderIndexMatch.matchedOn
+        bestScore = 0 // OrderIndex-based match takes priority
       }
+    }
 
-      // Evaluate "Last" end
-      let scoreLast = Infinity
-      if (lastMergedPoint.z === lastPointInCandidate.z) {
-        if (distToLast < GEOMETRIC_TOLERANCE) {
-          scoreLast = distToLast // Connected on same layer
-        } else {
-          scoreLast = GAP_PENALTY + distToLast // Gap on same layer
-        }
-      } else {
-        // Different Z
-        if (distToLast < GEOMETRIC_TOLERANCE) {
-          scoreLast = VIA_PENALTY + distToLast // Via transition
-        } else {
-          scoreLast = GAP_PENALTY + distToLast // Gap on different layer
-        }
-      }
+    // Fall back to distance-based selection if no orderIndex match found
+    if (closestRouteIndex === -1) {
+      for (let i = 0; i < this.remainingHdRoutes.length; i++) {
+        const hdRoute = this.remainingHdRoutes[i]
+        const firstPointInCandidate = hdRoute.route[0]
+        const lastPointInCandidate = hdRoute.route[hdRoute.route.length - 1]
 
-      if (scoreLast < bestScore) {
-        bestScore = scoreLast
-        closestRouteIndex = i
-        matchedOn = "last"
+        const distToFirst = distance(lastMergedPoint, firstPointInCandidate)
+        const distToLast = distance(lastMergedPoint, lastPointInCandidate)
+
+        // Evaluate "First" end
+        let scoreFirst = Infinity
+        if (lastMergedPoint.z === firstPointInCandidate.z) {
+          if (distToFirst < GEOMETRIC_TOLERANCE) {
+            scoreFirst = distToFirst // Connected on same layer
+          } else {
+            scoreFirst = GAP_PENALTY + distToFirst // Gap on same layer
+          }
+        } else {
+          // Different Z
+          if (distToFirst < GEOMETRIC_TOLERANCE) {
+            scoreFirst = VIA_PENALTY + distToFirst // Via transition
+          } else {
+            scoreFirst = GAP_PENALTY + distToFirst // Gap on different layer
+          }
+        }
+
+        if (scoreFirst < bestScore) {
+          bestScore = scoreFirst
+          closestRouteIndex = i
+          matchedOn = "first"
+        }
+
+        // Evaluate "Last" end
+        let scoreLast = Infinity
+        if (lastMergedPoint.z === lastPointInCandidate.z) {
+          if (distToLast < GEOMETRIC_TOLERANCE) {
+            scoreLast = distToLast // Connected on same layer
+          } else {
+            scoreLast = GAP_PENALTY + distToLast // Gap on same layer
+          }
+        } else {
+          // Different Z
+          if (distToLast < GEOMETRIC_TOLERANCE) {
+            scoreLast = VIA_PENALTY + distToLast // Via transition
+          } else {
+            scoreLast = GAP_PENALTY + distToLast // Gap on different layer
+          }
+        }
+
+        if (scoreLast < bestScore) {
+          bestScore = scoreLast
+          closestRouteIndex = i
+          matchedOn = "last"
+        }
       }
     }
 
@@ -287,6 +377,15 @@ export class SingleHighDensityRouteStitchSolver extends BaseSolver {
     // Merge jumpers if present
     if (hdRouteToMerge.jumpers) {
       this.mergedHdRoute.jumpers!.push(...hdRouteToMerge.jumpers)
+    }
+
+    // Update lastMergedEndOrderIndex for next iteration
+    // If route was matched on "first", the end of merged route is the original endOrderIndex
+    // If route was matched on "last" (reversed), the end is the original startOrderIndex
+    if (matchedOn === "first") {
+      this.lastMergedEndOrderIndex = hdRouteToMerge.endOrderIndex
+    } else {
+      this.lastMergedEndOrderIndex = hdRouteToMerge.startOrderIndex
     }
   }
 

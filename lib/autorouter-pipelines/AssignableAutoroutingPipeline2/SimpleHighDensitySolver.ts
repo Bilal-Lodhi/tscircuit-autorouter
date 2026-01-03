@@ -136,6 +136,8 @@ interface RouteInProgress {
   startPoint: { x: number; y: number; z: number }
   endPoint: { x: number; y: number; z: number }
   movablePoints: MovablePoint[]
+  startOrderIndex?: number
+  endOrderIndex?: number
 }
 
 /**
@@ -245,7 +247,13 @@ export class SimpleHighDensitySolver extends BaseSolver {
     // Group port points within this node by connectionName
     const connectionGroups = new Map<
       string,
-      Array<{ x: number; y: number; z: number; rootConnectionName?: string }>
+      Array<{
+        x: number
+        y: number
+        z: number
+        rootConnectionName?: string
+        orderIndex?: number
+      }>
     >()
 
     for (const pt of node.portPoints) {
@@ -257,6 +265,7 @@ export class SimpleHighDensitySolver extends BaseSolver {
         y: pt.y,
         z: pt.z,
         rootConnectionName: pt.rootConnectionName,
+        orderIndex: pt.orderIndex,
       })
     }
 
@@ -264,60 +273,112 @@ export class SimpleHighDensitySolver extends BaseSolver {
     for (const [connectionName, points] of connectionGroups) {
       if (points.length < 2) continue
 
-      const startPoint = points[0]
-      const endPoint = points[points.length - 1]
-      const z = startPoint.z
-
-      // Calculate direction vector and length
-      const dx = endPoint.x - startPoint.x
-      const dy = endPoint.y - startPoint.y
-      const length = Math.sqrt(dx * dx + dy * dy)
-      const unitX = length > 0 ? dx / length : 0
-      const unitY = length > 0 ? dy / length : 0
-
-      // Create movable points based on numMovablePoints
-      const movablePoints: MovablePoint[] = []
-
-      if (this.numMovablePoints >= 1) {
-        // First movable point: start + 0.1mm along line
-        movablePoints.push({
-          x: startPoint.x + unitX * MOVABLE_POINT_OFFSET,
-          y: startPoint.y + unitY * MOVABLE_POINT_OFFSET,
-          z,
-          rootConnectionName: startPoint.rootConnectionName,
-          connectionName,
-        })
-      }
-
-      if (this.numMovablePoints >= 2) {
-        // Second movable point: end - 0.1mm along line
-        movablePoints.push({
-          x: endPoint.x - unitX * MOVABLE_POINT_OFFSET,
-          y: endPoint.y - unitY * MOVABLE_POINT_OFFSET,
-          z,
-          rootConnectionName: startPoint.rootConnectionName,
-          connectionName,
-        })
-      }
-
-      if (this.numMovablePoints >= 3) {
-        // Third movable point: centered
-        movablePoints.push({
-          x: startPoint.x + dx / 2,
-          y: startPoint.y + dy / 2,
-          z,
-          rootConnectionName: startPoint.rootConnectionName,
-          connectionName,
-        })
-      }
-
-      this.routesInProgress.push({
-        connectionName,
-        rootConnectionName: startPoint.rootConnectionName,
-        startPoint: { x: startPoint.x, y: startPoint.y, z },
-        endPoint: { x: endPoint.x, y: endPoint.y, z },
-        movablePoints,
+      // Sort points by orderIndex to ensure correct path order
+      // Points without orderIndex are sorted to the end
+      points.sort((a, b) => {
+        const aOrder = a.orderIndex ?? Infinity
+        const bOrder = b.orderIndex ?? Infinity
+        return aOrder - bOrder
       })
+
+      // Split points into contiguous segments based on orderIndex
+      // If a path visits this node multiple times, we need separate routes
+      // for each visit (entry-exit pair)
+      const segments: Array<typeof points> = []
+      let currentSegment: typeof points = [points[0]]
+
+      for (let i = 1; i < points.length; i++) {
+        const prevOrder = points[i - 1].orderIndex
+        const currOrder = points[i].orderIndex
+
+        // If orderIndex values are consecutive (or both undefined), they're in the same segment
+        // If there's a gap in orderIndex, the path left and re-entered the node
+        const isConsecutive =
+          prevOrder !== undefined &&
+          currOrder !== undefined &&
+          currOrder === prevOrder + 1
+
+        // Also check if they're both undefined (legacy case) - treat as same segment
+        const bothUndefined =
+          prevOrder === undefined && currOrder === undefined
+
+        if (isConsecutive || bothUndefined) {
+          currentSegment.push(points[i])
+        } else {
+          // Start a new segment
+          if (currentSegment.length >= 2) {
+            segments.push(currentSegment)
+          }
+          currentSegment = [points[i]]
+        }
+      }
+
+      // Don't forget the last segment
+      if (currentSegment.length >= 2) {
+        segments.push(currentSegment)
+      }
+
+      // Create a route for each segment
+      for (const segment of segments) {
+        const startPoint = segment[0]
+        const endPoint = segment[segment.length - 1]
+        const z = startPoint.z
+        const startOrderIndex = startPoint.orderIndex
+        const endOrderIndex = endPoint.orderIndex
+
+        // Calculate direction vector and length
+        const dx = endPoint.x - startPoint.x
+        const dy = endPoint.y - startPoint.y
+        const length = Math.sqrt(dx * dx + dy * dy)
+        const unitX = length > 0 ? dx / length : 0
+        const unitY = length > 0 ? dy / length : 0
+
+        // Create movable points based on numMovablePoints
+        const movablePoints: MovablePoint[] = []
+
+        if (this.numMovablePoints >= 1) {
+          // First movable point: start + 0.1mm along line
+          movablePoints.push({
+            x: startPoint.x + unitX * MOVABLE_POINT_OFFSET,
+            y: startPoint.y + unitY * MOVABLE_POINT_OFFSET,
+            z,
+            rootConnectionName: startPoint.rootConnectionName,
+            connectionName,
+          })
+        }
+
+        if (this.numMovablePoints >= 2) {
+          // Second movable point: end - 0.1mm along line
+          movablePoints.push({
+            x: endPoint.x - unitX * MOVABLE_POINT_OFFSET,
+            y: endPoint.y - unitY * MOVABLE_POINT_OFFSET,
+            z,
+            rootConnectionName: startPoint.rootConnectionName,
+            connectionName,
+          })
+        }
+
+        if (this.numMovablePoints >= 3) {
+          // Third movable point: centered
+          movablePoints.push({
+            x: startPoint.x + dx / 2,
+            y: startPoint.y + dy / 2,
+            z,
+            rootConnectionName: startPoint.rootConnectionName,
+            connectionName,
+          })
+        }
+
+        this.routesInProgress.push({
+          connectionName,
+          rootConnectionName: startPoint.rootConnectionName,
+          startPoint: { x: startPoint.x, y: startPoint.y, z },
+          endPoint: { x: endPoint.x, y: endPoint.y, z },
+          movablePoints,
+          startOrderIndex,
+          endOrderIndex,
+        })
+      }
     }
   }
 
@@ -614,6 +675,8 @@ export class SimpleHighDensitySolver extends BaseSolver {
         startPoint,
         endPoint,
         movablePoints,
+        startOrderIndex,
+        endOrderIndex,
       } = routeInProgress
 
       // Build route: start -> movable points (in order) -> end
@@ -669,6 +732,8 @@ export class SimpleHighDensitySolver extends BaseSolver {
         viaDiameter: this.viaDiameter,
         route: routePointList,
         vias: [],
+        startOrderIndex,
+        endOrderIndex,
       }
 
       this.routes.push(route)

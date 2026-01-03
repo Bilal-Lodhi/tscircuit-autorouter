@@ -1053,6 +1053,10 @@ export class PortPointPathingSolver extends BaseSolver {
   ): PortPoint[] {
     const assignedPortPoints: PortPoint[] = []
 
+    // Track the order index for this connection's port points
+    // Start at 1 to leave room for the start target (which gets orderIndex 0)
+    let orderIndex = 1
+
     for (let i = 0; i < path.length; i++) {
       const candidate = path[i]
 
@@ -1070,6 +1074,7 @@ export class PortPointPathingSolver extends BaseSolver {
             z: candidate.z,
             connectionName,
             rootConnectionName,
+            orderIndex: orderIndex++,
           }
 
           assignedPortPoints.push(portPoint)
@@ -1101,6 +1106,7 @@ export class PortPointPathingSolver extends BaseSolver {
         z: pp.z,
         connectionName,
         rootConnectionName,
+        orderIndex: orderIndex++,
       }
 
       assignedPortPoints.push(portPoint)
@@ -1149,15 +1155,27 @@ export class PortPointPathingSolver extends BaseSolver {
     const endPoint =
       connection.pointsToConnect[connection.pointsToConnect.length - 1]
 
+    // Count the number of intermediate points (excluding start and end candidates)
+    // to determine the correct end orderIndex. Intermediate points get orderIndex 1 to N,
+    // so end target should get orderIndex N + 1 to be consecutive.
+    // Intermediate count = path.length - 2 (excluding start at 0 and end at length-1)
+    const intermediateCount = Math.max(0, path.length - 2)
+    // End orderIndex should be immediately after the last intermediate point
+    const endOrderIndex = intermediateCount + 1
+
     if (startCandidate && startPoint) {
       const startPortPoints =
         this.nodeAssignedPortPoints.get(startCandidate.currentNodeId) ?? []
-      startPortPoints.push({
+      // Use unshift to add start target at the BEGINNING, so SimpleHighDensitySolver
+      // creates routes starting from the target point (entry) to other points (exit)
+      // orderIndex 0 ensures it's sorted first
+      startPortPoints.unshift({
         x: startPoint.x,
         y: startPoint.y,
         z: startCandidate.z,
         connectionName: connection.name,
         rootConnectionName: connection.rootConnectionName,
+        orderIndex: 0,
       })
       this.nodeAssignedPortPoints.set(
         startCandidate.currentNodeId,
@@ -1168,12 +1186,14 @@ export class PortPointPathingSolver extends BaseSolver {
     if (endCandidate && endPoint) {
       const endPortPoints =
         this.nodeAssignedPortPoints.get(endCandidate.currentNodeId) ?? []
+      // orderIndex at end ensures it's sorted last
       endPortPoints.push({
         x: endPoint.x,
         y: endPoint.y,
         z: endCandidate.z,
         connectionName: connection.name,
         rootConnectionName: connection.rootConnectionName,
+        orderIndex: endOrderIndex,
       })
       this.nodeAssignedPortPoints.set(endCandidate.currentNodeId, endPortPoints)
     }
