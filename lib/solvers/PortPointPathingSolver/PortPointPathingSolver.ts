@@ -26,6 +26,7 @@ import {
 import { getConnectionsWithNodes as getConnectionsWithNodesShared } from "./getConnectionsWithNodes"
 import { getIntraNodeCrossings } from "lib/utils/getIntraNodeCrossings"
 import { calculateNodeProbabilityOfFailureWithJumpers } from "../MultiSectionPortPointOptimizer/calculateNodeProbabilityOfFailureWithJumpers"
+import { computeSectionScoreWithJumpers } from "../MultiSectionPortPointOptimizer/computeSectionScoreWithJumpers"
 
 export interface PortPointPathingHyperParameters {
   SHUFFLE_SEED?: number
@@ -499,6 +500,12 @@ export class PortPointPathingSolver extends BaseSolver {
 
   computeBoardScore(): number {
     const allNodesWithPortPoints = this.getNodesWithPortPoints()
+    if (this.JUMPER_PF_FN_ENABLED) {
+      return computeSectionScoreWithJumpers(
+        allNodesWithPortPoints,
+        this.capacityMeshNodeMap,
+      )
+    }
     return computeSectionScore(allNodesWithPortPoints, this.capacityMeshNodeMap)
   }
 
