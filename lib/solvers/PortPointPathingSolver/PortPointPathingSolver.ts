@@ -56,6 +56,9 @@ export interface PortPointPathingHyperParameters {
 
   /** When enabled, use jumper-based pf calculation for same-layer crossings on single layer nodes */
   JUMPER_PF_FN_ENABLED?: boolean
+
+  /** Cost penalty per contest for port points that have been ripped */
+  PORT_POINT_COST_PER_CONTEST?: number
 }
 
 /**
@@ -275,6 +278,10 @@ export class PortPointPathingSolver extends BaseSolver {
     return this.hyperParameters.JUMPER_PF_FN_ENABLED ?? false
   }
 
+  get PORT_POINT_COST_PER_CONTEST() {
+    return this.hyperParameters.PORT_POINT_COST_PER_CONTEST ?? 0
+  }
+
   /** Number of jumpers that can fit per mm² of node area */
   jumpersPerMmSquared = 0.1
 
@@ -283,6 +290,9 @@ export class PortPointPathingSolver extends BaseSolver {
 
   /** Tracks total number of connections that have been ripped/requeued */
   totalRipCount = 0
+
+  /** Tracks how many times each port point has been contested (ripped because another connection wanted the space) */
+  contestedPortPointCounts: Map<string, number> = new Map()
 
   get MIN_ALLOWED_BOARD_SCORE() {
     return this.hyperParameters.MIN_ALLOWED_BOARD_SCORE ?? -10000
@@ -678,7 +688,12 @@ export class PortPointPathingSolver extends BaseSolver {
       exit,
     )
 
-    return prevCandidate.g + nodeDeltaCost
+    // Add penalty for contested port points (port points that have been ripped before)
+    const contestCount =
+      this.contestedPortPointCounts.get(exitPortPoint.portPointId) ?? 0
+    const contestPenalty = contestCount * this.PORT_POINT_COST_PER_CONTEST
+
+    return prevCandidate.g + nodeDeltaCost + contestPenalty
   }
 
   /**
@@ -1683,13 +1698,24 @@ export class PortPointPathingSolver extends BaseSolver {
   /**
    * Rip a connection: unassign all its port points and clear its path.
    * The connection will be re-routed later.
+   * @param contestedPortPointIds Optional set of port point IDs that were contested.
+   *        These are port points that another connection wanted to use.
    */
-  ripConnection(connectionResult: ConnectionPathResult): void {
+  ripConnection(
+    connectionResult: ConnectionPathResult,
+    contestedPortPointIds?: Set<string>,
+  ): void {
     const connectionName = connectionResult.connection.name
 
-    // Remove port points from assignedPortPoints map
+    // Remove port points from assignedPortPoints map and track contested ones
     for (const [portPointId, assignment] of this.assignedPortPoints.entries()) {
       if (assignment.connectionName === connectionName) {
+        // If this port point was contested (another connection claimed it), increment contest count
+        if (contestedPortPointIds?.has(portPointId)) {
+          const currentCount =
+            this.contestedPortPointCounts.get(portPointId) ?? 0
+          this.contestedPortPointCounts.set(portPointId, currentCount + 1)
+        }
         this.assignedPortPoints.delete(portPointId)
       }
     }
@@ -1748,6 +1774,25 @@ export class PortPointPathingSolver extends BaseSolver {
     // Get unique nodes in the path
     const nodeIds = Array.from(new Set(path.map((c) => c.currentNodeId)))
 
+    // Build a map of nodeId -> port point IDs used by the new connection in that node
+    const newConnectionPortPointsByNode = new Map<
+      CapacityMeshNodeId,
+      Set<string>
+    >()
+    for (const candidate of path) {
+      if (candidate.portPoint?.portPointId) {
+        // Port points connect two nodes, add to both
+        for (const nodeId of candidate.portPoint.connectionNodeIds) {
+          if (!newConnectionPortPointsByNode.has(nodeId)) {
+            newConnectionPortPointsByNode.set(nodeId, new Set())
+          }
+          newConnectionPortPointsByNode
+            .get(nodeId)!
+            .add(candidate.portPoint.portPointId)
+        }
+      }
+    }
+
     // Track whether we actually ripped any connections
     let didRipAnyConnection = false
 
@@ -1796,7 +1841,10 @@ export class PortPointPathingSolver extends BaseSolver {
         )
 
         // If pf decreases rip the connection
-        this.ripConnection(connResult)
+        // Pass the port points the new connection claimed so we track which ones were contested
+        const contestedPortPoints =
+          newConnectionPortPointsByNode.get(nodeId) ?? new Set()
+        this.ripConnection(connResult, contestedPortPoints)
         const success = this.requeueConnection(connResult)
         if (!success) return // MAX_RIPS exceeded, solver failed
         currentPf = pfWithoutConn
