@@ -12,6 +12,7 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
   const lines: Line[] = []
   const circles: Circle[] = []
   const points: Point[] = []
+  const rects: Rect[] = []
 
   const colorMap: Record<string, string> = getColorMap(srj)
   const layerCount = 2
@@ -81,22 +82,56 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
             // For some reason this is too small, likely a graphics-debug bug
             // strokeWidth: 0.15,
           })
+        } else if (routePoint.route_type === "jumper") {
+          // Render jumper as a rectangle with a line connecting start and end
+          const jumperStart = (routePoint as any).start as { x: number; y: number }
+          const jumperEnd = (routePoint as any).end as { x: number; y: number }
+
+          // Calculate jumper dimensions (0603 is about 1.6mm x 0.8mm)
+          const footprint = (routePoint as any).footprint || "0603"
+          const jumperLength =
+            Math.sqrt(
+              (jumperEnd.x - jumperStart.x) ** 2 +
+                (jumperEnd.y - jumperStart.y) ** 2,
+            ) || (footprint === "0603" ? 1.6 : 3.2)
+          const jumperWidth = footprint === "0603" ? 0.8 : 1.6
+
+          // Add jumper body as a rectangle
+          const centerX = (jumperStart.x + jumperEnd.x) / 2
+          const centerY = (jumperStart.y + jumperEnd.y) / 2
+          rects.push({
+            center: { x: centerX, y: centerY },
+            width: jumperLength,
+            height: jumperWidth,
+            fill: "rgba(128, 0, 128, 0.5)",
+            stroke: "purple",
+            label: "jumper",
+          })
+
+          // Add line showing jumper connection
+          lines.push({
+            points: [jumperStart, jumperEnd],
+            strokeColor: "purple",
+            strokeWidth: jumperWidth * 0.5,
+          })
         }
       }
     }
   }
 
+  // Add obstacle rects
+  for (const o of srj.obstacles) {
+    rects.push({
+      center: o.center,
+      width: o.width,
+      height: o.height,
+      fill: "rgba(255,0,0,0.5)",
+      layer: `z${o.layers.map(mapLayerNameToZ).join(",")}`,
+    } as Rect)
+  }
+
   return {
-    rects: srj.obstacles.map(
-      (o) =>
-        ({
-          center: o.center,
-          width: o.width,
-          height: o.height,
-          fill: "rgba(255,0,0,0.5)",
-          layer: `z${o.layers.map(mapLayerNameToZ).join(",")}`,
-        }) as Rect,
-    ),
+    rects,
     circles,
     lines,
     points,

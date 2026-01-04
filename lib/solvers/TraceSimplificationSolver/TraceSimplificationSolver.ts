@@ -150,6 +150,20 @@ export class TraceSimplificationSolver extends BaseSolver {
           break
 
         case "path_simplification":
+          // Skip path simplification for single-layer boards with jumpers
+          // as it tends to create overlapping traces
+          if (this.simplificationConfig.layerCount === 1) {
+            // Pass through routes unchanged
+            this.currentPhase = "via_removal"
+            this.simplificationPipelineLoops++
+            if (
+              this.simplificationPipelineLoops >=
+              this.MAX_SIMPLIFICATION_PIPELINE_LOOPS
+            ) {
+              this.solved = true
+            }
+            return
+          }
           this.activeSubSolver = new MultiSimplifiedPathSolver({
             unsimplifiedHdRoutes: this.hdRoutes,
             obstacles: this.simplificationConfig.obstacles,

@@ -12,6 +12,7 @@ interface RouteSection {
   endIndex: number
   z: number
   points: HighDensityRoute["route"]
+  isJumperSection?: boolean
 }
 
 export class SingleRouteUselessViaRemovalSolver extends BaseSolver {
@@ -45,23 +46,42 @@ export class SingleRouteUselessViaRemovalSolver extends BaseSolver {
     const routePoints = route.route
     if (routePoints.length === 0) return []
 
-    let currentSection = {
+    // Build a set of jumper points for fast lookup
+    const jumperPoints = new Set<string>()
+    if (route.jumpers) {
+      for (const jumper of route.jumpers) {
+        // Add both start and end points of each jumper
+        jumperPoints.add(`${jumper.start.x.toFixed(6)},${jumper.start.y.toFixed(6)}`)
+        jumperPoints.add(`${jumper.end.x.toFixed(6)},${jumper.end.y.toFixed(6)}`)
+      }
+    }
+
+    let currentSection: RouteSection = {
       startIndex: 0,
       endIndex: -1,
       z: routePoints[0].z,
       points: [routePoints[0]],
+      isJumperSection: false,
     }
+
     for (let i = 1; i < routePoints.length; i++) {
       if (routePoints[i].z === currentSection.z) {
         currentSection.points.push(routePoints[i])
       } else {
         currentSection.endIndex = i - 1
+        // Check if this section ends at a jumper point (making the next section a jumper section)
+        const lastPoint = currentSection.points[currentSection.points.length - 1]
+        const isAtJumperPoint = jumperPoints.has(
+          `${lastPoint.x.toFixed(6)},${lastPoint.y.toFixed(6)}`
+        )
         routeSections.push(currentSection)
         currentSection = {
           startIndex: i,
           endIndex: -1,
           z: routePoints[i].z,
           points: [routePoints[i]],
+          // Mark the new section as a jumper section if we're transitioning at a jumper point
+          isJumperSection: isAtJumperPoint,
         }
       }
     }
@@ -147,6 +167,12 @@ export class SingleRouteUselessViaRemovalSolver extends BaseSolver {
     const prevSection = this.routeSections[this.currentSectionIndex - 1]
     const currentSection = this.routeSections[this.currentSectionIndex]
     const nextSection = this.routeSections[this.currentSectionIndex + 1]
+
+    // Skip jumper sections - these are constrained by jumper placement and cannot be moved
+    if (currentSection.isJumperSection) {
+      this.currentSectionIndex++
+      return
+    }
 
     if (prevSection.z !== nextSection.z) {
       // We only remove vias where there is a middle section that can be

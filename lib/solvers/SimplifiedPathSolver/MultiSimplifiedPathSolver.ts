@@ -51,6 +51,14 @@ export class MultiSimplifiedPathSolver extends BaseSolver {
         return
       }
 
+      // Skip path simplification for routes with jumpers - these have
+      // constrained geometry that simplification could break
+      if (hdRoute.jumpers && hdRoute.jumpers.length > 0) {
+        this.simplifiedHdRoutes.push(hdRoute)
+        this.currentUnsimplifiedHdRouteIndex++
+        return
+      }
+
       this.activeSubSolver = new SingleSimplifiedPathSolver5({
         inputRoute: hdRoute,
         otherHdRoutes: this.unsimplifiedHdRoutes

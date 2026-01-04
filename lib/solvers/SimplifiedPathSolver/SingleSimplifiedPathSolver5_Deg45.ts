@@ -73,6 +73,9 @@ export class SingleSimplifiedPathSolver5 extends SingleSimplifiedPathSolver {
       return
     }
 
+    // Expand bounds by the max step size to account for 45-degree paths
+    // that may extend beyond the original route bounds
+    const BOUNDS_MARGIN = this.maxStepSize * 2
     const bounds = this.inputRoute.route.reduce(
       (acc, point) => {
         acc.minX = Math.min(acc.minX, point.x)
@@ -83,6 +86,11 @@ export class SingleSimplifiedPathSolver5 extends SingleSimplifiedPathSolver {
       },
       { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity },
     )
+    // Expand bounds to include potential simplified path deviations
+    bounds.minX -= BOUNDS_MARGIN
+    bounds.maxX += BOUNDS_MARGIN
+    bounds.minY -= BOUNDS_MARGIN
+    bounds.maxY += BOUNDS_MARGIN
     const boundsBox = {
       center: {
         x: (bounds.minX + bounds.maxX) / 2,
