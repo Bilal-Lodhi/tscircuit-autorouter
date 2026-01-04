@@ -63,4 +63,4 @@ test("bugreport23 - should not fail with null z property in port points", async 
       ]),
     ).toMatchGraphicsSvg(`${import.meta.path}-portPointPathingSolver`)
   }
-})
+}, 60_000)

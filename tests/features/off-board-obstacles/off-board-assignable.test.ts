@@ -10,6 +10,18 @@ test("routes with assignable off-board obstacles between pads", () => {
     simpleRouteJson as SimpleRouteJson,
   )
   solver.solve()
+  const traces = solver.getOutputSimplifiedPcbTraces()
+  console.table(
+    traces.flatMap((t) =>
+      t.route.flatMap((r, ri) => ({
+        trace: t.pcb_trace_id,
+        rt: r.route_type,
+        ri,
+        x: r.route_type === "wire" ? r.x.toFixed(2) : undefined,
+        y: r.route_type === "wire" ? r.y.toFixed(2) : undefined,
+      })),
+    ),
+  )
 
   expect(getLastStepSvg(solver.visualize())).toMatchSvgSnapshot(
     import.meta.path,

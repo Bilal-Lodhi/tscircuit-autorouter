@@ -27,6 +27,7 @@ export class MultipleHighDensityRouteStitchSolver extends BaseSolver {
   colorMap: Record<string, string> = {}
   defaultTraceThickness: number
   defaultViaDiameter: number
+  useOrderIndexStitching: boolean
 
   constructor(params: {
     connections: SimpleRouteConnection[]
@@ -34,6 +35,10 @@ export class MultipleHighDensityRouteStitchSolver extends BaseSolver {
     colorMap?: Record<string, string>
     layerCount: number
     defaultViaDiameter?: number
+    /** When true, group routes by connectionName instead of shared endpoints.
+     * Use this for prepattern/jumper routing where routes may not share endpoints
+     * due to jumper gaps. Defaults to false. */
+    groupByConnectionName?: boolean
   }) {
     super()
     this.colorMap = params.colorMap ?? {}
@@ -43,14 +48,20 @@ export class MultipleHighDensityRouteStitchSolver extends BaseSolver {
     this.defaultViaDiameter =
       firstRoute?.viaDiameter ?? params.defaultViaDiameter ?? 0.6
 
-    // Check if routes have orderIndex information
+    // Check if routes should be grouped by connectionName (for prepattern/jumper routing)
+    // This is controlled by the groupByConnectionName parameter, defaulting to false
+    // When true, routes with the same connectionName are stitched together even if they
+    // don't share endpoints (important for jumper gaps)
+    const shouldGroupByConnectionName = params.groupByConnectionName ?? false
     const hasOrderIndex = params.hdRoutes.some(
       (r) => r.startOrderIndex !== undefined,
     )
+    // Only use orderIndex-based stitching when explicitly requested via groupByConnectionName
+    this.useOrderIndexStitching = shouldGroupByConnectionName && hasOrderIndex
 
     this.unsolvedRoutes = []
 
-    if (hasOrderIndex) {
+    if (shouldGroupByConnectionName && hasOrderIndex) {
       // When orderIndex is available, group routes by connectionName directly
       // (not by shared endpoints) since jumper gaps create disconnected routes
       const routesByConnection = new Map<string, HighDensityIntraNodeRoute[]>()
@@ -224,6 +235,7 @@ export class MultipleHighDensityRouteStitchSolver extends BaseSolver {
       start: unsolvedRoute.start,
       end: unsolvedRoute.end,
       colorMap: this.colorMap,
+      useOrderIndexStitching: this.useOrderIndexStitching,
       defaultTraceThickness: this.defaultTraceThickness,
       defaultViaDiameter: this.defaultViaDiameter,
     })

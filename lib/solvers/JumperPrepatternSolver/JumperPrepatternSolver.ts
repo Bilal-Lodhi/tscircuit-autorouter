@@ -346,6 +346,9 @@ export class JumperPrepatternSolver extends BaseSolver {
           colorMap: solver.colorMap,
           layerCount: 1,
           defaultViaDiameter: 0.6,
+          // Use connectionName grouping for prepattern routing because routes
+          // may not share endpoints due to jumper gaps
+          groupByConnectionName: true,
         },
       ],
       {

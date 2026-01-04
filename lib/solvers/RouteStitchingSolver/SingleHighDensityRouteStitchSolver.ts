@@ -16,6 +16,8 @@ export class SingleHighDensityRouteStitchSolver extends BaseSolver {
   colorMap: Record<string, string>
   /** Tracks the last endOrderIndex of the merged route for orderIndex-based stitching */
   lastMergedEndOrderIndex?: number
+  /** When true, use orderIndex to determine stitching order instead of proximity */
+  useOrderIndexStitching: boolean
 
   constructor(opts: {
     connectionName: string
@@ -25,10 +27,13 @@ export class SingleHighDensityRouteStitchSolver extends BaseSolver {
     colorMap?: Record<string, string>
     defaultTraceThickness?: number
     defaultViaDiameter?: number
+    /** When true, use orderIndex to determine stitching order instead of proximity */
+    useOrderIndexStitching?: boolean
   }) {
     super()
     this.remainingHdRoutes = [...opts.hdRoutes]
     this.colorMap = opts.colorMap ?? {} // Store colorMap, default to empty object
+    this.useOrderIndexStitching = opts.useOrderIndexStitching ?? false
 
     if (opts.hdRoutes.length === 0) {
       this.start = opts.start
@@ -59,16 +64,16 @@ export class SingleHighDensityRouteStitchSolver extends BaseSolver {
     }
 
     // Find the first route to use as the "seed" for stitching.
-    // Prefer using orderIndex if available, otherwise fall back to distance-based selection.
+    // Use orderIndex if useOrderIndexStitching is true, otherwise fall back to distance-based selection.
     let firstRoute = opts.hdRoutes[0]
     let orientation: "start-to-end" | "end-to-start" = "start-to-end"
 
-    // Check if routes have orderIndex information
+    // Check if routes have orderIndex information and we should use it
     const routesWithOrderIndex = opts.hdRoutes.filter(
       (r) => r.startOrderIndex !== undefined,
     )
 
-    if (routesWithOrderIndex.length > 0) {
+    if (this.useOrderIndexStitching && routesWithOrderIndex.length > 0) {
       // Find the route with the lowest startOrderIndex (should be 0 for the start)
       let lowestStartOrderIndex = Infinity
       for (const route of routesWithOrderIndex) {
@@ -149,9 +154,8 @@ export class SingleHighDensityRouteStitchSolver extends BaseSolver {
     }
 
     // Initialize lastMergedEndOrderIndex based on the first route
-    // We start at the "start" side, so we want the lowest orderIndex
-    // The first route that gets merged will set this properly
-    if (firstRoute.startOrderIndex !== undefined) {
+    // Only when using orderIndex-based stitching
+    if (this.useOrderIndexStitching && firstRoute.startOrderIndex !== undefined) {
       // Start with -1 so when the first route (startOrderIndex=0) is merged,
       // we'll be looking for expectedStartOrderIndex = 0
       this.lastMergedEndOrderIndex = firstRoute.startOrderIndex - 1
@@ -233,10 +237,11 @@ export class SingleHighDensityRouteStitchSolver extends BaseSolver {
     let bestScore = Infinity
 
     // First, try to find a route with the next orderIndex in sequence
+    // Only when useOrderIndexStitching is true
     // Note: orderIndex values may not be consecutive (gaps exist for single-point nodes)
     // So we find the route with the smallest orderIndex that is >= lastMergedEndOrderIndex
     // (using >= because route N-M can be followed by route M-K, where startOrderIndex = M = lastMergedEndOrderIndex)
-    if (this.lastMergedEndOrderIndex !== undefined) {
+    if (this.useOrderIndexStitching && this.lastMergedEndOrderIndex !== undefined) {
       let bestOrderIndexMatch: {
         index: number
         matchedOn: "first" | "last"
