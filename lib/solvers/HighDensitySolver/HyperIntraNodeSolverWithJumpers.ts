@@ -43,12 +43,12 @@ export class HyperIntraNodeSolverWithJumpers extends HyperParameterSupervisorSol
 
   getHyperParameterDefs() {
     return [
-      {
-        name: "orderings20",
-        possibleValues: Array.from({ length: 20 }, (_, i) => ({
-          SHUFFLE_SEED: i,
-        })),
-      },
+      // {
+      //   name: "orderings20",
+      //   possibleValues: Array.from({ length: 20 }, (_, i) => ({
+      //     SHUFFLE_SEED: i,
+      //   })),
+      // },
       {
         name: "jumperPrepattern",
         possibleValues: [
