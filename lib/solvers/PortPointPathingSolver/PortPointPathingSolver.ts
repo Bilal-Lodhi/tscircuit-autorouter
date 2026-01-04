@@ -25,6 +25,7 @@ import {
 } from "./precomputeSharedParams"
 import { getConnectionsWithNodes as getConnectionsWithNodesShared } from "./getConnectionsWithNodes"
 import { getIntraNodeCrossings } from "lib/utils/getIntraNodeCrossings"
+import { calculateNodeProbabilityOfFailureWithJumpers } from "../MultiSectionPortPointOptimizer/calculateNodeProbabilityOfFailureWithJumpers"
 
 export interface PortPointPathingHyperParameters {
   SHUFFLE_SEED?: number
@@ -591,10 +592,10 @@ export class PortPointPathingSolver extends BaseSolver {
 
     // Use jumper-based pf calculation for single layer nodes when enabled
     if (this.JUMPER_PF_FN_ENABLED && node.availableZ.length === 1) {
-      const nodeArea = node.width * node.height
-      const jumpersWeCanFitInNode = nodeArea * this.jumpersPerMmSquared
-      const estimatedRequiredJumpers = crossings.numSameLayerCrossings
-      return Math.min(1, estimatedRequiredJumpers / jumpersWeCanFitInNode)
+      return calculateNodeProbabilityOfFailureWithJumpers(
+        this.capacityMeshNodeMap.get(node.capacityMeshNodeId)!,
+        crossings.numSameLayerCrossings,
+      )
     }
 
     return calculateNodeProbabilityOfFailure(
@@ -1708,13 +1709,6 @@ export class PortPointPathingSolver extends BaseSolver {
   requeueConnection(connectionResult: ConnectionPathResult): boolean {
     this.totalRipCount++
 
-    // Check if we've exceeded MAX_RIPS
-    if (this.totalRipCount > this.MAX_RIPS) {
-      this.failed = true
-      this.error = `Exceeded MAX_RIPS (${this.MAX_RIPS}) - too many connections ripped`
-      return false
-    }
-
     // Check if this connection is in the processed queue (already routed)
     const processedIndex =
       this.processedConnectionQueue.indexOf(connectionResult)
@@ -1751,9 +1745,7 @@ export class PortPointPathingSolver extends BaseSolver {
     let didRipAnyConnection = false
 
     for (const nodeId of nodeIds) {
-      // Stop if solver already failed (e.g., MAX_RIPS exceeded)
-      if (this.failed) return
-
+      if (this.totalRipCount > this.MAX_RIPS) break
       const node = this.nodeMap.get(nodeId)
       if (!node) continue
 
