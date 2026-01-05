@@ -253,6 +253,7 @@ export class JumperPrepatternSolver extends BaseSolver {
               MIN_ALLOWED_BOARD_SCORE: -1,
               FORCE_CENTER_FIRST: true,
               PORT_POINT_COST_PER_CONTEST: 1000,
+              COST_PER_PROBLEMATIC_PORT_PAIR_REUSE: 500,
               RIPPING_ENABLED: true,
               RIPPING_PF_THRESHOLD: 0.3,
               RANDOM_RIP_FRACTION: 0.1,

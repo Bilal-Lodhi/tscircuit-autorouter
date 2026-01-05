@@ -59,6 +59,9 @@ export interface PortPointPathingHyperParameters {
 
   /** Cost penalty per contest for port points that have been ripped */
   PORT_POINT_COST_PER_CONTEST?: number
+
+  /** Cost penalty per reuse of a problematic port point pair that has been ripped */
+  COST_PER_PROBLEMATIC_PORT_PAIR_REUSE?: number
 }
 
 /**
@@ -282,6 +285,10 @@ export class PortPointPathingSolver extends BaseSolver {
     return this.hyperParameters.PORT_POINT_COST_PER_CONTEST ?? 0
   }
 
+  get COST_PER_PROBLEMATIC_PORT_PAIR_REUSE() {
+    return this.hyperParameters.COST_PER_PROBLEMATIC_PORT_PAIR_REUSE ?? 0
+  }
+
   /** Number of jumpers that can fit per mm² of node area */
   jumpersPerMmSquared = 0.1
 
@@ -293,6 +300,9 @@ export class PortPointPathingSolver extends BaseSolver {
 
   /** Tracks how many times each port point has been contested (ripped because another connection wanted the space) */
   contestedPortPointCounts: Map<string, number> = new Map()
+
+  /** Tracks how many times each port point pair (entry/exit) has been ripped */
+  problematicPortPairRipCounts: Map<string, number> = new Map()
 
   get MIN_ALLOWED_BOARD_SCORE() {
     return this.hyperParameters.MIN_ALLOWED_BOARD_SCORE ?? -10000
@@ -478,6 +488,18 @@ export class PortPointPathingSolver extends BaseSolver {
 
   private clearCostCaches() {
     this.baseNodeCostCache.clear()
+  }
+
+  /**
+   * Create a canonical key for a port point pair (sorted alphabetically for consistency)
+   */
+  private getPortPairKey(
+    portPointId1: string | undefined,
+    portPointId2: string | undefined,
+  ): string {
+    const id1 = portPointId1 ?? "target"
+    const id2 = portPointId2 ?? "target"
+    return id1 < id2 ? `${id1}__${id2}` : `${id2}__${id1}`
   }
 
   private clampPf(pf: number): number {
@@ -693,7 +715,16 @@ export class PortPointPathingSolver extends BaseSolver {
       this.contestedPortPointCounts.get(exitPortPoint.portPointId) ?? 0
     const contestPenalty = contestCount * this.PORT_POINT_COST_PER_CONTEST
 
-    return prevCandidate.g + nodeDeltaCost + contestPenalty
+    // Add penalty for problematic port point pairs (entry/exit pairs that have been ripped before)
+    const entryPortPointId = prevCandidate.portPoint?.portPointId
+    const exitPortPointId = exitPortPoint.portPointId
+    const portPairKey = this.getPortPairKey(entryPortPointId, exitPortPointId)
+    const portPairRipCount =
+      this.problematicPortPairRipCounts.get(portPairKey) ?? 0
+    const portPairPenalty =
+      portPairRipCount * this.COST_PER_PROBLEMATIC_PORT_PAIR_REUSE
+
+    return prevCandidate.g + nodeDeltaCost + contestPenalty + portPairPenalty
   }
 
   /**
@@ -1706,6 +1737,27 @@ export class PortPointPathingSolver extends BaseSolver {
     contestedPortPointIds?: Set<string>,
   ): void {
     const connectionName = connectionResult.connection.name
+
+    // Track problematic port point pairs from the path being ripped
+    if (connectionResult.path) {
+      for (let i = 0; i < connectionResult.path.length - 1; i++) {
+        const current = connectionResult.path[i]
+        const next = connectionResult.path[i + 1]
+        const entryPortPointId = current.portPoint?.portPointId
+        const exitPortPointId = next.portPoint?.portPointId
+
+        // Only track pairs where at least one is a real port point
+        if (entryPortPointId || exitPortPointId) {
+          const portPairKey = this.getPortPairKey(
+            entryPortPointId,
+            exitPortPointId,
+          )
+          const currentCount =
+            this.problematicPortPairRipCounts.get(portPairKey) ?? 0
+          this.problematicPortPairRipCounts.set(portPairKey, currentCount + 1)
+        }
+      }
+    }
 
     // Remove port points from assignedPortPoints map and track contested ones
     for (const [portPointId, assignment] of this.assignedPortPoints.entries()) {
