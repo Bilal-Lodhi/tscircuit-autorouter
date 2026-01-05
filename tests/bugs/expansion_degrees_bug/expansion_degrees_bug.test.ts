@@ -1,4 +1,7 @@
-import input from "./expansion_degrees_bug_bugreport19.json" with {
+import input19 from "./expansion_degrees_bug_bugreport19.json" with {
+  type: "json",
+}
+import input1 from "./expansion_degrees_bug_bugreport1.json" with {
   type: "json",
 }
 import { expect, test } from "bun:test"
@@ -41,8 +44,8 @@ function deserializeParams(
   }
 }
 
-test("expansion degree 1 snapshot stays stable", () => {
-  const [serializedParams] = input as unknown as SerializedParams[]
+test("expansion degree 1 snapshot bugreport19", () => {
+  const [serializedParams] = input19 as unknown as SerializedParams[]
   const optimizer = new MultiSectionPortPointOptimizer(
     deserializeParams(serializedParams),
   )
@@ -60,5 +63,27 @@ test("expansion degree 1 snapshot stays stable", () => {
     backgroundColor: "white",
   })
 
-  expect(svg).toMatchSvgSnapshot(import.meta.path)
+  expect(svg).toMatchSvgSnapshot(import.meta.path + "19")
+})
+
+test("expansion degree 1 snapshot bugreport1", () => {
+  const [serializedParams] = input1 as unknown as SerializedParams[]
+  const optimizer = new MultiSectionPortPointOptimizer(
+    deserializeParams(serializedParams),
+  )
+
+  const originalCreateSection = optimizer.createSection.bind(optimizer)
+  optimizer.createSection = (params) =>
+    originalCreateSection({
+      ...params,
+      expansionDegrees: EXPANSION_DEGREE,
+    })
+
+  optimizer.solve()
+
+  const svg = getSvgFromGraphicsObject(optimizer.visualize(), {
+    backgroundColor: "white",
+  })
+
+  expect(svg).toMatchSvgSnapshot(import.meta.path + "1")
 })
