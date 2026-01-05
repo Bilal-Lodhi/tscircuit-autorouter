@@ -1525,10 +1525,8 @@ export class PortPointPathingSolver extends BaseSolver {
       )
       if (!nextNodeId) continue
 
-      // HACK: Disable node cycles because stitch solver doesn't handle them
-      if (this.isNodeInPathChain(currentCandidate, nextNodeId)) continue
-      // if (currentCandidate.currentNodeId === nextNodeId) continue
-      // if (currentCandidate.prevCandidate?.currentNodeId === nextNodeId) continue
+      if (currentCandidate.currentNodeId === nextNodeId) continue
+      if (currentCandidate.prevCandidate?.currentNodeId === nextNodeId) continue
 
       const throughNodeId =
         "throughNodeId" in portPoint
