@@ -18,45 +18,91 @@ type TreeNode = {
   maxY: number
   data: { index: number }
 }
+type ExpansionTask = { index: number; side: Side }
 
 export class ObstacleExpansionSolver extends BaseSolver {
   expandedSimpleRouteJson: SimpleRouteJson
+  private initialized = false
+  private baseBoundsList: Bounds[] = []
+  private layerSets: Array<Set<string>> = []
+  private neighborMap: number[][] = []
+  private expansionsByObstacle: ExpansionState[] = []
+  private expandedBoundsList: Bounds[] = []
+  private expansionQueue: ExpansionTask[] = []
 
   constructor(private params: ObstacleExpansionSolverParams) {
     super()
-    this.MAX_ITERATIONS = 1
-    this.expandedSimpleRouteJson = { ...params.simpleRouteJson }
+    this.MAX_ITERATIONS = Number.MAX_SAFE_INTEGER
+    this.expandedSimpleRouteJson = {
+      ...params.simpleRouteJson,
+      obstacles: params.simpleRouteJson.obstacles.map((obstacle) => ({
+        ...obstacle,
+      })),
+    }
   }
 
   _step() {
+    if (!this.initialized) {
+      this.initializeState()
+    }
+    if (this.solved) {
+      return
+    }
+    if (this.expansionQueue.length === 0) {
+      this.finalizeExpansion()
+      return
+    }
+    const task = this.expansionQueue.shift()
+    if (!task) {
+      this.finalizeExpansion()
+      return
+    }
+    this.expandSide({ index: task.index, side: task.side })
+  }
+
+  private initializeState() {
     const { simpleRouteJson, minimumClearance } = this.params
-    const originalTree = new RBush<TreeNode>()
-    const obstacles = simpleRouteJson.obstacles
-    const baseBoundsList = obstacles.map((obstacle) =>
+    const { obstacles } = simpleRouteJson
+    this.baseBoundsList = obstacles.map((obstacle) =>
       this.getBounds({ obstacle }),
     )
-    const layerSets = obstacles.map((obstacle) => new Set(obstacle.layers))
-    const expandedBoundsList: Array<Bounds | null> = obstacles.map(() => null)
-
+    this.layerSets = obstacles.map((obstacle) => new Set(obstacle.layers))
+    this.expandedBoundsList = this.baseBoundsList.map((bounds) => ({
+      ...bounds,
+    }))
+    this.expansionsByObstacle = obstacles.map(() => ({
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+    }))
+    const tree = new RBush<TreeNode>()
     if (obstacles.length > 0) {
-      originalTree.load(
-        baseBoundsList.map((bounds, index) => ({
+      tree.load(
+        this.baseBoundsList.map((bounds, index) => ({
           ...bounds,
           data: { index },
         })),
       )
     }
-
-    const neighborMap = this.buildNeighborMap({
-      baseBoundsList,
-      layerSets,
-      tree: originalTree,
+    this.neighborMap = this.buildNeighborMap({
+      baseBoundsList: this.baseBoundsList,
+      layerSets: this.layerSets,
+      tree,
       minimumClearance,
     })
+    this.expansionQueue = this.buildExpansionQueue({ obstacles })
+    this.initialized = true
+  }
 
-    const obstacleOrder = obstacles
+  private buildExpansionQueue({
+    obstacles,
+  }: {
+    obstacles: Obstacle[]
+  }) {
+    const sides: Side[] = ["left", "right", "bottom", "top"]
+    const order = obstacles
       .map((obstacle, index) => ({
-        obstacle,
         index,
         area: obstacle.width * obstacle.height,
       }))
@@ -66,66 +112,74 @@ export class ObstacleExpansionSolver extends BaseSolver {
         }
         return a.area - b.area
       })
-
-    const expandedObstacles = [...obstacles]
-
-    for (const { obstacle, index } of obstacleOrder) {
-      const expanded = this.expandObstacle({
-        obstacle,
-        minimumClearance,
-        baseBounds: baseBoundsList[index],
-        baseBoundsList,
-        expandedBoundsList,
-        neighborIndexes: neighborMap[index],
-      })
-      expandedObstacles[index] = expanded
-      expandedBoundsList[index] = this.getBounds({ obstacle: expanded })
+    const queue: ExpansionTask[] = []
+    for (const entry of order) {
+      for (const side of sides) {
+        queue.push({ index: entry.index, side })
+      }
     }
-
-    this.expandedSimpleRouteJson = {
-      ...simpleRouteJson,
-      obstacles: expandedObstacles,
-    }
-    this.solved = true
+    return queue
   }
 
-  private expandObstacle({
-    obstacle,
-    minimumClearance,
+  private expandSide({ index, side }: ExpansionTask) {
+    const baseBounds = this.baseBoundsList[index]
+    const expansions = this.expansionsByObstacle[index]
+    const neighborIndexes = this.neighborMap[index]
+    if (!baseBounds || !expansions || !neighborIndexes) {
+      return
+    }
+    const remaining = Math.max(
+      0,
+      this.params.minimumClearance - expansions[side],
+    )
+    if (remaining <= 0) {
+      return
+    }
+    const currentBounds = this.applyExpansions({
+      baseBounds,
+      expansions,
+    })
+    const distance = this.calculateExpansionDistance({
+      side,
+      maxDistance: remaining,
+      currentBounds,
+      neighborIndexes,
+      baseBoundsList: this.baseBoundsList,
+      expandedBoundsList: this.expandedBoundsList,
+    })
+    if (distance <= 0) {
+      return
+    }
+    expansions[side] += distance
+    this.updateBoundsForObstacle({
+      index,
+      baseBounds,
+      expansions,
+    })
+  }
+
+  private updateBoundsForObstacle({
+    index,
     baseBounds,
-    baseBoundsList,
-    expandedBoundsList,
-    neighborIndexes,
+    expansions,
   }: {
-    obstacle: Obstacle
-    minimumClearance: number
+    index: number
     baseBounds: Bounds
-    baseBoundsList: Bounds[]
-    expandedBoundsList: Array<Bounds | null>
-    neighborIndexes: number[]
+    expansions: ExpansionState
   }) {
-    const expansions: ExpansionState = {
-      left: 0,
-      right: 0,
-      top: 0,
-      bottom: 0,
+    const bounds = this.applyExpansions({
+      baseBounds,
+      expansions,
+    })
+    this.expandedBoundsList[index] = bounds
+    const existing =
+      this.expandedSimpleRouteJson.obstacles[index] ??
+      this.params.simpleRouteJson.obstacles[index]
+    if (!existing) {
+      return
     }
-    const sides: Side[] = ["left", "right", "bottom", "top"]
-    for (const side of sides) {
-      const currentBounds = this.applyExpansions({ baseBounds, expansions })
-      const distance = this.calculateExpansionDistance({
-        side,
-        maxDistance: minimumClearance,
-        currentBounds,
-        neighborIndexes,
-        baseBoundsList,
-        expandedBoundsList,
-      })
-      expansions[side] += distance
-    }
-    const bounds = this.applyExpansions({ baseBounds, expansions })
-    return {
-      ...obstacle,
+    this.expandedSimpleRouteJson.obstacles[index] = {
+      ...existing,
       width: bounds.maxX - bounds.minX,
       height: bounds.maxY - bounds.minY,
       center: {
@@ -133,6 +187,28 @@ export class ObstacleExpansionSolver extends BaseSolver {
         y: (bounds.minY + bounds.maxY) / 2,
       },
     }
+  }
+
+  private finalizeExpansion() {
+    const { simpleRouteJson } = this.params
+    const obstacles = simpleRouteJson.obstacles.map((obstacle, index) => {
+      const bounds =
+        this.expandedBoundsList[index] ?? this.getBounds({ obstacle })
+      return {
+        ...obstacle,
+        width: bounds.maxX - bounds.minX,
+        height: bounds.maxY - bounds.minY,
+        center: {
+          x: (bounds.minX + bounds.maxX) / 2,
+          y: (bounds.minY + bounds.maxY) / 2,
+        },
+      }
+    })
+    this.expandedSimpleRouteJson = {
+      ...this.expandedSimpleRouteJson,
+      obstacles,
+    }
+    this.solved = true
   }
 
   private calculateExpansionDistance({
@@ -148,7 +224,7 @@ export class ObstacleExpansionSolver extends BaseSolver {
     currentBounds: Bounds
     neighborIndexes: number[]
     baseBoundsList: Bounds[]
-    expandedBoundsList: Array<Bounds | null>
+    expandedBoundsList: Bounds[]
   }) {
     if (maxDistance <= 0) {
       return 0
