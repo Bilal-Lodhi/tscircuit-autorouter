@@ -35,7 +35,7 @@ export type HighDensityIntraNodeRoute = {
   rootConnectionName?: string
   traceThickness: number
   viaDiameter: number
-  route: Array<{ x: number; y: number; z: number }>
+  route: Array<{ x: number; y: number; z: number; insideJumperPad?: boolean }>
   vias: Array<{ x: number; y: number }>
   jumpers?: Jumper[]
 }
