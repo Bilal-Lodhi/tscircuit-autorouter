@@ -242,12 +242,24 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
       const connectionId = solvedRoute.connection.connectionId
 
       // Extract route points from the solved path
-      const routePoints: Array<{ x: number; y: number; z: number }> = []
+      const routePoints: Array<{
+        x: number
+        y: number
+        z: number
+        insideJumperPad?: boolean
+      }> = []
       const jumpers: Jumper[] = []
 
       for (const candidate of solvedRoute.path) {
-        const port = candidate.port as any
-        const point = { x: port.d.x, y: port.d.y, z: 0 }
+        const port = candidate.port
+        const point = {
+          x: port.d.x,
+          y: port.d.y,
+          z: 0,
+          insideJumperPad: Boolean(
+            port.region1?.d.isPad || port.region2?.d.isPad,
+          ),
+        }
         routePoints.push(point)
 
         // Check if we crossed through a jumper (lastRegion is a throughjumper)
