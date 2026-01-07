@@ -25,6 +25,15 @@ export type ConnectionPoint =
 export type PointKey = string
 export type ConnectionTempId = string
 
+export type Jumper = {
+  jumper_footprint: "0603" | "1206x4"
+  center: { x: number; y: number }
+  orientation: "horizontal" | "vertical"
+  width: number
+  height: number
+  pads: Obstacle[]
+}
+
 export interface SimpleRouteJson {
   layerCount: number
   minTraceWidth: number
@@ -36,6 +45,7 @@ export interface SimpleRouteJson {
   bounds: { minX: number; maxX: number; minY: number; maxY: number }
   outline?: Array<{ x: number; y: number }>
   traces?: SimplifiedPcbTraces
+  jumpers?: Jumper[]
   allowJumpers?: boolean
 }
 
