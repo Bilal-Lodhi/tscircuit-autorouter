@@ -295,7 +295,7 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
             route_type: "jumper",
             start: { x: bounds.minX, y: centerY },
             end: { x: bounds.maxX, y: centerY },
-            footprint: "1206",
+            footprint: "1206x4_pair",
           })
         }
       }
