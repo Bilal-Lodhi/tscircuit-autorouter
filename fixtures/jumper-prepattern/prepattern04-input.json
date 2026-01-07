@@ -217,9 +217,7 @@
         "rootConnectionName": "source_net_9"
       }
     ],
-    "availableZ": [
-      0
-    ]
+    "availableZ": [0]
   },
   "colorMap": {
     "connectivity_net20": "hsl(0, 100%, 50%)",
@@ -1345,21 +1343,11 @@
         "pcb_port_69",
         "1588,-2350:0-0-1-2"
       ],
-      "connectivity_net72": [
-        "3370,4240:0-0-1-2"
-      ],
-      "connectivity_net73": [
-        "-3370,4240:0-0-1-2"
-      ],
-      "connectivity_net74": [
-        "3370,560:0-0-1-2"
-      ],
-      "connectivity_net75": [
-        "-3370,560:0-0-1-2"
-      ],
-      "connectivity_net76": [
-        "0,-3100:0-0-1-2"
-      ]
+      "connectivity_net72": ["3370,4240:0-0-1-2"],
+      "connectivity_net73": ["-3370,4240:0-0-1-2"],
+      "connectivity_net74": ["3370,560:0-0-1-2"],
+      "connectivity_net75": ["-3370,560:0-0-1-2"],
+      "connectivity_net76": ["0,-3100:0-0-1-2"]
     },
     "idToNetMap": {
       "source_net_20": "connectivity_net0",

@@ -50,16 +50,23 @@ test(
     }
 
     // Count routes with and without jumpers
-    const routesWithJumpers = stitchRoutes!.filter((r) => r.jumpers && r.jumpers.length > 0)
-    const routesWithoutJumpers = stitchRoutes!.filter((r) => !r.jumpers || r.jumpers.length === 0)
-    console.log(`Routes with jumpers: ${routesWithJumpers.length}, without: ${routesWithoutJumpers.length}`)
+    const routesWithJumpers = stitchRoutes!.filter(
+      (r) => r.jumpers && r.jumpers.length > 0,
+    )
+    const routesWithoutJumpers = stitchRoutes!.filter(
+      (r) => !r.jumpers || r.jumpers.length === 0,
+    )
+    console.log(
+      `Routes with jumpers: ${routesWithJumpers.length}, without: ${routesWithoutJumpers.length}`,
+    )
 
     // Check if jumpers exist globally
     const allJumpers = stitchRoutes!.flatMap((r) => r.jumpers || [])
     console.log(`Total jumpers across all routes: ${allJumpers.length}`)
 
     // Get the simplified routes from the trace simplification solver
-    const simplifiedRoutes = solver.traceSimplificationSolver?.simplifiedHdRoutes
+    const simplifiedRoutes =
+      solver.traceSimplificationSolver?.simplifiedHdRoutes
     expect(simplifiedRoutes).toBeDefined()
     expect(simplifiedRoutes!.length).toBeGreaterThan(0)
 
