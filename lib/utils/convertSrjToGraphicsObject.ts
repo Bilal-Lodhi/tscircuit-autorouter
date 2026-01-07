@@ -109,6 +109,18 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
           nextRoutePoint.layer === routePoint.layer
         ) {
           traceWidth = routePoint.width
+          // Get the connection color, fallback to layer-based color
+          const connectionColor = colorMap[trace.connection_name]
+          const isTopLayer = routePoint.layer === "top"
+          const baseColor =
+            connectionColor ??
+            {
+              top: "red",
+              bottom: "blue",
+              inner1: "green",
+              inner2: "yellow",
+            }[routePoint.layer]!
+
           // Create a line between consecutive wire segments on the same layer
           lines.push({
             points: [
@@ -117,17 +129,11 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
             ],
             layer: `z${mapLayerNameToZ(routePoint.layer, layerCount)}`,
             strokeWidth: traceWidth,
-            strokeColor: safeTransparentize(
-              {
-                top: "red",
-                bottom: "blue",
-                inner1: "green",
-                inner2: "yellow",
-              }[routePoint.layer]!,
-              0.5,
-            ),
-            // For some reason this is too small, likely a graphics-debug bug
-            // strokeWidth: 0.15,
+            strokeColor: isTopLayer
+              ? baseColor
+              : safeTransparentize(baseColor, 0.5),
+            // Use dashed line for non-top layers
+            ...(isTopLayer ? {} : { strokeDash: "3 2" }),
           })
         }
       }

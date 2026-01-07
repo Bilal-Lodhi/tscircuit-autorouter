@@ -46,39 +46,148 @@ function convertSimplifiedPcbTraceToCircuitJson(
 }
 
 /**
- * Convert a high density route from the autorouter to a circuit-json compatible PCB trace
+ * Convert a high density route from the autorouter to circuit-json compatible PCB traces.
+ * When a route contains jumpers, it splits into multiple disjoint traces that share the
+ * same source_trace_id (since they're electrically connected through the jumper component).
  */
-function convertHdRouteToCircuitJson(
+function convertHdRouteToCircuitJsonTraces(
   hdRoute: HighDensityRoute,
-  id: string,
+  baseId: string,
   connectionName: string,
   width = 0.1,
-): PcbTrace {
-  return {
-    type: "pcb_trace",
-    pcb_trace_id: id,
-    source_trace_id: connectionName,
-    route: hdRoute.route.map((point, index) => {
-      const isFirstPoint = index === 0
-      const isLastPoint = index === hdRoute.route.length - 1
+): PcbTrace[] {
+  const traces: PcbTrace[] = []
 
-      // For each point in the route, create a wire segment
-      return {
-        route_type: "wire",
-        x: point.x,
-        y: point.y,
-        width,
-        layer: mapZToLayerName(point.z, 2),
-        // Add port connection if this is first or last point and has port info
-        ...(isFirstPoint && (point as any).pcb_port_id
-          ? { start_pcb_port_id: (point as any).pcb_port_id }
-          : {}),
-        ...(isLastPoint && (point as any).pcb_port_id
-          ? { end_pcb_port_id: (point as any).pcb_port_id }
-          : {}),
-      }
-    }),
+  // If no jumpers, return single trace
+  if (!hdRoute.jumpers || hdRoute.jumpers.length === 0) {
+    return [
+      {
+        type: "pcb_trace",
+        pcb_trace_id: baseId,
+        source_trace_id: connectionName,
+        route: hdRoute.route.map((point, index) => {
+          const isFirstPoint = index === 0
+          const isLastPoint = index === hdRoute.route.length - 1
+          return {
+            route_type: "wire",
+            x: point.x,
+            y: point.y,
+            width,
+            layer: mapZToLayerName(point.z, 2),
+            ...(isFirstPoint && (point as any).pcb_port_id
+              ? { start_pcb_port_id: (point as any).pcb_port_id }
+              : {}),
+            ...(isLastPoint && (point as any).pcb_port_id
+              ? { end_pcb_port_id: (point as any).pcb_port_id }
+              : {}),
+          }
+        }),
+      },
+    ]
   }
+
+  // Build a set of jumper endpoint indices (where we need to split the trace)
+  // Each jumper creates a "gap" in the trace
+  const jumperEndpoints: Array<{
+    startIdx: number
+    endIdx: number
+  }> = []
+
+  for (const jumper of hdRoute.jumpers) {
+    let startIdx = -1
+    let endIdx = -1
+
+    for (let i = 0; i < hdRoute.route.length; i++) {
+      const p = hdRoute.route[i]
+      if (
+        Math.abs(p.x - jumper.start.x) < 0.01 &&
+        Math.abs(p.y - jumper.start.y) < 0.01
+      ) {
+        startIdx = i
+      }
+      if (
+        Math.abs(p.x - jumper.end.x) < 0.01 &&
+        Math.abs(p.y - jumper.end.y) < 0.01
+      ) {
+        endIdx = i
+      }
+    }
+
+    if (startIdx !== -1 && endIdx !== -1) {
+      // Ensure startIdx < endIdx
+      if (startIdx > endIdx) {
+        ;[startIdx, endIdx] = [endIdx, startIdx]
+      }
+      jumperEndpoints.push({ startIdx, endIdx })
+    }
+  }
+
+  // Sort jumper endpoints by startIdx
+  jumperEndpoints.sort((a, b) => a.startIdx - b.startIdx)
+
+  // Split the route into segments between jumpers
+  let currentStart = 0
+  let traceIndex = 0
+
+  for (const { startIdx, endIdx } of jumperEndpoints) {
+    // Create trace from currentStart to startIdx (inclusive)
+    if (startIdx >= currentStart) {
+      const segmentPoints = hdRoute.route.slice(currentStart, startIdx + 1)
+      if (segmentPoints.length > 0) {
+        traces.push({
+          type: "pcb_trace",
+          pcb_trace_id: `${baseId}_${traceIndex}`,
+          source_trace_id: connectionName,
+          route: segmentPoints.map((point, index) => {
+            const isFirstPoint = index === 0 && currentStart === 0
+            const isLastPoint = false // Not the overall last point
+            return {
+              route_type: "wire",
+              x: point.x,
+              y: point.y,
+              width,
+              layer: mapZToLayerName(point.z, 2),
+              ...(isFirstPoint && (point as any).pcb_port_id
+                ? { start_pcb_port_id: (point as any).pcb_port_id }
+                : {}),
+            }
+          }),
+        })
+        traceIndex++
+      }
+    }
+    // Skip from startIdx to endIdx (this is the jumper segment)
+    currentStart = endIdx
+  }
+
+  // Create final trace from last jumper end to route end
+  if (currentStart < hdRoute.route.length) {
+    const segmentPoints = hdRoute.route.slice(currentStart)
+    if (segmentPoints.length > 0) {
+      const isLastSegment = true
+      traces.push({
+        type: "pcb_trace",
+        pcb_trace_id: `${baseId}_${traceIndex}`,
+        source_trace_id: connectionName,
+        route: segmentPoints.map((point, index) => {
+          const isLastPoint =
+            isLastSegment && index === segmentPoints.length - 1
+          return {
+            route_type: "wire",
+            x: point.x,
+            y: point.y,
+            width,
+            layer: mapZToLayerName(point.z, 2),
+            ...(isLastPoint && (point as any).pcb_port_id
+              ? { end_pcb_port_id: (point as any).pcb_port_id }
+              : {}),
+          }
+        }),
+      })
+    }
+  }
+
+  return traces
 }
 
 /**
@@ -375,17 +484,16 @@ export function convertToCircuitJson(
         )
       })
     } else {
-      // Handle HighDensityRoutes
+      // Handle HighDensityRoutes - may produce multiple traces per route if jumpers exist
       ;(routes as HighDensityRoute[]).forEach((route, index) => {
         const connectionName = route.connectionName
-        circuitJson.push(
-          convertHdRouteToCircuitJson(
-            route,
-            `trace_${index}`,
-            connectionMap.get(connectionName) || connectionName,
-            minTraceWidth,
-          ) as AnyCircuitElement,
+        const traces = convertHdRouteToCircuitJsonTraces(
+          route,
+          `trace_${index}`,
+          connectionMap.get(connectionName) || connectionName,
+          minTraceWidth,
         )
+        circuitJson.push(...(traces as AnyCircuitElement[]))
       })
     }
   }
