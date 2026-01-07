@@ -64,6 +64,12 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
     maxY: number
   } | null = null
 
+  // All jumper positions from the baseGraph (not just the ones used by routes)
+  jumperLocations: Array<{
+    center: { x: number; y: number }
+    orientation: "vertical" | "horizontal"
+  }> = []
+
   // Output
   solvedRoutes: HighDensityIntraNodeRouteWithJumpers[] = []
 
@@ -153,6 +159,13 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
       orientation,
       bounds: nodeBounds,
     })
+
+    // Store all jumper positions from the baseGraph
+    this.jumperLocations =
+      baseGraph.jumperLocations?.map((loc) => ({
+        center: loc.center,
+        orientation: loc.orientation,
+      })) ?? []
 
     // Build connections from port points
     // Group port points by connection name

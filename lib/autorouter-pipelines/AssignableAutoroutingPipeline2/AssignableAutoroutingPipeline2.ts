@@ -751,75 +751,16 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
   }
 
   /**
-   * Collects all unique jumpers from the HD routes and converts them to SRJ Jumper format.
-   * Jumpers are de-duplicated by their center position.
+   * Collects ALL jumpers from the highDensitySolver and converts them to SRJ Jumper format.
+   * This returns all jumpers placed in the jumper grid (from baseGraph.jumperLocations),
+   * not just the ones used by routes. These will be used as obstacles for the keepout
+   * solver and added to the final SRJ output.
    */
   getOutputJumpers(): SrjJumper[] {
-    const allHdRoutes = this._getOutputHdRoutes()
-    const jumperMap = new Map<string, SrjJumper>()
-
-    for (const hdRoute of allHdRoutes) {
-      if (!hdRoute.jumpers) continue
-
-      for (const hdJumper of hdRoute.jumpers) {
-        // Calculate center and orientation
-        const centerX = (hdJumper.start.x + hdJumper.end.x) / 2
-        const centerY = (hdJumper.start.y + hdJumper.end.y) / 2
-        const dx = hdJumper.end.x - hdJumper.start.x
-        const dy = hdJumper.end.y - hdJumper.start.y
-        const isHorizontal = Math.abs(dx) > Math.abs(dy)
-
-        // Get jumper dimensions
-        const dims =
-          JUMPER_DIMENSIONS[hdJumper.footprint] ?? JUMPER_DIMENSIONS["0603"]
-        const padWidth = isHorizontal ? dims.padLength : dims.padWidth
-        const padHeight = isHorizontal ? dims.padWidth : dims.padLength
-
-        // Create a key for deduplication
-        const key = `${centerX.toFixed(3)},${centerY.toFixed(3)}`
-
-        // Skip if we already have this jumper
-        if (jumperMap.has(key)) continue
-
-        // Determine the footprint type for SRJ
-        const footprint =
-          hdJumper.footprint === "1206x4_pair" ? "1206x4" : "0603"
-
-        // Create pads as obstacles
-        const layer = this.srj.layerCount === 1 ? "top" : "top"
-        const pads: Obstacle[] = [
-          {
-            type: "rect",
-            center: hdJumper.start,
-            width: padWidth,
-            height: padHeight,
-            layers: [layer],
-            connectedTo: [],
-          },
-          {
-            type: "rect",
-            center: hdJumper.end,
-            width: padWidth,
-            height: padHeight,
-            layers: [layer],
-            connectedTo: [],
-          },
-        ]
-
-        const srjJumper: SrjJumper = {
-          jumper_footprint: footprint,
-          center: { x: centerX, y: centerY },
-          orientation: isHorizontal ? "horizontal" : "vertical",
-          width: isHorizontal ? dims.length : dims.width,
-          height: isHorizontal ? dims.width : dims.length,
-          pads,
-        }
-
-        jumperMap.set(key, srjJumper)
-      }
+    if (!this.highDensitySolver) {
+      return []
     }
-
-    return Array.from(jumperMap.values())
+    return this.highDensitySolver.getOutputJumpers()
   }
 
   getOutputSimpleRouteJson(): SimpleRouteJson {

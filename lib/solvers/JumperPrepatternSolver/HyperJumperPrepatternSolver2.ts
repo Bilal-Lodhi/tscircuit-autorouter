@@ -48,6 +48,11 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
 
   // Output
   solvedRoutes: HighDensityIntraNodeRouteWithJumpers[] = []
+  // All jumper positions from the winning solver's baseGraph
+  jumperLocations: Array<{
+    center: { x: number; y: number }
+    orientation: "vertical" | "horizontal"
+  }> = []
 
   constructor(params: HyperJumperPrepatternSolver2Params) {
     super()
@@ -140,6 +145,7 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
 
   onSolve(solver: SupervisedSolver<JumperPrepatternSolver2_HyperGraph>) {
     this.solvedRoutes = solver.solver.solvedRoutes
+    this.jumperLocations = solver.solver.jumperLocations
   }
 
   getOutput(): HighDensityIntraNodeRouteWithJumpers[] {

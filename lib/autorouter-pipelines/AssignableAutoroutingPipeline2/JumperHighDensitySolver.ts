@@ -16,6 +16,7 @@ import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import { HighDensityHyperParameters } from "../../solvers/HighDensitySolver/HighDensityHyperParameters"
 import { getIntraNodeCrossingsUsingCircle } from "lib/utils/getIntraNodeCrossingsUsingCircle"
 import { JUMPER_DIMENSIONS } from "../../utils/jumperSizes"
+import type { Jumper as SrjJumper, Obstacle } from "../../types/srj-types"
 
 /**
  * A unified route type that can represent both regular routes (with vias)
@@ -82,6 +83,12 @@ export class JumperHighDensitySolver extends BaseSolver {
 
   // State
   phase: "analyzing" | "simple" | "jumpers" | "done"
+
+  // All jumper locations collected from jumper solvers (not just used ones)
+  allJumperLocations: Array<{
+    center: { x: number; y: number }
+    orientation: "vertical" | "horizontal"
+  }> = []
 
   constructor({
     nodePortPoints,
@@ -271,6 +278,9 @@ export class JumperHighDensitySolver extends BaseSolver {
         this.routes.push(convertJumperRouteToStandard(jumperRoute))
       }
 
+      // Collect all jumper locations from the baseGraph (not just used ones)
+      this.allJumperLocations.push(...currentSolver.jumperLocations)
+
       this.currentJumperSolverIndex++
 
       if (this.currentJumperSolverIndex >= this.jumperSolvers.length) {
@@ -325,6 +335,78 @@ export class JumperHighDensitySolver extends BaseSolver {
       connMap: this.connMap,
       hyperParameters: this.hyperParameters,
     }
+  }
+
+  /**
+   * Collects ALL jumpers from the baseGraph's jumperLocations and converts them to SRJ Jumper format.
+   * These include all jumpers placed in the grid, not just the ones used by routes.
+   * Jumpers are de-duplicated by their center position.
+   */
+  getOutputJumpers(): SrjJumper[] {
+    const jumperMap = new Map<string, SrjJumper>()
+
+    // Use the 1206x4 dimensions since that's what the hypergraph generates
+    const dims = JUMPER_DIMENSIONS["1206x4_pair"]
+
+    for (const jumperLoc of this.allJumperLocations) {
+      const isHorizontal = jumperLoc.orientation === "horizontal"
+
+      // Create a key for deduplication
+      const key = `${jumperLoc.center.x.toFixed(3)},${jumperLoc.center.y.toFixed(3)}`
+
+      // Skip if we already have this jumper
+      if (jumperMap.has(key)) continue
+
+      // Calculate pad centers based on orientation and jumper dimensions
+      // The pad spacing is the full length minus pad length (distance between pad centers)
+      const padSpacing = dims.length - dims.padLength
+      const padOffset = padSpacing / 2
+
+      const pad1Center = isHorizontal
+        ? { x: jumperLoc.center.x - padOffset, y: jumperLoc.center.y }
+        : { x: jumperLoc.center.x, y: jumperLoc.center.y - padOffset }
+
+      const pad2Center = isHorizontal
+        ? { x: jumperLoc.center.x + padOffset, y: jumperLoc.center.y }
+        : { x: jumperLoc.center.x, y: jumperLoc.center.y + padOffset }
+
+      const padWidth = isHorizontal ? dims.padLength : dims.padWidth
+      const padHeight = isHorizontal ? dims.padWidth : dims.padLength
+
+      // Create pads as obstacles
+      const layer = "top"
+      const pads: Obstacle[] = [
+        {
+          type: "rect",
+          center: pad1Center,
+          width: padWidth,
+          height: padHeight,
+          layers: [layer],
+          connectedTo: [],
+        },
+        {
+          type: "rect",
+          center: pad2Center,
+          width: padWidth,
+          height: padHeight,
+          layers: [layer],
+          connectedTo: [],
+        },
+      ]
+
+      const srjJumper: SrjJumper = {
+        jumper_footprint: "1206x4",
+        center: jumperLoc.center,
+        orientation: jumperLoc.orientation,
+        width: isHorizontal ? dims.length : dims.width,
+        height: isHorizontal ? dims.width : dims.length,
+        pads,
+      }
+
+      jumperMap.set(key, srjJumper)
+    }
+
+    return Array.from(jumperMap.values())
   }
 
   visualize(): GraphicsObject {
