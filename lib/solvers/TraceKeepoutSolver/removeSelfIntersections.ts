@@ -1,8 +1,13 @@
+import { Jumper } from "lib/types/high-density-types"
+
 interface Point3D {
   x: number
   y: number
   z: number
 }
+
+/** Tolerance for comparing floating point coordinates */
+const COORD_TOLERANCE = 0.0001
 
 /**
  * Finds the intersection point between two line segments, if it exists.
@@ -45,13 +50,60 @@ function getSegmentIntersection(
 }
 
 /**
+ * Checks if a point is a jumper endpoint.
+ */
+function isJumperEndpoint(
+  point: { x: number; y: number },
+  jumpers: Jumper[] | undefined,
+): boolean {
+  if (!jumpers || jumpers.length === 0) return false
+
+  for (const jumper of jumpers) {
+    if (
+      (Math.abs(point.x - jumper.start.x) < COORD_TOLERANCE &&
+        Math.abs(point.y - jumper.start.y) < COORD_TOLERANCE) ||
+      (Math.abs(point.x - jumper.end.x) < COORD_TOLERANCE &&
+        Math.abs(point.y - jumper.end.y) < COORD_TOLERANCE)
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * Checks if a range of indices contains any jumper endpoints.
+ */
+function rangeContainsJumperEndpoint(
+  route: Point3D[],
+  startIdx: number,
+  endIdx: number,
+  jumpers: Jumper[] | undefined,
+): boolean {
+  if (!jumpers || jumpers.length === 0) return false
+
+  for (let i = startIdx; i <= endIdx; i++) {
+    if (i >= 0 && i < route.length && isJumperEndpoint(route[i]!, jumpers)) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
  * Removes self-intersections from a route by finding where the path crosses itself
  * and creating a shortcut at the intersection point.
  *
  * When a self-intersection is detected, the loop between the two intersecting
  * segments is removed, and a new point is created at the intersection.
+ *
+ * IMPORTANT: This function will NOT remove loops that contain jumper endpoints,
+ * as jumper positions must be preserved exactly.
  */
-export function removeSelfIntersections(route: Point3D[]): Point3D[] {
+export function removeSelfIntersections(
+  route: Point3D[],
+  jumpers?: Jumper[],
+): Point3D[] {
   if (route.length < 4) {
     return route
   }
@@ -95,6 +147,14 @@ export function removeSelfIntersections(route: Point3D[]): Point3D[] {
 
         if (intersection) {
           // Found a self-intersection!
+          // But first, check if removing this loop would destroy any jumper endpoints.
+          // The loop being removed is from index i+1 to index j (inclusive).
+          // We need to ensure no jumper endpoints exist in this range.
+          if (rangeContainsJumperEndpoint(result, i + 1, j, jumpers)) {
+            // Skip this intersection - removing it would destroy a jumper
+            continue
+          }
+
           // Create new route: keep points 0 to i, add intersection point, keep points j+1 to end
           const newRoute: Point3D[] = []
 
