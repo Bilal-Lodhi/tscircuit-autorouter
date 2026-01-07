@@ -153,12 +153,15 @@ export class ObstacleExpansionSolver extends BaseSolver {
         this.expandedBoundsList[neighborIndex] ??
         this.baseBoundsList[neighborIndex]
       if (!neighborBounds) continue
-      if (neighborBounds.maxY <= minY || neighborBounds.minY >= maxY) {
-        continue
+
+      if (side === "left" || side === "right") {
+        if (neighborBounds.maxY <= minY || neighborBounds.minY >= maxY) continue
+        if (neighborBounds.minX < maxX && neighborBounds.maxX > minX) return
+      } else {
+        if (neighborBounds.maxX <= minX || neighborBounds.minX >= maxX) continue
+        if (neighborBounds.minY < maxY && neighborBounds.maxY > minY) return
       }
-      if (neighborBounds.minX < maxX && neighborBounds.maxX > minX) {
-        return
-      }
+
       if (side === "left") {
         if (neighborBounds.maxX <= minX) {
           const gap = minX - neighborBounds.maxX
