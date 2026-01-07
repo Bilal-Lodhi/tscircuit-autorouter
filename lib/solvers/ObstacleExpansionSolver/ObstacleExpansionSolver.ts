@@ -212,13 +212,12 @@ export class ObstacleExpansionSolver extends BaseSolver {
   private finalizeExpansion() {
     const { simpleRouteJson } = this.params
     const obstacles = simpleRouteJson.obstacles.map((obstacle, index) => {
-      const bounds =
-        this.expandedBoundsList[index] ?? {
-          minX: obstacle.center.x - obstacle.width / 2,
-          maxX: obstacle.center.x + obstacle.width / 2,
-          minY: obstacle.center.y - obstacle.height / 2,
-          maxY: obstacle.center.y + obstacle.height / 2,
-        }
+      const bounds = this.expandedBoundsList[index] ?? {
+        minX: obstacle.center.x - obstacle.width / 2,
+        maxX: obstacle.center.x + obstacle.width / 2,
+        minY: obstacle.center.y - obstacle.height / 2,
+        maxY: obstacle.center.y + obstacle.height / 2,
+      }
       return {
         ...obstacle,
         width: bounds.maxX - bounds.minX,

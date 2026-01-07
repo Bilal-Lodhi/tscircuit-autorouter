@@ -142,7 +142,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
       (cms) => [
         {
           simpleRouteJson: cms.srjWithPointPairs!,
-          minimumClearance: cms.srj.minTraceWidth
+          minimumClearance: cms.srj.minTraceWidth,
         },
       ],
       {
@@ -349,7 +349,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
       (cms) => [
         {
           hdRoutes: cms.highDensityStitchSolver!.mergedHdRoutes,
-          obstacles: cms.srj.obstacles,
+          obstacles: cms.srjWithExpandedObstacles?.obstacles ?? [],
           connMap: cms.connMap,
           colorMap: cms.colorMap,
           outline: cms.srj.outline,
