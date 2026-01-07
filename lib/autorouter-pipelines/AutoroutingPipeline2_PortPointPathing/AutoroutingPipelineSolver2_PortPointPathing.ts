@@ -382,7 +382,8 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
       (cms) => [
         {
           hdRoutes: cms.highDensityStitchSolver!.mergedHdRoutes,
-          obstacles: cms.srjWithExpandedObstacles?.obstacles ?? cms.srj.obstacles,
+          obstacles:
+            cms.srjWithExpandedObstacles?.obstacles ?? cms.srj.obstacles,
           connMap: cms.connMap,
           colorMap: cms.colorMap,
           outline: cms.srj.outline,
