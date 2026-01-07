@@ -42,9 +42,6 @@ interface XYConnection {
   start: { x: number; y: number }
   end: { x: number; y: number }
   connectionId: string
-  // Original port points (on node boundary) before projection to graph boundary
-  originalStart: { x: number; y: number }
-  originalEnd: { x: number; y: number }
 }
 
 export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
@@ -131,7 +128,16 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
     const patternConfig = this._getPatternConfig()
     const orientation = this.hyperParameters.ORIENTATION ?? "vertical"
 
-    // Generate the base jumper grid centered on the node
+    // Calculate node bounds
+    const nodeBounds = {
+      minX: node.center.x - node.width / 2,
+      maxX: node.center.x + node.width / 2,
+      minY: node.center.y - node.height / 2,
+      maxY: node.center.y + node.height / 2,
+    }
+    this.graphBounds = nodeBounds
+
+    // Generate the base jumper grid to fit the node bounds exactly
     const baseGraph = generateJumperX4Grid({
       cols: patternConfig.cols,
       rows: patternConfig.rows,
@@ -145,22 +151,8 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
       outerChannelYPointCount: 5,
       regionsBetweenPads: true,
       orientation,
-      center: node.center,
+      bounds: nodeBounds,
     })
-
-    // Calculate graph bounds
-    let minX = Infinity,
-      maxX = -Infinity,
-      minY = Infinity,
-      maxY = -Infinity
-    for (const region of baseGraph.regions) {
-      const bounds = region.d.bounds
-      minX = Math.min(minX, bounds.minX)
-      maxX = Math.max(maxX, bounds.maxX)
-      minY = Math.min(minY, bounds.minY)
-      maxY = Math.max(maxY, bounds.maxY)
-    }
-    this.graphBounds = { minX, maxX, minY, maxY }
 
     // Build connections from port points
     // Group port points by connection name
@@ -180,39 +172,15 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
       }
     }
 
-    // Collect all port points that will be used in connections
-    const allUsedPortPoints: PortPoint[] = []
-    for (const [, data] of Array.from(connectionMap.entries())) {
-      if (data.points.length >= 2) {
-        allUsedPortPoints.push(data.points[0], data.points[1])
-      }
-    }
-
-    // Project all port points together to spread them out along edges
-    const projectedPositions = this._projectAllPortPoints(allUsedPortPoints)
-
-    // Create XY connections - each connection needs start and end points on the boundary
+    // Create XY connections - use port point positions directly since graph matches node bounds
     this.xyConnections = []
     for (const [connectionName, data] of Array.from(connectionMap.entries())) {
       if (data.points.length < 2) continue
 
-      // For each pair of points in the connection, we need to route them
-      // Store both the original positions (on node boundary) and projected positions (on graph boundary)
-      const originalStart = { x: data.points[0].x, y: data.points[0].y }
-      const originalEnd = { x: data.points[1].x, y: data.points[1].y }
-      const start =
-        projectedPositions.get(data.points[0]) ??
-        this._projectToGraphBoundary(data.points[0])
-      const end =
-        projectedPositions.get(data.points[1]) ??
-        this._projectToGraphBoundary(data.points[1])
-
       this.xyConnections.push({
-        start,
-        end,
+        start: { x: data.points[0].x, y: data.points[0].y },
+        end: { x: data.points[1].x, y: data.points[1].y },
         connectionId: connectionName,
-        originalStart,
-        originalEnd,
       })
     }
 
@@ -237,178 +205,6 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
     })
 
     return true
-  }
-
-  /**
-   * Determine which edge of the graph a port point should project to
-   */
-  private _getTargetEdge(pp: PortPoint): "left" | "right" | "top" | "bottom" {
-    if (!this.graphBounds) return "left"
-
-    const { minX, maxX, minY, maxY } = this.graphBounds
-
-    const distLeft = Math.abs(pp.x - minX)
-    const distRight = Math.abs(pp.x - maxX)
-    const distTop = Math.abs(pp.y - maxY)
-    const distBottom = Math.abs(pp.y - minY)
-
-    const minDist = Math.min(distLeft, distRight, distTop, distBottom)
-
-    if (minDist === distLeft) return "left"
-    if (minDist === distRight) return "right"
-    if (minDist === distTop) return "top"
-    return "bottom"
-  }
-
-  /**
-   * Project all port points to the graph boundary, spreading them out along each edge
-   * to maximize spacing and avoid bunching at corners.
-   */
-  private _projectAllPortPoints(
-    portPoints: PortPoint[],
-  ): Map<PortPoint, { x: number; y: number }> {
-    const result = new Map<PortPoint, { x: number; y: number }>()
-
-    if (!this.graphBounds || portPoints.length === 0) {
-      for (const pp of portPoints) {
-        result.set(pp, { x: pp.x, y: pp.y })
-      }
-      return result
-    }
-
-    const { minX, maxX, minY, maxY } = this.graphBounds
-    const padding = 0.5 // Padding from corners
-
-    // Group port points by their target edge
-    const edgeGroups: Record<string, PortPoint[]> = {
-      left: [],
-      right: [],
-      top: [],
-      bottom: [],
-    }
-
-    for (const pp of portPoints) {
-      const edge = this._getTargetEdge(pp)
-      edgeGroups[edge].push(pp)
-    }
-
-    // Process each edge - sort by position and spread evenly
-    // Left edge: sort by Y (top to bottom)
-    edgeGroups.left.sort((a, b) => b.y - a.y)
-    this._spreadPointsAlongEdge(
-      edgeGroups.left,
-      result,
-      "left",
-      minX,
-      minY + padding,
-      maxY - padding,
-    )
-
-    // Right edge: sort by Y (top to bottom)
-    edgeGroups.right.sort((a, b) => b.y - a.y)
-    this._spreadPointsAlongEdge(
-      edgeGroups.right,
-      result,
-      "right",
-      maxX,
-      minY + padding,
-      maxY - padding,
-    )
-
-    // Top edge: sort by X (left to right)
-    edgeGroups.top.sort((a, b) => a.x - b.x)
-    this._spreadPointsAlongEdge(
-      edgeGroups.top,
-      result,
-      "top",
-      maxY,
-      minX + padding,
-      maxX - padding,
-    )
-
-    // Bottom edge: sort by X (left to right)
-    edgeGroups.bottom.sort((a, b) => a.x - b.x)
-    this._spreadPointsAlongEdge(
-      edgeGroups.bottom,
-      result,
-      "bottom",
-      minY,
-      minX + padding,
-      maxX - padding,
-    )
-
-    return result
-  }
-
-  /**
-   * Spread points evenly along an edge
-   */
-  private _spreadPointsAlongEdge(
-    points: PortPoint[],
-    result: Map<PortPoint, { x: number; y: number }>,
-    edge: "left" | "right" | "top" | "bottom",
-    fixedCoord: number,
-    rangeMin: number,
-    rangeMax: number,
-  ) {
-    if (points.length === 0) return
-
-    const rangeLength = rangeMax - rangeMin
-
-    if (points.length === 1) {
-      // Single point: place at center of range
-      const center = rangeMin + rangeLength / 2
-      if (edge === "left" || edge === "right") {
-        result.set(points[0], { x: fixedCoord, y: center })
-      } else {
-        result.set(points[0], { x: center, y: fixedCoord })
-      }
-      return
-    }
-
-    // Multiple points: spread evenly along the range
-    const spacing = rangeLength / (points.length - 1)
-
-    for (let i = 0; i < points.length; i++) {
-      const pos = rangeMin + i * spacing
-      if (edge === "left" || edge === "right") {
-        // For vertical edges, pos is Y coordinate (spread from top to bottom)
-        // Reverse the order so highest Y is at rangeMax
-        const reversedPos = rangeMax - i * spacing
-        result.set(points[i], { x: fixedCoord, y: reversedPos })
-      } else {
-        // For horizontal edges, pos is X coordinate
-        result.set(points[i], { x: pos, y: fixedCoord })
-      }
-    }
-  }
-
-  /**
-   * Project a single port point to the graph boundary (for cases where we don't have all points)
-   */
-  private _projectToGraphBoundary(pp: PortPoint): { x: number; y: number } {
-    if (!this.graphBounds) {
-      return { x: pp.x, y: pp.y }
-    }
-
-    const { minX, maxX, minY, maxY } = this.graphBounds
-    const edge = this._getTargetEdge(pp)
-
-    // Clamp to graph bounds with some padding
-    const padding = 0.5
-    const clampedY = Math.max(minY + padding, Math.min(maxY - padding, pp.y))
-    const clampedX = Math.max(minX + padding, Math.min(maxX - padding, pp.x))
-
-    switch (edge) {
-      case "left":
-        return { x: minX, y: clampedY }
-      case "right":
-        return { x: maxX, y: clampedY }
-      case "top":
-        return { x: clampedX, y: maxY }
-      case "bottom":
-        return { x: clampedX, y: minY }
-    }
   }
 
   _step() {
@@ -445,23 +241,9 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
     for (const solvedRoute of this.jumperGraphSolver.solvedRoutes) {
       const connectionId = solvedRoute.connection.connectionId
 
-      // Find the original connection info to get entry/exit points
-      const xyConn = this.xyConnections.find(
-        (c) => c.connectionId === connectionId,
-      )
-
       // Extract route points from the solved path
       const routePoints: Array<{ x: number; y: number; z: number }> = []
       const jumpers: Jumper[] = []
-
-      // Add entry segment: from original port point to graph boundary
-      if (xyConn) {
-        routePoints.push({
-          x: xyConn.originalStart.x,
-          y: xyConn.originalStart.y,
-          z: 0,
-        })
-      }
 
       for (const candidate of solvedRoute.path) {
         const port = candidate.port as any
@@ -490,15 +272,6 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
             footprint: "1206x4_pair",
           })
         }
-      }
-
-      // Add exit segment: from graph boundary to original port point
-      if (xyConn) {
-        routePoints.push({
-          x: xyConn.originalEnd.x,
-          y: xyConn.originalEnd.y,
-          z: 0,
-        })
       }
 
       // Find the root connection name from our input
