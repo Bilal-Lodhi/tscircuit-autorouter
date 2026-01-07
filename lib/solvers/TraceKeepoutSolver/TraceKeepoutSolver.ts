@@ -1,5 +1,5 @@
 import { BaseSolver } from "../BaseSolver"
-import { HighDensityRoute } from "lib/types/high-density-types"
+import { HighDensityRoute, Jumper } from "lib/types/high-density-types"
 import { Obstacle, SimpleRouteJson } from "lib/types"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import { ObstacleSpatialHashIndex } from "lib/data-structures/ObstacleTree"
@@ -22,6 +22,9 @@ import { smoothHdRoutes } from "./smoothLines"
 import { cloneAndShuffleArray } from "lib/utils/cloneAndShuffleArray"
 import { removeSelfIntersections } from "./removeSelfIntersections"
 import { getJumpersGraphics } from "lib/utils/getJumperGraphics"
+
+/** Tolerance for comparing floating point coordinates */
+const COORD_TOLERANCE = 0.0001
 
 const BOARD_OUTLINE_CONNECTION_NAME = "__board_outline__"
 
@@ -74,6 +77,8 @@ export class TraceKeepoutSolver extends BaseSolver {
   currentTraceSegmentT = 0 // Parameter t in [0, 1] along the current segment
   recordedDrawPositions: Point3D[] = []
   lastCollidingSegments: Segment[] = []
+  /** Maps segment index to the jumper that occupies that segment */
+  currentTraceJumperSegments: Map<number, Jumper> = new Map()
 
   obstacleSHI: ObstacleSpatialHashIndex
   hdRouteSHI: HighDensityRouteSpatialIndex
@@ -149,6 +154,49 @@ export class TraceKeepoutSolver extends BaseSolver {
     return this.currentKeepoutRadius
   }
 
+  /**
+   * Builds a map from segment index to the jumper that occupies that segment.
+   * A segment is considered a jumper segment if its start point matches the
+   * jumper start and its end point matches the jumper end.
+   */
+  private buildJumperSegmentMap(trace: HighDensityRoute): Map<number, Jumper> {
+    const map = new Map<number, Jumper>()
+
+    if (!trace.jumpers || trace.jumpers.length === 0) {
+      return map
+    }
+
+    const route = trace.route
+
+    for (const jumper of trace.jumpers) {
+      // Find the segment that matches this jumper
+      for (let i = 0; i < route.length - 1; i++) {
+        const segStart = route[i]!
+        const segEnd = route[i + 1]!
+
+        // Check if this segment matches the jumper (start->end or end->start)
+        const matchesForward =
+          Math.abs(segStart.x - jumper.start.x) < COORD_TOLERANCE &&
+          Math.abs(segStart.y - jumper.start.y) < COORD_TOLERANCE &&
+          Math.abs(segEnd.x - jumper.end.x) < COORD_TOLERANCE &&
+          Math.abs(segEnd.y - jumper.end.y) < COORD_TOLERANCE
+
+        const matchesBackward =
+          Math.abs(segStart.x - jumper.end.x) < COORD_TOLERANCE &&
+          Math.abs(segStart.y - jumper.end.y) < COORD_TOLERANCE &&
+          Math.abs(segEnd.x - jumper.start.x) < COORD_TOLERANCE &&
+          Math.abs(segEnd.y - jumper.start.y) < COORD_TOLERANCE
+
+        if (matchesForward || matchesBackward) {
+          map.set(i, jumper)
+          break
+        }
+      }
+    }
+
+    return map
+  }
+
   _step() {
     // If no current trace, dequeue one
     if (!this.currentTrace) {
@@ -192,6 +240,11 @@ export class TraceKeepoutSolver extends BaseSolver {
         return
       }
 
+      // Build the jumper segment map for this trace
+      this.currentTraceJumperSegments = this.buildJumperSegmentMap(
+        this.currentTrace,
+      )
+
       const startPoint = this.currentTrace.route[0]!
       this.cursorPosition = { ...startPoint }
       this.lastCursorPosition = { ...startPoint }
@@ -206,13 +259,26 @@ export class TraceKeepoutSolver extends BaseSolver {
     this.lastCursorPosition = { ...this.cursorPosition! }
 
     // Step the cursor forward along the trace
-    const stepped = this.stepCursorForward()
+    const stepResult = this.stepCursorForward()
 
-    if (!stepped) {
+    if (stepResult === "end") {
       // Reached end of trace, finalize it
       this.finalizeCurrentTrace()
       return
     }
+
+    if (stepResult === "jumper") {
+      // We crossed a jumper segment - the fixed positions have already been
+      // recorded in stepCursorForward(). Update draw position to the jumper end
+      // and continue without collision avoidance.
+      this.drawPosition = {
+        x: this.cursorPosition!.x,
+        y: this.cursorPosition!.y,
+      }
+      return
+    }
+
+    // Normal step - apply collision avoidance
 
     // Get colliding segments for obstacles and traces
     const collidingSegments = this.getCollidingSegments(this.cursorPosition!)
@@ -255,11 +321,25 @@ export class TraceKeepoutSolver extends BaseSolver {
   }
 
   /**
-   * Steps the cursor forward by CURSOR_STEP_DISTANCE along the trace
-   * Returns false if we've reached the end of the trace
+   * Check if we're about to enter a jumper segment.
+   * Returns the jumper if we're at the start of a jumper segment (T=0), null otherwise.
    */
-  private stepCursorForward(): boolean {
-    if (!this.currentTrace || !this.cursorPosition) return false
+  private getJumperAtCurrentSegmentStart(): Jumper | null {
+    if (this.currentTraceSegmentT > COORD_TOLERANCE) {
+      // We're already partway through the segment, not at the start
+      return null
+    }
+    return (
+      this.currentTraceJumperSegments.get(this.currentTraceSegmentIndex) ?? null
+    )
+  }
+
+  /**
+   * Steps the cursor forward by CURSOR_STEP_DISTANCE along the trace
+   * Returns: "stepped" if normal step, "end" if reached end, "jumper" if crossed a jumper
+   */
+  private stepCursorForward(): "stepped" | "end" | "jumper" {
+    if (!this.currentTrace || !this.cursorPosition) return "end"
 
     const route = this.currentTrace.route
     let remainingDistance = this.getStepDistance()
@@ -267,7 +347,39 @@ export class TraceKeepoutSolver extends BaseSolver {
     while (remainingDistance > 0) {
       if (this.currentTraceSegmentIndex >= route.length - 1) {
         // Reached end of trace
-        return false
+        return "end"
+      }
+
+      // Check if we're about to enter a jumper segment
+      const jumper = this.getJumperAtCurrentSegmentStart()
+      if (jumper) {
+        // We're at the start of a jumper segment
+        const segStart = route[this.currentTraceSegmentIndex]!
+        const segEnd = route[this.currentTraceSegmentIndex + 1]!
+
+        // Record the jumper start point as a fixed draw position
+        // First, make sure there's a connecting segment from the last draw position
+        // to the jumper start
+        this.recordedDrawPositions.push({
+          x: segStart.x,
+          y: segStart.y,
+          z: segStart.z,
+        })
+
+        // Record the jumper end point as a fixed draw position
+        this.recordedDrawPositions.push({
+          x: segEnd.x,
+          y: segEnd.y,
+          z: segEnd.z,
+        })
+
+        // Move cursor to the jumper end and advance to next segment
+        this.cursorPosition = { ...segEnd }
+        this.currentTraceSegmentIndex++
+        this.currentTraceSegmentT = 0
+
+        // Return "jumper" to signal we crossed a jumper (skip collision avoidance)
+        return "jumper"
       }
 
       const segStart = route[this.currentTraceSegmentIndex]!
@@ -300,7 +412,7 @@ export class TraceKeepoutSolver extends BaseSolver {
           z: segStart.z, // Stay on same layer within segment
         }
 
-        return true
+        return "stepped"
       } else {
         // Step goes beyond this segment
         remainingDistance -= distToSegEnd
@@ -311,12 +423,12 @@ export class TraceKeepoutSolver extends BaseSolver {
           // Reached end of trace
           const lastPoint = route[route.length - 1]!
           this.cursorPosition = { ...lastPoint }
-          return false
+          return "end"
         }
       }
     }
 
-    return true
+    return "stepped"
   }
 
   /**
@@ -460,7 +572,11 @@ export class TraceKeepoutSolver extends BaseSolver {
     }
 
     // Simplify the recorded positions to remove redundant points
-    const simplifiedRoute = this.simplifyRoute(this.recordedDrawPositions)
+    // but preserve jumper endpoints
+    const simplifiedRoute = this.simplifyRoute(
+      this.recordedDrawPositions,
+      this.currentTrace.jumpers,
+    )
 
     // Remove any self-intersections from the route
     const cleanedRoute = removeSelfIntersections(simplifiedRoute)
@@ -486,9 +602,32 @@ export class TraceKeepoutSolver extends BaseSolver {
   }
 
   /**
-   * Simplifies the route by removing collinear points
+   * Checks if a point is a jumper endpoint.
    */
-  private simplifyRoute(points: Point3D[]): Point3D[] {
+  private isJumperEndpoint(
+    point: Point2D,
+    jumpers: Jumper[] | undefined,
+  ): boolean {
+    if (!jumpers || jumpers.length === 0) return false
+
+    for (const jumper of jumpers) {
+      if (
+        (Math.abs(point.x - jumper.start.x) < COORD_TOLERANCE &&
+          Math.abs(point.y - jumper.start.y) < COORD_TOLERANCE) ||
+        (Math.abs(point.x - jumper.end.x) < COORD_TOLERANCE &&
+          Math.abs(point.y - jumper.end.y) < COORD_TOLERANCE)
+      ) {
+        return true
+      }
+    }
+    return false
+  }
+
+  /**
+   * Simplifies the route by removing collinear points, but preserves
+   * jumper endpoints which must remain fixed.
+   */
+  private simplifyRoute(points: Point3D[], jumpers?: Jumper[]): Point3D[] {
     if (points.length <= 2) return points
 
     const result: Point3D[] = [points[0]!]
@@ -497,6 +636,12 @@ export class TraceKeepoutSolver extends BaseSolver {
       const prev = result[result.length - 1]!
       const curr = points[i]!
       const next = points[i + 1]!
+
+      // Always keep jumper endpoints
+      if (this.isJumperEndpoint(curr, jumpers)) {
+        result.push(curr)
+        continue
+      }
 
       // Skip points where z changes - always keep layer transitions
       if (curr.z !== prev.z || curr.z !== next.z) {
