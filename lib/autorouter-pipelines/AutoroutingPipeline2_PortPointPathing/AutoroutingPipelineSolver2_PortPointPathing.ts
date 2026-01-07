@@ -45,6 +45,7 @@ import {
 } from "../../solvers/PortPointPathingSolver/HyperPortPointPathingSolver"
 import { CapacityMeshNodeSolver2_NodeUnderObstacle } from "../../solvers/CapacityMeshSolver/CapacityMeshNodeSolver2_NodesUnderObstacles"
 import { MultiSectionPortPointOptimizer } from "../../solvers/MultiSectionPortPointOptimizer"
+import { ObstacleExpansionSolver } from "../../solvers/ObstacleExpansionSolver/ObstacleExpansionSolver"
 
 interface CapacityMeshSolverOptions {
   capacityDepth?: number
@@ -88,7 +89,7 @@ function definePipelineStep<
 
 export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
   netToPointPairsSolver?: NetToPointPairsSolver
-  // nodeSolver?: CapacityMeshNodeSolver2_NodeUnderObstacle
+  obstacleExpansionSolver?: ObstacleExpansionSolver
   nodeSolver?: RectDiffPipeline
   nodeTargetMerger?: CapacityNodeTargetMerger
   edgeSolver?: CapacityMeshEdgeSolver
@@ -113,6 +114,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
   activeSubSolver?: BaseSolver | null = null
   connMap: ConnectivityMap
   srjWithPointPairs?: SimpleRouteJson
+  srjWithExpandedObstacles?: SimpleRouteJson
   capacityNodes: CapacityMeshNode[] | null = null
   capacityEdges: CapacityMeshEdge[] | null = null
 
@@ -135,11 +137,25 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
       },
     ),
     definePipelineStep(
+      "obstacleExpansionSolver",
+      ObstacleExpansionSolver,
+      (cms) => [
+        {
+          simpleRouteJson: cms.srjWithPointPairs!,
+          minimumClearance: cms.srj.minTraceWidth
+        },
+      ],
+      {
+        onSolved: (cms) => {
+          cms.srjWithExpandedObstacles =
+            cms.obstacleExpansionSolver?.getOutput()
+        },
+      },
+    ),
+    definePipelineStep(
       "nodeSolver",
       RectDiffPipeline,
-      // Cast to any because RectDiffSolver uses an older SimpleRouteJson type
-      // that doesn't support MultiLayerConnectionPoint yet
-      (cms) => [{ simpleRouteJson: cms.srjWithPointPairs! as any }],
+      (cms) => [{ simpleRouteJson: cms.srjWithExpandedObstacles! as any }],
       {
         onSolved: (cms) => {
           cms.capacityNodes = cms.nodeSolver?.getOutput().meshNodes ?? []
