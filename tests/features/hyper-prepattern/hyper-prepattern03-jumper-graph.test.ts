@@ -8,7 +8,6 @@ test("HyperJumperPrepatternSolver2_03 - visualize JumperGraphSolver input/output
   const solver = new HyperJumperPrepatternSolver2({
     nodeWithPortPoints: input.nodeWithPortPoints as any,
     colorMap: input.colorMap,
-    hyperParameters: input.hyperParameters as any,
     traceWidth: input.traceWidth,
   })
 

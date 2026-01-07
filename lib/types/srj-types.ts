@@ -91,7 +91,7 @@ export interface SimplifiedPcbTrace {
         /** Ending point of the jumper pad */
         end: { x: number; y: number }
         /** Footprint size, typically "0603" */
-        footprint: "0603" | "1206"
+        footprint: "0603" | "1206" | "1206x4_pair"
         layer: string
       }
   >
