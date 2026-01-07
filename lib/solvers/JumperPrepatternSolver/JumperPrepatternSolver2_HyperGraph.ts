@@ -8,7 +8,10 @@ import type {
 } from "../../types/high-density-types"
 import { safeTransparentize } from "../colors"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
-import { type JumperFootprint, JUMPER_DIMENSIONS } from "../../utils/jumperSizes"
+import {
+  type JumperFootprint,
+  JUMPER_DIMENSIONS,
+} from "../../utils/jumperSizes"
 import {
   JumperGraphSolver,
   generateJumperX4Grid,
@@ -120,8 +123,8 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
     const baseGraph = generateJumperX4Grid({
       cols: patternConfig.cols,
       rows: patternConfig.rows,
-      marginX: 1.2,
-      marginY: 1.2,
+      marginX: 0.4,
+      marginY: 0.4,
       outerPaddingX: 2,
       outerPaddingY: 2,
       innerColChannelPointCount: 3,
@@ -185,8 +188,12 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
       // Store both the original positions (on node boundary) and projected positions (on graph boundary)
       const originalStart = { x: data.points[0].x, y: data.points[0].y }
       const originalEnd = { x: data.points[1].x, y: data.points[1].y }
-      const start = projectedPositions.get(data.points[0]) ?? this._projectToGraphBoundary(data.points[0])
-      const end = projectedPositions.get(data.points[1]) ?? this._projectToGraphBoundary(data.points[1])
+      const start =
+        projectedPositions.get(data.points[0]) ??
+        this._projectToGraphBoundary(data.points[0])
+      const end =
+        projectedPositions.get(data.points[1]) ??
+        this._projectToGraphBoundary(data.points[1])
 
       this.xyConnections.push({
         start,
@@ -437,7 +444,11 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
 
       // Add entry segment: from original port point to graph boundary
       if (xyConn) {
-        routePoints.push({ x: xyConn.originalStart.x, y: xyConn.originalStart.y, z: 0 })
+        routePoints.push({
+          x: xyConn.originalStart.x,
+          y: xyConn.originalStart.y,
+          z: 0,
+        })
       }
 
       for (const candidate of solvedRoute.path) {
@@ -447,7 +458,10 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
 
         // Check if we crossed through a jumper (lastRegion is a throughjumper)
         const region = candidate.lastRegion as any
-        if (region?.d?.isThroughJumper && !usedThroughJumpers.has(region.regionId)) {
+        if (
+          region?.d?.isThroughJumper &&
+          !usedThroughJumpers.has(region.regionId)
+        ) {
           usedThroughJumpers.add(region.regionId)
 
           // Use the throughjumper region's bounds to get the correct pad positions
@@ -468,7 +482,11 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
 
       // Add exit segment: from graph boundary to original port point
       if (xyConn) {
-        routePoints.push({ x: xyConn.originalEnd.x, y: xyConn.originalEnd.y, z: 0 })
+        routePoints.push({
+          x: xyConn.originalEnd.x,
+          y: xyConn.originalEnd.y,
+          z: 0,
+        })
       }
 
       // Find the root connection name from our input
@@ -552,11 +570,7 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
 
       // Draw jumpers
       for (const jumper of route.jumpers) {
-        this._drawJumperPads(
-          graphics,
-          jumper,
-          safeTransparentize(color, 0.5),
-        )
+        this._drawJumperPads(graphics, jumper, safeTransparentize(color, 0.5))
       }
     }
 
