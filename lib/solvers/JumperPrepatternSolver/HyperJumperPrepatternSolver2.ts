@@ -11,6 +11,7 @@ import {
   JumperPrepatternSolver2_HyperGraph,
   type JumperPrepatternSolver2Params,
   type HyperGraphPatternType,
+  JumperPrepatternSolver2HyperParameters,
 } from "./JumperPrepatternSolver2_HyperGraph"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 
@@ -19,6 +20,7 @@ export interface HyperJumperPrepatternSolver2Params {
   colorMap?: Record<string, string>
   traceWidth?: number
   connMap?: ConnectivityMap
+  hyperParameters?: JumperPrepatternSolver2HyperParameters
 }
 
 type VariantHyperParameters = {
@@ -42,6 +44,7 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
   colorMap: Record<string, string>
   traceWidth: number
   connMap?: ConnectivityMap
+  baseHyperParameters?: JumperPrepatternSolver2HyperParameters
 
   // Output
   solvedRoutes: HighDensityIntraNodeRouteWithJumpers[] = []
@@ -53,6 +56,7 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
     this.colorMap = params.colorMap ?? {}
     this.traceWidth = params.traceWidth ?? 0.15
     this.connMap = params.connMap
+    this.baseHyperParameters = params.hyperParameters ?? {}
     this.MAX_ITERATIONS = 1e6
     this.GREEDY_MULTIPLIER = 1
     this.MIN_SUBSTEPS = 1

@@ -18,7 +18,10 @@ import {
   createGraphWithConnectionsFromBaseGraph,
 } from "@tscircuit/hypergraph"
 
-export type HyperGraphPatternType = "single_1206x4" | "1x2_1206x4" | "2x2_1206x4"
+export type HyperGraphPatternType =
+  | "single_1206x4"
+  | "1x2_1206x4"
+  | "2x2_1206x4"
 
 export interface JumperPrepatternSolver2HyperParameters {
   /** Pattern type for jumper placement - "single_1206x4" (~8x8mm) or "2x2_1206x4" (~14x14mm) */
@@ -132,10 +135,10 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
     const baseGraph = generateJumperX4Grid({
       cols: patternConfig.cols,
       rows: patternConfig.rows,
-      marginX: 0.4,
-      marginY: 0.4,
-      outerPaddingX: 2,
-      outerPaddingY: 2,
+      marginX: 1.2,
+      marginY: 1.2,
+      outerPaddingX: 0.4,
+      outerPaddingY: 0.4,
       innerColChannelPointCount: 3,
       innerRowChannelPointCount: 3,
       outerChannelXPointCount: 5,
