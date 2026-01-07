@@ -6,6 +6,7 @@ import type {
   NodeWithPortPoints,
   PortPoint,
 } from "../../types/high-density-types"
+import type { Jumper as SrjJumper, Obstacle } from "../../types/srj-types"
 import { safeTransparentize } from "../colors"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import {
@@ -16,6 +17,7 @@ import {
   JumperGraphSolver,
   generateJumperX4Grid,
   createGraphWithConnectionsFromBaseGraph,
+  type JRegion,
 } from "@tscircuit/hypergraph"
 
 export type HyperGraphPatternType =
@@ -64,14 +66,18 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
     maxY: number
   } | null = null
 
-  // All jumper positions from the baseGraph (not just the ones used by routes)
+  // All jumper positions from the baseGraph (includes padRegions for obstacle generation)
   jumperLocations: Array<{
     center: { x: number; y: number }
     orientation: "vertical" | "horizontal"
+    padRegions: JRegion[]
   }> = []
 
   // Output
   solvedRoutes: HighDensityIntraNodeRouteWithJumpers[] = []
+
+  // SRJ Jumpers with obstacles (populated after solving)
+  jumpers: SrjJumper[] = []
 
   constructor(params: JumperPrepatternSolver2Params) {
     super()
@@ -160,11 +166,12 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
       bounds: nodeBounds,
     })
 
-    // Store all jumper positions from the baseGraph
+    // Store all jumper positions from the baseGraph (including padRegions for obstacle generation)
     this.jumperLocations =
       baseGraph.jumperLocations?.map((loc) => ({
         center: loc.center,
         orientation: loc.orientation,
+        padRegions: loc.padRegions,
       })) ?? []
 
     // Build connections from port points
@@ -316,6 +323,80 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
 
   getOutput(): HighDensityIntraNodeRouteWithJumpers[] {
     return this.solvedRoutes
+  }
+
+  /**
+   * Returns all jumpers from the baseGraph as SRJ Jumper objects.
+   * The pads have connectedTo set based on which routes use each jumper.
+   * Must be called after the solver is solved.
+   */
+  getOutputJumpers(): SrjJumper[] {
+    if (this.jumpers.length > 0) {
+      return this.jumpers
+    }
+
+    // Build a map of jumper center -> connection names that use it
+    // by examining the solved routes' jumpers
+    const jumperUsageMap = new Map<string, string[]>()
+    for (const route of this.solvedRoutes) {
+      for (const jumper of route.jumpers) {
+        const centerX = (jumper.start.x + jumper.end.x) / 2
+        const centerY = (jumper.start.y + jumper.end.y) / 2
+        const key = `${centerX.toFixed(3)},${centerY.toFixed(3)}`
+
+        const connectedTo = jumperUsageMap.get(key) ?? []
+        // Add both connectionName and rootConnectionName if available
+        if (
+          route.rootConnectionName &&
+          !connectedTo.includes(route.rootConnectionName)
+        ) {
+          connectedTo.push(route.rootConnectionName)
+        }
+        if (!connectedTo.includes(route.connectionName)) {
+          connectedTo.push(route.connectionName)
+        }
+        jumperUsageMap.set(key, connectedTo)
+      }
+    }
+
+    // Convert all jumperLocations to SRJ Jumpers
+    const dims = JUMPER_DIMENSIONS["1206x4_pair"]
+
+    for (const jumperLoc of this.jumperLocations) {
+      const isHorizontal = jumperLoc.orientation === "horizontal"
+      const key = `${jumperLoc.center.x.toFixed(3)},${jumperLoc.center.y.toFixed(3)}`
+      const connectedTo = jumperUsageMap.get(key) ?? []
+
+      // Get pad obstacles from padRegions
+      const pads: Obstacle[] = jumperLoc.padRegions.map((padRegion) => {
+        const bounds = padRegion.d.bounds
+        const padCenter = padRegion.d.center
+        const padWidth = bounds.maxX - bounds.minX
+        const padHeight = bounds.maxY - bounds.minY
+
+        return {
+          type: "rect" as const,
+          center: padCenter,
+          width: padWidth,
+          height: padHeight,
+          layers: ["top"],
+          connectedTo: [...connectedTo],
+        }
+      })
+
+      const srjJumper: SrjJumper = {
+        jumper_footprint: "1206x4",
+        center: jumperLoc.center,
+        orientation: jumperLoc.orientation,
+        width: isHorizontal ? dims.length : dims.width,
+        height: isHorizontal ? dims.width : dims.length,
+        pads,
+      }
+
+      this.jumpers.push(srjJumper)
+    }
+
+    return this.jumpers
   }
 
   visualize(): GraphicsObject {
