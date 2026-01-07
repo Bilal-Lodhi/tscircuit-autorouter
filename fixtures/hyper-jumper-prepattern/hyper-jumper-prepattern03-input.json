@@ -137,9 +137,7 @@
         "rootConnectionName": "source_trace_7"
       }
     ],
-    "availableZ": [
-      0
-    ]
+    "availableZ": [0]
   },
   "colorMap": {
     "connectivity_net7": "hsl(0, 100%, 50%)",
