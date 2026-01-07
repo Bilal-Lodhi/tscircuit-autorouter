@@ -5,6 +5,7 @@ import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import { ObstacleSpatialHashIndex } from "lib/data-structures/ObstacleTree"
 import { HighDensityRouteSpatialIndex } from "lib/data-structures/HighDensityRouteSpatialIndex"
 import { GraphicsObject } from "graphics-debug"
+import { JUMPER_DIMENSIONS } from "lib/utils/jumperSizes"
 import {
   computeDrawPositionFromCollisions,
   Segment,
@@ -102,7 +103,15 @@ export class TraceKeepoutSolver extends BaseSolver {
     this.unprocessedRoutes = [...this.hdRoutes]
     this.smoothedCursorRoutes = [...this.unprocessedRoutes]
 
-    this.obstacleSHI = new ObstacleSpatialHashIndex("flatbush", input.obstacles)
+    // Create obstacles including jumper pads
+    const obstaclesWithJumperPads = [
+      ...input.obstacles,
+      ...this.createJumperPadObstacles(),
+    ]
+    this.obstacleSHI = new ObstacleSpatialHashIndex(
+      "flatbush",
+      obstaclesWithJumperPads,
+    )
 
     // Create artificial hdRoutes for board outline to prevent traces from going outside
     this.boardOutlineRoutes = this.createBoardOutlineRoutes()
@@ -152,6 +161,56 @@ export class TraceKeepoutSolver extends BaseSolver {
 
   getSmoothDistance(): number {
     return this.currentKeepoutRadius
+  }
+
+  /**
+   * Creates obstacle objects for each jumper pad from all hdRoutes.
+   * Each pad is treated as an obstacle to prevent other traces from routing through it.
+   */
+  private createJumperPadObstacles(): Obstacle[] {
+    const obstacles: Obstacle[] = []
+
+    for (const route of this.hdRoutes) {
+      if (!route.jumpers || route.jumpers.length === 0) continue
+
+      const connectionName = route.rootConnectionName ?? route.connectionName
+
+      for (const jumper of route.jumpers) {
+        const dims =
+          JUMPER_DIMENSIONS[jumper.footprint] ?? JUMPER_DIMENSIONS["0603"]
+
+        // Determine jumper orientation to rotate pad dimensions
+        const dx = jumper.end.x - jumper.start.x
+        const dy = jumper.end.y - jumper.start.y
+        const isHorizontal = Math.abs(dx) > Math.abs(dy)
+        const padWidth = isHorizontal ? dims.padLength : dims.padWidth
+        const padHeight = isHorizontal ? dims.padWidth : dims.padLength
+
+        // Create obstacle for start pad
+        obstacles.push({
+          type: "rect",
+          layers: ["top"],
+          center: { x: jumper.start.x, y: jumper.start.y },
+          width: padWidth,
+          height: padHeight,
+          connectedTo: [connectionName],
+          zLayers: [0], // Jumper pads are on layer 0
+        })
+
+        // Create obstacle for end pad
+        obstacles.push({
+          type: "rect",
+          layers: ["top"],
+          center: { x: jumper.end.x, y: jumper.end.y },
+          width: padWidth,
+          height: padHeight,
+          connectedTo: [connectionName],
+          zLayers: [0], // Jumper pads are on layer 0
+        })
+      }
+    }
+
+    return obstacles
   }
 
   /**
@@ -758,6 +817,19 @@ export class TraceKeepoutSolver extends BaseSolver {
           })
         }
       }
+    }
+
+    // Always show jumper pads from all original routes
+    for (const route of this.originalHdRoutes) {
+      if (!route.jumpers || route.jumpers.length === 0) continue
+
+      const color = this.input.colorMap[route.connectionName] || "#888888"
+      const jumperGraphics = getJumpersGraphics(route.jumpers, {
+        color,
+        label: route.connectionName,
+      })
+      visualization.rects.push(...(jumperGraphics.rects ?? []))
+      visualization.lines.push(...(jumperGraphics.lines ?? []))
     }
 
     // Visualize obstacles
