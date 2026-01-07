@@ -2,7 +2,7 @@ import {
   doSegmentsIntersect,
   pointToSegmentDistance,
 } from "@tscircuit/math-utils"
-import { HighDensityIntraNodeRoute } from "lib/types/high-density-types"
+import { HighDensityIntraNodeRoute, Jumper } from "lib/types/high-density-types"
 import { BaseSolver } from "../BaseSolver"
 import { Obstacle } from "lib/types"
 import { GraphicsObject } from "graphics-debug"
@@ -16,6 +16,7 @@ import {
   segmentToBoundsMinDistance,
 } from "@tscircuit/math-utils"
 import { doesSegmentCrossPolygonBoundary } from "lib/utils/polygonContainment"
+import { JUMPER_DIMENSIONS } from "lib/utils/jumperSizes"
 
 interface Point {
   x: number
@@ -51,6 +52,15 @@ export class SingleSimplifiedPathSolver5 extends SingleSimplifiedPathSolver {
   filteredObstacles: Obstacle[] = []
   filteredObstaclePathSegments: Array<[Point, Point]> = []
   filteredVias: Array<{ x: number; y: number; diameter: number }> = []
+  filteredJumperPads: Array<{
+    center: { x: number; y: number }
+    width: number
+    height: number
+    connectionName: string
+  }> = []
+
+  /** Indices in inputRoute.route that correspond to jumper pad points (must be preserved) */
+  jumperPadPointIndices: Set<number> = new Set()
 
   segmentTree!: SegmentTree
 
@@ -188,6 +198,111 @@ export class SingleSimplifiedPathSolver5 extends SingleSimplifiedPathSolver {
       return filteredVias
     })
 
+    // Helper function to extract jumper pads from a route
+    const extractJumperPads = (
+      jumpers: Jumper[],
+      connectionName: string,
+    ): Array<{
+      center: { x: number; y: number }
+      width: number
+      height: number
+      connectionName: string
+    }> => {
+      const pads: Array<{
+        center: { x: number; y: number }
+        width: number
+        height: number
+        connectionName: string
+      }> = []
+
+      for (const jumper of jumpers) {
+        const dims =
+          JUMPER_DIMENSIONS[jumper.footprint] ?? JUMPER_DIMENSIONS["0603"]
+
+        // Determine jumper orientation to get correct pad dimensions
+        const dx = jumper.end.x - jumper.start.x
+        const dy = jumper.end.y - jumper.start.y
+        const isHorizontal = Math.abs(dx) > Math.abs(dy)
+        const padWidth = isHorizontal ? dims.padLength : dims.padWidth
+        const padHeight = isHorizontal ? dims.padWidth : dims.padLength
+
+        // Check if start pad is within bounds
+        const startMargin = this.OBSTACLE_MARGIN + this.TRACE_THICKNESS / 2
+        if (
+          jumper.start.x - padWidth / 2 - startMargin <= bounds.maxX &&
+          jumper.start.x + padWidth / 2 + startMargin >= bounds.minX &&
+          jumper.start.y - padHeight / 2 - startMargin <= bounds.maxY &&
+          jumper.start.y + padHeight / 2 + startMargin >= bounds.minY
+        ) {
+          pads.push({
+            center: jumper.start,
+            width: padWidth,
+            height: padHeight,
+            connectionName: connectionName,
+          })
+        }
+
+        // Check if end pad is within bounds
+        if (
+          jumper.end.x - padWidth / 2 - startMargin <= bounds.maxX &&
+          jumper.end.x + padWidth / 2 + startMargin >= bounds.minX &&
+          jumper.end.y - padHeight / 2 - startMargin <= bounds.maxY &&
+          jumper.end.y + padHeight / 2 + startMargin >= bounds.minY
+        ) {
+          pads.push({
+            center: jumper.end,
+            width: padWidth,
+            height: padHeight,
+            connectionName: connectionName,
+          })
+        }
+      }
+
+      return pads
+    }
+
+    // Collect jumper pads from other routes as obstacles
+    this.filteredJumperPads = this.otherHdRoutes.flatMap((hdRoute) => {
+      if (
+        this.connMap.areIdsConnected(
+          this.inputRoute.connectionName,
+          hdRoute.connectionName,
+        )
+      ) {
+        return []
+      }
+
+      return extractJumperPads(hdRoute.jumpers ?? [], hdRoute.connectionName)
+    })
+
+    // Also add our own route's jumper pads as obstacles
+    // (we shouldn't simplify traces through our own jumper pads)
+    if (this.inputRoute.jumpers && this.inputRoute.jumpers.length > 0) {
+      this.filteredJumperPads.push(
+        ...extractJumperPads(
+          this.inputRoute.jumpers,
+          this.inputRoute.connectionName,
+        ),
+      )
+
+      // Identify which route points correspond to our jumper pads
+      // These points MUST be preserved during simplification
+      for (const jumper of this.inputRoute.jumpers) {
+        for (let i = 0; i < this.inputRoute.route.length; i++) {
+          const p = this.inputRoute.route[i]
+          // Check if this point matches start or end of jumper
+          if (
+            (Math.abs(p.x - jumper.start.x) < 0.01 &&
+              Math.abs(p.y - jumper.start.y) < 0.01) ||
+            (Math.abs(p.x - jumper.end.x) < 0.01 &&
+              Math.abs(p.y - jumper.end.y) < 0.01)
+          ) {
+            this.jumperPadPointIndices.add(i)
+          }
+        }
+      }
+    }
+
     // Compute path segments and total length
     this.computePathSegments()
   }
@@ -308,6 +423,15 @@ export class SingleSimplifiedPathSolver5 extends SingleSimplifiedPathSolver {
         pointToSegmentDistance(via, start, end) <
         this.OBSTACLE_MARGIN + via.diameter / 2 + this.TRACE_THICKNESS / 2
       ) {
+        return false
+      }
+    }
+
+    // Check if the segment intersects with any jumper pads
+    for (const jumperPad of this.filteredJumperPads) {
+      const distToJumperPad = segmentToBoxMinDistance(start, end, jumperPad)
+
+      if (distToJumperPad < this.OBSTACLE_MARGIN + this.TRACE_THICKNESS / 2) {
         return false
       }
     }
@@ -514,6 +638,69 @@ export class SingleSimplifiedPathSolver5 extends SingleSimplifiedPathSolver {
       this.lastHeadMoveDistance > this.minStepSize
     ) {
       this.stepBackAndReduceStepSize()
+      return
+    }
+
+    // Check for jumper pad points between tail and head
+    // These points must be preserved exactly like layer changes
+    let jumperPadBtwHeadAndTail = false
+    let jumperPadAtIndex = -1
+    let jumperPadAtDistance = -1
+
+    for (let i = tailIndex + 1; i <= headIndex; i++) {
+      if (this.jumperPadPointIndices.has(i)) {
+        jumperPadBtwHeadAndTail = true
+        jumperPadAtIndex = i
+        // Find the distance to this jumper pad point
+        if (i > 0 && i - 1 < this.pathSegments.length) {
+          jumperPadAtDistance = this.pathSegments[i - 1].endDistance
+        } else {
+          jumperPadAtDistance = this.pathSegments[0]?.startDistance ?? 0
+        }
+        break
+      }
+    }
+
+    if (
+      jumperPadBtwHeadAndTail &&
+      this.lastHeadMoveDistance > this.minStepSize
+    ) {
+      this.stepBackAndReduceStepSize()
+      return
+    }
+
+    // If there's a jumper pad point, handle it (force stop at the pad)
+    if (jumperPadBtwHeadAndTail && jumperPadAtIndex >= 0) {
+      const jumperPadPoint = this.inputRoute.route[jumperPadAtIndex]
+
+      // 1. Add the last valid path found *before* the jumper pad.
+      if (this.lastValidPath) {
+        this.addPathToResult(this.lastValidPath)
+        this.lastValidPath = null
+      }
+
+      // 2. Ensure the route connects *exactly* to the jumper pad location
+      const lastPointInNewRoute = this.newRoute[this.newRoute.length - 1]
+      if (
+        !lastPointInNewRoute ||
+        lastPointInNewRoute.x !== jumperPadPoint.x ||
+        lastPointInNewRoute.y !== jumperPadPoint.y
+      ) {
+        // Add the jumper pad point explicitly
+        this.newRoute.push({
+          x: jumperPadPoint.x,
+          y: jumperPadPoint.y,
+          z: jumperPadPoint.z,
+        })
+      }
+
+      // 3. Reset state for the next segment (after the jumper pad)
+      this.currentStepSize = this.maxStepSize
+      this.tailDistanceAlongPath = jumperPadAtDistance
+      this.headDistanceAlongPath = this.tailDistanceAlongPath
+      this.lastValidPath = null
+      this.lastValidPathHeadDistance = this.tailDistanceAlongPath
+
       return
     }
 

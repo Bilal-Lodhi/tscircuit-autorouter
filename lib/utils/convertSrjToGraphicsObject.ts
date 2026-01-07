@@ -7,11 +7,13 @@ import {
 import { getColorMap, safeTransparentize } from "lib/solvers/colors"
 import { mapZToLayerName } from "lib/utils/mapZToLayerName"
 import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
+import { JUMPER_DIMENSIONS } from "lib/utils/jumperSizes"
 
 export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
   const lines: Line[] = []
   const circles: Circle[] = []
   const points: Point[] = []
+  const rects: Rect[] = []
 
   const colorMap: Record<string, string> = getColorMap(srj)
   const layerCount = 2
@@ -55,6 +57,52 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
             stroke: "none",
             layer: "z0,1",
           })
+        } else if (routePoint.route_type === "jumper") {
+          // Draw jumper pads and body
+          const color =
+            colorMap[trace.connection_name] ?? "rgba(255, 165, 0, 0.8)"
+
+          // Get dimensions based on footprint
+          const footprint = routePoint.footprint
+          const dims =
+            JUMPER_DIMENSIONS[
+              footprint === "1206x4_pair" ? "1206x4_pair" : "0603"
+            ] ?? JUMPER_DIMENSIONS["0603"]
+
+          // Determine orientation
+          const dx = routePoint.end.x - routePoint.start.x
+          const dy = routePoint.end.y - routePoint.start.y
+          const isHorizontal = Math.abs(dx) > Math.abs(dy)
+          const padWidth = isHorizontal ? dims.padLength : dims.padWidth
+          const padHeight = isHorizontal ? dims.padWidth : dims.padLength
+
+          // Draw start pad
+          rects.push({
+            center: routePoint.start,
+            width: padWidth,
+            height: padHeight,
+            fill: safeTransparentize(color, 0.5),
+            stroke: "rgba(0, 0, 0, 0.5)",
+            layer: "jumper",
+          })
+
+          // Draw end pad
+          rects.push({
+            center: routePoint.end,
+            width: padWidth,
+            height: padHeight,
+            fill: safeTransparentize(color, 0.5),
+            stroke: "rgba(0, 0, 0, 0.5)",
+            layer: "jumper",
+          })
+
+          // Draw jumper body line
+          lines.push({
+            points: [routePoint.start, routePoint.end],
+            strokeColor: "rgba(100, 100, 100, 0.8)",
+            strokeWidth: dims.padWidth * 0.3,
+            layer: "jumper-body",
+          })
         } else if (
           routePoint.route_type === "wire" &&
           nextRoutePoint.route_type === "wire" &&
@@ -86,17 +134,35 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
     }
   }
 
+  // Add obstacle rects
+  for (const o of srj.obstacles) {
+    rects.push({
+      center: o.center,
+      width: o.width,
+      height: o.height,
+      fill: "rgba(255,0,0,0.5)",
+      layer: `z${o.layers.map((l) => mapLayerNameToZ(l, layerCount)).join(",")}`,
+    })
+  }
+
+  // Add jumper component rects from srj.jumpers if present
+  if (srj.jumpers) {
+    for (const jumper of srj.jumpers) {
+      for (const pad of jumper.pads) {
+        rects.push({
+          center: pad.center,
+          width: pad.width,
+          height: pad.height,
+          fill: "rgba(255, 165, 0, 0.3)",
+          stroke: "rgba(255, 165, 0, 0.8)",
+          layer: "jumper",
+        })
+      }
+    }
+  }
+
   return {
-    rects: srj.obstacles.map(
-      (o) =>
-        ({
-          center: o.center,
-          width: o.width,
-          height: o.height,
-          fill: "rgba(255,0,0,0.5)",
-          layer: `z${o.layers.map(mapLayerNameToZ).join(",")}`,
-        }) as Rect,
-    ),
+    rects,
     circles,
     lines,
     points,
