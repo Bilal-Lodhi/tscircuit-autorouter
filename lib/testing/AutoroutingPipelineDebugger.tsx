@@ -1024,18 +1024,26 @@ export const AutoroutingPipelineDebugger = ({
                 if (stepSolver) {
                   cumulativeIterations += stepSolver.iterations
                 }
-                const status = stepSolver?.solved
-                  ? "Solved"
-                  : stepSolver?.failed
-                    ? "Failed"
-                    : stepSolver
-                      ? "In Progress"
-                      : "Not Started"
-                const statusClass = stepSolver?.solved
-                  ? "text-green-600"
-                  : stepSolver?.failed
-                    ? "text-red-600"
-                    : "text-blue-600"
+                // Check statusOfPhase first, which tracks skipped, running, and completed states
+                const phaseStatus = solver.statusOfPhase?.[step.solverName]
+                const status =
+                  phaseStatus === "skipped"
+                    ? "Skipped"
+                    : stepSolver?.solved
+                      ? "Solved"
+                      : stepSolver?.failed
+                        ? "Failed"
+                        : stepSolver
+                          ? "In Progress"
+                          : "Not Started"
+                const statusClass =
+                  phaseStatus === "skipped"
+                    ? "text-gray-500"
+                    : stepSolver?.solved
+                      ? "text-green-600"
+                      : stepSolver?.failed
+                        ? "text-red-600"
+                        : "text-blue-600"
 
                 const startTime = solver.startTimeOfPhase[step.solverName]
                 const endTime =
@@ -1071,28 +1079,36 @@ export const AutoroutingPipelineDebugger = ({
                       {status}
                     </td>
                     <td className="border p-2 tabular-nums text-gray-500">
-                      {status === "Not Started" ? "" : i0}
+                      {status === "Not Started" || status === "Skipped"
+                        ? ""
+                        : i0}
                     </td>
                     <td className="border p-2">
-                      {stepSolver?.iterations || 0}
+                      {status === "Skipped" ? "-" : stepSolver?.iterations || 0}
                     </td>
                     <td className="border p-2">
                       {status === "Solved"
                         ? "100%"
                         : status === "In Progress"
                           ? `${((stepSolver?.progress ?? 0) * 100).toFixed(1)}%`
-                          : ""}
+                          : status === "Skipped"
+                            ? "-"
+                            : ""}
                     </td>
                     <td className="border p-2 tabular-nums">
                       <div className="flex">
                         <div className="flex-grow">
-                          {stepTimeSec.toFixed(2)}s
+                          {status === "Skipped"
+                            ? "-"
+                            : `${stepTimeSec.toFixed(2)}s`}
                         </div>
-                        {status !== "Not Started" && totalTimeMs > 0 && (
-                          <div className="text-gray-500 ml-1">
-                            {timePercentage.toFixed(1)}%
-                          </div>
-                        )}
+                        {status !== "Not Started" &&
+                          status !== "Skipped" &&
+                          totalTimeMs > 0 && (
+                            <div className="text-gray-500 ml-1">
+                              {timePercentage.toFixed(1)}%
+                            </div>
+                          )}
                       </div>
                     </td>
                     <td className="border p-2 text-xs align-top">

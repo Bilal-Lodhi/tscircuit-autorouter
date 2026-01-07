@@ -62,6 +62,8 @@ type PipelineStep<T extends new (...args: any[]) => BaseSolver> = {
     instance: AutoroutingPipelineSolver2_PortPointPathing,
   ) => ConstructorParameters<T>
   onSolved?: (instance: AutoroutingPipelineSolver2_PortPointPathing) => void
+  onSkipped?: (instance: AutoroutingPipelineSolver2_PortPointPathing) => void
+  shouldRun?: (instance: AutoroutingPipelineSolver2_PortPointPathing) => boolean
 }
 
 function definePipelineStep<
@@ -77,6 +79,10 @@ function definePipelineStep<
   ) => P,
   opts: {
     onSolved?: (instance: AutoroutingPipelineSolver2_PortPointPathing) => void
+    onSkipped?: (instance: AutoroutingPipelineSolver2_PortPointPathing) => void
+    shouldRun?: (
+      instance: AutoroutingPipelineSolver2_PortPointPathing,
+    ) => boolean
   } = {},
 ): PipelineStep<T> {
   return {
@@ -84,6 +90,8 @@ function definePipelineStep<
     solverClass,
     getConstructorParams,
     onSolved: opts.onSolved,
+    onSkipped: opts.onSkipped,
+    shouldRun: opts.shouldRun,
   }
 }
 
@@ -110,6 +118,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
   startTimeOfPhase: Record<string, number>
   endTimeOfPhase: Record<string, number>
   timeSpentOnPhase: Record<string, number>
+  statusOfPhase: Record<string, "skipped" | "completed" | "running">
 
   activeSubSolver?: BaseSolver | null = null
   connMap: ConnectivityMap
@@ -149,6 +158,30 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
         onSolved: (cms) => {
           cms.srjWithExpandedObstacles =
             cms.obstacleExpansionSolver?.getOutput()
+        },
+        onSkipped: (cms) => {
+          cms.srjWithExpandedObstacles = cms.srjWithPointPairs
+        },
+        shouldRun: (cms) => {
+          // Calculate total area
+          const totalArea =
+            (cms.srj.bounds.maxX - cms.srj.bounds.minX) *
+            (cms.srj.bounds.maxY - cms.srj.bounds.minY)
+
+          // Calculate obstacle area
+          const obstacleArea = (cms.srj.obstacles ?? []).reduce(
+            (sum, obstacle) => {
+              return sum + obstacle.width * obstacle.height
+            },
+            0,
+          )
+
+          // Calculate available area percentage
+          const availableArea = totalArea - obstacleArea
+          const availablePercentage = (availableArea / totalArea) * 100
+
+          // Only run if more than 90% of area is available
+          return availablePercentage > 80
         },
       },
     ),
@@ -397,6 +430,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
     this.startTimeOfPhase = {}
     this.endTimeOfPhase = {}
     this.timeSpentOnPhase = {}
+    this.statusOfPhase = {}
   }
 
   getConstructorParams() {
@@ -418,6 +452,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
         this.timeSpentOnPhase[pipelineStepDef.solverName] =
           this.endTimeOfPhase[pipelineStepDef.solverName] -
           this.startTimeOfPhase[pipelineStepDef.solverName]
+        this.statusOfPhase[pipelineStepDef.solverName] = "completed"
         pipelineStepDef.onSolved?.(this)
         this.activeSubSolver = null
         this.currentPipelineStepIndex++
@@ -429,10 +464,20 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
       return
     }
 
+    // Check if this step should run
+    if (pipelineStepDef.shouldRun && !pipelineStepDef.shouldRun(this)) {
+      pipelineStepDef.onSkipped?.(this)
+      this.statusOfPhase[pipelineStepDef.solverName] = "skipped"
+      this.timeSpentOnPhase[pipelineStepDef.solverName] = 0
+      this.currentPipelineStepIndex++
+      return
+    }
+
     const constructorParams = pipelineStepDef.getConstructorParams(this)
     // @ts-ignore
     this.activeSubSolver = new pipelineStepDef.solverClass(...constructorParams)
     ;(this as any)[pipelineStepDef.solverName] = this.activeSubSolver
+    this.statusOfPhase[pipelineStepDef.solverName] = "running"
     this.timeSpentOnPhase[pipelineStepDef.solverName] = 0
     this.startTimeOfPhase[pipelineStepDef.solverName] = performance.now()
   }
