@@ -309,19 +309,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
         ]
       },
     ),
-    definePipelineStep("highDensitySolver", SimpleHighDensitySolver, (cms) => [
-      {
-        nodePortPoints:
-          cms.multiSectionPortPointOptimizer?.getNodesWithPortPoints() ??
-          cms.portPointPathingSolver?.getNodesWithPortPoints() ??
-          [],
-        colorMap: cms.colorMap,
-        viaDiameter: cms.viaDiameter,
-        traceWidth: cms.minTraceWidth,
-        connMap: cms.connMap,
-      },
-    ]),
-    // definePipelineStep("highDensitySolver", JumperHighDensitySolver, (cms) => [
+    // definePipelineStep("highDensitySolver", SimpleHighDensitySolver, (cms) => [
     //   {
     //     nodePortPoints:
     //       cms.multiSectionPortPointOptimizer?.getNodesWithPortPoints() ??
@@ -333,58 +321,70 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
     //     connMap: cms.connMap,
     //   },
     // ]),
-    definePipelineStep(
-      "highDensityStitchSolver",
-      MultipleHighDensityRouteStitchSolver,
-      (cms) => [
-        {
-          connections: cms.srjWithPointPairs!.connections,
-          hdRoutes: cms.highDensitySolver!.routes,
-          colorMap: cms.colorMap,
-          layerCount: cms.srj.layerCount,
-          defaultViaDiameter: cms.viaDiameter,
-        },
-      ],
-    ),
-    definePipelineStep(
-      "traceSimplificationSolver",
-      TraceSimplificationSolver,
-      (cms) => [
-        {
-          hdRoutes:
-            cms.highDensityStitchSolver?.mergedHdRoutes ??
-            cms.highDensitySolver?.routes ??
-            cms.highDensityRouteSolver?.routes!,
-          obstacles: cms.srj.obstacles,
-          connMap: cms.connMap,
-          colorMap: cms.colorMap,
-          outline: cms.srj.outline,
-          defaultViaDiameter: cms.viaDiameter,
-          layerCount: cms.srj.layerCount,
-          iterations: 2,
-        },
-      ],
-    ),
-    definePipelineStep("traceKeepoutSolver", TraceKeepoutSolver, (cms) => [
+    definePipelineStep("highDensitySolver", JumperHighDensitySolver, (cms) => [
       {
-        hdRoutes: cms.traceSimplificationSolver?.simplifiedHdRoutes ?? [],
-        obstacles: cms.srj.obstacles,
-        connMap: cms.connMap,
+        nodePortPoints:
+          cms.multiSectionPortPointOptimizer?.getNodesWithPortPoints() ??
+          cms.portPointPathingSolver?.getNodesWithPortPoints() ??
+          [],
         colorMap: cms.colorMap,
-        srj: cms.srj,
+        viaDiameter: cms.viaDiameter,
+        traceWidth: cms.minTraceWidth,
+        connMap: cms.connMap,
       },
     ]),
-    definePipelineStep("traceWidthSolver", TraceWidthSolver, (cms) => [
-      {
-        hdRoutes: cms.traceKeepoutSolver?.redrawnHdRoutes ?? [],
-        obstacles: cms.srj.obstacles,
-        connMap: cms.connMap,
-        colorMap: cms.colorMap,
-        nominalTraceWidth: cms.srj.nominalTraceWidth,
-        minTraceWidth: cms.minTraceWidth,
-        obstacleMargin: cms.srj.defaultObstacleMargin ?? 0.15,
-      },
-    ]),
+    // definePipelineStep(
+    //   "highDensityStitchSolver",
+    //   MultipleHighDensityRouteStitchSolver,
+    //   (cms) => [
+    //     {
+    //       connections: cms.srjWithPointPairs!.connections,
+    //       hdRoutes: cms.highDensitySolver!.routes,
+    //       colorMap: cms.colorMap,
+    //       layerCount: cms.srj.layerCount,
+    //       defaultViaDiameter: cms.viaDiameter,
+    //     },
+    //   ],
+    // ),
+    // definePipelineStep(
+    //   "traceSimplificationSolver",
+    //   TraceSimplificationSolver,
+    //   (cms) => [
+    //     {
+    //       hdRoutes:
+    //         cms.highDensityStitchSolver?.mergedHdRoutes ??
+    //         cms.highDensitySolver?.routes ??
+    //         cms.highDensityRouteSolver?.routes!,
+    //       obstacles: cms.srj.obstacles,
+    //       connMap: cms.connMap,
+    //       colorMap: cms.colorMap,
+    //       outline: cms.srj.outline,
+    //       defaultViaDiameter: cms.viaDiameter,
+    //       layerCount: cms.srj.layerCount,
+    //       iterations: 2,
+    //     },
+    //   ],
+    // ),
+    // definePipelineStep("traceKeepoutSolver", TraceKeepoutSolver, (cms) => [
+    //   {
+    //     hdRoutes: cms.traceSimplificationSolver?.simplifiedHdRoutes ?? [],
+    //     obstacles: cms.srj.obstacles,
+    //     connMap: cms.connMap,
+    //     colorMap: cms.colorMap,
+    //     srj: cms.srj,
+    //   },
+    // ]),
+    // definePipelineStep("traceWidthSolver", TraceWidthSolver, (cms) => [
+    //   {
+    //     hdRoutes: cms.traceKeepoutSolver?.redrawnHdRoutes ?? [],
+    //     obstacles: cms.srj.obstacles,
+    //     connMap: cms.connMap,
+    //     colorMap: cms.colorMap,
+    //     nominalTraceWidth: cms.srj.nominalTraceWidth,
+    //     minTraceWidth: cms.minTraceWidth,
+    //     obstacleMargin: cms.srj.defaultObstacleMargin ?? 0.15,
+    //   },
+    // ]),
   ]
 
   constructor(
