@@ -7,7 +7,8 @@ import type { GraphicsObject } from "graphics-debug"
 import { BaseSolver } from "../../solvers/BaseSolver"
 import { SimpleHighDensitySolver } from "./SimpleHighDensitySolver"
 // import { HyperIntraNodeSolverWithJumpers } from "../../solvers/HighDensitySolver/HyperIntraNodeSolverWithJumpers"
-import { JumperPrepatternSolver2_HyperGraph } from "../../solvers/JumperPrepatternSolver/JumperPrepatternSolver2_HyperGraph"
+// import { JumperPrepatternSolver2_HyperGraph } from "../../solvers/JumperPrepatternSolver/JumperPrepatternSolver2_HyperGraph"
+import { HyperJumperPrepatternSolver2 } from "../../solvers/JumperPrepatternSolver/HyperJumperPrepatternSolver2"
 import { getIntraNodeCrossings } from "../../utils/getIntraNodeCrossings"
 import { safeTransparentize } from "../../solvers/colors"
 import { mergeRouteSegments } from "lib/utils/mergeRouteSegments"
@@ -75,7 +76,8 @@ export class JumperHighDensitySolver extends BaseSolver {
   // Sub-solvers
   simpleHighDensitySolver?: SimpleHighDensitySolver
   // jumperSolvers: HyperIntraNodeSolverWithJumpers[]
-  jumperSolvers: JumperPrepatternSolver2_HyperGraph[]
+  // jumperSolvers: JumperPrepatternSolver2_HyperGraph[]
+  jumperSolvers: HyperJumperPrepatternSolver2[]
   currentJumperSolverIndex: number
 
   // State
@@ -233,21 +235,14 @@ export class JumperHighDensitySolver extends BaseSolver {
       //   },
       // })
 
-      // New HyperGraph-based solver:
-      // Select pattern based on node size
-      // single_1206x4 needs ~8x8mm, 2x2_1206x4 needs ~14x14mm
-      const minDimension = Math.min(node.width, node.height)
-      const patternType =
-        minDimension >= 14 ? "2x2_1206x4" : "single_1206x4"
-
-      const solver = new JumperPrepatternSolver2_HyperGraph({
+      // HyperJumperPrepatternSolver2 tries multiple variants:
+      // - single_1206x4 + vertical/horizontal
+      // - 2x2_1206x4 + vertical/horizontal (if node >= 14mm)
+      const solver = new HyperJumperPrepatternSolver2({
         nodeWithPortPoints: node,
         colorMap: this.colorMap,
         traceWidth: this.traceWidth,
-        hyperParameters: {
-          PATTERN_TYPE: patternType,
-          ORIENTATION: "vertical",
-        },
+        connMap: this.connMap,
       })
       this.jumperSolvers.push(solver)
     }
@@ -285,7 +280,8 @@ export class JumperHighDensitySolver extends BaseSolver {
     } else if (currentSolver.failed) {
       // Old error message (for HyperIntraNodeSolverWithJumpers):
       // this.error = `HyperIntraNodeSolverWithJumpers failed for node: ${currentSolver.nodeWithPortPoints.capacityMeshNodeId}: ${currentSolver.error}`
-      this.error = `JumperPrepatternSolver2_HyperGraph failed for node: ${currentSolver.nodeWithPortPoints.capacityMeshNodeId}: ${currentSolver.error}`
+      // this.error = `JumperPrepatternSolver2_HyperGraph failed for node: ${currentSolver.nodeWithPortPoints.capacityMeshNodeId}: ${currentSolver.error}`
+      this.error = `HyperJumperPrepatternSolver2 failed for node: ${currentSolver.nodeWithPortPoints.capacityMeshNodeId}: ${currentSolver.error}`
       this.failed = true
     }
   }

@@ -1,0 +1,134 @@
+import type { GraphicsObject } from "graphics-debug"
+import type {
+  HighDensityIntraNodeRouteWithJumpers,
+  NodeWithPortPoints,
+} from "../../types/high-density-types"
+import {
+  HyperParameterSupervisorSolver,
+  SupervisedSolver,
+} from "../HyperParameterSupervisorSolver"
+import {
+  JumperPrepatternSolver2_HyperGraph,
+  type JumperPrepatternSolver2Params,
+  type HyperGraphPatternType,
+} from "./JumperPrepatternSolver2_HyperGraph"
+import { ConnectivityMap } from "circuit-json-to-connectivity-map"
+
+export interface HyperJumperPrepatternSolver2Params {
+  nodeWithPortPoints: NodeWithPortPoints
+  colorMap?: Record<string, string>
+  traceWidth?: number
+  connMap?: ConnectivityMap
+}
+
+type VariantHyperParameters = {
+  PATTERN_TYPE: HyperGraphPatternType
+  ORIENTATION: "horizontal" | "vertical"
+}
+
+/**
+ * HyperJumperPrepatternSolver2 runs multiple variants of JumperPrepatternSolver2_HyperGraph
+ * with different pattern types and orientations, then picks the best solution.
+ *
+ * Variants:
+ * - single_1206x4_vertical
+ * - single_1206x4_horizontal
+ * - 2x2_1206x4_vertical (only if node is large enough, ~14x14mm)
+ * - 2x2_1206x4_horizontal (only if node is large enough, ~14x14mm)
+ */
+export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver<JumperPrepatternSolver2_HyperGraph> {
+  nodeWithPortPoints: NodeWithPortPoints
+  colorMap: Record<string, string>
+  traceWidth: number
+  connMap?: ConnectivityMap
+
+  // Output
+  solvedRoutes: HighDensityIntraNodeRouteWithJumpers[] = []
+
+  constructor(params: HyperJumperPrepatternSolver2Params) {
+    super()
+    this.nodeWithPortPoints = params.nodeWithPortPoints
+    this.colorMap = params.colorMap ?? {}
+    this.traceWidth = params.traceWidth ?? 0.15
+    this.connMap = params.connMap
+    this.MAX_ITERATIONS = 1e6
+    this.GREEDY_MULTIPLIER = 1
+    this.MIN_SUBSTEPS = 1
+  }
+
+  getHyperParameterDefs() {
+    const minDimension = Math.min(
+      this.nodeWithPortPoints.width,
+      this.nodeWithPortPoints.height,
+    )
+
+    // 2x2_1206x4 requires ~14x14mm
+    const canUse2x2 = minDimension >= 12
+
+    const patternValues: Array<{ PATTERN_TYPE: HyperGraphPatternType }> = [
+      { PATTERN_TYPE: "single_1206x4" },
+    ]
+
+    if (canUse2x2) {
+      patternValues.push({ PATTERN_TYPE: "2x2_1206x4" })
+    }
+
+    return [
+      {
+        name: "pattern",
+        possibleValues: patternValues,
+      },
+      {
+        name: "orientation",
+        possibleValues: [
+          { ORIENTATION: "vertical" },
+          { ORIENTATION: "horizontal" },
+        ],
+      },
+    ]
+  }
+
+  getCombinationDefs() {
+    // Try all combinations of pattern and orientation
+    return [["pattern", "orientation"]]
+  }
+
+  generateSolver(
+    hyperParameters: VariantHyperParameters,
+  ): JumperPrepatternSolver2_HyperGraph {
+    return new JumperPrepatternSolver2_HyperGraph({
+      nodeWithPortPoints: this.nodeWithPortPoints,
+      colorMap: this.colorMap,
+      traceWidth: this.traceWidth,
+      hyperParameters: {
+        PATTERN_TYPE: hyperParameters.PATTERN_TYPE,
+        ORIENTATION: hyperParameters.ORIENTATION,
+      },
+    })
+  }
+
+  computeG(solver: JumperPrepatternSolver2_HyperGraph): number {
+    // Prefer solutions with fewer iterations
+    return solver.iterations / 10000
+  }
+
+  computeH(solver: JumperPrepatternSolver2_HyperGraph): number {
+    // Estimate remaining work based on progress
+    return 1 - (solver.progress || 0)
+  }
+
+  onSolve(solver: SupervisedSolver<JumperPrepatternSolver2_HyperGraph>) {
+    this.solvedRoutes = solver.solver.solvedRoutes
+  }
+
+  getOutput(): HighDensityIntraNodeRouteWithJumpers[] {
+    return this.solvedRoutes
+  }
+
+  visualize(): GraphicsObject {
+    if (this.winningSolver) {
+      return this.winningSolver.visualize()
+    }
+    return super.visualize()
+  }
+}

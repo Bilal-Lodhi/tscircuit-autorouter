@@ -9,4 +9,8 @@ export {
   type JumperPrepatternSolver2HyperParameters,
   type HyperGraphPatternType,
 } from "./JumperPrepatternSolver2_HyperGraph"
+export {
+  HyperJumperPrepatternSolver2,
+  type HyperJumperPrepatternSolver2Params,
+} from "./HyperJumperPrepatternSolver2"
 export { alternatingGrid } from "./patterns/alternatingGrid"
