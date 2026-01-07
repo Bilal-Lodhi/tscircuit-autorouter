@@ -61,6 +61,13 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
       this.nodeWithPortPoints.width,
       this.nodeWithPortPoints.height,
     )
+    const maxDimension = Math.max(
+      this.nodeWithPortPoints.width,
+      this.nodeWithPortPoints.height,
+    )
+
+    // 1x2_1206x4 requires ~8mm min and ~12mm max dimension
+    const canUse1x2 = minDimension >= 8 && maxDimension >= 12
 
     // 2x2_1206x4 requires ~14x14mm
     const canUse2x2 = minDimension >= 12
@@ -68,6 +75,10 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
     const patternValues: Array<{ PATTERN_TYPE: HyperGraphPatternType }> = [
       { PATTERN_TYPE: "single_1206x4" },
     ]
+
+    if (canUse1x2) {
+      patternValues.push({ PATTERN_TYPE: "1x2_1206x4" })
+    }
 
     if (canUse2x2) {
       patternValues.push({ PATTERN_TYPE: "2x2_1206x4" })
