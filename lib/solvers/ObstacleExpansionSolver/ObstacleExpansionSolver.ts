@@ -63,13 +63,24 @@ export class ObstacleExpansionSolver extends BaseSolver {
   private initializeState() {
     const { simpleRouteJson, minimumClearance } = this.params
     const { obstacles } = simpleRouteJson
-    this.baseBoundsList = obstacles.map((obstacle) =>
-      this.getBounds({ obstacle }),
-    )
+    const baseBounds: Bounds[] = new Array(obstacles.length)
+    const expandedBounds: Bounds[] = new Array(obstacles.length)
+    for (let i = 0; i < obstacles.length; i++) {
+      const obstacle = obstacles[i]
+      const halfWidth = obstacle.width / 2
+      const halfHeight = obstacle.height / 2
+      const bounds = {
+        minX: obstacle.center.x - halfWidth,
+        maxX: obstacle.center.x + halfWidth,
+        minY: obstacle.center.y - halfHeight,
+        maxY: obstacle.center.y + halfHeight,
+      }
+      baseBounds[i] = bounds
+      expandedBounds[i] = { ...bounds }
+    }
+    this.baseBoundsList = baseBounds
     this.layerSets = obstacles.map((obstacle) => new Set(obstacle.layers))
-    this.expandedBoundsList = this.baseBoundsList.map((bounds) => ({
-      ...bounds,
-    }))
+    this.expandedBoundsList = expandedBounds
     this.expansionsByObstacle = obstacles.map(() => ({
       left: 0,
       right: 0,
@@ -128,49 +139,58 @@ export class ObstacleExpansionSolver extends BaseSolver {
     if (!baseBounds || !expansions || !neighborIndexes) {
       return
     }
-    const remaining = Math.max(
-      0,
-      this.params.minimumClearance - expansions[side],
-    )
+    let remaining = this.params.minimumClearance - expansions[side]
     if (remaining <= 0) {
       return
     }
-    const currentBounds = this.applyExpansions({
-      baseBounds,
-      expansions,
-    })
-    const distance = this.calculateExpansionDistance({
-      side,
-      maxDistance: remaining,
-      currentBounds,
-      neighborIndexes,
-      baseBoundsList: this.baseBoundsList,
-      expandedBoundsList: this.expandedBoundsList,
-    })
-    if (distance <= 0) {
+    const currentBounds = this.expandedBoundsList[index] ?? baseBounds
+    const minY = currentBounds.minY
+    const maxY = currentBounds.maxY
+    const minX = currentBounds.minX
+    const maxX = currentBounds.maxX
+    for (const neighborIndex of neighborIndexes) {
+      const neighborBounds =
+        this.expandedBoundsList[neighborIndex] ??
+        this.baseBoundsList[neighborIndex]
+      if (!neighborBounds) continue
+      if (neighborBounds.maxY <= minY || neighborBounds.minY >= maxY) {
+        continue
+      }
+      if (neighborBounds.minX < maxX && neighborBounds.maxX > minX) {
+        return
+      }
+      if (side === "left") {
+        if (neighborBounds.maxX <= minX) {
+          const gap = minX - neighborBounds.maxX
+          if (gap < remaining) remaining = gap
+        }
+      } else if (side === "right") {
+        if (neighborBounds.minX >= maxX) {
+          const gap = neighborBounds.minX - maxX
+          if (gap < remaining) remaining = gap
+        }
+      } else if (side === "top") {
+        if (neighborBounds.minY >= maxY) {
+          const gap = neighborBounds.minY - maxY
+          if (gap < remaining) remaining = gap
+        }
+      } else if (side === "bottom") {
+        if (neighborBounds.maxY <= minY) {
+          const gap = minY - neighborBounds.maxY
+          if (gap < remaining) remaining = gap
+        }
+      }
+    }
+    if (remaining <= 0) {
       return
     }
-    expansions[side] += distance
-    this.updateBoundsForObstacle({
-      index,
-      baseBounds,
-      expansions,
-    })
-  }
-
-  private updateBoundsForObstacle({
-    index,
-    baseBounds,
-    expansions,
-  }: {
-    index: number
-    baseBounds: Bounds
-    expansions: ExpansionState
-  }) {
-    const bounds = this.applyExpansions({
-      baseBounds,
-      expansions,
-    })
+    expansions[side] += remaining
+    const bounds = {
+      minX: baseBounds.minX - expansions.left,
+      maxX: baseBounds.maxX + expansions.right,
+      minY: baseBounds.minY - expansions.bottom,
+      maxY: baseBounds.maxY + expansions.top,
+    }
     this.expandedBoundsList[index] = bounds
     const existing =
       this.expandedSimpleRouteJson.obstacles[index] ??
@@ -193,7 +213,12 @@ export class ObstacleExpansionSolver extends BaseSolver {
     const { simpleRouteJson } = this.params
     const obstacles = simpleRouteJson.obstacles.map((obstacle, index) => {
       const bounds =
-        this.expandedBoundsList[index] ?? this.getBounds({ obstacle })
+        this.expandedBoundsList[index] ?? {
+          minX: obstacle.center.x - obstacle.width / 2,
+          maxX: obstacle.center.x + obstacle.width / 2,
+          minY: obstacle.center.y - obstacle.height / 2,
+          maxY: obstacle.center.y + obstacle.height / 2,
+        }
       return {
         ...obstacle,
         width: bounds.maxX - bounds.minX,
@@ -211,99 +236,6 @@ export class ObstacleExpansionSolver extends BaseSolver {
     this.solved = true
   }
 
-  private calculateExpansionDistance({
-    side,
-    maxDistance,
-    currentBounds,
-    neighborIndexes,
-    baseBoundsList,
-    expandedBoundsList,
-  }: {
-    side: Side
-    maxDistance: number
-    currentBounds: Bounds
-    neighborIndexes: number[]
-    baseBoundsList: Bounds[]
-    expandedBoundsList: Bounds[]
-  }) {
-    if (maxDistance <= 0) {
-      return 0
-    }
-    let limit = maxDistance
-    for (const neighborIndex of neighborIndexes) {
-      const neighborBounds =
-        expandedBoundsList[neighborIndex] ?? baseBoundsList[neighborIndex]
-      if (!neighborBounds) continue
-      if (
-        !this.intervalsOverlap({
-          minA: currentBounds.minY,
-          maxA: currentBounds.maxY,
-          minB: neighborBounds.minY,
-          maxB: neighborBounds.maxY,
-        })
-      ) {
-        continue
-      }
-      const overlapsHorizontally =
-        neighborBounds.minX < currentBounds.maxX &&
-        neighborBounds.maxX > currentBounds.minX
-      if (overlapsHorizontally) {
-        return 0
-      }
-      if (side === "left") {
-        if (neighborBounds.maxX <= currentBounds.minX) {
-          const gap = currentBounds.minX - neighborBounds.maxX
-          limit = Math.min(limit, gap)
-        }
-      } else if (side === "right") {
-        if (neighborBounds.minX >= currentBounds.maxX) {
-          const gap = neighborBounds.minX - currentBounds.maxX
-          limit = Math.min(limit, gap)
-        }
-      } else if (side === "top") {
-        if (neighborBounds.minY >= currentBounds.maxY) {
-          const gap = neighborBounds.minY - currentBounds.maxY
-          limit = Math.min(limit, gap)
-        }
-      } else if (side === "bottom") {
-        if (neighborBounds.maxY <= currentBounds.minY) {
-          const gap = currentBounds.minY - neighborBounds.maxY
-          limit = Math.min(limit, gap)
-        }
-      }
-    }
-    return Math.max(0, limit)
-  }
-
-  private intervalsOverlap({
-    minA,
-    maxA,
-    minB,
-    maxB,
-  }: {
-    minA: number
-    maxA: number
-    minB: number
-    maxB: number
-  }) {
-    return maxA > minB && maxB > minA
-  }
-
-  private applyExpansions({
-    baseBounds,
-    expansions,
-  }: {
-    baseBounds: Bounds
-    expansions: ExpansionState
-  }) {
-    return {
-      minX: baseBounds.minX - expansions.left,
-      maxX: baseBounds.maxX + expansions.right,
-      minY: baseBounds.minY - expansions.bottom,
-      maxY: baseBounds.maxY + expansions.top,
-    }
-  }
-
   private buildNeighborMap({
     baseBoundsList,
     layerSets,
@@ -316,29 +248,32 @@ export class ObstacleExpansionSolver extends BaseSolver {
     minimumClearance: number
   }) {
     const neighborMap: number[][] = baseBoundsList.map(() => [])
-    const padding: ExpansionState = {
-      left: minimumClearance * 2,
-      right: minimumClearance * 2,
-      top: minimumClearance * 2,
-      bottom: minimumClearance * 2,
-    }
+    const padding = minimumClearance * 2
     for (let index = 0; index < baseBoundsList.length; index++) {
       const bounds = baseBoundsList[index]
-      const searchBounds = this.applyExpansions({
-        baseBounds: bounds,
-        expansions: padding,
-      })
+      if (!bounds) continue
+      const searchBounds = {
+        minX: bounds.minX - padding,
+        maxX: bounds.maxX + padding,
+        minY: bounds.minY - padding,
+        maxY: bounds.maxY + padding,
+      }
       const hits = tree.search(searchBounds)
       const neighbors: number[] = []
+      const layers = layerSets[index]
       for (const hit of hits) {
         const neighborIndex = hit.data.index
         if (neighborIndex === index) continue
-        if (
-          !this.layerSetOverlap({
-            setA: layerSets[index],
-            setB: layerSets[neighborIndex],
-          })
-        ) {
+        const otherSet = layerSets[neighborIndex]
+        if (!layers || !otherSet) continue
+        let overlap = false
+        for (const layer of layers) {
+          if (otherSet.has(layer)) {
+            overlap = true
+            break
+          }
+        }
+        if (!overlap) {
           continue
         }
         neighbors.push(neighborIndex)
@@ -346,32 +281,6 @@ export class ObstacleExpansionSolver extends BaseSolver {
       neighborMap[index] = neighbors
     }
     return neighborMap
-  }
-
-  private layerSetOverlap({
-    setA,
-    setB,
-  }: {
-    setA: Set<string>
-    setB: Set<string>
-  }) {
-    for (const layer of setA) {
-      if (setB.has(layer)) {
-        return true
-      }
-    }
-    return false
-  }
-
-  private getBounds({ obstacle }: { obstacle: Obstacle }): Bounds {
-    const halfWidth = obstacle.width / 2
-    const halfHeight = obstacle.height / 2
-    return {
-      minX: obstacle.center.x - halfWidth,
-      maxX: obstacle.center.x + halfWidth,
-      minY: obstacle.center.y - halfHeight,
-      maxY: obstacle.center.y + halfHeight,
-    }
   }
 
   getOutput() {
