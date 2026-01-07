@@ -1,3 +1,5 @@
+import type { Jumper } from "lib/types/high-density-types"
+
 interface Point2D {
   x: number
   y: number
@@ -7,6 +9,9 @@ export interface Segment {
   start: Point2D
   end: Point2D
 }
+
+/** Tolerance for comparing floating point coordinates */
+const COORD_TOLERANCE = 0.0001
 
 /**
  * Converts an obstacle (rectangular) to its 4 edge segments
@@ -141,20 +146,59 @@ function segmentIsNearPoint(
 }
 
 /**
+ * Checks if a route segment is a jumper segment (matches a jumper's start/end points).
+ * Jumper segments are "off board" and should not be treated as obstacles.
+ */
+function isJumperSegment(
+  segStart: Point2D,
+  segEnd: Point2D,
+  jumpers?: Jumper[],
+): boolean {
+  if (!jumpers || jumpers.length === 0) return false
+
+  for (const jumper of jumpers) {
+    const matchesForward =
+      Math.abs(segStart.x - jumper.start.x) < COORD_TOLERANCE &&
+      Math.abs(segStart.y - jumper.start.y) < COORD_TOLERANCE &&
+      Math.abs(segEnd.x - jumper.end.x) < COORD_TOLERANCE &&
+      Math.abs(segEnd.y - jumper.end.y) < COORD_TOLERANCE
+
+    const matchesBackward =
+      Math.abs(segStart.x - jumper.end.x) < COORD_TOLERANCE &&
+      Math.abs(segStart.y - jumper.end.y) < COORD_TOLERANCE &&
+      Math.abs(segEnd.x - jumper.start.x) < COORD_TOLERANCE &&
+      Math.abs(segEnd.y - jumper.start.y) < COORD_TOLERANCE
+
+    if (matchesForward || matchesBackward) {
+      return true
+    }
+  }
+
+  return false
+}
+
+/**
  * Converts route segments near a point to outline segments
- * Only processes segments that are within the search radius
+ * Only processes segments that are within the search radius.
+ * Excludes jumper segments as they are "off board" and not obstacles.
  */
 export function routeToOutlineSegmentsNearPoint(
   route: Array<{ x: number; y: number }>,
   traceWidth: number,
   point: Point2D,
   searchRadius: number,
+  jumpers?: Jumper[],
 ): Segment[] {
   const segments: Segment[] = []
 
   for (let i = 0; i < route.length - 1; i++) {
     const start = route[i]!
     const end = route[i + 1]!
+
+    // Skip jumper segments - they are "off board" and not obstacles
+    if (isJumperSegment(start, end, jumpers)) {
+      continue
+    }
 
     // Check if this route segment is near the point
     if (segmentIsNearPoint({ start, end }, point, searchRadius + traceWidth)) {

@@ -517,6 +517,7 @@ export class TraceKeepoutSolver extends BaseSolver {
 
       // Convert route to outline segments (considering trace width)
       // Only include segments that are within the search area
+      // Exclude jumper segments as they are "off board"
       const traceWidth = conflictingRoute.traceThickness ?? 0.15
       segments.push(
         ...routeToOutlineSegmentsNearPoint(
@@ -524,6 +525,7 @@ export class TraceKeepoutSolver extends BaseSolver {
           traceWidth,
           { x: position.x, y: position.y },
           searchRadius,
+          conflictingRoute.jumpers,
         ),
       )
     }
@@ -821,9 +823,52 @@ export class TraceKeepoutSolver extends BaseSolver {
 
       const color = this.input.colorMap[route.connectionName] || "#888888"
 
+      // Build a set of jumper segments for this route
+      const jumperSegmentSet = new Set<number>()
+      if (route.jumpers && route.jumpers.length > 0) {
+        for (const jumper of route.jumpers) {
+          for (let i = 0; i < route.route.length - 1; i++) {
+            const segStart = route.route[i]!
+            const segEnd = route.route[i + 1]!
+
+            // Check if this segment matches the jumper
+            const matchesForward =
+              Math.abs(segStart.x - jumper.start.x) < COORD_TOLERANCE &&
+              Math.abs(segStart.y - jumper.start.y) < COORD_TOLERANCE &&
+              Math.abs(segEnd.x - jumper.end.x) < COORD_TOLERANCE &&
+              Math.abs(segEnd.y - jumper.end.y) < COORD_TOLERANCE
+
+            const matchesBackward =
+              Math.abs(segStart.x - jumper.end.x) < COORD_TOLERANCE &&
+              Math.abs(segStart.y - jumper.end.y) < COORD_TOLERANCE &&
+              Math.abs(segEnd.x - jumper.start.x) < COORD_TOLERANCE &&
+              Math.abs(segEnd.y - jumper.start.y) < COORD_TOLERANCE
+
+            if (matchesForward || matchesBackward) {
+              jumperSegmentSet.add(i)
+              break
+            }
+          }
+        }
+      }
+
       for (let i = 0; i < route.route.length - 1; i++) {
         const current = route.route[i]!
         const next = route.route[i + 1]!
+
+        // Draw jumper segments with dashed line (fixed/immovable)
+        if (jumperSegmentSet.has(i)) {
+          visualization.lines.push({
+            points: [
+              { x: current.x, y: current.y },
+              { x: next.x, y: next.y },
+            ],
+            strokeColor: "rgba(128, 128, 128, 0.6)",
+            strokeDash: "2 2",
+            label: `${route.connectionName} (jumper segment - fixed)`,
+          })
+          continue
+        }
 
         if (current.z === next.z) {
           visualization.lines.push({
@@ -847,7 +892,7 @@ export class TraceKeepoutSolver extends BaseSolver {
         })
       }
 
-      // Draw jumpers
+      // Draw jumpers with distinct visualization
       if (route.jumpers && route.jumpers.length > 0) {
         const jumperGraphics = getJumpersGraphics(route.jumpers, {
           color,
