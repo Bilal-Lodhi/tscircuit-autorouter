@@ -46,6 +46,7 @@ interface XYConnection {
 
 export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
   // Input parameters
+  constructorParams: JumperPrepatternSolver2Params
   nodeWithPortPoints: NodeWithPortPoints
   colorMap: Record<string, string>
   traceWidth: number
@@ -68,6 +69,7 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
 
   constructor(params: JumperPrepatternSolver2Params) {
     super()
+    this.constructorParams = params
     this.nodeWithPortPoints = params.nodeWithPortPoints
     this.colorMap = params.colorMap ?? {}
     this.traceWidth = params.traceWidth ?? 0.15
@@ -78,6 +80,10 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
     if (Object.keys(this.colorMap).length === 0) {
       this.colorMap = this._buildColorMap()
     }
+  }
+
+  getConstructorParams(): JumperPrepatternSolver2Params {
+    return this.constructorParams
   }
 
   private _buildColorMap(): Record<string, string> {

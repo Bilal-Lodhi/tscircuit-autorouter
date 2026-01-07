@@ -37,6 +37,7 @@ type VariantHyperParameters = {
  * - 2x2_1206x4_horizontal (only if node is large enough, ~14x14mm)
  */
 export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver<JumperPrepatternSolver2_HyperGraph> {
+  constructorParams: HyperJumperPrepatternSolver2Params
   nodeWithPortPoints: NodeWithPortPoints
   colorMap: Record<string, string>
   traceWidth: number
@@ -47,6 +48,7 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
 
   constructor(params: HyperJumperPrepatternSolver2Params) {
     super()
+    this.constructorParams = params
     this.nodeWithPortPoints = params.nodeWithPortPoints
     this.colorMap = params.colorMap ?? {}
     this.traceWidth = params.traceWidth ?? 0.15
@@ -54,6 +56,10 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
     this.MAX_ITERATIONS = 1e6
     this.GREEDY_MULTIPLIER = 1
     this.MIN_SUBSTEPS = 1
+  }
+
+  getConstructorParams(): HyperJumperPrepatternSolver2Params {
+    return this.constructorParams
   }
 
   getHyperParameterDefs() {
