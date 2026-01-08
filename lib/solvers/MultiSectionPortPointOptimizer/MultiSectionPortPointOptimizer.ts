@@ -114,36 +114,36 @@ function seededShuffle<T>(array: T[], seed: number): T[] {
 
 // Generate optimization schedule with multiple shuffle seeds per expansion degree
 const DEFAULT_HYPERPARAMETER_SCHEDULE: HyperParameterScheduleEntry[] = [
-  {
-    SHUFFLE_SEED: 100,
-    NODE_PF_FACTOR: 100,
-    NODE_PF_MAX_PENALTY: 100,
-    MEMORY_PF_FACTOR: 0,
-    EXPANSION_DEGREES: 10,
-    FORCE_CENTER_FIRST: true,
-    FORCE_OFF_BOARD_FREQUENCY: 0,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
-    // MIN_ALLOWED_BOARD_SCORE: -1,
-    // MAX_ITERATIONS_PER_PATH: 300,
-  },
   // {
-  //   SHUFFLE_SEED: 200,
+  //   SHUFFLE_SEED: 100,
   //   NODE_PF_FACTOR: 100,
+  //   NODE_PF_MAX_PENALTY: 100,
   //   MEMORY_PF_FACTOR: 0,
-  //   EXPANSION_DEGREES: 4,
+  //   EXPANSION_DEGREES: 10,
   //   FORCE_CENTER_FIRST: true,
+  //   FORCE_OFF_BOARD_FREQUENCY: 0,
   //   CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
-  //   MAX_ITERATIONS_PER_PATH: 500,
+  //   // MIN_ALLOWED_BOARD_SCORE: -1,
+  //   // MAX_ITERATIONS_PER_PATH: 300,
   // },
-  // {
-  //   SHUFFLE_SEED: 300,
-  //   NODE_PF_FACTOR: 100,
-  //   MEMORY_PF_FACTOR: 0,
-  //   EXPANSION_DEGREES: 5,
-  //   FORCE_CENTER_FIRST: true,
-  //   CENTER_OFFSET_DIST_PENALTY_FACTOR: 10,
-  //   MAX_ITERATIONS_PER_PATH: 1600,
-  // },
+  {
+    SHUFFLE_SEED: 200,
+    NODE_PF_FACTOR: 100,
+    MEMORY_PF_FACTOR: 0,
+    EXPANSION_DEGREES: 4,
+    FORCE_CENTER_FIRST: true,
+    CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
+    MAX_ITERATIONS_PER_PATH: 500,
+  },
+  {
+    SHUFFLE_SEED: 300,
+    NODE_PF_FACTOR: 100,
+    MEMORY_PF_FACTOR: 0,
+    EXPANSION_DEGREES: 5,
+    FORCE_CENTER_FIRST: true,
+    CENTER_OFFSET_DIST_PENALTY_FACTOR: 10,
+    MAX_ITERATIONS_PER_PATH: 1600,
+  },
 ]
 
 // for (let seed = 0; seed < 30; seed++) {
@@ -212,7 +212,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
   MAX_ATTEMPTS_PER_NODE = 100
 
   /** Maximum total number of section optimization attempts */
-  MAX_SECTION_ATTEMPTS = 500
+  MAX_SECTION_ATTEMPTS = 10
 
   /** Acceptable probability of failure threshold */
   ACCEPTABLE_PF = 0.05
@@ -590,6 +590,8 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     this.currentSectionKeptPortPoints.clear()
     this.currentSectionFixedRoutes = []
 
+    const debugConnectionName = "source_trace_5__source_net_1_mst1"
+
     // First, collect all connection names in this section
     const allConnectionNames: string[] = []
 
@@ -603,6 +605,17 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
       // Check if both start and end nodes are in the section
       const startInSection = section.nodeIds.has(startNodeId)
       const endInSection = section.nodeIds.has(endNodeId)
+
+      if (result.connection.name === debugConnectionName) {
+        console.log(
+          `[createSectionSimpleRouteJson] Checking ${debugConnectionName}:`,
+        )
+        console.log(`  Start node ${startNodeId} in section: ${startInSection}`)
+        console.log(`  End node ${endNodeId} in section: ${endInSection}`)
+        console.log(
+          `  Will be treated as: ${startInSection && endInSection ? "FULLY CONTAINED" : "CUT PATH"}`,
+        )
+      }
 
       if (startInSection && endInSection) {
         fullyContainedResults.push(result)
@@ -868,6 +881,16 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     >,
     newNodeAssignedPortPoints: Map<CapacityMeshNodeId, PortPoint[]>,
   ) {
+    const debugConnectionName = "source_trace_5__source_net_1_mst1"
+    const debugCutName = `__cut__${debugConnectionName}`
+
+    console.log("[reattachSection] Starting reattachment")
+    console.log(`  newConnectionResults count: ${newConnectionResults.length}`)
+    console.log(
+      "  Connection names:",
+      newConnectionResults.map((r) => r.connection.name),
+    )
+
     // Separate fully contained connections from cut paths
     const fullyContainedResults: ConnectionPathResult[] = []
     const cutPathResults: ConnectionPathResult[] = []
@@ -879,6 +902,10 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
         fullyContainedResults.push(result)
       }
     }
+
+    console.log(
+      `  Fully contained: ${fullyContainedResults.length}, Cut paths: ${cutPathResults.length}`,
+    )
 
     // Handle fully contained connections (replace entirely)
     const reRoutedConnectionNames = new Set(
@@ -921,6 +948,29 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
 
       // Get the original connection name (without the __cut__ prefix)
       const originalConnectionName = sectionPath.connectionName
+
+      const isDebugConnection = originalConnectionName === debugConnectionName
+      if (isDebugConnection) {
+        console.log(
+          `[reattachSection] Processing cut path for ${debugConnectionName}`,
+        )
+        console.log(`  Cut result path length: ${cutResult.path.length}`)
+        console.log(`  Original path length: ${originalPath.length}`)
+        console.log(
+          `  Section path originalStartIndex: ${sectionPath.originalStartIndex}`,
+        )
+        console.log(
+          `  Section path originalEndIndex: ${sectionPath.originalEndIndex}`,
+        )
+        console.log(
+          "  Original path nodeIds:",
+          originalPath.map((p) => p.currentNodeId),
+        )
+        console.log(
+          "  Cut result path nodeIds:",
+          cutResult.path.map((p) => p.currentNodeId),
+        )
+      }
 
       // Clear old port points for the portion being replaced
       // We need to remove port points that were in the original cut section
@@ -1254,6 +1304,10 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
 
     // Create and start PortPointPathingSolver for this section
     this.activeSubSolver = this.createSectionSolver(this.currentSection)
+  }
+
+  computeProgress(): number {
+    return this.sectionAttempts / this.MAX_SECTION_ATTEMPTS
   }
 
   visualize(): GraphicsObject {
