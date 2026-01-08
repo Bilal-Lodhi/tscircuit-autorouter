@@ -157,6 +157,7 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
       marginY: 1.2,
       outerPaddingX: 0.4,
       outerPaddingY: 0.4,
+      // parallelTracesUnderJumperCount: 2,
       innerColChannelPointCount: 3,
       innerRowChannelPointCount: 3,
       outerChannelXPointCount: 5,
@@ -291,18 +292,30 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
           usedThroughJumpers.add(region.regionId)
 
           // Use the throughjumper region's bounds to get the correct pad positions
-          // For 1206x4 horizontal jumpers:
-          // - minX is left pad center X, maxX is right pad center X
-          // - center.y is the row's Y position
+          // Determine orientation from bounds - if width > height, it's horizontal
           const bounds = region.d.bounds
-          const centerY = region.d.center.y
+          const center = region.d.center
+          const boundsWidth = bounds.maxX - bounds.minX
+          const boundsHeight = bounds.maxY - bounds.minY
+          const isHorizontal = boundsWidth > boundsHeight
 
-          jumpers.push({
-            route_type: "jumper",
-            start: { x: bounds.minX, y: centerY },
-            end: { x: bounds.maxX, y: centerY },
-            footprint: "1206x4_pair",
-          })
+          if (isHorizontal) {
+            // Horizontal jumper: pads are on left (minX) and right (maxX), same Y
+            jumpers.push({
+              route_type: "jumper",
+              start: { x: bounds.minX, y: center.y },
+              end: { x: bounds.maxX, y: center.y },
+              footprint: "1206x4_pair",
+            })
+          } else {
+            // Vertical jumper: pads are on bottom (minY) and top (maxY), same X
+            jumpers.push({
+              route_type: "jumper",
+              start: { x: center.x, y: bounds.minY },
+              end: { x: center.x, y: bounds.maxY },
+              footprint: "1206x4_pair",
+            })
+          }
         }
       }
 
