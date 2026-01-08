@@ -387,17 +387,22 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
         srj: cms.srj,
       },
     ]),
-    // definePipelineStep("traceWidthSolver", TraceWidthSolver, (cms) => [
-    //   {
-    //     hdRoutes: cms.traceKeepoutSolver?.redrawnHdRoutes ?? [],
-    //     obstacles: cms.srj.obstacles,
-    //     connMap: cms.connMap,
-    //     colorMap: cms.colorMap,
-    //     nominalTraceWidth: cms.srj.nominalTraceWidth,
-    //     minTraceWidth: cms.minTraceWidth,
-    //     obstacleMargin: cms.srj.defaultObstacleMargin ?? 0.15,
-    //   },
-    // ]),
+    definePipelineStep("traceWidthSolver", TraceWidthSolver, (cms) => [
+      {
+        hdRoutes: cms.traceKeepoutSolver?.redrawnHdRoutes ?? [],
+        obstacles: [
+          ...cms.srj.obstacles,
+          ...(cms.highDensitySolver?.getOutputJumpers() ?? []).flatMap(
+            (jumper) => jumper.pads,
+          ),
+        ] as Obstacle[],
+        connMap: cms.connMap,
+        colorMap: cms.colorMap,
+        nominalTraceWidth: cms.srj.nominalTraceWidth,
+        minTraceWidth: cms.minTraceWidth,
+        obstacleMargin: cms.srj.defaultObstacleMargin ?? 0.15,
+      },
+    ]),
   ]
 
   constructor(
