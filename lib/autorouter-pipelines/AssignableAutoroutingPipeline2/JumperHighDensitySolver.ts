@@ -205,6 +205,7 @@ export class JumperHighDensitySolver extends BaseSolver {
       })
     }
 
+    this.activeSubSolver = this.simpleHighDensitySolver
     this.simpleHighDensitySolver.step()
 
     if (this.simpleHighDensitySolver.solved) {
@@ -350,6 +351,11 @@ export class JumperHighDensitySolver extends BaseSolver {
       points: [],
       rects: [],
       circles: [],
+    }
+
+    // If failed, show the visualization of the failed solver
+    if (this.failed && this.activeSubSolver) {
+      return this.activeSubSolver.visualize()
     }
 
     // If currently running a sub-solver, show its visualization
