@@ -142,7 +142,6 @@ export function createPortPointSection(
     sectionNodeIds.has(node.capacityMeshNodeId),
   )
 
-  // Filter capacity mesh nodes to those in section
   const sectionCapacityMeshNodes = capacityMeshNodes.filter((node) =>
     sectionNodeIds.has(node.capacityMeshNodeId),
   )
@@ -269,7 +268,7 @@ function cutPathsToSection(
     }
 
     // Create a single merged section path that spans from first to last occurrence
-    // This includes any points BETWEEN section nodes that might be outside the section
+    // This includes any points BETWEEN section nodes that m  // Filter capacity mesh nodes to those in sectionight be outside the section
     const mergedSegment = result.path.slice(
       segmentStartIndex,
       segmentEndIndex + 1,
