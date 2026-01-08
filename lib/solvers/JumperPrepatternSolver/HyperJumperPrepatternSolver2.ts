@@ -139,7 +139,7 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
       {
         name: "orientation",
         possibleValues: [
-          // { ORIENTATION: "vertical" },
+          { ORIENTATION: "vertical" },
           { ORIENTATION: "horizontal" },
         ],
       },
