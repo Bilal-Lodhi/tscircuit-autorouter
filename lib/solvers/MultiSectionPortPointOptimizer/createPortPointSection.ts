@@ -143,9 +143,6 @@ export function createPortPointSection(
   )
 
   // Filter capacity mesh nodes to those in section
-  const capacityMeshNodeMap = new Map(
-    capacityMeshNodes.map((n) => [n.capacityMeshNodeId, n]),
-  )
   const sectionCapacityMeshNodes = capacityMeshNodes.filter((node) =>
     sectionNodeIds.has(node.capacityMeshNodeId),
   )
@@ -216,14 +213,12 @@ function cutPathsToSection(
   sectionNodeIds: Set<CapacityMeshNodeId>,
 ): SectionPath[] {
   const sectionPaths: SectionPath[] = []
-  const debugConnectionName = "source_trace_5__source_net_1_mst1"
 
   for (const result of connectionResults) {
     if (!result.path || result.path.length === 0) continue
 
     const connectionName = result.connection.name
     const rootConnectionName = result.connection.rootConnectionName
-    const isDebugConnection = connectionName === debugConnectionName
 
     // Find all indices that are within the section
     const indicesInSection: number[] = []
@@ -241,11 +236,6 @@ function cutPathsToSection(
     // Find the first and last indices that touch the section
     const firstIndexInSection = indicesInSection[0]
     const lastIndexInSection = indicesInSection[indicesInSection.length - 1]
-
-    // Calculate entry/exit flags based on ACTUAL section boundaries
-    // (before we potentially extend to include endpoints)
-    const hasEntryFromOutside = firstIndexInSection > 0
-    const hasExitToOutside = lastIndexInSection < result.path.length - 1
 
     // Determine the actual range to include in the merged segment
     let segmentStartIndex = firstIndexInSection

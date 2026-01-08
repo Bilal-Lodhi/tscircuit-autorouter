@@ -590,8 +590,6 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     this.currentSectionKeptPortPoints.clear()
     this.currentSectionFixedRoutes = []
 
-    const debugConnectionName = "source_trace_5__source_net_1_mst1"
-
     // First, collect all connection names in this section
     const allConnectionNames: string[] = []
 
@@ -605,17 +603,6 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
       // Check if both start and end nodes are in the section
       const startInSection = section.nodeIds.has(startNodeId)
       const endInSection = section.nodeIds.has(endNodeId)
-
-      if (result.connection.name === debugConnectionName) {
-        console.log(
-          `[createSectionSimpleRouteJson] Checking ${debugConnectionName}:`,
-        )
-        console.log(`  Start node ${startNodeId} in section: ${startInSection}`)
-        console.log(`  End node ${endNodeId} in section: ${endInSection}`)
-        console.log(
-          `  Will be treated as: ${startInSection && endInSection ? "FULLY CONTAINED" : "CUT PATH"}`,
-        )
-      }
 
       if (startInSection && endInSection) {
         fullyContainedResults.push(result)
@@ -915,7 +902,6 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
         continue
       }
 
-      const beforeClear = portPoints.length
       const remainingPortPoints = portPoints.filter(
         (pp) => !reRoutedConnectionNames.has(pp.connectionName),
       )
