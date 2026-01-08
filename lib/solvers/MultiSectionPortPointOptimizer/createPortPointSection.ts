@@ -235,23 +235,6 @@ function cutPathsToSection(
       }
     }
 
-    if (isDebugConnection) {
-      console.log(`[cutPathsToSection] Processing ${debugConnectionName}:`)
-      console.log(`  Total path length: ${result.path.length}`)
-      console.log(`  Indices in section: ${JSON.stringify(indicesInSection)}`)
-      console.log(`  Section nodeIds count: ${sectionNodeIds.size}`)
-      console.log(`  Connection nodeIds: ${JSON.stringify(result.nodeIds)}`)
-      console.log(
-        "  Path nodeIds:",
-        result.path.map((p) => p.currentNodeId),
-      )
-      console.log("  Section contains cmn_37:", sectionNodeIds.has("cmn_37"))
-      console.log("  Section contains cmn_2:", sectionNodeIds.has("cmn_2"))
-      console.log("  Section contains cmn_25:", sectionNodeIds.has("cmn_25"))
-      console.log("  Section contains cmn_6:", sectionNodeIds.has("cmn_6"))
-      console.log("  Section contains cmn_46:", sectionNodeIds.has("cmn_46"))
-    }
-
     // If no points in section, skip this connection
     if (indicesInSection.length === 0) continue
 
@@ -263,13 +246,6 @@ function cutPathsToSection(
     // (before we potentially extend to include endpoints)
     const hasEntryFromOutside = firstIndexInSection > 0
     const hasExitToOutside = lastIndexInSection < result.path.length - 1
-
-    if (isDebugConnection) {
-      console.log(`  First index in section: ${firstIndexInSection}`)
-      console.log(`  Last index in section: ${lastIndexInSection}`)
-      console.log(`  Has entry from outside: ${hasEntryFromOutside}`)
-      console.log(`  Has exit to outside: ${hasExitToOutside}`)
-    }
 
     // Determine the actual range to include in the merged segment
     let segmentStartIndex = firstIndexInSection
@@ -284,19 +260,8 @@ function cutPathsToSection(
       const firstNodeId = result.path[0].currentNodeId
       const isStartEndpoint =
         result.nodeIds[0] === firstNodeId || result.nodeIds[1] === firstNodeId
-      if (isDebugConnection) {
-        console.log("  Checking start endpoint extension:")
-        console.log(`    First path node: ${firstNodeId}`)
-        console.log(
-          `    Connection endpoint nodes: ${JSON.stringify(result.nodeIds)}`,
-        )
-        console.log(`    Is start endpoint: ${isStartEndpoint}`)
-      }
       if (isStartEndpoint) {
         segmentStartIndex = 0
-        if (isDebugConnection) {
-          console.log("    Extended segmentStartIndex to 0")
-        }
       }
     }
 
@@ -308,19 +273,8 @@ function cutPathsToSection(
       const lastNodeId = result.path[lastPathIdx].currentNodeId
       const isEndEndpoint =
         result.nodeIds[0] === lastNodeId || result.nodeIds[1] === lastNodeId
-      if (isDebugConnection) {
-        console.log("  Checking end endpoint extension:")
-        console.log(`    Last path node: ${lastNodeId}`)
-        console.log(
-          `    Connection endpoint nodes: ${JSON.stringify(result.nodeIds)}`,
-        )
-        console.log(`    Is end endpoint: ${isEndEndpoint}`)
-      }
       if (isEndEndpoint) {
         segmentEndIndex = lastPathIdx
-        if (isDebugConnection) {
-          console.log(`    Extended segmentEndIndex to ${lastPathIdx}`)
-        }
       }
     }
 
@@ -333,28 +287,6 @@ function cutPathsToSection(
 
     const actualHasEntryFromOutside = segmentStartIndex > 0
     const actualHasExitToOutside = segmentEndIndex < result.path.length - 1
-
-    if (isDebugConnection) {
-      console.log(
-        `  Final segment range: [${segmentStartIndex}, ${segmentEndIndex}]`,
-      )
-      console.log(`  Merged segment length: ${mergedSegment.length}`)
-      console.log(
-        "  Merged segment nodeIds:",
-        mergedSegment.map((c) => c.currentNodeId),
-      )
-      console.log(`  ORIGINAL hasEntryFromOutside: ${hasEntryFromOutside}`)
-      console.log(`  ORIGINAL hasExitToOutside: ${hasExitToOutside}`)
-      console.log(
-        `  CORRECTED actualHasEntryFromOutside: ${actualHasEntryFromOutside}`,
-      )
-      console.log(
-        `  CORRECTED actualHasExitToOutside: ${actualHasExitToOutside}`,
-      )
-      console.log(
-        `  BUG DETECTED: hasExitToOutside flags differ! ${hasExitToOutside !== actualHasExitToOutside ? "YES" : "NO"}`,
-      )
-    }
 
     sectionPaths.push({
       connectionName,
