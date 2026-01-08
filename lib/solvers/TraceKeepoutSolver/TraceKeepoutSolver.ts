@@ -1,11 +1,10 @@
 import { BaseSolver } from "../BaseSolver"
 import { HighDensityRoute, Jumper } from "lib/types/high-density-types"
-import { Obstacle, SimpleRouteJson } from "lib/types"
+import { Obstacle, SimpleRouteJson, Jumper as SrjJumper } from "lib/types"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import { ObstacleSpatialHashIndex } from "lib/data-structures/ObstacleTree"
 import { HighDensityRouteSpatialIndex } from "lib/data-structures/HighDensityRouteSpatialIndex"
 import { GraphicsObject } from "graphics-debug"
-import { JUMPER_DIMENSIONS } from "lib/utils/jumperSizes"
 import {
   computeDrawPositionFromCollisions,
   Segment,
@@ -41,6 +40,8 @@ interface Point3D extends Point2D {
 export interface TraceKeepoutSolverInput {
   hdRoutes: HighDensityRoute[]
   obstacles: Obstacle[]
+  /** SRJ Jumpers with pre-computed pad obstacles. These will be added to the obstacle index. */
+  jumpers?: SrjJumper[]
   connMap: ConnectivityMap
   colorMap: Record<string, string>
   keepoutRadiusSchedule?: number[]
@@ -103,10 +104,10 @@ export class TraceKeepoutSolver extends BaseSolver {
     this.unprocessedRoutes = [...this.hdRoutes]
     this.smoothedCursorRoutes = [...this.unprocessedRoutes]
 
-    // Create obstacles including jumper pads
+    // Create obstacles including jumper pads from passed-in SRJ jumpers
     const obstaclesWithJumperPads = [
       ...input.obstacles,
-      ...this.createJumperPadObstacles(),
+      ...this.getJumperPadObstacles(),
     ]
     this.obstacleSHI = new ObstacleSpatialHashIndex(
       "flatbush",
@@ -164,48 +165,19 @@ export class TraceKeepoutSolver extends BaseSolver {
   }
 
   /**
-   * Creates obstacle objects for each jumper pad from all hdRoutes.
-   * Each pad is treated as an obstacle to prevent other traces from routing through it.
+   * Extracts pad obstacles from the passed-in SRJ jumpers.
+   * The pads already have connectedTo set based on which routes use each jumper.
    */
-  private createJumperPadObstacles(): Obstacle[] {
+  private getJumperPadObstacles(): Obstacle[] {
     const obstacles: Obstacle[] = []
 
-    for (const route of this.hdRoutes) {
-      if (!route.jumpers || route.jumpers.length === 0) continue
+    if (!this.input.jumpers) return obstacles
 
-      const connectionName = route.rootConnectionName ?? route.connectionName
-
-      for (const jumper of route.jumpers) {
-        const dims =
-          JUMPER_DIMENSIONS[jumper.footprint] ?? JUMPER_DIMENSIONS["0603"]
-
-        // Determine jumper orientation to rotate pad dimensions
-        const dx = jumper.end.x - jumper.start.x
-        const dy = jumper.end.y - jumper.start.y
-        const isHorizontal = Math.abs(dx) > Math.abs(dy)
-        const padWidth = isHorizontal ? dims.padLength : dims.padWidth
-        const padHeight = isHorizontal ? dims.padWidth : dims.padLength
-
-        // Create obstacle for start pad
+    for (const jumper of this.input.jumpers) {
+      for (const pad of jumper.pads) {
         obstacles.push({
-          type: "rect",
-          layers: ["top"],
-          center: { x: jumper.start.x, y: jumper.start.y },
-          width: padWidth,
-          height: padHeight,
-          connectedTo: [connectionName],
-          zLayers: [0], // Jumper pads are on layer 0
-        })
-
-        // Create obstacle for end pad
-        obstacles.push({
-          type: "rect",
-          layers: ["top"],
-          center: { x: jumper.end.x, y: jumper.end.y },
-          width: padWidth,
-          height: padHeight,
-          connectedTo: [connectionName],
-          zLayers: [0], // Jumper pads are on layer 0
+          ...pad,
+          zLayers: [0], // Jumper pads are on layer 0 (top)
         })
       }
     }
@@ -884,17 +856,38 @@ export class TraceKeepoutSolver extends BaseSolver {
       }
     }
 
-    // Always show jumper pads from all original routes
-    for (const route of this.originalHdRoutes) {
-      if (!route.jumpers || route.jumpers.length === 0) continue
+    // Show all jumper pads from the passed-in SRJ jumpers (includes unused jumpers)
+    if (this.input.jumpers) {
+      for (const jumper of this.input.jumpers) {
+        // Draw pads from the SRJ jumper
+        for (const pad of jumper.pads) {
+          const connectedToLabel =
+            pad.connectedTo.length > 0 ? pad.connectedTo.join(", ") : "unused"
+          const color =
+            pad.connectedTo.length > 0
+              ? this.input.colorMap[pad.connectedTo[0]!] || "#888888"
+              : "rgba(128, 128, 128, 0.5)"
 
-      const color = this.input.colorMap[route.connectionName] || "#888888"
-      const jumperGraphics = getJumpersGraphics(route.jumpers, {
-        color,
-        label: route.connectionName,
-      })
-      visualization.rects.push(...(jumperGraphics.rects ?? []))
-      visualization.lines.push(...(jumperGraphics.lines ?? []))
+          visualization.rects.push({
+            center: pad.center,
+            width: pad.width,
+            height: pad.height,
+            fill: color,
+            stroke: "rgba(0, 0, 0, 0.5)",
+            label: `Jumper pad (${connectedToLabel})`,
+          })
+        }
+
+        // Draw jumper body line
+        if (jumper.pads.length >= 2) {
+          visualization.lines.push({
+            points: [jumper.pads[0]!.center, jumper.pads[1]!.center],
+            strokeColor: "rgba(100, 100, 100, 0.8)",
+            strokeWidth: 0.2,
+            label: "Jumper body",
+          })
+        }
+      }
     }
 
     // Visualize obstacles
