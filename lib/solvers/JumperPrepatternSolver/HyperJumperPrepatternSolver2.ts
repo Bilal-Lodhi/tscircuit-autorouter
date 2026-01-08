@@ -80,10 +80,12 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
     )
 
     // 1x2_1206x4 requires ~8mm min and ~12mm max dimension
-    const canUse1x2 = minDimension >= 8 && maxDimension >= 12
+    const canUse1x2 = minDimension >= 6 && maxDimension >= 10
 
     // 2x2_1206x4 requires ~14x14mm
-    const canUse2x2 = minDimension >= 12
+    const canUse2x2 = minDimension >= 10
+
+    const canUse3x3 = minDimension >= 14 && maxDimension >= 14
 
     const patternValues: Array<{ PATTERN_TYPE: HyperGraphPatternType }> = [
       { PATTERN_TYPE: "single_1206x4" },
@@ -95,6 +97,10 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
 
     if (canUse2x2) {
       patternValues.push({ PATTERN_TYPE: "2x2_1206x4" })
+    }
+
+    if (canUse3x3) {
+      patternValues.push({ PATTERN_TYPE: "3x3_1206x4" })
     }
 
     return [
