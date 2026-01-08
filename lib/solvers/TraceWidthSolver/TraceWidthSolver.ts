@@ -60,11 +60,6 @@ export class TraceWidthSolver extends BaseSolver {
   currentTargetWidth: number = 0
   hasInsufficientClearance = false
 
-  // Track minimum clearance for current walk and best result
-  currentWalkMinClearance: number = Infinity
-  bestMinClearance: number = -Infinity
-  bestWidth: number = 0
-
   // For visualization - track colliding objects
   lastCollidingObstacles: Obstacle[] = []
   lastCollidingRoutes: HighDensityRoute[] = []
@@ -132,8 +127,6 @@ export class TraceWidthSolver extends BaseSolver {
       // Start with the widest width in the schedule
       this.currentScheduleIndex = 0
       this.currentTargetWidth = this.TRACE_WIDTH_SCHEDULE[0]!
-      this.bestMinClearance = -Infinity
-      this.bestWidth = this.minTraceWidth // Default to min width
       this.initializeCursor()
       return
     }
@@ -142,39 +135,31 @@ export class TraceWidthSolver extends BaseSolver {
     const stepped = this.stepCursorForward()
 
     if (!stepped) {
-      // Reached end of trace - check if this width is better than previous
-      // Only accept if minimum clearance is better than previous best
-      if (this.currentWalkMinClearance > this.bestMinClearance) {
-        this.bestMinClearance = this.currentWalkMinClearance
-        this.bestWidth = this.currentTargetWidth
-      }
-
-      // Try the next narrower width in the schedule
-      this.currentScheduleIndex++
-      if (this.currentScheduleIndex < this.TRACE_WIDTH_SCHEDULE.length) {
-        this.currentTargetWidth =
-          this.TRACE_WIDTH_SCHEDULE[this.currentScheduleIndex]!
-        this.initializeCursor()
-        return
-      }
-
-      // Exhausted schedule, finalize with the best width found
-      this.finalizeCurrentTrace(this.bestWidth)
+      // Reached end of trace without collision - this width works!
+      // Use this width and finalize immediately (widest possible that fits)
+      this.finalizeCurrentTrace(this.currentTargetWidth)
       return
     }
 
     // Check clearance at current cursor position
     const clearance = this.getClearanceAtPosition(this.cursorPosition!)
 
-    // Track minimum clearance during this walk
-    if (clearance < this.currentWalkMinClearance) {
-      this.currentWalkMinClearance = clearance
-    }
-
     // Check if there's enough clearance for the current target width + obstacle margin
     const requiredClearance = this.currentTargetWidth / 2 + this.obstacleMargin
     if (clearance < requiredClearance) {
+      // Collision found - this width doesn't work, try the next narrower width
       this.hasInsufficientClearance = true
+      this.currentScheduleIndex++
+
+      if (this.currentScheduleIndex < this.TRACE_WIDTH_SCHEDULE.length) {
+        // Try the next width in the schedule
+        this.currentTargetWidth =
+          this.TRACE_WIDTH_SCHEDULE[this.currentScheduleIndex]!
+        this.initializeCursor()
+      } else {
+        // Exhausted all widths in schedule, use minTraceWidth as fallback
+        this.finalizeCurrentTrace(this.minTraceWidth)
+      }
     }
   }
 
@@ -188,12 +173,12 @@ export class TraceWidthSolver extends BaseSolver {
     this.currentTraceSegmentIndex = 0
     this.currentTraceSegmentT = 0
     this.hasInsufficientClearance = false
-    this.currentWalkMinClearance = Infinity
   }
 
   /**
    * Steps the cursor forward by CURSOR_STEP_DISTANCE along the trace
    * Returns false if we've reached the end of the trace
+   * Skips segments where both endpoints are inside jumper pads
    */
   private stepCursorForward(): boolean {
     if (!this.currentTrace || !this.cursorPosition) return false
@@ -208,6 +193,13 @@ export class TraceWidthSolver extends BaseSolver {
 
       const segStart = route[this.currentTraceSegmentIndex]!
       const segEnd = route[this.currentTraceSegmentIndex + 1]!
+
+      // Skip segments entirely inside jumper pads
+      if (segStart.insideJumperPad && segEnd.insideJumperPad) {
+        this.currentTraceSegmentIndex++
+        this.currentTraceSegmentT = 0
+        continue
+      }
 
       const segDx = segEnd.x - segStart.x
       const segDy = segEnd.y - segStart.y

@@ -35,6 +35,7 @@ interface Point2D {
 
 interface Point3D extends Point2D {
   z: number
+  insideJumperPad?: boolean
 }
 
 export interface TraceKeepoutSolverInput {
@@ -452,6 +453,7 @@ export class TraceKeepoutSolver extends BaseSolver {
           x: jumperStartPoint.x,
           y: jumperStartPoint.y,
           z: segStart.z, // Preserve the z-layer from the route
+          insideJumperPad: true,
         })
 
         // Record the jumper end point as a fixed draw position
@@ -459,6 +461,7 @@ export class TraceKeepoutSolver extends BaseSolver {
           x: jumperEndPoint.x,
           y: jumperEndPoint.y,
           z: segEnd.z, // Preserve the z-layer from the route
+          insideJumperPad: true,
         })
 
         // Move cursor to the jumper end position and advance to next segment

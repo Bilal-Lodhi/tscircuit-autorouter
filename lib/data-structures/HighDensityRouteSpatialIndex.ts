@@ -18,7 +18,7 @@ export type HighDensityIntraNodeRoute = {
   rootConnectionName?: string // Parent connection for merged routes
   traceThickness: number
   viaDiameter: number // Now used in conflict calculation
-  route: Array<{ x: number; y: number; z: number }>
+  route: Array<{ x: number; y: number; z: number; insideJumperPad?: boolean }>
   vias: Array<{ x: number; y: number }> // Will be indexed
   jumpers?: Jumper[]
 }
@@ -122,6 +122,8 @@ export class HighDensityRouteSpatialIndex {
           const p2 = route.route[i + 1]
           // Skip zero-length segments
           if (p1.x === p2.x && p1.y === p2.y) continue
+          // Skip segments inside jumper pads (jumper wires are not collidable)
+          if (p1.insideJumperPad && p2.insideJumperPad) continue
 
           const segment: Segment = [p1, p2]
           const bounds = getSegmentBounds(segment)
