@@ -493,6 +493,11 @@ export class TraceWidthSolver extends BaseSolver {
         const current = route.route[i]!
         const next = route.route[i + 1]!
 
+        // Skip segments inside jumper pads (these are drawn by getJumpersGraphics)
+        if (current.insideJumperPad && next.insideJumperPad) {
+          continue
+        }
+
         if (current.z === next.z) {
           visualization.lines.push({
             points: [
@@ -531,6 +536,11 @@ export class TraceWidthSolver extends BaseSolver {
       for (let i = 0; i < this.currentTrace.route.length - 1; i++) {
         const current = this.currentTrace.route[i]!
         const next = this.currentTrace.route[i + 1]!
+
+        // Skip segments inside jumper pads
+        if (current.insideJumperPad && next.insideJumperPad) {
+          continue
+        }
 
         if (current.z === next.z) {
           visualization.lines.push({
