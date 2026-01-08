@@ -98,9 +98,7 @@ export class TraceKeepoutSolver extends BaseSolver {
     // this.hdRoutes = smoothHdRoutes(input.hdRoutes, this.getSmoothDistance())
     this.hdRoutes = input.hdRoutes
 
-    this.KEEPOUT_RADIUS_SCHEDULE = input.keepoutRadiusSchedule ?? [
-      0.3, 0.5, 0.75, 0.5, 0.3,
-    ]
+    this.KEEPOUT_RADIUS_SCHEDULE = input.keepoutRadiusSchedule ?? [0.3]
     this.currentKeepoutRadius = this.KEEPOUT_RADIUS_SCHEDULE[0] ?? 0.15
     this.unprocessedRoutes = [...this.hdRoutes]
     this.smoothedCursorRoutes = [...this.unprocessedRoutes]

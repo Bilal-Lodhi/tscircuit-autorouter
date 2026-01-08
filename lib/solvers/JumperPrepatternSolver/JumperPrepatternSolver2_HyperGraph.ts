@@ -19,6 +19,11 @@ import {
   createGraphWithConnectionsFromBaseGraph,
   type JRegion,
 } from "@tscircuit/hypergraph"
+import { areSegmentsCollinear } from "./areSegmentsCollinear"
+import { getCollinearOverlapInfo } from "./getCollinearOverlapInfo"
+import { computeOffsetMidpoint } from "./computeOffsetMidpoint"
+
+export type Point2D = { x: number; y: number }
 
 export type HyperGraphPatternType =
   | "single_1206x4"
@@ -245,6 +250,7 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
 
     if (this.jumperGraphSolver.solved) {
       this._processResults()
+      this._addMidpointsForCollinearOverlaps()
       this.solved = true
     } else if (this.jumperGraphSolver.failed) {
       this.error = this.jumperGraphSolver.error
@@ -331,6 +337,141 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
         route: routePoints,
         jumpers,
       })
+    }
+  }
+
+  /**
+   * Post-process routes to add offset midpoints for collinear overlapping segments.
+   *
+   * When two segments are collinear and overlap (arranged as A-C-D-B where AB
+   * is one segment and CD is another), the outer segment (AB) needs a midpoint
+   * pushed to the side to hint to the force-directed graph that it should route
+   * around the inner segment.
+   *
+   * This handles both:
+   * 1. Segments from different connections that overlap
+   * 2. Segments from the SAME connection that overlap (when a route doubles back)
+   */
+  private _addMidpointsForCollinearOverlaps() {
+    // Offset distance for the midpoint (mm) - should be enough to hint direction
+    const OFFSET_DISTANCE = 0.5
+
+    // Collect all segments from all routes
+    type RouteSegment = {
+      routeIndex: number
+      segmentIndex: number
+      start: Point2D
+      end: Point2D
+      connectionName: string
+      isInsideJumperPad: boolean
+    }
+
+    const allSegments: RouteSegment[] = []
+
+    for (let routeIdx = 0; routeIdx < this.solvedRoutes.length; routeIdx++) {
+      const route = this.solvedRoutes[routeIdx]
+      for (let i = 0; i < route.route.length - 1; i++) {
+        const p1 = route.route[i] as {
+          x: number
+          y: number
+          z: number
+          insideJumperPad?: boolean
+        }
+        const p2 = route.route[i + 1] as {
+          x: number
+          y: number
+          z: number
+          insideJumperPad?: boolean
+        }
+
+        // Track whether this segment is inside jumper pads
+        const isInsideJumperPad = Boolean(
+          p1.insideJumperPad && p2.insideJumperPad,
+        )
+
+        allSegments.push({
+          routeIndex: routeIdx,
+          segmentIndex: i,
+          start: { x: p1.x, y: p1.y },
+          end: { x: p2.x, y: p2.y },
+          connectionName: route.connectionName,
+          isInsideJumperPad,
+        })
+      }
+    }
+
+    // Track which routes need midpoint insertions (routeIndex -> list of insertions)
+    // Use a Set to track unique insertions by segment index to avoid duplicates
+    const insertions: Map<
+      number,
+      Map<number, { afterSegmentIndex: number; point: Point2D & { z: number } }>
+    > = new Map()
+
+    // Compare all pairs of segments (including from the same route!)
+    for (let i = 0; i < allSegments.length; i++) {
+      for (let j = i + 1; j < allSegments.length; j++) {
+        const seg1 = allSegments[i]
+        const seg2 = allSegments[j]
+
+        // For same-route segments, skip adjacent segments (they share an endpoint)
+        if (
+          seg1.routeIndex === seg2.routeIndex &&
+          Math.abs(seg1.segmentIndex - seg2.segmentIndex) <= 1
+        ) {
+          continue
+        }
+
+        // Check if segments are collinear
+        if (!areSegmentsCollinear(seg1.start, seg1.end, seg2.start, seg2.end)) {
+          continue
+        }
+
+        // Check if they overlap and get info about which is outer
+        const overlapInfo = getCollinearOverlapInfo(
+          seg1.start,
+          seg1.end,
+          seg2.start,
+          seg2.end,
+        )
+
+        if (!overlapInfo) continue
+
+        // Determine which route/segment is the outer one
+        const outerSeg = overlapInfo.outerSegment === 1 ? seg1 : seg2
+
+        // Compute offset midpoint for the outer segment
+        const offsetMidpoint = computeOffsetMidpoint(
+          overlapInfo.outerStart,
+          overlapInfo.outerEnd,
+          OFFSET_DISTANCE,
+        )
+
+        // Add to insertions for the outer route (using Map to dedupe by segment index)
+        if (!insertions.has(outerSeg.routeIndex)) {
+          insertions.set(outerSeg.routeIndex, new Map())
+        }
+        const routeInsertions = insertions.get(outerSeg.routeIndex)!
+        // Only add if we haven't already added an insertion for this segment
+        if (!routeInsertions.has(outerSeg.segmentIndex)) {
+          routeInsertions.set(outerSeg.segmentIndex, {
+            afterSegmentIndex: outerSeg.segmentIndex,
+            point: { ...offsetMidpoint, z: 0 },
+          })
+        }
+      }
+    }
+
+    // Apply insertions to routes (in reverse order to preserve indices)
+    for (const [routeIndex, routeInsertionsMap] of insertions) {
+      // Convert map to array and sort by segment index descending
+      const routeInsertions = Array.from(routeInsertionsMap.values())
+      routeInsertions.sort((a, b) => b.afterSegmentIndex - a.afterSegmentIndex)
+
+      const route = this.solvedRoutes[routeIndex]
+      for (const insertion of routeInsertions) {
+        // Insert the midpoint after the start of the segment (at index + 1)
+        route.route.splice(insertion.afterSegmentIndex + 1, 0, insertion.point)
+      }
     }
   }
 
