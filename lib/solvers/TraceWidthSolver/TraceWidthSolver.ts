@@ -242,6 +242,37 @@ export class TraceWidthSolver extends BaseSolver {
   }
 
   /**
+   * Checks if an obstacle is a jumper pad belonging to the current trace's jumpers.
+   * This is needed because jumper pads may not have connectedTo set properly.
+   */
+  private isObstacleOwnJumperPad(obstacle: Obstacle): boolean {
+    if (!this.currentTrace?.jumpers) return false
+
+    const TOLERANCE = 0.01 // 0.01mm tolerance for position matching
+
+    for (const jumper of this.currentTrace.jumpers) {
+      // Check if obstacle center is near jumper start or end
+      const distToStart = Math.sqrt(
+        (obstacle.center.x - jumper.start.x) ** 2 +
+          (obstacle.center.y - jumper.start.y) ** 2,
+      )
+      const distToEnd = Math.sqrt(
+        (obstacle.center.x - jumper.end.x) ** 2 +
+          (obstacle.center.y - jumper.end.y) ** 2,
+      )
+
+      // Jumper pads are typically small rectangles at the start/end of jumpers
+      // Check if obstacle center is within half the pad width of the jumper endpoint
+      const maxDist = Math.max(obstacle.width, obstacle.height) / 2 + TOLERANCE
+      if (distToStart < maxDist || distToEnd < maxDist) {
+        return true
+      }
+    }
+
+    return false
+  }
+
+  /**
    * Gets the minimum clearance at a given position from obstacles and other traces
    * Also updates lastCollidingObstacles and lastCollidingRoutes for visualization
    */
@@ -292,6 +323,11 @@ export class TraceWidthSolver extends BaseSolver {
           }
         }
         if (isConnected) continue
+
+        // Skip obstacles that are jumper pads belonging to this trace
+        if (this.isObstacleOwnJumperPad(obstacle)) {
+          continue
+        }
 
         const obstacleMinX = obstacle.center.x - obstacle.width / 2
         const obstacleMaxX = obstacle.center.x + obstacle.width / 2
