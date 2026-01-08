@@ -33,6 +33,7 @@ export type HyperGraphPatternType =
   | "3x2_1206x4"
   | "3x3_1206x4"
   | "4x4_1206x4"
+  | "6x4_1206x4"
 
 export interface JumperPrepatternSolver2HyperParameters {
   /** Pattern type for jumper placement - "single_1206x4" (~8x8mm) or "2x2_1206x4" (~14x14mm) */
@@ -135,6 +136,9 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
 
   private _getPatternConfig(): { cols: number; rows: number } {
     const patternType = this.hyperParameters.PATTERN_TYPE ?? "single_1206x4"
+    if (patternType === "6x4_1206x4") {
+      return { cols: 6, rows: 4 }
+    }
     if (patternType === "4x4_1206x4") {
       return { cols: 4, rows: 4 }
     }
@@ -179,10 +183,10 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
       outerPaddingX: 0.4,
       outerPaddingY: 0.4,
       // parallelTracesUnderJumperCount: 2,
-      innerColChannelPointCount: Math.min(3, 1 + patternConfig.cols),
-      innerRowChannelPointCount: Math.min(3, 1 + patternConfig.rows),
-      outerChannelXPointCount: Math.max(5, patternConfig.cols * 3),
-      outerChannelYPointCount: Math.max(5, patternConfig.rows * 3),
+      innerColChannelPointCount: 3, // Math.min(3, 1 + patternConfig.cols),
+      innerRowChannelPointCount: 3, // Math.min(3, 1 + patternConfig.rows),
+      outerChannelXPointCount: 3, // Math.max(5, patternConfig.cols * 3),
+      outerChannelYPointCount: 3, // Math.max(5, patternConfig.rows * 3),
       regionsBetweenPads: true,
       orientation,
       bounds: nodeBounds,
@@ -245,6 +249,8 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
       },
       inputConnections: graphWithConnections.connections,
     })
+    // TODO multiply by effort
+    this.jumperGraphSolver.MAX_ITERATIONS *= 3
 
     return true
   }
