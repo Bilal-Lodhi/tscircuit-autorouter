@@ -17,6 +17,7 @@ import {
   distance,
   pointToSegmentClosestPoint,
   pointToSegmentDistance,
+  doSegmentsIntersect,
 } from "@tscircuit/math-utils"
 import { smoothHdRoutes } from "./smoothLines"
 import { cloneAndShuffleArray } from "lib/utils/cloneAndShuffleArray"
@@ -98,7 +99,7 @@ export class TraceKeepoutSolver extends BaseSolver {
     // this.hdRoutes = smoothHdRoutes(input.hdRoutes, this.getSmoothDistance())
     this.hdRoutes = input.hdRoutes
 
-    this.KEEPOUT_RADIUS_SCHEDULE = input.keepoutRadiusSchedule ?? [0.3]
+    this.KEEPOUT_RADIUS_SCHEDULE = input.keepoutRadiusSchedule ?? [0.1, 0.3]
     this.currentKeepoutRadius = this.KEEPOUT_RADIUS_SCHEDULE[0] ?? 0.15
     this.unprocessedRoutes = [...this.hdRoutes]
     this.smoothedCursorRoutes = [...this.unprocessedRoutes]
@@ -378,6 +379,27 @@ export class TraceKeepoutSolver extends BaseSolver {
     //   this.drawPosition = { ...this.cursorPosition! }
     // }
 
+    // Check if the new segment would intersect with any other route
+    const lastRecorded =
+      this.recordedDrawPositions[this.recordedDrawPositions.length - 1]
+    if (lastRecorded && this.drawPosition) {
+      const newSegmentStart = {
+        x: lastRecorded.x,
+        y: lastRecorded.y,
+        z: lastRecorded.z,
+      }
+      const newSegmentEnd = {
+        x: this.drawPosition.x,
+        y: this.drawPosition.y,
+        z: this.cursorPosition!.z,
+      }
+
+      if (this.segmentIntersectsOtherRoutes(newSegmentStart, newSegmentEnd)) {
+        // The pushed draw position would cause an intersection, fall back to cursor position
+        this.drawPosition = { ...this.cursorPosition! }
+      }
+    }
+
     // Record the draw position
     this.recordedDrawPositions.push({
       x: this.drawPosition!.x,
@@ -644,6 +666,67 @@ export class TraceKeepoutSolver extends BaseSolver {
         return true
       }
     }
+    return false
+  }
+
+  /**
+   * Checks if a new segment would intersect with any route from unprocessedRoutes,
+   * smoothedCursorRoutes, or processedRoutes (excluding routes with the same connection name).
+   */
+  private segmentIntersectsOtherRoutes(
+    segStart: { x: number; y: number; z: number },
+    segEnd: { x: number; y: number; z: number },
+  ): boolean {
+    if (!this.currentTrace) return false
+
+    const currentRootConnectionName =
+      this.currentTrace.rootConnectionName ?? this.currentTrace.connectionName
+
+    // Check all route collections
+    const allRoutesToCheck = [
+      ...this.unprocessedRoutes,
+      ...this.smoothedCursorRoutes,
+      ...this.processedRoutes,
+    ]
+
+    for (const route of allRoutesToCheck) {
+      const routeRootConnectionName =
+        route.rootConnectionName ?? route.connectionName
+
+      // Skip routes with the same connection name (same trace)
+      if (routeRootConnectionName === currentRootConnectionName) {
+        continue
+      }
+
+      // Check each segment of this route
+      for (let i = 0; i < route.route.length - 1; i++) {
+        const routeSegStart = route.route[i]!
+        const routeSegEnd = route.route[i + 1]!
+
+        // Only check segments on the same layer
+        if (routeSegStart.z !== segStart.z && routeSegEnd.z !== segStart.z) {
+          continue
+        }
+
+        // Skip jumper segments (they are "off board")
+        if (routeSegStart.insideJumperPad && routeSegEnd.insideJumperPad) {
+          continue
+        }
+
+        // Check for intersection
+        if (
+          doSegmentsIntersect(
+            { x: segStart.x, y: segStart.y },
+            { x: segEnd.x, y: segEnd.y },
+            { x: routeSegStart.x, y: routeSegStart.y },
+            { x: routeSegEnd.x, y: routeSegEnd.y },
+          )
+        ) {
+          return true
+        }
+      }
+    }
+
     return false
   }
 
