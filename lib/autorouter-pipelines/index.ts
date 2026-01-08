@@ -1,3 +1,5 @@
 export { AssignableAutoroutingPipeline1Solver } from "./AssignableAutoroutingPipeline1/AssignableAutoroutingPipeline1Solver"
 export { AutoroutingPipelineSolver2_PortPointPathing } from "./AutoroutingPipeline2_PortPointPathing/AutoroutingPipelineSolver2_PortPointPathing"
+export { AssignableAutoroutingPipeline2 } from "./AssignableAutoroutingPipeline2/AssignableAutoroutingPipeline2"
+export { AssignableAutoroutingPipeline3 } from "./AssignableAutoroutingPipeline3/AssignableAutoroutingPipeline3"
 export { AutoroutingPipeline1_OriginalUnravel } from "./AutoroutingPipeline1_OriginalUnravel/AutoroutingPipeline1_OriginalUnravel"
