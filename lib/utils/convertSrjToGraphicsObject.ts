@@ -44,6 +44,39 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
     for (const trace of srj.traces) {
       let traceWidth = srj.minTraceWidth
 
+      // Extract jumpers from this trace's route to identify wire segments that should be skipped
+      const jumpers = trace.route.filter(
+        (r): r is Extract<typeof r, { route_type: "jumper" }> =>
+          r.route_type === "jumper",
+      )
+
+      // Helper to check if a wire segment is inside a jumper (connects jumper start to end)
+      const isWireSegmentInsideJumper = (
+        p1: { x: number; y: number },
+        p2: { x: number; y: number },
+      ): boolean => {
+        const tolerance = 0.01
+        for (const jumper of jumpers) {
+          // Check if this segment connects the jumper's start and end points
+          const matchesForward =
+            Math.abs(p1.x - jumper.start.x) < tolerance &&
+            Math.abs(p1.y - jumper.start.y) < tolerance &&
+            Math.abs(p2.x - jumper.end.x) < tolerance &&
+            Math.abs(p2.y - jumper.end.y) < tolerance
+
+          const matchesBackward =
+            Math.abs(p1.x - jumper.end.x) < tolerance &&
+            Math.abs(p1.y - jumper.end.y) < tolerance &&
+            Math.abs(p2.x - jumper.start.x) < tolerance &&
+            Math.abs(p2.y - jumper.start.y) < tolerance
+
+          if (matchesForward || matchesBackward) {
+            return true
+          }
+        }
+        return false
+      }
+
       for (let j = 0; j < trace.route.length - 1; j++) {
         const routePoint = trace.route[j]
         const nextRoutePoint = trace.route[j + 1]
@@ -108,6 +141,16 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
           nextRoutePoint.route_type === "wire" &&
           nextRoutePoint.layer === routePoint.layer
         ) {
+          // Skip wire segments that are inside a jumper (these are handled by the jumper drawing)
+          if (
+            isWireSegmentInsideJumper(
+              { x: routePoint.x, y: routePoint.y },
+              { x: nextRoutePoint.x, y: nextRoutePoint.y },
+            )
+          ) {
+            continue
+          }
+
           traceWidth = routePoint.width
           // Get the connection color, fallback to layer-based color
           const connectionColor = colorMap[trace.connection_name]
