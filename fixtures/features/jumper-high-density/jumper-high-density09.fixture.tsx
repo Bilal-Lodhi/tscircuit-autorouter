@@ -1,18 +1,27 @@
 import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"
-import { IntraNodeSolverWithJumpers } from "lib/solvers/HighDensitySolver/IntraNodeSolverWithJumpers"
+import { JumperHighDensitySolver } from "lib/autorouter-pipelines/AssignableAutoroutingPipeline2/JumperHighDensitySolver"
+import { generateColorMapFromNodeWithPortPoints } from "lib/utils/generateColorMapFromNodeWithPortPoints"
 import input from "./jumper-high-density09-input.json"
-import { HyperIntraNodeSolverWithJumpers } from "lib/solvers/HighDensitySolver/HyperIntraNodeSolverWithJumpers"
-import { HyperJumperPrepatternSolver2 } from "lib/solvers/JumperPrepatternSolver"
 
 export default () => {
   const createSolver = () => {
-    return new HyperJumperPrepatternSolver2({
-      nodeWithPortPoints: input.nodeWithPortPoints as any,
-      colorMap: input.colorMap,
-      hyperParameters: input.hyperParameters,
-      traceWidth: input.traceWidth,
+    const nodePortPoints = (input as any[]).flatMap(
+      (item: any) => item.nodePortPoints,
+    )
+
+    const colorMap: Record<string, string> = {}
+    for (const node of nodePortPoints) {
+      const nodeColorMap = generateColorMapFromNodeWithPortPoints(node)
+      for (const [key, value] of Object.entries(nodeColorMap)) {
+        colorMap[key] = value
+      }
+    }
+
+    return new JumperHighDensitySolver({
+      nodePortPoints,
+      colorMap,
     })
   }
 
-  return <GenericSolverDebugger autoStepOnce createSolver={createSolver} />
+  return <GenericSolverDebugger createSolver={createSolver} />
 }

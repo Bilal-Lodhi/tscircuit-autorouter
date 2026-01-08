@@ -7,6 +7,7 @@ export const calculateNodeProbabilityOfFailureWithJumpers = (
 ) => {
   const nodeArea = node.width * node.height
   const jumpersWeCanFitInNode = nodeArea * JUMPERS_PER_MM_SQUARED
-  const estimatedRequiredJumpers = numSameLayerCrossings ** 2
+  const estimatedRequiredJumpers = numSameLayerCrossings ** 1.5
+  if (nodeArea < 50) return 1
   return Math.min(1, estimatedRequiredJumpers / jumpersWeCanFitInNode)
 }
