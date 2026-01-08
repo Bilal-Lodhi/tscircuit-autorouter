@@ -881,16 +881,6 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     >,
     newNodeAssignedPortPoints: Map<CapacityMeshNodeId, PortPoint[]>,
   ) {
-    const debugConnectionName = "source_trace_5__source_net_1_mst1"
-    const debugCutName = `__cut__${debugConnectionName}`
-
-    console.log("[reattachSection] Starting reattachment")
-    console.log(`  newConnectionResults count: ${newConnectionResults.length}`)
-    console.log(
-      "  Connection names:",
-      newConnectionResults.map((r) => r.connection.name),
-    )
-
     // Separate fully contained connections from cut paths
     const fullyContainedResults: ConnectionPathResult[] = []
     const cutPathResults: ConnectionPathResult[] = []
@@ -902,10 +892,6 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
         fullyContainedResults.push(result)
       }
     }
-
-    console.log(
-      `  Fully contained: ${fullyContainedResults.length}, Cut paths: ${cutPathResults.length}`,
-    )
 
     // Handle fully contained connections (replace entirely)
     const reRoutedConnectionNames = new Set(
@@ -920,8 +906,16 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     // Add new results for fully contained connections
     this.connectionResults.push(...fullyContainedResults)
 
-    // Clear port points for fully re-routed connections from all nodes
+    // Clear port points for fully re-routed connections ONLY from nodes in the section
+    // This is critical: we only want to clear port points from nodes that are in the section,
+    // because we'll only be adding back port points for nodes in the section.
     for (const [nodeId, portPoints] of this.nodeAssignedPortPoints.entries()) {
+      // Only clear port points from nodes in the section
+      if (!_section.nodeIds.has(nodeId)) {
+        continue
+      }
+
+      const beforeClear = portPoints.length
       const remainingPortPoints = portPoints.filter(
         (pp) => !reRoutedConnectionNames.has(pp.connectionName),
       )
@@ -948,29 +942,6 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
 
       // Get the original connection name (without the __cut__ prefix)
       const originalConnectionName = sectionPath.connectionName
-
-      const isDebugConnection = originalConnectionName === debugConnectionName
-      if (isDebugConnection) {
-        console.log(
-          `[reattachSection] Processing cut path for ${debugConnectionName}`,
-        )
-        console.log(`  Cut result path length: ${cutResult.path.length}`)
-        console.log(`  Original path length: ${originalPath.length}`)
-        console.log(
-          `  Section path originalStartIndex: ${sectionPath.originalStartIndex}`,
-        )
-        console.log(
-          `  Section path originalEndIndex: ${sectionPath.originalEndIndex}`,
-        )
-        console.log(
-          "  Original path nodeIds:",
-          originalPath.map((p) => p.currentNodeId),
-        )
-        console.log(
-          "  Cut result path nodeIds:",
-          cutResult.path.map((p) => p.currentNodeId),
-        )
-      }
 
       // Clear old port points for the portion being replaced
       // We need to remove port points that were in the original cut section

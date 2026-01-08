@@ -193,29 +193,6 @@ export function createPortPointSection(
     sectionNodeIds,
   )
 
-  const debugConnectionName = "source_trace_5__source_net_1_mst1"
-  const debugSectionPaths = sectionPaths.filter(
-    (sp) => sp.connectionName === debugConnectionName,
-  )
-  if (debugSectionPaths.length > 0) {
-    console.log(
-      `[createPortPointSection] Found ${debugSectionPaths.length} section paths for ${debugConnectionName}`,
-    )
-    for (const sp of debugSectionPaths) {
-      console.log("  Section path details:")
-      console.log(`    Points count: ${sp.points.length}`)
-      console.log(
-        `    Original range: [${sp.originalStartIndex}, ${sp.originalEndIndex}]`,
-      )
-      console.log(`    Has entry from outside: ${sp.hasEntryFromOutside}`)
-      console.log(`    Has exit to outside: ${sp.hasExitToOutside}`)
-      console.log(
-        "    Point nodeIds:",
-        sp.points.map((p) => p.nodeId),
-      )
-    }
-  }
-
   return {
     centerNodeId: centerOfSectionCapacityNodeId,
     expansionDegrees,
