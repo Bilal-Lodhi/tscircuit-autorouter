@@ -22,6 +22,13 @@ export interface HyperJumperPrepatternSolver2Params {
   traceWidth?: number
   connMap?: ConnectivityMap
   hyperParameters?: JumperPrepatternSolver2HyperParameters
+  /** Obstacles within or near this node that jumpers should avoid */
+  obstacles?: Array<{
+    type: "rect" | "oval"
+    center: { x: number; y: number }
+    width: number
+    height: number
+  }>
 }
 
 type VariantHyperParameters = {
@@ -46,6 +53,12 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
   traceWidth: number
   connMap?: ConnectivityMap
   baseHyperParameters?: JumperPrepatternSolver2HyperParameters
+  obstacles: Array<{
+    type: "rect" | "oval"
+    center: { x: number; y: number }
+    width: number
+    height: number
+  }>
 
   // Output
   solvedRoutes: HighDensityIntraNodeRouteWithJumpers[] = []
@@ -60,6 +73,7 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
     this.traceWidth = params.traceWidth ?? 0.15
     this.connMap = params.connMap
     this.baseHyperParameters = params.hyperParameters ?? {}
+    this.obstacles = params.obstacles ?? []
     this.MAX_ITERATIONS = 1e6
     this.GREEDY_MULTIPLIER = 1
     this.MIN_SUBSTEPS = 1000
@@ -164,6 +178,7 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
       nodeWithPortPoints: this.nodeWithPortPoints,
       colorMap: this.colorMap,
       traceWidth: this.traceWidth,
+      obstacles: this.obstacles,
       hyperParameters: {
         PATTERN_TYPE: hyperParameters.PATTERN_TYPE,
         ORIENTATION: hyperParameters.ORIENTATION,

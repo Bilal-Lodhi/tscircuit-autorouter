@@ -51,6 +51,13 @@ export interface JumperPrepatternSolver2Params {
   traceWidth?: number
   hyperParameters?: JumperPrepatternSolver2HyperParameters
   connMap?: ConnectivityMap
+  /** Obstacles within or near this node that jumpers should avoid */
+  obstacles?: Array<{
+    type: "rect" | "oval"
+    center: { x: number; y: number }
+    width: number
+    height: number
+  }>
 }
 
 interface XYConnection {
@@ -66,6 +73,12 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
   colorMap: Record<string, string>
   traceWidth: number
   hyperParameters: JumperPrepatternSolver2HyperParameters
+  obstacles: Array<{
+    type: "rect" | "oval"
+    center: { x: number; y: number }
+    width: number
+    height: number
+  }>
 
   // Internal solver
   jumperGraphSolver: JumperGraphSolver | null = null
@@ -99,6 +112,7 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
     this.colorMap = params.colorMap ?? {}
     this.traceWidth = params.traceWidth ?? 0.15
     this.hyperParameters = params.hyperParameters ?? {}
+    this.obstacles = params.obstacles ?? []
     this.MAX_ITERATIONS = 1e6
 
     // Initialize colorMap if not provided
@@ -166,6 +180,95 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
     return { cols: 1, rows: 1 }
   }
 
+  /**
+   * Calculate adjusted bounds for the jumper grid to avoid overlapping with obstacles.
+   * Returns bounds that are shrunk on the side where obstacles are located.
+   */
+  private _calculateAdjustedBounds(
+    nodeBounds: { minX: number; maxX: number; minY: number; maxY: number },
+    obstaclesInNode: Array<{
+      center: { x: number; y: number }
+      width: number
+      height: number
+    }>,
+  ): { minX: number; maxX: number; minY: number; maxY: number } {
+    if (obstaclesInNode.length === 0) {
+      return nodeBounds
+    }
+
+    const nodeCenter = {
+      x: (nodeBounds.minX + nodeBounds.maxX) / 2,
+      y: (nodeBounds.minY + nodeBounds.maxY) / 2,
+    }
+    const nodeWidth = nodeBounds.maxX - nodeBounds.minX
+    const nodeHeight = nodeBounds.maxY - nodeBounds.minY
+
+    // Calculate how much to shrink each side based on obstacles
+    // For each obstacle, if it's in the left/right/top/bottom portion of the node,
+    // we shrink that side proportionally
+    let leftShrink = 0
+    let rightShrink = 0
+    let topShrink = 0
+    let bottomShrink = 0
+
+    for (const obs of obstaclesInNode) {
+      const obsMinX = obs.center.x - obs.width / 2
+      const obsMaxX = obs.center.x + obs.width / 2
+      const obsMinY = obs.center.y - obs.height / 2
+      const obsMaxY = obs.center.y + obs.height / 2
+
+      // Check if obstacle is in the left half (affects left shrink)
+      if (obs.center.x < nodeCenter.x) {
+        // Calculate how far into the node the obstacle extends
+        const penetration = obsMaxX - nodeBounds.minX
+        if (penetration > 0) {
+          leftShrink = Math.max(leftShrink, penetration)
+        }
+      }
+      // Check if obstacle is in the right half
+      if (obs.center.x > nodeCenter.x) {
+        const penetration = nodeBounds.maxX - obsMinX
+        if (penetration > 0) {
+          rightShrink = Math.max(rightShrink, penetration)
+        }
+      }
+      // Check if obstacle is in the bottom half (lower y values)
+      if (obs.center.y < nodeCenter.y) {
+        const penetration = obsMaxY - nodeBounds.minY
+        if (penetration > 0) {
+          bottomShrink = Math.max(bottomShrink, penetration)
+        }
+      }
+      // Check if obstacle is in the top half (higher y values)
+      if (obs.center.y > nodeCenter.y) {
+        const penetration = nodeBounds.maxY - obsMinY
+        if (penetration > 0) {
+          topShrink = Math.max(topShrink, penetration)
+        }
+      }
+    }
+
+    // Add a small margin around obstacles
+    const margin = 0.5 // 0.5mm margin
+
+    // Limit shrinkage to at most 30% of each dimension to ensure grid can still fit
+    const maxShrinkX = nodeWidth * 0.3
+    const maxShrinkY = nodeHeight * 0.3
+
+    leftShrink = Math.min(leftShrink + margin, maxShrinkX)
+    rightShrink = Math.min(rightShrink + margin, maxShrinkX)
+    bottomShrink = Math.min(bottomShrink + margin, maxShrinkY)
+    topShrink = Math.min(topShrink + margin, maxShrinkY)
+
+    // Apply shrinkage
+    return {
+      minX: nodeBounds.minX + leftShrink,
+      maxX: nodeBounds.maxX - rightShrink,
+      minY: nodeBounds.minY + bottomShrink,
+      maxY: nodeBounds.maxY - topShrink,
+    }
+  }
+
   private _initializeGraph(): boolean {
     const node = this.nodeWithPortPoints
     const patternConfig = this._getPatternConfig()
@@ -180,7 +283,29 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
     }
     this.graphBounds = nodeBounds
 
-    // Generate the base jumper grid to fit the node bounds exactly
+    // Filter obstacles that are within or overlap the node bounds
+    const obstaclesInNode = this.obstacles.filter((obs) => {
+      const obsMinX = obs.center.x - obs.width / 2
+      const obsMaxX = obs.center.x + obs.width / 2
+      const obsMinY = obs.center.y - obs.height / 2
+      const obsMaxY = obs.center.y + obs.height / 2
+
+      // Check for overlap
+      return !(
+        obsMaxX < nodeBounds.minX ||
+        obsMinX > nodeBounds.maxX ||
+        obsMaxY < nodeBounds.minY ||
+        obsMinY > nodeBounds.maxY
+      )
+    })
+
+    // Calculate adjusted bounds that shrink away from obstacles
+    const adjustedBounds = this._calculateAdjustedBounds(
+      nodeBounds,
+      obstaclesInNode,
+    )
+
+    // Generate the base jumper grid to fit the adjusted bounds
     const baseGraph = generateJumperX4Grid({
       cols: patternConfig.cols,
       rows: patternConfig.rows,
@@ -195,7 +320,7 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
       outerChannelYPointCount: 3, // Math.max(5, patternConfig.rows * 3),
       regionsBetweenPads: true,
       orientation,
-      bounds: nodeBounds,
+      bounds: adjustedBounds,
     })
 
     // Check if baseGraph bounds exceed node bounds - fail immediately if so

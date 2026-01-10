@@ -355,6 +355,7 @@ export class AssignableAutoroutingPipeline3 extends BaseSolver {
         viaDiameter: cms.viaDiameter,
         traceWidth: cms.minTraceWidth,
         connMap: cms.connMap,
+        obstacles: cms.srj.obstacles,
       },
     ]),
     definePipelineStep(

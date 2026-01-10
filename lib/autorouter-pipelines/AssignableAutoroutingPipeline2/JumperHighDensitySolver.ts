@@ -69,6 +69,12 @@ export class JumperHighDensitySolver extends BaseSolver {
   viaDiameter: number
   connMap?: ConnectivityMap
   hyperParameters?: Partial<HighDensityHyperParameters>
+  obstacles: Array<{
+    type: "rect" | "oval"
+    center: { x: number; y: number }
+    width: number
+    height: number
+  }>
 
   // Nodes grouped by solver type
   nodesWithoutCrossings: NodeWithPortPoints[]
@@ -94,6 +100,7 @@ export class JumperHighDensitySolver extends BaseSolver {
     viaDiameter = 0.6,
     connMap,
     hyperParameters,
+    obstacles,
   }: {
     nodePortPoints: NodeWithPortPoints[]
     colorMap?: Record<string, string>
@@ -101,6 +108,13 @@ export class JumperHighDensitySolver extends BaseSolver {
     viaDiameter?: number
     connMap?: ConnectivityMap
     hyperParameters?: Partial<HighDensityHyperParameters>
+    /** Obstacles that jumpers should avoid */
+    obstacles?: Array<{
+      type: "rect" | "oval"
+      center: { x: number; y: number }
+      width: number
+      height: number
+    }>
   }) {
     super()
     this.allNodes = [...nodePortPoints]
@@ -110,6 +124,7 @@ export class JumperHighDensitySolver extends BaseSolver {
     this.viaDiameter = viaDiameter
     this.connMap = connMap
     this.hyperParameters = hyperParameters
+    this.obstacles = obstacles ?? []
 
     this.nodesWithoutCrossings = []
     this.nodesWithCrossings = []
@@ -248,6 +263,7 @@ export class JumperHighDensitySolver extends BaseSolver {
         colorMap: this.colorMap,
         traceWidth: this.traceWidth,
         connMap: this.connMap,
+        obstacles: this.obstacles,
       })
       this.jumperSolvers.push(solver)
     }
@@ -332,6 +348,7 @@ export class JumperHighDensitySolver extends BaseSolver {
       viaDiameter: this.viaDiameter,
       connMap: this.connMap,
       hyperParameters: this.hyperParameters,
+      obstacles: this.obstacles,
     }
   }
 
