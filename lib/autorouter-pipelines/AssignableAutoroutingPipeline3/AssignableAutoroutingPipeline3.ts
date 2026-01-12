@@ -406,6 +406,7 @@ export class AssignableAutoroutingPipeline3 extends BaseSolver {
           cms.highDensityStitchSolver?.mergedHdRoutes ??
           [],
         obstacles: cms.srj.obstacles,
+        jumpers: cms.highDensitySolver?.getOutputJumpers() ?? [],
         connMap: cms.connMap,
         colorMap: cms.colorMap,
         srj: cms.srj,
