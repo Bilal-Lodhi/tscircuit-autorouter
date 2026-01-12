@@ -399,18 +399,18 @@ export class AssignableAutoroutingPipeline3 extends BaseSolver {
     //     },
     //   ],
     // ),
-    // definePipelineStep("traceKeepoutSolver", TraceKeepoutSolver, (cms) => [
-    //   {
-    //     hdRoutes:
-    //       cms.traceSimplificationSolver?.simplifiedHdRoutes ??
-    //       cms.highDensityStitchSolver?.mergedHdRoutes ??
-    //       [],
-    //     obstacles: cms.srj.obstacles,
-    //     connMap: cms.connMap,
-    //     colorMap: cms.colorMap,
-    //     srj: cms.srj,
-    //   },
-    // ]),
+    definePipelineStep("traceKeepoutSolver", TraceKeepoutSolver, (cms) => [
+      {
+        hdRoutes:
+          cms.traceSimplificationSolver?.simplifiedHdRoutes ??
+          cms.highDensityStitchSolver?.mergedHdRoutes ??
+          [],
+        obstacles: cms.srj.obstacles,
+        connMap: cms.connMap,
+        colorMap: cms.colorMap,
+        srj: cms.srj,
+      },
+    ]),
     // definePipelineStep("traceWidthSolver", TraceWidthSolver, (cms) => [
     //   {
     //     hdRoutes:
