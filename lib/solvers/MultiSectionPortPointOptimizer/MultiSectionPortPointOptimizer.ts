@@ -114,36 +114,36 @@ function seededShuffle<T>(array: T[], seed: number): T[] {
 
 // Generate optimization schedule with multiple shuffle seeds per expansion degree
 const DEFAULT_HYPERPARAMETER_SCHEDULE: HyperParameterScheduleEntry[] = [
-  // {
-  //   SHUFFLE_SEED: 100,
-  //   NODE_PF_FACTOR: 100,
-  //   NODE_PF_MAX_PENALTY: 100,
-  //   MEMORY_PF_FACTOR: 0,
-  //   EXPANSION_DEGREES: 10,
-  //   FORCE_CENTER_FIRST: true,
-  //   FORCE_OFF_BOARD_FREQUENCY: 0,
-  //   CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
-  //   // MIN_ALLOWED_BOARD_SCORE: -1,
-  //   // MAX_ITERATIONS_PER_PATH: 300,
-  // },
   {
-    SHUFFLE_SEED: 200,
+    SHUFFLE_SEED: 100,
     NODE_PF_FACTOR: 100,
+    NODE_PF_MAX_PENALTY: 100,
     MEMORY_PF_FACTOR: 0,
-    EXPANSION_DEGREES: 4,
+    EXPANSION_DEGREES: 10,
     FORCE_CENTER_FIRST: true,
+    FORCE_OFF_BOARD_FREQUENCY: 0,
     CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
-    MAX_ITERATIONS_PER_PATH: 500,
+    // MIN_ALLOWED_BOARD_SCORE: -1,
+    // MAX_ITERATIONS_PER_PATH: 300,
   },
-  {
-    SHUFFLE_SEED: 300,
-    NODE_PF_FACTOR: 100,
-    MEMORY_PF_FACTOR: 0,
-    EXPANSION_DEGREES: 5,
-    FORCE_CENTER_FIRST: true,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR: 10,
-    MAX_ITERATIONS_PER_PATH: 1600,
-  },
+  // {
+  //   SHUFFLE_SEED: 200,
+  //   NODE_PF_FACTOR: 100,
+  //   MEMORY_PF_FACTOR: 0,
+  //   EXPANSION_DEGREES: 4,
+  //   FORCE_CENTER_FIRST: true,
+  //   CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
+  //   MAX_ITERATIONS_PER_PATH: 500,
+  // },
+  // {
+  //   SHUFFLE_SEED: 300,
+  //   NODE_PF_FACTOR: 100,
+  //   MEMORY_PF_FACTOR: 0,
+  //   EXPANSION_DEGREES: 5,
+  //   FORCE_CENTER_FIRST: true,
+  //   CENTER_OFFSET_DIST_PENALTY_FACTOR: 10,
+  //   MAX_ITERATIONS_PER_PATH: 1600,
+  // },
 ]
 
 // for (let seed = 0; seed < 30; seed++) {
