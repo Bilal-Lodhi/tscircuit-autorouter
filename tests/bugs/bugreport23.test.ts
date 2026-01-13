@@ -12,8 +12,8 @@ test("bugreport23 - should not fail with null z property in port points", async 
   const solver = new AutoroutingPipelineSolver2_PortPointPathing(
     bugreport23 as unknown as SimpleRouteJson,
     {
-      effort: 4
-    }
+      effort: 4,
+    },
   )
 
   while (solver.getCurrentPhase() !== "portPointPathingSolver") {
