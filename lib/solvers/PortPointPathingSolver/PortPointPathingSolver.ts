@@ -51,8 +51,8 @@ export interface PortPointPathingHyperParameters {
 
   RIPPING_ENABLED?: boolean
   RIPPING_PF_THRESHOLD?: number
-  MIN_RIPPING_PF_THRESHOLD?: number
-  MAX_RIPPING_PF_THRESHOLD?: number
+  START_RIPPING_PF_THRESHOLD?: number
+  END_RIPPING_PF_THRESHOLD?: number
   MAX_RIPS?: number
   RANDOM_RIP_FRACTION?: number
 
@@ -269,15 +269,15 @@ export class PortPointPathingSolver extends BaseSolver {
   }
 
   get RIPPING_PF_THRESHOLD() {
-    const min = this.hyperParameters.MIN_RIPPING_PF_THRESHOLD
-    const max = this.hyperParameters.MAX_RIPPING_PF_THRESHOLD
+    const start = this.hyperParameters.START_RIPPING_PF_THRESHOLD
+    const end = this.hyperParameters.END_RIPPING_PF_THRESHOLD
 
-    if (min !== undefined && max !== undefined) {
-      // Linearly interpolate from MAX to MIN as rips are used
+    if (start !== undefined && end !== undefined) {
+      // Linearly interpolate from START to END as rips are used
       const maxRips = this.MAX_RIPS
       const ratio = maxRips > 0 ? this.totalRipCount / maxRips : 0
-      // At 0 rips: return max (more aggressive), at MAX_RIPS: return min (less aggressive)
-      return max - ratio * (max - min)
+      // At 0 rips: return start, at MAX_RIPS: return end
+      return start + ratio * (end - start)
     }
 
     return this.hyperParameters.RIPPING_PF_THRESHOLD ?? 0.3
