@@ -29,11 +29,7 @@
     "@tscircuit/curvy-trace-solver": "^0.0.10",
     "@tscircuit/hypergraph": "^0.0.13",
     "@tscircuit/math-utils": "^0.0.27",
-<<<<<<< HEAD
     "@tscircuit/rectdiff": "0.0.22",
-=======
-    "@tscircuit/rectdiff": "^0.0.22",
->>>>>>> 38bcd8b4 (update the rectdiff to version 22 and use the complex polygons fix)
     "@tscircuit/solver-utils": "^0.0.9",
     "@types/bun": "^1.2.23",
     "@types/fast-json-stable-stringify": "^2.1.2",
