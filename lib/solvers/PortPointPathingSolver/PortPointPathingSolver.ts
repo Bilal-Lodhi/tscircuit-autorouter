@@ -1265,6 +1265,7 @@ export class PortPointPathingSolver extends BaseSolver {
       const boardScore = this.computeBoardScore()
       this.stats = {
         boardScore,
+        totalRipCount: this.totalRipCount,
       }
       if (boardScore < this.MIN_ALLOWED_BOARD_SCORE) {
         this.failedConnection = null
