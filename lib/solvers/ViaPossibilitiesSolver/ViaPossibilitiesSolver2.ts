@@ -98,8 +98,7 @@ export class ViaPossibilitiesSolver2 extends BaseSolver {
     const areaInsideNode =
       (this.bounds.maxX - this.bounds.minX) *
       (this.bounds.maxY - this.bounds.minY)
-    const viaPitch =
-      this.viaDiameter + this.NEW_HEAD_WALL_BUFFER_DISTANCE * 2
+    const viaPitch = this.viaDiameter + this.NEW_HEAD_WALL_BUFFER_DISTANCE * 2
     const maxViaCountByArea = Math.floor(areaInsideNode / (viaPitch * viaPitch))
     this.maxViaCount = Math.max(5, maxViaCountByArea)
 
