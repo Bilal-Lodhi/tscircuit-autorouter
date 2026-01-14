@@ -2,7 +2,7 @@ import { test, expect } from "bun:test"
 import type { SimpleRouteJson } from "lib/types"
 import { getLastStepSvg } from "../../fixtures/getLastStepSvg"
 import { AssignableAutoroutingPipeline3 } from "lib/index"
-import reproJson from "fixtures/bug-reports/bugreport01-be84eb/bugreport01-be84eb.json";
+import reproJson from "fixtures/bug-reports/bugreport01-be84eb/bugreport01-be84eb.json"
 
 test("bugreport01", () => {
   const solver = new AssignableAutoroutingPipeline3(
