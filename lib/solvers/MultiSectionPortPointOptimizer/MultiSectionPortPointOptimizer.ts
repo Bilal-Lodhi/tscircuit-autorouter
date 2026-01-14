@@ -112,39 +112,59 @@ function seededShuffle<T>(array: T[], seed: number): T[] {
   return result
 }
 
-// Generate optimization schedule with multiple shuffle seeds per expansion degree
-const DEFAULT_HYPERPARAMETER_SCHEDULE: HyperParameterScheduleEntry[] = [
-  {
-    SHUFFLE_SEED: 100,
-    NODE_PF_FACTOR: 100,
-    NODE_PF_MAX_PENALTY: 100,
-    MEMORY_PF_FACTOR: 0,
-    EXPANSION_DEGREES: 10,
-    FORCE_CENTER_FIRST: true,
-    FORCE_OFF_BOARD_FREQUENCY: 0,
-    CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
-    // MIN_ALLOWED_BOARD_SCORE: -1,
-    // MAX_ITERATIONS_PER_PATH: 300,
-  },
-  // {
-  //   SHUFFLE_SEED: 200,
-  //   NODE_PF_FACTOR: 100,
-  //   MEMORY_PF_FACTOR: 0,
-  //   EXPANSION_DEGREES: 4,
-  //   FORCE_CENTER_FIRST: true,
-  //   CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
-  //   MAX_ITERATIONS_PER_PATH: 500,
-  // },
-  // {
-  //   SHUFFLE_SEED: 300,
-  //   NODE_PF_FACTOR: 100,
-  //   MEMORY_PF_FACTOR: 0,
-  //   EXPANSION_DEGREES: 5,
-  //   FORCE_CENTER_FIRST: true,
-  //   CENTER_OFFSET_DIST_PENALTY_FACTOR: 10,
-  //   MAX_ITERATIONS_PER_PATH: 1600,
-  // },
-]
+const DEFAULT_SCHEDULE_BASE_PARAMS: Omit<
+  HyperParameterScheduleEntry,
+  "EXPANSION_DEGREES"
+> = {
+  SHUFFLE_SEED: 100,
+  NODE_PF_FACTOR: 100,
+  NODE_PF_MAX_PENALTY: 100,
+  MEMORY_PF_FACTOR: 0,
+  FORCE_CENTER_FIRST: true,
+  FORCE_OFF_BOARD_FREQUENCY: 0,
+  CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
+  // MIN_ALLOWED_BOARD_SCORE: -1,
+  // MAX_ITERATIONS_PER_PATH: 300,
+}
+
+const MIN_DEFAULT_EXPANSION_DEGREES = 3
+const MAX_DEFAULT_EXPANSION_DEGREES = 10
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
+}
+
+function getDefaultExpansionDegrees(effort: number): number {
+  const target = Math.round(2 + 2 * effort ** 1.2)
+  return clampNumber(
+    target,
+    MIN_DEFAULT_EXPANSION_DEGREES,
+    MAX_DEFAULT_EXPANSION_DEGREES,
+  )
+}
+
+function buildDefaultHyperparameterSchedule(
+  effort: number,
+): HyperParameterScheduleEntry[] {
+  return [
+    {
+      ...DEFAULT_SCHEDULE_BASE_PARAMS,
+      EXPANSION_DEGREES: getDefaultExpansionDegrees(effort),
+    },
+  ]
+}
+
+const MIN_DEFAULT_SHUFFLE_SEEDS = 4
+
+function getDefaultShuffleSeeds(
+  connectionCount: number,
+  effort: number,
+): number {
+  const normalizedEffort = Math.max(1, effort)
+  const base = Math.round(connectionCount * (1 + normalizedEffort * 1.0))
+  const legacyMax = Math.round(connectionCount * 2 * normalizedEffort)
+  return clampNumber(base, MIN_DEFAULT_SHUFFLE_SEEDS, legacyMax)
+}
 
 // for (let seed = 0; seed < 30; seed++) {
 //   DEFAULT_HYPERPARAMETER_SCHEDULE.push({
@@ -240,8 +260,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
   effort: number = 1
 
   /** Hyperparameter schedule for optimization attempts */
-  HYPERPARAMETER_SCHEDULE: HyperParameterScheduleEntry[] =
-    DEFAULT_HYPERPARAMETER_SCHEDULE
+  HYPERPARAMETER_SCHEDULE: HyperParameterScheduleEntry[] 
 
   constructor(params: MultiSectionPortPointOptimizerParams) {
     super()
@@ -266,6 +285,10 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     }
     if (params.HYPERPARAMETER_SCHEDULE !== undefined) {
       this.HYPERPARAMETER_SCHEDULE = params.HYPERPARAMETER_SCHEDULE
+    } else {
+      this.HYPERPARAMETER_SCHEDULE = buildDefaultHyperparameterSchedule(
+        this.effort,
+      )
     }
     this.JUMPER_PF_FN_ENABLED =
       params.JUMPER_PF_FN_ENABLED ?? this.JUMPER_PF_FN_ENABLED
@@ -843,7 +866,10 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
       nodeMemoryPfMap: this.nodePfMap,
       numShuffleSeeds:
         this.SHUFFLE_SEEDS_PER_SECTION ??
-        sectionSrj.connections.length * 2 * this.effort,
+        getDefaultShuffleSeeds(sectionSrj.connections.length, this.effort),
+      // numShuffleSeeds:
+      //   this.SHUFFLE_SEEDS_PER_SECTION ??
+      //   sectionSrj.connections.length * 2 * this.effort,
       hyperParameters: {
         ...this.getHyperParametersForScheduleIndex(
           this.currentScheduleIndex,
