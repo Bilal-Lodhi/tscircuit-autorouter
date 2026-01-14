@@ -80,11 +80,18 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
           { COLS: 4 },
           { COLS: 6 },
           { COLS: 8 },
+          { COLS: 10 },
         ],
       },
       {
         name: "rows",
-        possibleValues: [{ ROWS: 1 }, { ROWS: 2 }, { ROWS: 3 }, { ROWS: 4 }],
+        possibleValues: [
+          { ROWS: 1 },
+          { ROWS: 2 },
+          { ROWS: 3 },
+          { ROWS: 4 },
+          { ROWS: 8 },
+        ],
       },
       {
         name: "orientation",

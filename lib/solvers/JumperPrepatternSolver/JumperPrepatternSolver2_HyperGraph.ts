@@ -197,7 +197,7 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
       marginY: Math.max(1.2, patternConfig.rows * 0.3),
       outerPaddingX: 0.4,
       outerPaddingY: 0.4,
-      parallelTracesUnderJumperCount: 3,
+      parallelTracesUnderJumperCount: 2,
       innerColChannelPointCount: 3, // Math.min(3, 1 + patternConfig.cols),
       innerRowChannelPointCount: 3, // Math.min(3, 1 + patternConfig.rows),
       outerChannelXPointCount: 3, // Math.max(5, patternConfig.cols * 3),
