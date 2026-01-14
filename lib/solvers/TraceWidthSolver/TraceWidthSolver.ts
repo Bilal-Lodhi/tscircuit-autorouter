@@ -361,7 +361,7 @@ export class TraceWidthSolver extends BaseSolver {
 
     // Check for non-connected traces within the search radius
     const nearbyRoutes = this.hdRouteSHI.getConflictingRoutesNearPoint(
-      { x: position.x, y: position.y },
+      { x: position.x, y: position.y, z: position.z },
       searchRadius,
     )
 
