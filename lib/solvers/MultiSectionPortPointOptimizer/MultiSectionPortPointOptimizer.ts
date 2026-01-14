@@ -161,7 +161,8 @@ function getDefaultShuffleSeeds(
   effort: number,
 ): number {
   const normalizedEffort = Math.max(1, effort)
-  const base = Math.round(connectionCount * (1 + normalizedEffort * 1.0))
+  const base = Math.round(connectionCount * (1 + normalizedEffort * 0.8))
+  // const base = Math.round(connectionCount * (1 + normalizedEffort * 1.0))
   const legacyMax = Math.round(connectionCount * 2 * normalizedEffort)
   return clampNumber(base, MIN_DEFAULT_SHUFFLE_SEEDS, legacyMax)
 }
@@ -260,7 +261,8 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
   effort: number = 1
 
   /** Hyperparameter schedule for optimization attempts */
-  HYPERPARAMETER_SCHEDULE: HyperParameterScheduleEntry[] 
+  HYPERPARAMETER_SCHEDULE: HyperParameterScheduleEntry[] =
+    buildDefaultHyperparameterSchedule(1)
 
   constructor(params: MultiSectionPortPointOptimizerParams) {
     super()
@@ -294,7 +296,20 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
       params.JUMPER_PF_FN_ENABLED ?? this.JUMPER_PF_FN_ENABLED
     this.SHUFFLE_SEEDS_PER_SECTION = params.SHUFFLE_SEEDS_PER_SECTION
 
-    this.MAX_SECTION_ATTEMPTS *= this.effort
+    const sectionAttemptScale = Math.max(
+      1,
+      Math.max(1, this.effort) *
+        (0.7 + Math.log2(Math.max(2, this.effort + 1)) / 10),
+    )
+    // const sectionAttemptScale = Math.max(
+    //   1,
+    //   Math.max(1, this.effort) *
+    //     (0.8 + Math.log2(Math.max(2, this.effort + 1)) / 10),
+    // )
+    this.MAX_SECTION_ATTEMPTS = Math.round(
+      this.MAX_SECTION_ATTEMPTS * sectionAttemptScale,
+    )
+    // this.MAX_SECTION_ATTEMPTS *= this.effort
 
     this.nodeMap = new Map(
       params.inputNodes.map((n) => [n.capacityMeshNodeId, n]),

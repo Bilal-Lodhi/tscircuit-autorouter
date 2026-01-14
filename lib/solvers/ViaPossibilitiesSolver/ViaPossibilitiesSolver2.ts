@@ -84,7 +84,7 @@ export class ViaPossibilitiesSolver2 extends BaseSolver {
     this.MAX_ITERATIONS = 100e3
     this.colorMap =
       colorMap ?? generateColorMapFromNodeWithPortPoints(nodeWithPortPoints)
-    this.maxViaCount = 5
+    // this.maxViaCount = 5
     this.bounds = getBoundsFromNodeWithPortPoints(nodeWithPortPoints)
     this.nodeWidth = this.bounds.maxX - this.bounds.minX
     this.portPairMap = getPortPairMap(nodeWithPortPoints)
@@ -94,6 +94,14 @@ export class ViaPossibilitiesSolver2 extends BaseSolver {
       SHUFFLE_SEED: 0,
     }
     this.viaDiameter = viaDiameter ?? 0.6
+
+    const areaInsideNode =
+      (this.bounds.maxX - this.bounds.minX) *
+      (this.bounds.maxY - this.bounds.minY)
+    const viaPitch =
+      this.viaDiameter + this.NEW_HEAD_WALL_BUFFER_DISTANCE * 2
+    const maxViaCountByArea = Math.floor(areaInsideNode / (viaPitch * viaPitch))
+    this.maxViaCount = Math.max(5, maxViaCountByArea)
 
     this.unprocessedConnections = Array.from(this.portPairMap.keys()).sort()
     if (hyperParameters?.SHUFFLE_SEED) {
