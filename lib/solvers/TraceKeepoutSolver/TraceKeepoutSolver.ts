@@ -564,12 +564,9 @@ export class TraceKeepoutSolver extends BaseSolver {
     const segments: Segment[] = []
 
     // Check for obstacles within the keepout radius
-    const nearbyObstacles = this.obstacleSHI.searchArea(
-      position.x,
-      position.y,
-      searchRadius,
-      searchRadius,
-    )
+    const nearbyObstacles = this.obstacleSHI
+      .searchArea(position.x, position.y, searchRadius, searchRadius)
+      .filter((e) => e.zLayers?.includes(position.z))
 
     // Filter to non-connected obstacles on the same layer and convert to segments
     for (const obstacle of nearbyObstacles) {
@@ -612,7 +609,7 @@ export class TraceKeepoutSolver extends BaseSolver {
 
     // Check for non-connected traces within the keepout radius
     const nearbyRoutes = this.hdRouteSHI.getConflictingRoutesNearPoint(
-      { x: position.x, y: position.y },
+      { x: position.x, y: position.y, z: position.z },
       searchRadius,
     )
 

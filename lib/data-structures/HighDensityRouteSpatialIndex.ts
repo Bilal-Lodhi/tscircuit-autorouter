@@ -424,12 +424,14 @@ export class HighDensityRouteSpatialIndex {
   /**
    * Finds routes that pass near a given point within a margin.
    * Checks both segments and vias.
-   * @param point The query point {x, y}. Z is ignored.
+   * @param point The query point {x, y, z}.
    * @param margin The minimum required clearance distance from the query point.
    * @returns An array of conflicting routes and their minimum distance to the point.
    */
   getConflictingRoutesNearPoint(
-    point: Point2D,
+    point: Point2D & {
+      z: number
+    },
     margin: number, // Minimum required clearance
   ): Array<{ conflictingRoute: HighDensityRoute; distance: number }> {
     // --- Define search area ---
@@ -461,6 +463,12 @@ export class HighDensityRouteSpatialIndex {
           for (const segmentInfo of segmentBucketList) {
             if (checkedSegments.has(segmentInfo.segmentId)) continue
             checkedSegments.add(segmentInfo.segmentId)
+
+            const p1_seg = segmentInfo.segment[0]
+            const p2_seg = segmentInfo.segment[1]
+            if (p1_seg.z !== p2_seg.z || p1_seg.z !== point.z) {
+              continue
+            }
 
             const route = segmentInfo.parentRoute
             // Convert segment points to Point2D for distance calculation
