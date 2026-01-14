@@ -577,7 +577,7 @@ export class JumperHighDensitySolver extends BaseSolver {
           strokeColor:
             segment.z === 0
               ? segment.color
-              : safeTransparentize(segment.color, 0.75),
+              : safeTransparentize(segment.color ?? "gray", 0.75),
           layer: `z${segment.z}`,
           strokeWidth: route.traceThickness,
           strokeDash: segment.z !== 0 ? "10, 5" : undefined,
