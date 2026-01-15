@@ -20,7 +20,7 @@ import {
   type JRegion,
   type JPort,
 } from "@tscircuit/hypergraph"
-import { CurvyTraceSolver } from "@tscircuit/curvy-trace-solver"
+import { AngledTraceSolver } from "@tscircuit/curvy-trace-solver"
 import type {
   CurvyTraceProblem,
   Obstacle as CurvyObstacle,
@@ -89,7 +89,7 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
 
   // Curvy trace solver state (populated after jumperGraph phase completes)
   curvySolvers: Array<{
-    solver: CurvyTraceSolver
+    solver: AngledTraceSolver
     regionId: string
     traversals: Array<{
       routeIndex: number
@@ -712,7 +712,7 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
         preferredObstacleToTraceSpacing: this.traceWidth * 2,
       }
 
-      const curvySolver = new CurvyTraceSolver(problem)
+      const curvySolver = new AngledTraceSolver(problem)
 
       this.curvySolvers.push({
         solver: curvySolver,

@@ -5,7 +5,7 @@ import type {
   PortPoint,
 } from "../../types/high-density-types"
 import { BaseSolver } from "../BaseSolver"
-import { CurvyTraceSolver } from "@tscircuit/curvy-trace-solver"
+import { AngledTraceSolver } from "@tscircuit/curvy-trace-solver"
 import type { CurvyTraceProblem, Obstacle } from "@tscircuit/curvy-trace-solver"
 
 export interface AdjacentObstacle {
@@ -38,7 +38,7 @@ export class CurvyIntraNodeSolver extends BaseSolver {
   adjacentObstacles: AdjacentObstacle[]
 
   routes: HighDensityIntraNodeRoute[] = []
-  curvyTraceSolver?: CurvyTraceSolver
+  curvyTraceSolver?: AngledTraceSolver
   phase: "initializing" | "solving" | "done" = "initializing"
 
   constructor(params: CurvyIntraNodeSolverParams) {
@@ -128,7 +128,7 @@ export class CurvyIntraNodeSolver extends BaseSolver {
       preferredObstacleToTraceSpacing: this.traceWidth * 2,
     }
 
-    this.curvyTraceSolver = new CurvyTraceSolver(problem)
+    this.curvyTraceSolver = new AngledTraceSolver(problem)
     this.phase = "solving"
   }
 
