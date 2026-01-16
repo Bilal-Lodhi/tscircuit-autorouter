@@ -46,6 +46,7 @@ import {
 import { CapacityMeshNodeSolver2_NodeUnderObstacle } from "../../solvers/CapacityMeshSolver/CapacityMeshNodeSolver2_NodesUnderObstacles"
 import { MultiSectionPortPointOptimizer } from "../../solvers/MultiSectionPortPointOptimizer"
 import { UniformPortDistributionSolver } from "lib/solvers/UniformPortDistributionSolver/UniformPortDistributionSolver"
+import { TraceWidthSolver } from "../../solvers/TraceWidthSolver/TraceWidthSolver"
 
 interface CapacityMeshSolverOptions {
   capacityDepth?: number
@@ -104,6 +105,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
   portPointPathingSolver?: HyperPortPointPathingSolver
   multiSectionPortPointOptimizer?: MultiSectionPortPointOptimizer
   uniformPortDistributionSolver?: UniformPortDistributionSolver
+  traceWidthSolver?: TraceWidthSolver
   viaDiameter: number
   minTraceWidth: number
   effort: number
@@ -360,6 +362,19 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
         },
       ],
     ),
+    definePipelineStep(
+      "traceWidthSolver",
+      TraceWidthSolver,
+      (cms) => [
+        {
+          hdRoutes: cms.traceSimplificationSolver!.simplifiedHdRoutes,
+          obstacles: cms.srj.obstacles,
+          connMap: cms.connMap,
+          colorMap: cms.colorMap,
+          minTraceWidth: cms.minTraceWidth,
+        },
+      ],
+    ),
   ]
 
   constructor(
@@ -605,6 +620,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
 
   _getOutputHdRoutes(): HighDensityRoute[] {
     return (
+      this.traceWidthSolver?.getHdRoutesWithWidths() ??
       this.traceSimplificationSolver?.simplifiedHdRoutes ??
       this.highDensityStitchSolver!.mergedHdRoutes
     )
