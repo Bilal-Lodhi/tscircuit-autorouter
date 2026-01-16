@@ -362,19 +362,15 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
         },
       ],
     ),
-    definePipelineStep(
-      "traceWidthSolver",
-      TraceWidthSolver,
-      (cms) => [
-        {
-          hdRoutes: cms.traceSimplificationSolver!.simplifiedHdRoutes,
-          obstacles: cms.srj.obstacles,
-          connMap: cms.connMap,
-          colorMap: cms.colorMap,
-          minTraceWidth: cms.minTraceWidth,
-        },
-      ],
-    ),
+    definePipelineStep("traceWidthSolver", TraceWidthSolver, (cms) => [
+      {
+        hdRoutes: cms.traceSimplificationSolver!.simplifiedHdRoutes,
+        obstacles: cms.srj.obstacles,
+        connMap: cms.connMap,
+        colorMap: cms.colorMap,
+        minTraceWidth: cms.minTraceWidth,
+      },
+    ]),
   ]
 
   constructor(
