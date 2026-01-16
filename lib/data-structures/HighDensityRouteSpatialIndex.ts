@@ -1,4 +1,4 @@
-import { doSegmentsIntersect } from "@tscircuit/math-utils" // Assuming this is available and correct
+import { doSegmentsIntersect, Point3 } from "@tscircuit/math-utils" // Assuming this is available and correct
 import type { Jumper } from "lib/types/high-density-types"
 
 // --- Interfaces and Types (Unchanged) ---
@@ -429,9 +429,7 @@ export class HighDensityRouteSpatialIndex {
    * @returns An array of conflicting routes and their minimum distance to the point.
    */
   getConflictingRoutesNearPoint(
-    point: Point2D & {
-      z: number
-    },
+    point: Point3,
     margin: number, // Minimum required clearance
   ): Array<{ conflictingRoute: HighDensityRoute; distance: number }> {
     // --- Define search area ---
