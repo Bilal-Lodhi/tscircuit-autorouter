@@ -23,7 +23,7 @@ export class SingleRouteUselessViaRemovalSolver extends BaseSolver {
 
   currentSectionIndex: number
 
-  TRACE_THICKNESS = 0.15
+  TRACE_THICKNESS: number
   OBSTACLE_MARGIN = 0.1
 
   constructor(params: {
@@ -36,6 +36,7 @@ export class SingleRouteUselessViaRemovalSolver extends BaseSolver {
     this.obstacleSHI = params.obstacleSHI
     this.hdRouteSHI = params.hdRouteSHI
     this.unsimplifiedRoute = params.unsimplifiedRoute
+    this.TRACE_THICKNESS = this.unsimplifiedRoute.traceThickness
 
     this.routeSections = this.breakRouteIntoSections(this.unsimplifiedRoute)
   }
@@ -193,9 +194,13 @@ export class SingleRouteUselessViaRemovalSolver extends BaseSolver {
 
     // Filter to obstacles that this trace connects to and contain the endpoint
     const connectedObstacles = nearbyObstacles.filter((obstacle) => {
-      if (
-        !obstacle.connectedTo?.includes(this.unsimplifiedRoute.connectionName)
-      ) {
+      const isConnected =
+        obstacle.connectedTo?.includes(this.unsimplifiedRoute.connectionName) ||
+        (this.unsimplifiedRoute.rootConnectionName &&
+          obstacle.connectedTo?.includes(
+            this.unsimplifiedRoute.rootConnectionName,
+          ))
+      if (!isConnected) {
         return false
       }
       // Check if the endpoint is within or very close to the obstacle bounds
@@ -230,10 +235,11 @@ export class SingleRouteUselessViaRemovalSolver extends BaseSolver {
       const A = { ...currentSection.points[i], z: targetZ }
       const B = { ...currentSection.points[i + 1], z: targetZ }
 
+      const clearance = this.TRACE_THICKNESS / 2
       const conflictingRoutes = this.hdRouteSHI.getConflictingRoutesForSegment(
         A,
         B,
-        this.TRACE_THICKNESS,
+        clearance,
       )
 
       for (const { conflictingRoute, distance } of conflictingRoutes) {
@@ -243,55 +249,15 @@ export class SingleRouteUselessViaRemovalSolver extends BaseSolver {
         )
           continue
         // TODO connMap test
-        if (distance < this.TRACE_THICKNESS + conflictingRoute.traceThickness) {
-          return false
-        }
-      }
-
-      const segmentBox = {
-        centerX: (A.x + B.x) / 2,
-        centerY: (A.y + B.y) / 2,
-        width: Math.abs(A.x - B.x),
-        height: Math.abs(A.y - B.y),
-      }
-
-      // Obstacle check
-      const obstacles = this.obstacleSHI.searchArea(
-        segmentBox.centerX,
-        segmentBox.centerY,
-        segmentBox.width + (this.TRACE_THICKNESS + this.OBSTACLE_MARGIN) * 2, // Expand search width
-        segmentBox.height + (this.TRACE_THICKNESS + this.OBSTACLE_MARGIN) * 2, // Expand search height
-      )
-
-      for (const obstacle of obstacles) {
-        // Skip obstacles that are connected to this trace
-        // (the trace is supposed to connect to them)
         if (
-          obstacle.connectedTo?.includes(this.unsimplifiedRoute.connectionName)
+          distance <
+          clearance + conflictingRoute.traceThickness / 2
         ) {
-          continue
-        }
-
-        // For obstacles that support the target layer, only skip if the trace
-        // is connecting TO the obstacle (at segment endpoints)
-        if (obstacle.zLayers?.includes(targetZ)) {
-          // Check if either endpoint of this segment is at the obstacle center
-          const isAtObstacle =
-            (Math.abs(A.x - obstacle.center.x) < 0.01 &&
-              Math.abs(A.y - obstacle.center.y) < 0.01) ||
-            (Math.abs(B.x - obstacle.center.x) < 0.01 &&
-              Math.abs(B.y - obstacle.center.y) < 0.01)
-          if (isAtObstacle) {
-            continue
-          }
-        }
-
-        const distToObstacle = segmentToBoxMinDistance(A, B, obstacle)
-
-        if (distToObstacle < this.TRACE_THICKNESS + this.OBSTACLE_MARGIN) {
           return false
         }
       }
+
+      // Obstacle clearance is handled by capacity node expansion elsewhere.
     }
 
     return true

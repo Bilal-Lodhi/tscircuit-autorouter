@@ -88,7 +88,9 @@ function definePipelineStep<
   }
 }
 
-const OBSTACLE_CLEARANCE = 0.2
+const OBSTACLE_TO_TRACE_CLEARANCE = 0.2
+const TRACE_TO_VIA_CLEARANCE = 0.2
+const TRACE_TO_TRACE_CLEARANCE = 0.2
 
 export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
   netToPointPairsSolver?: NetToPointPairsSolver
@@ -148,7 +150,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
       (cms) => [
         {
           simpleRouteJson: cms.srjWithPointPairs! as any,
-          obstacleClearance: OBSTACLE_CLEARANCE,
+          obstacleClearance: OBSTACLE_TO_TRACE_CLEARANCE,
         },
       ],
       {

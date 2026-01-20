@@ -238,6 +238,9 @@ export class HighDensityRouteSpatialIndex {
 
             const route = segmentInfo.parentRoute
             const [p1, p2] = segmentInfo.segment // Original points
+            if (p1.z !== p2.z || p1.z !== segmentStart.z) {
+              continue
+            }
 
             // Required separation distance from query centerline to segment edge
             const requiredSeparation = margin + route.traceThickness / 2
