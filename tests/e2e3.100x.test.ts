@@ -16,4 +16,4 @@ test("should solve e2e3 board and produce valid SimpleRouteJson output", async (
   expect(convertSrjToGraphicsObject(result)).toMatchGraphicsSvg(
     import.meta.path,
   )
-}, 20_000)
+})
