@@ -8,7 +8,7 @@ test("should solve e2e3 board and produce valid SimpleRouteJson output", async (
   const simpleSrj: SimpleRouteJson = e2e3 as any
 
   const solver = new AutoroutingPipelineSolver(simpleSrj, {
-    effort: 100
+    effort: 100,
   })
   solver.solve()
 
