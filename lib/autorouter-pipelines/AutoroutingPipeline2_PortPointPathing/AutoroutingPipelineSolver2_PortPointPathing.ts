@@ -288,6 +288,11 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
       MultiSectionPortPointOptimizer,
       (cms) => {
         const portPointSolver = cms.portPointPathingSolver!
+        const effort = cms.effort ?? 1
+        const baseMaxSectionAttempts = 50
+        const maxSectionAttempts = Math.round(
+          baseMaxSectionAttempts * Math.max(1, effort),
+        )
         return [
           {
             simpleRouteJson: cms.srjWithPointPairs!,
@@ -299,7 +304,8 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
             initialAssignedPortPoints: portPointSolver.assignedPortPoints,
             initialNodeAssignedPortPoints:
               portPointSolver.nodeAssignedPortPoints,
-            effort: cms.effort,
+            effort,
+            MAX_SECTION_ATTEMPTS: maxSectionAttempts,
           },
         ]
       },
