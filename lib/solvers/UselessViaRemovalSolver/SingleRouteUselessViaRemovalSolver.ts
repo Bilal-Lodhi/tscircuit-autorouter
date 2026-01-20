@@ -249,10 +249,7 @@ export class SingleRouteUselessViaRemovalSolver extends BaseSolver {
         )
           continue
         // TODO connMap test
-        if (
-          distance <
-          clearance + conflictingRoute.traceThickness / 2
-        ) {
+        if (distance < clearance + conflictingRoute.traceThickness / 2) {
           return false
         }
       }
