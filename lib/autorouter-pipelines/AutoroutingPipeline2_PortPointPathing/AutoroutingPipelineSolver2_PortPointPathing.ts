@@ -289,6 +289,10 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
       (cms) => {
         const portPointSolver = cms.portPointPathingSolver!
         const effort = cms.effort ?? 1
+        const effortRatio = Math.min(Math.max((effort - 1) / 99, 0), 1)
+        const effortMultiplier = 1 - effortRatio * 0.8
+        const minAcceptablePf = 0.12 * effortMultiplier
+        const maxAcceptablePf = 0.2 * effortMultiplier
         const baseMaxSectionAttempts = 50
         const maxSectionAttempts = Math.round(
           baseMaxSectionAttempts * Math.max(1, effort),
@@ -305,6 +309,8 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
             initialNodeAssignedPortPoints:
               portPointSolver.nodeAssignedPortPoints,
             effort,
+            MIN_ACCEPTABLE_PF: minAcceptablePf,
+            MAX_ACCEPTABLE_PF: maxAcceptablePf,
             MAX_SECTION_ATTEMPTS: maxSectionAttempts,
           },
         ]

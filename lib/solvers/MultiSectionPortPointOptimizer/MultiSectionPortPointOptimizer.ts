@@ -83,6 +83,10 @@ export interface MultiSectionPortPointOptimizerParams {
    * Each entry defines parameters for one optimization attempt.
    */
   HYPERPARAMETER_SCHEDULE?: HyperParameterScheduleEntry[]
+  /** Pf below this is treated as "easy" and gets 0 attempts. */
+  MIN_ACCEPTABLE_PF?: number
+  /** Pf at/above this gets the full attempt budget. */
+  MAX_ACCEPTABLE_PF?: number
 }
 
 /**
@@ -271,8 +275,6 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
       params.JUMPER_PF_FN_ENABLED ?? this.JUMPER_PF_FN_ENABLED
     this.SHUFFLE_SEEDS_PER_SECTION = params.SHUFFLE_SEEDS_PER_SECTION
 
-    this.MAX_SECTION_ATTEMPTS *= this.effort
-
     this.nodeMap = new Map(
       params.inputNodes.map((n) => [n.capacityMeshNodeId, n]),
     )
@@ -285,8 +287,28 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     this.assignedPortPoints = new Map(params.initialAssignedPortPoints)
     this.nodeAssignedPortPoints = new Map(params.initialNodeAssignedPortPoints)
 
-    // Initialize Pf map
     this.nodePfMap = this.computeInitialPfMap()
+    const initialHighestPf = Math.max(0, ...this.nodePfMap.values())
+    const minAcceptablePf =
+      params.MIN_ACCEPTABLE_PF ?? Math.max(this.ACCEPTABLE_PF * 2, 0.12)
+    const maxAcceptablePf =
+      params.MAX_ACCEPTABLE_PF ?? Math.max(this.ACCEPTABLE_PF * 4, 0.2)
+    const pfRange = Math.max(maxAcceptablePf - minAcceptablePf, 1e-6)
+    // Linear ramp: below min => 0, above max => 1, between => 0..1.
+    const pfRatio = Math.min(
+      Math.max((initialHighestPf - minAcceptablePf) / pfRange, 0),
+      1,
+    )
+    this.MAX_SECTION_ATTEMPTS = Math.round(
+      this.MAX_SECTION_ATTEMPTS * pfRatio,
+    )
+
+    console.log({
+      "this.MAX_SECTION_ATTEMPTS": this.MAX_SECTION_ATTEMPTS,
+      "MIN_ACCEPTABLE_PF": params.MIN_ACCEPTABLE_PF,
+      "MAX_ACCEPTABLE_PF": params.MAX_ACCEPTABLE_PF
+    });
+    
 
     // Compute initial board score
     const initialBoardScore = this.computeBoardScore()
