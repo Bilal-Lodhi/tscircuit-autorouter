@@ -88,6 +88,8 @@ function definePipelineStep<
   }
 }
 
+const OBSTACLE_CLEARANCE = 0.2
+
 export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
   netToPointPairsSolver?: NetToPointPairsSolver
   // nodeSolver?: CapacityMeshNodeSolver2_NodeUnderObstacle
@@ -143,7 +145,12 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
       RectDiffPipeline,
       // Cast to any because RectDiffSolver uses an older SimpleRouteJson type
       // that doesn't support MultiLayerConnectionPoint yet
-      (cms) => [{ simpleRouteJson: cms.srjWithPointPairs! as any }],
+      (cms) => [
+        {
+          simpleRouteJson: cms.srjWithPointPairs! as any,
+          obstacleClearance: OBSTACLE_CLEARANCE,
+        },
+      ],
       {
         onSolved: (cms) => {
           cms.capacityNodes = cms.nodeSolver?.getOutput().meshNodes ?? []

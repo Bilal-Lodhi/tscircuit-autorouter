@@ -101,12 +101,23 @@ export class SingleTransitionCrossingRouteSolver extends BaseSolver {
   private extractRoutesFromNode(): Route[] {
     const routes: Route[] = []
     const connectedPorts = this.nodeWithPortPoints.portPoints!
+    const center = this.nodeWithPortPoints.center
+    const isCenterPoint = (point: Point) => {
+      const EPSILON = 1e-6
+      return (
+        Math.abs(point.x - center.x) < EPSILON &&
+        Math.abs(point.y - center.y) < EPSILON
+      )
+    }
 
     // Group ports by connection name
     const connectionGroups = new Map<string, Point[]>()
 
     for (const connectedPort of connectedPorts) {
       const { connectionName } = connectedPort
+      if (isCenterPoint(connectedPort)) {
+        continue
+      }
       if (!connectionGroups.has(connectionName)) {
         connectionGroups.set(connectionName, [])
       }
@@ -172,14 +183,20 @@ export class SingleTransitionCrossingRouteSolver extends BaseSolver {
     const B = ntrP1
     const C = flatRoute.B
 
-    const turnDirection = computeTurnDirection(A, B, C, this.bounds)
-    const sideTraversal = calculateTraversalPercentages(
-      A,
-      B,
-      C,
-      this.bounds,
-      turnDirection,
-    )
+    let turnDirection: "cw" | "ccw"
+    let sideTraversal: ReturnType<typeof calculateTraversalPercentages>
+    try {
+      turnDirection = computeTurnDirection(A, B, C, this.bounds)
+      sideTraversal = calculateTraversalPercentages(
+        A,
+        B,
+        C,
+        this.bounds,
+        turnDirection,
+      )
+    } catch (error) {
+      throw error
+    }
 
     const viaBounds = {
       minX:
@@ -214,13 +231,14 @@ export class SingleTransitionCrossingRouteSolver extends BaseSolver {
       viaBounds.maxX = viaBounds.minX
     }
 
-    return findClosestPointToABCWithinBounds(
+    const viaPosition = findClosestPointToABCWithinBounds(
       A,
       B,
       C,
       marginFromBorderWithTrace,
       viaBounds,
     )
+    return viaPosition
   }
   /**
    * Create a single transition route with properly placed via
