@@ -301,12 +301,6 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     )
     this.MAX_SECTION_ATTEMPTS = Math.round(this.MAX_SECTION_ATTEMPTS * pfRatio)
 
-    console.log({
-      "this.MAX_SECTION_ATTEMPTS": this.MAX_SECTION_ATTEMPTS,
-      MIN_ACCEPTABLE_PF: params.MIN_ACCEPTABLE_PF,
-      MAX_ACCEPTABLE_PF: params.MAX_ACCEPTABLE_PF,
-    })
-
     // Compute initial board score
     const initialBoardScore = this.computeBoardScore()
 
