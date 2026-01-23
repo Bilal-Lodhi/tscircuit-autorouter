@@ -33,7 +33,7 @@ import type {
   CurvyTraceProblem,
   Obstacle as CurvyObstacle,
 } from "@tscircuit/curvy-trace-solver"
-import { translate, scale, compose } from "transformation-matrix"
+import { translate } from "transformation-matrix"
 
 export type Point2D = { x: number; y: number }
 
@@ -187,8 +187,9 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
   }
 
   /**
-   * Generate a 0603 jumper grid and transform it to fit the node bounds.
+   * Generate a 0603 jumper grid and center it on the node bounds.
    * generateJumperGrid doesn't support bounds/orientation, so we handle those manually.
+   * NO SCALING - only translation to center.
    */
   private _generate0603Grid(
     patternConfig: { cols: number; rows: number },
@@ -225,38 +226,16 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
     // Calculate bounds of the generated graph
     const graphBounds = calculateGraphBounds(baseGraph.regions)
 
-    // Calculate scale and translation to fit in node bounds
-    const graphWidth = graphBounds.maxX - graphBounds.minX
-    const graphHeight = graphBounds.maxY - graphBounds.minY
-    const nodeWidth = nodeBounds.maxX - nodeBounds.minX
-    const nodeHeight = nodeBounds.maxY - nodeBounds.minY
-
-    // Use a margin around the edges
-    const marginFraction = 0.1
-    const availableWidth = nodeWidth * (1 - marginFraction * 2)
-    const availableHeight = nodeHeight * (1 - marginFraction * 2)
-
-    // Calculate scale to fit
-    const scaleX = graphWidth > 0 ? availableWidth / graphWidth : 1
-    const scaleY = graphHeight > 0 ? availableHeight / graphHeight : 1
-    const uniformScale = Math.min(scaleX, scaleY)
-
-    // Check if the grid can fit
-    if (uniformScale < 0.3) {
-      return null // Grid is too large to fit in bounds
-    }
-
     // Calculate the center of the graph and node
     const graphCenterX = (graphBounds.minX + graphBounds.maxX) / 2
     const graphCenterY = (graphBounds.minY + graphBounds.maxY) / 2
     const nodeCenterX = (nodeBounds.minX + nodeBounds.maxX) / 2
     const nodeCenterY = (nodeBounds.minY + nodeBounds.maxY) / 2
 
-    // Create transformation: translate to origin, scale, translate to node center
-    const transformMatrix = compose(
-      translate(nodeCenterX, nodeCenterY),
-      scale(uniformScale, uniformScale),
-      translate(-graphCenterX, -graphCenterY),
+    // Translation only - NO SCALING
+    const transformMatrix = translate(
+      nodeCenterX - graphCenterX,
+      nodeCenterY - graphCenterY,
     )
 
     // Apply transformation to the graph
