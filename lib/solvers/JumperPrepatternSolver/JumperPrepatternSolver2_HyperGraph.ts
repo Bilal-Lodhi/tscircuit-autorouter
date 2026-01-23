@@ -187,9 +187,10 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
   }
 
   /**
-   * Generate a 0603 jumper grid and center it on the node bounds.
-   * generateJumperGrid doesn't support bounds/orientation, so we handle those manually.
-   * NO SCALING - only translation to center.
+   * Generate a 0603 jumper grid sized to fit the node bounds.
+   * generateJumperGrid doesn't support bounds/orientation, so we calculate
+   * the outer padding dynamically to ensure the grid extends to the node boundaries.
+   * NO SCALING - the outer padding is calculated to fill the space.
    */
   private _generate0603Grid(
     patternConfig: { cols: number; rows: number },
@@ -202,7 +203,36 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
     const effectiveRows =
       orientation === "horizontal" ? patternConfig.cols : patternConfig.rows
 
-    // Generate the base grid (centered at origin by default)
+    const nodeWidth = nodeBounds.maxX - nodeBounds.minX
+    const nodeHeight = nodeBounds.maxY - nodeBounds.minY
+
+    // First, generate a minimal grid to measure core size
+    const minimalGraph = generateJumperGrid({
+      cols: effectiveCols,
+      rows: effectiveRows,
+      marginX: 0.4,
+      marginY: 0.4,
+      innerColChannelPointCount: 2,
+      innerRowChannelPointCount: 2,
+      outerPaddingX: 0.1, // Minimal padding
+      outerPaddingY: 0.1,
+      outerChannelXPoints: 3,
+      outerChannelYPoints: 3,
+    })
+    const minimalBounds = calculateGraphBounds(minimalGraph.regions)
+    const coreWidth = minimalBounds.maxX - minimalBounds.minX
+    const coreHeight = minimalBounds.maxY - minimalBounds.minY
+
+    // Calculate padding needed on each side to fill the node bounds
+    // The outer padding is added to EACH side, so we need half the difference
+    const requiredPaddingX = Math.max(0.3, (nodeWidth - coreWidth) / 2 + 0.1)
+    const requiredPaddingY = Math.max(0.3, (nodeHeight - coreHeight) / 2 + 0.1)
+
+    // Calculate channel points based on size (more points for larger areas)
+    const outerChannelXPoints = Math.max(3, Math.ceil(requiredPaddingX / 0.5))
+    const outerChannelYPoints = Math.max(3, Math.ceil(requiredPaddingY / 0.5))
+
+    // Generate the final grid with calculated padding
     const rawGraph = generateJumperGrid({
       cols: effectiveCols,
       rows: effectiveRows,
@@ -210,10 +240,10 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
       marginY: 0.4,
       innerColChannelPointCount: 2,
       innerRowChannelPointCount: 2,
-      outerPaddingX: 0.3,
-      outerPaddingY: 0.3,
-      outerChannelXPoints: 5,
-      outerChannelYPoints: 5,
+      outerPaddingX: requiredPaddingX,
+      outerPaddingY: requiredPaddingY,
+      outerChannelXPoints,
+      outerChannelYPoints,
     })
 
     // Convert to JumperGraph format
