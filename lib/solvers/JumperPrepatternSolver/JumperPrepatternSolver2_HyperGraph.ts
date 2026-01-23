@@ -206,14 +206,14 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
     const rawGraph = generateJumperGrid({
       cols: effectiveCols,
       rows: effectiveRows,
-      marginX: Math.max(0.8, effectiveCols * 0.2),
-      marginY: Math.max(0.8, effectiveRows * 0.2),
-      innerColChannelPointCount: 3,
-      innerRowChannelPointCount: 3,
+      marginX: 0.4,
+      marginY: 0.4,
+      innerColChannelPointCount: 2,
+      innerRowChannelPointCount: 2,
       outerPaddingX: 0.3,
       outerPaddingY: 0.3,
-      outerChannelXPoints: 3,
-      outerChannelYPoints: 3,
+      outerChannelXPoints: 5,
+      outerChannelYPoints: 5,
     })
 
     // Convert to JumperGraph format
