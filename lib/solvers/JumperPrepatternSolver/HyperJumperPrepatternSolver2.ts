@@ -92,8 +92,8 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
     // For 0603: valid values are 1, 2, 4, 6, 8 (skip 3, 5, 7)
     // For 1206x4: use existing values
     // We'll include all possible values and filter invalid combos in getCombinationDefs
-    const colValues0603 = [1, 2, 4, 6, 8]
-    const rowValues0603 = [1, 2, 4, 6, 8]
+    const colValues0603 = [1, 2, 3, 4, 6, 8, 10]
+    const rowValues0603 = [1, 2, 3, 4, 6, 8, 10]
     const colValues1206x4 = [1, 2, 3, 4, 6, 8, 10]
     const rowValues1206x4 = [1, 2, 3, 4, 8]
 

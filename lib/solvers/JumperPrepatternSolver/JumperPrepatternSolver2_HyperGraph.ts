@@ -206,12 +206,14 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
     const nodeWidth = nodeBounds.maxX - nodeBounds.minX
     const nodeHeight = nodeBounds.maxY - nodeBounds.minY
 
+    const margin0603 = 0.6
+
     // First, generate a minimal grid to measure core size
     const minimalGraph = generateJumperGrid({
       cols: effectiveCols,
       rows: effectiveRows,
-      marginX: 0.4,
-      marginY: 0.4,
+      marginX: margin0603,
+      marginY: margin0603,
       innerColChannelPointCount: 2,
       innerRowChannelPointCount: 2,
       outerPaddingX: 0.1, // Minimal padding
@@ -236,8 +238,8 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
     const rawGraph = generateJumperGrid({
       cols: effectiveCols,
       rows: effectiveRows,
-      marginX: 0.4,
-      marginY: 0.4,
+      marginX: margin0603,
+      marginY: margin0603,
       innerColChannelPointCount: 2,
       innerRowChannelPointCount: 2,
       outerPaddingX: requiredPaddingX,
