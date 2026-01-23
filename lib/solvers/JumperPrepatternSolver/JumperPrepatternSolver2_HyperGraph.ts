@@ -298,7 +298,11 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
 
     if (jumperType === "0603") {
       // Generate 0603 grid with transformation
-      const graph = this._generate0603Grid(patternConfig, orientation, nodeBounds)
+      const graph = this._generate0603Grid(
+        patternConfig,
+        orientation,
+        nodeBounds,
+      )
       if (!graph) {
         this.error = `0603 grid (${patternConfig.cols}x${patternConfig.rows}) is too large to fit in node bounds`
         this.failed = true
@@ -981,7 +985,8 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
 
     // Convert all jumperLocations to SRJ Jumpers
     const jumperType = this.hyperParameters.JUMPER_TYPE ?? "1206x4"
-    const dimsKey: JumperFootprint = jumperType === "0603" ? "0603" : "1206x4_pair"
+    const dimsKey: JumperFootprint =
+      jumperType === "0603" ? "0603" : "1206x4_pair"
     const dims = JUMPER_DIMENSIONS[dimsKey]
 
     for (const jumperLoc of this.jumperLocations) {
