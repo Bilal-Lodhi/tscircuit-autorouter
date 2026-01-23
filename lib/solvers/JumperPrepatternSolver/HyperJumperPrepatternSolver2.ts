@@ -3,7 +3,7 @@ import type {
   HighDensityIntraNodeRouteWithJumpers,
   NodeWithPortPoints,
 } from "../../types/high-density-types"
-import type { Jumper as SrjJumper } from "../../types/srj-types"
+import type { Jumper as SrjJumper, JumperType } from "../../types/srj-types"
 import {
   HyperParameterSupervisorSolver,
   SupervisedSolver,
@@ -21,12 +21,15 @@ export interface HyperJumperPrepatternSolver2Params {
   traceWidth?: number
   connMap?: ConnectivityMap
   hyperParameters?: JumperPrepatternSolver2HyperParameters
+  /** Available jumper types. Defaults to ["0603"] */
+  availableJumperTypes?: JumperType[]
 }
 
 type VariantHyperParameters = {
   COLS: number
   ROWS: number
   ORIENTATION: "horizontal" | "vertical"
+  JUMPER_TYPE: JumperType
 }
 
 /**
@@ -46,6 +49,7 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
   traceWidth: number
   connMap?: ConnectivityMap
   baseHyperParameters?: JumperPrepatternSolver2HyperParameters
+  availableJumperTypes: JumperType[]
 
   // Output
   solvedRoutes: HighDensityIntraNodeRouteWithJumpers[] = []
@@ -60,6 +64,7 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
     this.traceWidth = params.traceWidth ?? 0.15
     this.connMap = params.connMap
     this.baseHyperParameters = params.hyperParameters ?? {}
+    this.availableJumperTypes = params.availableJumperTypes ?? ["0603"]
     this.MAX_ITERATIONS = 1e6
     this.GREEDY_MULTIPLIER = 1
     this.MIN_SUBSTEPS = 1000
@@ -70,42 +75,115 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
   }
 
   getHyperParameterDefs() {
-    return [
-      {
-        name: "cols",
-        possibleValues: [
-          { COLS: 1 },
-          { COLS: 2 },
-          { COLS: 3 },
-          { COLS: 4 },
-          { COLS: 6 },
-          { COLS: 8 },
-          { COLS: 10 },
-        ],
-      },
-      {
-        name: "rows",
-        possibleValues: [
-          { ROWS: 1 },
-          { ROWS: 2 },
-          { ROWS: 3 },
-          { ROWS: 4 },
-          { ROWS: 8 },
-        ],
-      },
-      {
-        name: "orientation",
-        possibleValues: [
-          { ORIENTATION: "vertical" },
-          { ORIENTATION: "horizontal" },
-        ],
-      },
-    ]
+    const defs: Array<{
+      name: string
+      possibleValues: Array<Record<string, any>>
+    }> = []
+
+    // Add jumper type options based on available types
+    const jumperTypeValues = this.availableJumperTypes.map((type) => ({
+      JUMPER_TYPE: type,
+    }))
+    defs.push({
+      name: "jumperType",
+      possibleValues: jumperTypeValues,
+    })
+
+    // For 0603: valid values are 1, 2, 4, 6, 8 (skip 3, 5, 7)
+    // For 1206x4: use existing values
+    // We'll include all possible values and filter invalid combos in getCombinationDefs
+    const colValues0603 = [1, 2, 4, 6, 8]
+    const rowValues0603 = [1, 2, 4, 6, 8]
+    const colValues1206x4 = [1, 2, 3, 4, 6, 8, 10]
+    const rowValues1206x4 = [1, 2, 3, 4, 8]
+
+    // Collect all unique col/row values
+    const allCols = [...new Set([...colValues0603, ...colValues1206x4])].sort(
+      (a, b) => a - b,
+    )
+    const allRows = [...new Set([...rowValues0603, ...rowValues1206x4])].sort(
+      (a, b) => a - b,
+    )
+
+    defs.push({
+      name: "cols",
+      possibleValues: allCols.map((c) => ({ COLS: c })),
+    })
+
+    defs.push({
+      name: "rows",
+      possibleValues: allRows.map((r) => ({ ROWS: r })),
+    })
+
+    defs.push({
+      name: "orientation",
+      possibleValues: [
+        { ORIENTATION: "vertical" as const },
+        { ORIENTATION: "horizontal" as const },
+      ],
+    })
+
+    return defs
+  }
+
+  /**
+   * Filter out invalid row/col combinations for each jumper type.
+   * For 0603: only allow 1, 2, 4, 6, 8 for both rows and cols
+   * For 1206x4: allow existing values (1, 2, 3, 4, 6, 8, 10 for cols; 1, 2, 3, 4, 8 for rows)
+   */
+  isValidCombination(hyperParameters: VariantHyperParameters): boolean {
+    const { JUMPER_TYPE, COLS, ROWS } = hyperParameters
+    const valid0603Values = [1, 2, 4, 6, 8]
+    const validCols1206x4 = [1, 2, 3, 4, 6, 8, 10]
+    const validRows1206x4 = [1, 2, 3, 4, 8]
+
+    if (JUMPER_TYPE === "0603") {
+      return valid0603Values.includes(COLS) && valid0603Values.includes(ROWS)
+    } else if (JUMPER_TYPE === "1206x4") {
+      return validCols1206x4.includes(COLS) && validRows1206x4.includes(ROWS)
+    }
+    return false
   }
 
   getCombinationDefs() {
-    // Try all combinations of cols, rows, and orientation
-    return [["cols", "rows", "orientation"]]
+    // Try all combinations of jumperType, cols, rows, and orientation
+    return [["jumperType", "cols", "rows", "orientation"]]
+  }
+
+  /**
+   * Override initializeSolvers to filter out invalid combinations before creating solvers.
+   */
+  initializeSolvers() {
+    const hyperParameterDefs = this.getHyperParameterDefs()
+
+    const combinationDefs = this.getCombinationDefs() ?? [
+      hyperParameterDefs.map((def) => def.name),
+    ]
+
+    this.supervisedSolvers = []
+    for (const combinationDef of combinationDefs) {
+      const hyperParameterCombinations = this.getHyperParameterCombinations(
+        hyperParameterDefs.filter((hpd) => combinationDef.includes(hpd.name)),
+      )
+
+      for (const hyperParameters of hyperParameterCombinations) {
+        // Filter out invalid combinations
+        if (!this.isValidCombination(hyperParameters as VariantHyperParameters))
+          continue
+
+        const solver = this.generateSolver(
+          hyperParameters as VariantHyperParameters,
+        )
+        const g = this.computeG(solver)
+        this.supervisedSolvers.push({
+          hyperParameters,
+          solver,
+          h: 0,
+          g,
+          f: g,
+        })
+      }
+    }
   }
 
   generateSolver(
@@ -119,6 +197,7 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
         COLS: hyperParameters.COLS,
         ROWS: hyperParameters.ROWS,
         ORIENTATION: hyperParameters.ORIENTATION,
+        JUMPER_TYPE: hyperParameters.JUMPER_TYPE,
       },
     })
   }

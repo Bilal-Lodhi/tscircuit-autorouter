@@ -11,7 +11,10 @@ const srj = bugReport.simple_route_json as SimpleRouteJson
 test(
   "bugreport36-d4c6c2",
   () => {
-    const solver = new AssignableAutoroutingPipeline3(srj)
+    const solver = new AssignableAutoroutingPipeline3({
+      ...srj,
+      availableJumperTypes: ["1206x4"],
+    })
 
     solver.solve()
     expect(getLastStepSvg(solver.visualize())).toMatchSvgSnapshot(

@@ -5,9 +5,10 @@ import { getLastStepSvg } from "../fixtures/getLastStepSvg"
 import { AssignableAutoroutingPipeline3 } from "lib/index"
 
 test("dip16 crossing traces", () => {
-  const solver = new AssignableAutoroutingPipeline3(
-    reproJson as SimpleRouteJson,
-  )
+  const solver = new AssignableAutoroutingPipeline3({
+    ...(reproJson as SimpleRouteJson),
+    availableJumperTypes: ["1206x4"],
+  })
 
   solver.solve()
 

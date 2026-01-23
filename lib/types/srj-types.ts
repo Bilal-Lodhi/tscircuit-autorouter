@@ -34,6 +34,8 @@ export type Jumper = {
   pads: Obstacle[]
 }
 
+export type JumperType = "1206x4" | "0603"
+
 export interface SimpleRouteJson {
   layerCount: number
   minTraceWidth: number
@@ -47,6 +49,8 @@ export interface SimpleRouteJson {
   traces?: SimplifiedPcbTraces
   jumpers?: Jumper[]
   allowJumpers?: boolean
+  /** Available jumper types for routing. Defaults to ["0603"] */
+  availableJumperTypes?: JumperType[]
 }
 
 export interface Obstacle {
