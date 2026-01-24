@@ -74,45 +74,105 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
     return this.constructorParams
   }
 
+  /**
+   * Calculate max rows and cols for 0603 that fit in node bounds.
+   *
+   * Grid generation uses generateJumperGrid where cols directly controls width.
+   * For horizontal orientation, _generate0603Grid swaps: effectiveCols = ROWS.
+   *
+   * Empirically measured with margin=0.5:
+   * - 1 col = 2.45 wide, 4 cols = 11.3 wide → width = 2.45 + (cols-1)*2.95
+   * - 8 rows = 11.1 tall → height = rows * 1.39
+   */
+  private _calculateMax0603(orientation: "horizontal" | "vertical"): {
+    cols: number
+    rows: number
+  } {
+    const node = this.nodeWithPortPoints
+    const nodeWidth = node.width
+    const nodeHeight = node.height
+
+    // Available space after padding requirement (0.5mm each side)
+    const availableWidth = nodeWidth - 1.0
+    const availableHeight = nodeHeight - 1.0
+
+    // Grid size formulas (empirically measured with margin=0.5):
+    // width = baseWidth + (cols-1) * additionalWidthPerCol = 2.45 + (cols-1)*2.95
+    // height = rows * heightPerRow (measured: 15 rows = 21.26 → 1.42 per row)
+    const baseWidth = 2.45
+    const additionalWidthPerCol = 2.95
+    const heightPerRow = 1.42
+
+    // Calculate max cols that fit in width: availableWidth >= 2.45 + (cols-1)*2.95
+    // cols <= 1 + (availableWidth - 2.45) / 2.95
+    const maxColsFromWidth = Math.floor(
+      1 + (availableWidth - baseWidth) / additionalWidthPerCol,
+    )
+
+    // Calculate max rows that fit in height: availableHeight >= rows * 1.39
+    const maxRowsFromHeight = Math.floor(availableHeight / heightPerRow)
+
+    if (orientation === "vertical") {
+      // Vertical: COLS controls width, ROWS controls height
+      return { cols: maxColsFromWidth, rows: maxRowsFromHeight }
+    } else {
+      // Horizontal: effectiveCols = ROWS (controls width), effectiveRows = COLS (controls height)
+      // So ROWS parameter controls width (use maxColsFromWidth), COLS controls height (use maxRowsFromHeight)
+      return { cols: maxRowsFromHeight, rows: maxColsFromWidth }
+    }
+  }
+
   getHyperParameterDefs() {
     const defs: Array<{
       name: string
       possibleValues: Array<Record<string, any>>
     }> = []
 
-    // Add jumper type options based on available types
-    const jumperTypeValues = this.availableJumperTypes.map((type) => ({
-      JUMPER_TYPE: type,
-    }))
+    // 0603 max configs for each orientation (single value each)
+    const max0603Vert = this._calculateMax0603("vertical")
     defs.push({
-      name: "jumperType",
-      possibleValues: jumperTypeValues,
+      name: "0603_max_rows_and_cols_vert",
+      possibleValues: [
+        {
+          JUMPER_TYPE: "0603" as JumperType,
+          COLS: max0603Vert.cols,
+          ROWS: max0603Vert.rows,
+          ORIENTATION: "vertical" as const,
+        },
+      ],
     })
 
-    // For 0603: valid values are 1, 2, 4, 6, 8 (skip 3, 5, 7)
-    // For 1206x4: use existing values
-    // We'll include all possible values and filter invalid combos in getCombinationDefs
-    const colValues0603 = [1, 2, 3, 4, 6, 8, 10]
-    const rowValues0603 = [1, 2, 3, 4, 6, 8, 10]
+    const max0603Horz = this._calculateMax0603("horizontal")
+    defs.push({
+      name: "0603_max_rows_and_cols_horz",
+      possibleValues: [
+        {
+          JUMPER_TYPE: "0603" as JumperType,
+          COLS: max0603Horz.cols,
+          ROWS: max0603Horz.rows,
+          ORIENTATION: "horizontal" as const,
+        },
+      ],
+    })
+
+    // 1206x4 jumper type
+    defs.push({
+      name: "1206x4",
+      possibleValues: [{ JUMPER_TYPE: "1206x4" as JumperType }],
+    })
+
+    // 1206x4 cols and rows
     const colValues1206x4 = [1, 2, 3, 4, 6, 8, 10]
     const rowValues1206x4 = [1, 2, 3, 4, 8]
 
-    // Collect all unique col/row values
-    const allCols = [...new Set([...colValues0603, ...colValues1206x4])].sort(
-      (a, b) => a - b,
-    )
-    const allRows = [...new Set([...rowValues0603, ...rowValues1206x4])].sort(
-      (a, b) => a - b,
-    )
-
     defs.push({
-      name: "cols",
-      possibleValues: allCols.map((c) => ({ COLS: c })),
+      name: "1206x4_cols",
+      possibleValues: colValues1206x4.map((c) => ({ COLS: c })),
     })
 
     defs.push({
-      name: "rows",
-      possibleValues: allRows.map((r) => ({ ROWS: r })),
+      name: "1206x4_rows",
+      possibleValues: rowValues1206x4.map((r) => ({ ROWS: r })),
     })
 
     defs.push({
@@ -147,30 +207,40 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
 
   getCombinationDefs() {
     // Try all combinations of jumperType, cols, rows, and orientation
-    return [["jumperType", "cols", "rows", "orientation"]]
+    return [
+      ["0603_max_rows_and_cols_vert"],
+      ["0603_max_rows_and_cols_horz"],
+      ["1206x4", "1206x4_cols", "1206x4_rows", "orientation"],
+    ]
   }
 
   /**
-   * Override initializeSolvers to filter out invalid combinations before creating solvers.
+   * Override initializeSolvers to use getCombinationDefs for both 0603 and 1206x4.
+   * For 0603: uses pre-calculated max rows/cols per orientation (2 configs total)
+   * For 1206x4: uses full combination of cols, rows, and orientation
    */
   initializeSolvers() {
     const hyperParameterDefs = this.getHyperParameterDefs()
-
-    const combinationDefs = this.getCombinationDefs() ?? [
-      hyperParameterDefs.map((def) => def.name),
-    ]
+    const combinationDefs = this.getCombinationDefs()
 
     this.supervisedSolvers = []
+
     for (const combinationDef of combinationDefs) {
+      // Check if this combination applies to our available jumper types
+      const is0603Combo =
+        combinationDef.includes("0603_max_rows_and_cols_vert") ||
+        combinationDef.includes("0603_max_rows_and_cols_horz")
+      const is1206x4Combo = combinationDef.includes("1206x4")
+
+      if (is0603Combo && !this.availableJumperTypes.includes("0603")) continue
+      if (is1206x4Combo && !this.availableJumperTypes.includes("1206x4"))
+        continue
+
       const hyperParameterCombinations = this.getHyperParameterCombinations(
         hyperParameterDefs.filter((hpd) => combinationDef.includes(hpd.name)),
       )
 
       for (const hyperParameters of hyperParameterCombinations) {
-        // Filter out invalid combinations
-        if (!this.isValidCombination(hyperParameters as VariantHyperParameters))
-          continue
-
         const solver = this.generateSolver(
           hyperParameters as VariantHyperParameters,
         )

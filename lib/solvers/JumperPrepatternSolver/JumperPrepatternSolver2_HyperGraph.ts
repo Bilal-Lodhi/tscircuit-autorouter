@@ -206,7 +206,7 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
     const nodeWidth = nodeBounds.maxX - nodeBounds.minX
     const nodeHeight = nodeBounds.maxY - nodeBounds.minY
 
-    const margin0603 = 0.6
+    const margin0603 = 0.5
 
     // First, generate a minimal grid to measure core size
     const minimalGraph = generateJumperGrid({
