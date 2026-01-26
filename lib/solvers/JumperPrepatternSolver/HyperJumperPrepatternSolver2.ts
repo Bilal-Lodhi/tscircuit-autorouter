@@ -14,6 +14,7 @@ import {
   JumperPrepatternSolver2HyperParameters,
 } from "./JumperPrepatternSolver2_HyperGraph"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
+import { calculateMax0603Config } from "./estimate0603GridBounds"
 
 export interface HyperJumperPrepatternSolver2Params {
   nodeWithPortPoints: NodeWithPortPoints
@@ -74,62 +75,20 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
     return this.constructorParams
   }
 
-  /**
-   * Calculate max rows and cols for 0603 that fit in node bounds.
-   *
-   * Grid generation uses generateJumperGrid where cols directly controls width.
-   * For horizontal orientation, _generate0603Grid swaps: effectiveCols = ROWS.
-   *
-   * Empirically measured with margin=0.5:
-   * - 1 col = 2.45 wide, 4 cols = 11.3 wide → width = 2.45 + (cols-1)*2.95
-   * - 8 rows = 11.1 tall → height = rows * 1.39
-   */
-  private _calculateMax0603(orientation: "horizontal" | "vertical"): {
-    cols: number
-    rows: number
-  } {
-    const node = this.nodeWithPortPoints
-    const nodeWidth = node.width
-    const nodeHeight = node.height
-
-    // Available space after padding requirement (0.5mm each side)
-    const availableWidth = nodeWidth - 1.0
-    const availableHeight = nodeHeight - 1.0
-
-    // Grid size formulas (empirically measured with margin=0.5):
-    // width = baseWidth + (cols-1) * additionalWidthPerCol = 2.45 + (cols-1)*2.95
-    // height = rows * heightPerRow (measured: 15 rows = 21.26 → 1.42 per row)
-    const baseWidth = 2.45
-    const additionalWidthPerCol = 2.95
-    const heightPerRow = 1.42
-
-    // Calculate max cols that fit in width: availableWidth >= 2.45 + (cols-1)*2.95
-    // cols <= 1 + (availableWidth - 2.45) / 2.95
-    const maxColsFromWidth = Math.floor(
-      1 + (availableWidth - baseWidth) / additionalWidthPerCol,
-    )
-
-    // Calculate max rows that fit in height: availableHeight >= rows * 1.39
-    const maxRowsFromHeight = Math.floor(availableHeight / heightPerRow)
-
-    if (orientation === "vertical") {
-      // Vertical: COLS controls width, ROWS controls height
-      return { cols: maxColsFromWidth, rows: maxRowsFromHeight }
-    } else {
-      // Horizontal: effectiveCols = ROWS (controls width), effectiveRows = COLS (controls height)
-      // So ROWS parameter controls width (use maxColsFromWidth), COLS controls height (use maxRowsFromHeight)
-      return { cols: maxRowsFromHeight, rows: maxColsFromWidth }
-    }
-  }
-
   getHyperParameterDefs() {
     const defs: Array<{
       name: string
       possibleValues: Array<Record<string, any>>
     }> = []
 
+    const node = this.nodeWithPortPoints
+
     // 0603 max configs for each orientation (single value each)
-    const max0603Vert = this._calculateMax0603("vertical")
+    const max0603Vert = calculateMax0603Config(
+      node.width,
+      node.height,
+      "vertical",
+    )
     defs.push({
       name: "0603_max_rows_and_cols_vert",
       possibleValues: [
@@ -142,7 +101,11 @@ export class HyperJumperPrepatternSolver2 extends HyperParameterSupervisorSolver
       ],
     })
 
-    const max0603Horz = this._calculateMax0603("horizontal")
+    const max0603Horz = calculateMax0603Config(
+      node.width,
+      node.height,
+      "horizontal",
+    )
     defs.push({
       name: "0603_max_rows_and_cols_horz",
       possibleValues: [
