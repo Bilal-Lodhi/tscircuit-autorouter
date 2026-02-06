@@ -23,6 +23,7 @@ import type {
 import { buildPortPointAssignmentsFromSolvedRoutes } from "lib/solvers/PortPointPathingSolver/hdportpointpathingsolver/buildPortPointAssignmentsFromSolvedRoutes"
 import { visualizeHgPortPointPathingSolver } from "lib/solvers/PortPointPathingSolver/hdportpointpathingsolver/visualizeHgPortPointPathingSolver"
 import type { Connection, HyperGraph } from "@tscircuit/hypergraph"
+import { seededRandom } from "lib/utils/cloneAndShuffleArray"
 
 const MAX_CANDIDATES_PER_REGION = 2
 
@@ -31,6 +32,8 @@ export const SOLVER_DEFAULTS = {
   crossingPenalty: 0.6,
   ripCost: 8.5,
   greedyMultiplier: 0.7,
+  ripShuffleSeed: 1,
+  maxRipCountPerConnection: 3,
 }
 
 export interface HgPortPointPathingSolverParams {
@@ -44,6 +47,8 @@ export interface HgPortPointPathingSolverParams {
   rippingEnabled?: boolean
   portUsagePenalty?: number
   regionTransitionPenalty?: number
+  ripShuffleSeed?: number
+  maxRipCountPerConnection?: number
 }
 
 export class HgPortPointPathingSolver extends HyperGraphSolver<
@@ -63,6 +68,10 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
 
   portUsagePenalty: number
   regionTransitionPenalty: number
+  ripShuffleSeed: number
+  maxRipCountPerConnection: number
+  connectionRipCounts: Map<string, number> = new Map()
+  totalRipCount = 0
 
   constructor({
     inputGraph,
@@ -75,6 +84,8 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
     rippingEnabled,
     portUsagePenalty,
     regionTransitionPenalty,
+    ripShuffleSeed,
+    maxRipCountPerConnection,
   }: HgPortPointPathingSolverParams) {
     super({
       inputGraph,
@@ -94,7 +105,26 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
     this.portUsagePenalty = portUsagePenalty ?? SOLVER_DEFAULTS.portUsagePenalty
     this.regionTransitionPenalty =
       regionTransitionPenalty ?? SOLVER_DEFAULTS.crossingPenalty
+    this.ripShuffleSeed = ripShuffleSeed ?? SOLVER_DEFAULTS.ripShuffleSeed
+    this.maxRipCountPerConnection =
+      maxRipCountPerConnection ?? SOLVER_DEFAULTS.maxRipCountPerConnection
     this.MAX_ITERATIONS = 200000
+  }
+
+  private canRipConnection(connection: Connection): boolean {
+    if (this.maxRipCountPerConnection <= 0) return true
+    const count = this.connectionRipCounts.get(connection.connectionId) ?? 0
+    return count < this.maxRipCountPerConnection
+  }
+
+  override ripSolvedRoute(solvedRoute: SolvedRoute): void {
+    const connectionId = solvedRoute.connection.connectionId
+    const count = this.connectionRipCounts.get(connectionId) ?? 0
+    if (this.maxRipCountPerConnection > 0 && count >= this.maxRipCountPerConnection) {
+      return
+    }
+    this.connectionRipCounts.set(connectionId, count + 1)
+    super.ripSolvedRoute(solvedRoute)
   }
 
   override estimateCostToEnd(port: HgPort): number {
@@ -172,8 +202,18 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
   override routeSolvedHook(solvedRoute: SolvedRoute): void {
     if (!solvedRoute.requiredRip) return
     if (this.unprocessedConnections.length < 2) return
-    const [next, ...rest] = this.unprocessedConnections
-    this.unprocessedConnections = [...rest, next]
+    const candidateRoutes = this.solvedRoutes.filter((route) => {
+      if (route === solvedRoute) return false
+      return this.canRipConnection(route.connection)
+    })
+    if (candidateRoutes.length === 0) return
+    this.totalRipCount += 1
+    const random = seededRandom(this.ripShuffleSeed + this.totalRipCount)
+    const index = Math.floor(random() * candidateRoutes.length)
+    const routeToRip = candidateRoutes[index]
+    if (routeToRip) {
+      this.ripSolvedRoute(routeToRip)
+    }
   }
 
   override _step(): void {
