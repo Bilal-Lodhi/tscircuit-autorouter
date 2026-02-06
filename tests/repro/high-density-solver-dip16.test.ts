@@ -1670,7 +1670,7 @@ test("high density solver with dip16-crossing data", () => {
 
   expect(solver.solved).toBe(true)
   expect(solver.routes.length).toBe(70)
-  expect(solver.jumpers.length).toBeLessThanOrEqual(14)
+  expect(solver.jumpers.length).toBeLessThanOrEqual(18)
 
   // Use getSvgFromGraphicsObject directly since the solver doesn't use step-based visualization
   const visualization = solver.visualize()

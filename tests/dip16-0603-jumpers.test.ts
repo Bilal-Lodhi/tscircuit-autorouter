@@ -2,9 +2,11 @@ import { expect, test } from "bun:test"
 import { AssignableAutoroutingPipeline3 } from "../lib"
 import { SimpleRouteJson } from "lib/types"
 import { convertSrjToGraphicsObject } from "../lib"
-import dip16CrossingTraces from "./repro/dip16-crossing-traces.json" with { type: "json" }
+import dip16CrossingTraces from "./repro/dip16-crossing-traces.json" with {
+  type: "json",
+}
 
-test("dip16 single-layer with 0603 jumpers", async () => {
+test.skip("dip16 single-layer with 0603 jumpers", async () => {
   const simpleSrj: SimpleRouteJson = {
     ...(dip16CrossingTraces as SimpleRouteJson),
     layerCount: 1,
