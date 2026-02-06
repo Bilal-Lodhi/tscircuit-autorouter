@@ -120,7 +120,10 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
   override ripSolvedRoute(solvedRoute: SolvedRoute): void {
     const connectionId = solvedRoute.connection.connectionId
     const count = this.connectionRipCounts.get(connectionId) ?? 0
-    if (this.maxRipCountPerConnection > 0 && count >= this.maxRipCountPerConnection) {
+    if (
+      this.maxRipCountPerConnection > 0 &&
+      count >= this.maxRipCountPerConnection
+    ) {
       return
     }
     this.connectionRipCounts.set(connectionId, count + 1)
