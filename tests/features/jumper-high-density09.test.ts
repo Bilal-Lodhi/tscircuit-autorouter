@@ -22,7 +22,7 @@ test(
 
     const solver = new HyperJumperPrepatternSolver2({
       nodeWithPortPoints: nodePortPoints[0],
-      availableJumperTypes: ["1206x4"],
+      availableJumperTypes: ["1206x4", "0603"],
       colorMap,
     })
 

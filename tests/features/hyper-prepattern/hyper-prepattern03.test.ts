@@ -11,6 +11,7 @@ test(
       nodeWithPortPoints: input.nodeWithPortPoints as any,
       colorMap: input.colorMap,
       traceWidth: input.traceWidth,
+      availableJumperTypes: ["1206x4", "0603"],
     })
 
     solver.solve()

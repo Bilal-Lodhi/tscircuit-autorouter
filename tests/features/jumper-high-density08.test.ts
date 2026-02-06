@@ -23,6 +23,7 @@ test(
     const solver = new JumperHighDensitySolver({
       nodePortPoints,
       colorMap,
+      availableJumperTypes: ["1206x4", "0603"],
     })
 
     solver.solve()
