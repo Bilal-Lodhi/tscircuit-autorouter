@@ -58,7 +58,10 @@ export function calculateMax0603Config(
   )
 
   // Calculate max rows that fit in height: availableHeight >= rows * 1.42
-  const maxRowsFromHeight = Math.max(1, Math.floor(availableHeight / HEIGHT_PER_ROW))
+  const maxRowsFromHeight = Math.max(
+    1,
+    Math.floor(availableHeight / HEIGHT_PER_ROW),
+  )
 
   if (orientation === "vertical") {
     // Vertical: COLS controls width, ROWS controls height

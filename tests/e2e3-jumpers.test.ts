@@ -17,7 +17,8 @@ test("should solve e2e3 single-layer with 0603 jumpers available", async () => {
   expect(solver.solved).toBe(true)
 
   const nodesWithCrossings = solver.highDensitySolver?.nodesWithCrossings ?? []
-  const nodesWithoutCrossings = solver.highDensitySolver?.nodesWithoutCrossings ?? []
+  const nodesWithoutCrossings =
+    solver.highDensitySolver?.nodesWithoutCrossings ?? []
   console.log(`Nodes with crossings: ${nodesWithCrossings.length}`)
   console.log(`Nodes without crossings: ${nodesWithoutCrossings.length}`)
 
