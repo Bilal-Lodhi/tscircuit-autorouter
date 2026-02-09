@@ -33,7 +33,7 @@ export const SOLVER_DEFAULTS = {
   ripCost: 8.5,
   greedyMultiplier: 0.7,
   ripShuffleSeed: 1,
-  maxRipCountPerConnection: 3,
+  ripCooldownSteps: 5,
 }
 
 export interface HgPortPointPathingSolverParams {
@@ -48,7 +48,8 @@ export interface HgPortPointPathingSolverParams {
   portUsagePenalty?: number
   regionTransitionPenalty?: number
   ripShuffleSeed?: number
-  maxRipCountPerConnection?: number
+  ripBudget?: number
+  ripCooldownSteps?: number
 }
 
 export class HgPortPointPathingSolver extends HyperGraphSolver<
@@ -69,9 +70,15 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
   portUsagePenalty: number
   regionTransitionPenalty: number
   ripShuffleSeed: number
-  maxRipCountPerConnection: number
   connectionRipCounts: Map<string, number> = new Map()
   totalRipCount = 0
+  ripBudgetRemaining: number
+  ripCooldownSteps: number
+  connectionRipCooldownUntil: Map<
+    string,
+    { until: number; lastRippedBy?: string }
+  > = new Map()
+  currentRipRequesterConnectionId: string | null = null
 
   constructor({
     inputGraph,
@@ -85,7 +92,8 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
     portUsagePenalty,
     regionTransitionPenalty,
     ripShuffleSeed,
-    maxRipCountPerConnection,
+    ripBudget,
+    ripCooldownSteps,
   }: HgPortPointPathingSolverParams) {
     super({
       inputGraph,
@@ -106,27 +114,46 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
     this.regionTransitionPenalty =
       regionTransitionPenalty ?? SOLVER_DEFAULTS.crossingPenalty
     this.ripShuffleSeed = ripShuffleSeed ?? SOLVER_DEFAULTS.ripShuffleSeed
-    this.maxRipCountPerConnection =
-      maxRipCountPerConnection ?? SOLVER_DEFAULTS.maxRipCountPerConnection
+    this.ripBudgetRemaining =
+      ripBudget ?? this.input.inputConnections.length * 10
+    this.ripCooldownSteps = ripCooldownSteps ?? SOLVER_DEFAULTS.ripCooldownSteps
     this.MAX_ITERATIONS = 200000
   }
 
-  private canRipConnection(connection: Connection): boolean {
-    if (this.maxRipCountPerConnection <= 0) return true
-    const count = this.connectionRipCounts.get(connection.connectionId) ?? 0
-    return count < this.maxRipCountPerConnection
+  private hasRipBudget(): boolean {
+    if (this.ripBudgetRemaining <= 0) return false
+    return true
+  }
+
+  private isConnectionInCooldown(
+    connectionId: string,
+    requesterConnectionId?: string,
+  ): boolean {
+    const cooldown = this.connectionRipCooldownUntil.get(connectionId)
+    if (cooldown == null) return false
+    if (
+      requesterConnectionId &&
+      cooldown.lastRippedBy &&
+      cooldown.lastRippedBy !== requesterConnectionId
+    ) {
+      return false
+    }
+    return this.totalRipCount < cooldown.until
   }
 
   override ripSolvedRoute(solvedRoute: SolvedRoute): void {
+    if (!this.hasRipBudget()) return
     const connectionId = solvedRoute.connection.connectionId
     const count = this.connectionRipCounts.get(connectionId) ?? 0
-    if (
-      this.maxRipCountPerConnection > 0 &&
-      count >= this.maxRipCountPerConnection
-    ) {
-      return
-    }
+    this.totalRipCount += 1
     this.connectionRipCounts.set(connectionId, count + 1)
+    this.ripBudgetRemaining = Math.max(0, this.ripBudgetRemaining - 1)
+    if (this.ripCooldownSteps > 0) {
+      this.connectionRipCooldownUntil.set(connectionId, {
+        until: this.totalRipCount + this.ripCooldownSteps,
+        lastRippedBy: this.currentRipRequesterConnectionId ?? undefined,
+      })
+    }
     super.ripSolvedRoute(solvedRoute)
   }
 
@@ -205,17 +232,25 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
   override routeSolvedHook(solvedRoute: SolvedRoute): void {
     if (!solvedRoute.requiredRip) return
     if (this.unprocessedConnections.length < 2) return
+    if (!this.hasRipBudget()) return
+    const requesterConnectionId = solvedRoute.connection.connectionId
     const candidateRoutes = this.solvedRoutes.filter((route) => {
       if (route === solvedRoute) return false
-      return this.canRipConnection(route.connection)
+      const candidateId = route.connection.connectionId
+      if (this.isConnectionInCooldown(candidateId, requesterConnectionId)) {
+        return false
+      }
+      return true
     })
     if (candidateRoutes.length === 0) return
-    this.totalRipCount += 1
-    const random = seededRandom(this.ripShuffleSeed + this.totalRipCount)
+    const nextRipCount = this.totalRipCount + 1
+    const random = seededRandom(this.ripShuffleSeed + nextRipCount)
     const index = Math.floor(random() * candidateRoutes.length)
     const routeToRip = candidateRoutes[index]
     if (routeToRip) {
+      this.currentRipRequesterConnectionId = requesterConnectionId
       this.ripSolvedRoute(routeToRip)
+      this.currentRipRequesterConnectionId = null
     }
   }
 
