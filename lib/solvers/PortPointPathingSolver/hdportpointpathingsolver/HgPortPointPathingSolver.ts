@@ -222,8 +222,7 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
     const existingProbability = this.connectionRipState.get(
       newlySolvedRoute.connection.connectionId,
     )
-    const ripProbability =
-      existingProbability ?? this.partialRippingProbability
+    const ripProbability = existingProbability ?? this.partialRippingProbability
     if (existingProbability === undefined) {
       this.connectionRipState.set(
         newlySolvedRoute.connection.connectionId,
