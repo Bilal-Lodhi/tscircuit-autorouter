@@ -71,7 +71,7 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
   partialRippingProbability: number
   partialRippingProbabilityIncreaseStep: number
 
-  private connectionRipState: Map<string, { probability: number }> = new Map()
+  private connectionRipState: Map<string, number> = new Map()
 
   constructor({
     inputGraph,
@@ -244,23 +244,19 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
     connectionId: string,
   ): number {
     const existing = this.connectionRipState.get(connectionId)
-    if (existing) return existing.probability
-    this.connectionRipState.set(connectionId, {
-      probability: this.partialRippingProbability,
-    })
+    if (existing !== undefined) return existing
+    this.connectionRipState.set(connectionId, this.partialRippingProbability)
     return this.partialRippingProbability
   }
 
   private maybeIncreasePartialRippingProbability(connectionId: string): void {
-    const existing = this.connectionRipState.get(connectionId) ?? {
-      probability: this.partialRippingProbability,
-    }
+    const existing =
+      this.connectionRipState.get(connectionId) ??
+      this.partialRippingProbability
     const nextProbability =
-      existing.probability + this.partialRippingProbabilityIncreaseStep
+      existing + this.partialRippingProbabilityIncreaseStep
 
-    this.connectionRipState.set(connectionId, {
-      probability: nextProbability,
-    })
+    this.connectionRipState.set(connectionId, nextProbability)
   }
 
   getNodesWithPortPoints(): NodeWithPortPoints[] {
