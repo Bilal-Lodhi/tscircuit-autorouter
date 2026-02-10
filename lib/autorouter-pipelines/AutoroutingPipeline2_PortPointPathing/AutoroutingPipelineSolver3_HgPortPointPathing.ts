@@ -316,11 +316,6 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
       "uniformPortDistributionSolver",
       UniformPortDistributionSolver,
       (cms) => {
-        console.log(
-          "cms.portPointPathingSolver?.getNodesWithPortPoints()",
-          cms.portPointPathingSolver?.getNodesWithPortPoints(),
-        )
-
         return [
           {
             nodeWithPortPoints:
