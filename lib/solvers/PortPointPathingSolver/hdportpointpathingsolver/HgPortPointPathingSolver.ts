@@ -251,7 +251,7 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
     for (const route of crossingRoutesToRip) {
       const seed = this.iterations
       const rand = seededRandom(seed)
-      if (rand() < ripProbabilityNormalized) {
+      if (rand() > ripProbabilityNormalized) {
         routesToRip.add(route)
       }
     }
