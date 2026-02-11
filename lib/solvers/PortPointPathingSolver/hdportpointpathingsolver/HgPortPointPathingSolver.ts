@@ -231,18 +231,20 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
 
     const start = this.randomRipProbabilityPerConnectionStart
     const end = this.randomRipProbabilityPerConnectionEnd
-    const existingRipProbability =
-      this.connectionRipState.get(newlySolvedRoute.connection.connectionId) ??
-      start
-    const ripProbabilityNormalized = clamp(
-      (existingRipProbability - start) / (end - start),
+    let existingRipProbability = this.connectionRipState.get(
+      newlySolvedRoute.connection.connectionId,
     )
-    if (
-      !this.connectionRipState.get(newlySolvedRoute.connection.connectionId)
-    ) {
+    if (existingRipProbability === undefined) {
+      existingRipProbability = start
       this.connectionRipState.set(
         newlySolvedRoute.connection.connectionId,
-        this.randomRipProbabilityPerConnectionStart,
+        existingRipProbability,
+      )
+    }
+    let ripProbabilityNormalized = 1
+    if (end !== start) {
+      ripProbabilityNormalized = clamp(
+        (existingRipProbability - start) / (end - start),
       )
     }
 
@@ -259,8 +261,7 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
         newlySolvedRoute.connection.connectionId,
         Math.min(
           this.randomRipProbabilityPerConnectionEnd,
-          (existingRipProbability ??
-            this.randomRipProbabilityPerConnectionStart) +
+          existingRipProbability +
             this.randomRipsPerConnectionIncrementBeforeReachingEnd,
         ),
       )
