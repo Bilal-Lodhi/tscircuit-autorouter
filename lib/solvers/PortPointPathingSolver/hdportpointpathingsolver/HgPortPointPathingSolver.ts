@@ -32,9 +32,9 @@ export const SOLVER_DEFAULTS = {
   crossingPenalty: 0.6,
   ripCost: 8.5,
   greedyMultiplier: 0.7,
-  randomRipProbabilityPerConnectionStart: 0.5,
-  randomRipProbabilityPerConnectionEnd: 1,
-  randomRipsPerConnectionIncrementBeforeReachingEnd: 0.01,
+  randomRipProbabilityPerConnectionStart: 50,
+  randomRipProbabilityPerConnectionEnd: 100,
+  randomRipsPerConnectionIncrementBeforeReachingEnd: 1,
 }
 
 export interface HgPortPointPathingSolverParams {
