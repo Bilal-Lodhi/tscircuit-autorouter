@@ -32,7 +32,7 @@ export const SOLVER_DEFAULTS = {
   crossingPenalty: 0.6,
   ripCost: 8.5,
   greedyMultiplier: 0.7,
-  randomRipProbabilityPerConnectionStart: 50,
+  randomRipProbabilityPerConnectionStart: 0,
   randomRipProbabilityPerConnectionEnd: 100,
   randomRipsPerConnectionIncrementBeforeReachingEnd: 1,
 }
