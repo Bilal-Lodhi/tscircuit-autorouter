@@ -32,8 +32,9 @@ export const SOLVER_DEFAULTS = {
   crossingPenalty: 0.6,
   ripCost: 8.5,
   greedyMultiplier: 0.7,
-  partialRippingProbability: 0.5,
-  partialRippingProbabilityIncreaseStep: 0.01,
+  randomRipProbabilityPerConnectionStart: 0.5,
+  randomRipProbabilityPerConnectionEnd: 1,
+  randomRipsPerConnectionIncrementBeforeReachingEnd: 0.01,
 }
 
 export interface HgPortPointPathingSolverParams {
@@ -47,8 +48,9 @@ export interface HgPortPointPathingSolverParams {
   rippingEnabled?: boolean
   portUsagePenalty?: number
   regionTransitionPenalty?: number
-  partialRippingProbability?: number
-  partialRippingProbabilityIncreaseStep?: number
+  randomRipProbabilityPerConnectionStart?: number
+  randomRipProbabilityPerConnectionEnd?: number
+  randomRipsPerConnectionIncrementBeforeReachingEnd?: number
 }
 
 export class HgPortPointPathingSolver extends HyperGraphSolver<
@@ -68,8 +70,9 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
 
   portUsagePenalty: number
   regionTransitionPenalty: number
-  partialRippingProbability: number
-  partialRippingProbabilityIncreaseStep: number
+  randomRipProbabilityPerConnectionStart: number
+  randomRipProbabilityPerConnectionEnd: number
+  randomRipsPerConnectionIncrementBeforeReachingEnd: number
 
   private connectionRipState: Map<string, number> = new Map()
 
@@ -84,8 +87,9 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
     rippingEnabled,
     portUsagePenalty,
     regionTransitionPenalty,
-    partialRippingProbability,
-    partialRippingProbabilityIncreaseStep,
+    randomRipProbabilityPerConnectionStart,
+    randomRipProbabilityPerConnectionEnd,
+    randomRipsPerConnectionIncrementBeforeReachingEnd,
   }: HgPortPointPathingSolverParams) {
     super({
       inputGraph,
@@ -104,11 +108,15 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
     this.portUsagePenalty = portUsagePenalty ?? SOLVER_DEFAULTS.portUsagePenalty
     this.regionTransitionPenalty =
       regionTransitionPenalty ?? SOLVER_DEFAULTS.crossingPenalty
-    this.partialRippingProbability =
-      partialRippingProbability ?? SOLVER_DEFAULTS.partialRippingProbability
-    this.partialRippingProbabilityIncreaseStep =
-      partialRippingProbabilityIncreaseStep ??
-      SOLVER_DEFAULTS.partialRippingProbabilityIncreaseStep
+    this.randomRipProbabilityPerConnectionStart =
+      randomRipProbabilityPerConnectionStart ??
+      SOLVER_DEFAULTS.randomRipProbabilityPerConnectionStart
+    this.randomRipProbabilityPerConnectionEnd =
+      randomRipProbabilityPerConnectionEnd ??
+      SOLVER_DEFAULTS.randomRipProbabilityPerConnectionEnd
+    this.randomRipsPerConnectionIncrementBeforeReachingEnd =
+      randomRipsPerConnectionIncrementBeforeReachingEnd ??
+      SOLVER_DEFAULTS.randomRipsPerConnectionIncrementBeforeReachingEnd
     this.MAX_ITERATIONS = 200000
   }
 
@@ -219,32 +227,42 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
 
     const routesToRip = new Set<SolvedRoute>(portReuseRoutesToRip)
 
-    const existingProbability = this.connectionRipState.get(
-      newlySolvedRoute.connection.connectionId,
+    const clamp = (value: number): number => Math.min(1, Math.max(0, value))
+
+    const start = this.randomRipProbabilityPerConnectionStart
+    const end = this.randomRipProbabilityPerConnectionEnd
+    const existingRipProbability =
+      this.connectionRipState.get(newlySolvedRoute.connection.connectionId) ??
+      start
+    const ripProbabilityNormalized = clamp(
+      (existingRipProbability - start) / (end - start),
     )
-    const ripProbability = existingProbability ?? this.partialRippingProbability
-    if (existingProbability === undefined) {
+    if (
+      !this.connectionRipState.get(newlySolvedRoute.connection.connectionId)
+    ) {
       this.connectionRipState.set(
         newlySolvedRoute.connection.connectionId,
-        this.partialRippingProbability,
+        this.randomRipProbabilityPerConnectionStart,
       )
     }
 
     for (const route of crossingRoutesToRip) {
       const seed = this.iterations
       const rand = seededRandom(seed)
-      if (rand() < ripProbability) {
+      if (rand() < ripProbabilityNormalized) {
         routesToRip.add(route)
       }
     }
 
     if (routesToRip.size - portReuseRoutesToRip.size > 0) {
-      const currentProbability =
-        this.connectionRipState.get(newlySolvedRoute.connection.connectionId) ??
-        this.partialRippingProbability
       this.connectionRipState.set(
         newlySolvedRoute.connection.connectionId,
-        currentProbability + this.partialRippingProbabilityIncreaseStep,
+        Math.min(
+          this.randomRipProbabilityPerConnectionEnd,
+          (existingRipProbability ??
+            this.randomRipProbabilityPerConnectionStart) +
+            this.randomRipsPerConnectionIncrementBeforeReachingEnd,
+        ),
       )
     }
 
