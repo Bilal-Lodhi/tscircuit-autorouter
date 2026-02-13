@@ -20,9 +20,11 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: React to comment
+      - name: React to comment and post running status
+        id: running-comment
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.TSCIRCUIT_BOT_GITHUB_TOKEN }}
           script: |
             await github.rest.reactions.createForIssueComment({
               owner: context.repo.owner,
@@ -30,6 +32,14 @@ jobs:
               comment_id: context.payload.comment.id,
               content: 'rocket'
             });
+
+            const comment = await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `## 🏃 Autorouting Benchmark\n\n⏳ Running benchmark... [View progress](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`
+            });
+            core.setOutput('comment_id', comment.data.id);
 
       - name: Get PR branch and parse solver name
         id: pr-info
@@ -49,7 +59,7 @@ jobs:
             const comment = context.payload.comment.body;
             const match = comment.match(/\/benchmark(?:\s+(\S+))?(?:\s+(\d+))?/);
             const solverName = match && match[1] && match[1] !== '_' ? match[1] : '';
-            const scenarioLimit = match && match[2] ? match[2] : '20';
+            const scenarioLimit = match && match[2] ? match[2] : '';
             core.setOutput('solver_name', solverName);
             core.setOutput('scenario_limit', scenarioLimit);
 
@@ -84,20 +94,37 @@ jobs:
           SOLVER_NAME="${{ steps.pr-info.outputs.solver_name }}"
           SCENARIO_LIMIT="${{ steps.pr-info.outputs.scenario_limit }}"
 
-          # Run benchmark with optional solver name
-          if [ -n "$SOLVER_NAME" ]; then
-            echo "Running benchmark with solver: $SOLVER_NAME (limit: $SCENARIO_LIMIT)"
-            output=$(autorouting-dataset-runner benchmark-solver.ts "$SOLVER_NAME" --scenario-limit "$SCENARIO_LIMIT" 2>&1) || true
-          else
-            echo "Running benchmark with default solver (limit: $SCENARIO_LIMIT)"
-            output=$(autorouting-dataset-runner benchmark-solver.ts --scenario-limit "$SCENARIO_LIMIT" 2>&1) || true
-          fi
-          echo "$output"
+          # Build command with optional solver name and scenario limit
+          CMD="autorouting-dataset-runner benchmark-solver.ts"
 
-          # Save output for comment (escape for GitHub Actions)
+          if [ -n "$SOLVER_NAME" ]; then
+            CMD="$CMD $SOLVER_NAME"
+            echo "Running benchmark with solver: $SOLVER_NAME"
+          else
+            echo "Running benchmark with default solver"
+          fi
+
+          if [ -n "$SCENARIO_LIMIT" ]; then
+            CMD="$CMD --scenario-limit $SCENARIO_LIMIT"
+            echo "Scenario limit: $SCENARIO_LIMIT"
+          else
+            echo "Running all scenarios"
+          fi
+
+          # Run and capture output while showing live progress
+          $CMD 2>&1 | tee /tmp/benchmark_output.txt || true
+
+          # Extract only key info for the comment (to avoid "Argument list too long" error)
           {
             echo "BENCHMARK_OUTPUT<<EOFMARKER"
-            echo "$output"
+            # Get loading/using autorouter lines
+            grep -E "^(Loading|✓ Using|✓ From)" /tmp/benchmark_output.txt || true
+            echo ""
+            # Get the results table (lines with + or |)
+            grep -E "^[+|]" /tmp/benchmark_output.txt || true
+            echo ""
+            # Get summary lines
+            grep -E "^(Scenarios:|✓)" /tmp/benchmark_output.txt | tail -3 || true
             echo "EOFMARKER"
           } >> $GITHUB_OUTPUT
 
@@ -108,19 +135,28 @@ jobs:
           path: results/
           retention-days: 30
 
-      - name: Update comment
-        uses: marocchino/sticky-pull-request-comment@v2
+      - name: Update comment with results
+        uses: actions/github-script@v7
         with:
-          GITHUB_TOKEN: ${{ secrets.TSCIRCUIT_BOT_GITHUB_TOKEN }}
-          header: Autorouting Benchmark
-          number: ${{ github.event.issue.number }}
-          message: |
-            ## 🏃 Autorouting Benchmark Results
+          github-token: ${{ secrets.TSCIRCUIT_BOT_GITHUB_TOKEN }}
+          script: |
+            const output = `${{ steps.benchmark.outputs.BENCHMARK_OUTPUT }}`;
+            const solverName = '${{ steps.pr-info.outputs.solver_name }}' || 'default';
+            const scenarioLimit = '${{ steps.pr-info.outputs.scenario_limit }}' || 'all';
 
-            ```
-            ${{ steps.benchmark.outputs.BENCHMARK_OUTPUT }}
-            ```
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: ${{ steps.running-comment.outputs.comment_id }},
+              body: `## 🏃 Autorouting Benchmark Results
+
+            **Solver:** ${solverName} | **Scenarios:** ${scenarioLimit}
+
+            \`\`\`
+            ${output}
+            \`\`\`
 
             📊 [Download HTML visualization and bundle](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)
 
-            <sub>Triggered by @${{ github.event.comment.user.login }} • Commit: ${{ steps.pr-info.outputs.sha }}</sub>
+            <sub>Triggered by @${{ github.event.comment.user.login }} • Commit: ${{ steps.pr-info.outputs.sha }}</sub>`
+            });
