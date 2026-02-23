@@ -3,9 +3,7 @@ import type {
   InputNodeWithPortPoints,
   InputPortPoint,
 } from "lib/solvers/PortPointPathingSolver/PortPointPathingSolver"
-import type {
-  HgPortPointPathingSharedInputs,
-} from "lib/solvers/PortPointPathingSolver/hdportpointpathingsolver/buildHgPortPointPathingSharedInputs"
+import type { HgPortPointPathingSharedInputs } from "lib/solvers/PortPointPathingSolver/hdportpointpathingsolver/buildHgPortPointPathingSharedInputs"
 import { buildHyperGraphFromInputNodes } from "lib/solvers/PortPointPathingSolver/hdportpointpathingsolver/buildHyperGraphFromInputNodes"
 import { buildHyperConnectionsFromSimpleRouteJson } from "lib/solvers/PortPointPathingSolver/hdportpointpathingsolver/buildHyperConnectionsFromSimpleRouteJson"
 
