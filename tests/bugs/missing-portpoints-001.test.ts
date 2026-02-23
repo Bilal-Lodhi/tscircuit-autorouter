@@ -11,7 +11,7 @@ const srj = bugReport as SimpleRouteJson
 test("missing-port-points-001", () => {
   const solver = new AutoroutingPipelineSolver3_HgPortPointPathing(srj)
   solver.solve()
-  console.log(solver.error)
+  // console.log(solver.error)
 
   expect(solver.solved).toBe(true)
 
