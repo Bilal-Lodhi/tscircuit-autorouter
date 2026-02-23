@@ -38,6 +38,7 @@ interface ObstacleResult {
   assignments: TargetPointAssignment[]
   discoveredDepthByNodeId: Map<CapacityMeshNodeId, number>
   discoveredDepthByEdgeKey: Map<string, number>
+  chokeBlockedAtDegree2: boolean
 }
 
 const DEGREE_0_COLOR = "rgba(255, 180, 0, 0.95)"
@@ -84,6 +85,10 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
   currentAssignments: TargetPointAssignment[] = []
   currentDiscoveredDepthByNodeId: Map<CapacityMeshNodeId, number> = new Map()
   currentDiscoveredDepthByEdgeKey: Map<string, number> = new Map()
+  discoveredPortIdsByDegree: Map<2, Set<string>> = new Map([
+    [2, new Set()],
+  ])
+  currentChokeBlockedAtDegree2 = false
   frontier: CapacityMeshNodeId[] = []
 
   obstacleTargetMap = new Map<number, TargetPointAssignment[]>()
@@ -242,11 +247,54 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
         if (prevDegree === undefined || nextDegree < prevDegree) {
           this.currentDiscoveredDepthByEdgeKey.set(edgeKey, nextDegree)
         }
+        const portIds = this.getPortIdsBetweenNodes(nodeId, neighborId)
+        if (nextDegree === 2) {
+          for (const portId of portIds) {
+            this.discoveredPortIdsByDegree.get(2)?.add(portId)
+          }
+        }
         nextFrontier.push(neighborId)
       }
     }
 
     this.frontier = nextFrontier
+  }
+
+  private getPortIdsBetweenNodes(
+    nodeIdA: CapacityMeshNodeId,
+    nodeIdB: CapacityMeshNodeId,
+  ): string[] {
+    const ids: string[] = []
+    for (const port of this.graph.ports) {
+      const r1 = port.region1.regionId as CapacityMeshNodeId
+      const r2 = port.region2.regionId as CapacityMeshNodeId
+      if (
+        (r1 === nodeIdA && r2 === nodeIdB) ||
+        (r1 === nodeIdB && r2 === nodeIdA)
+      ) {
+        ids.push(port.portId)
+      }
+    }
+    return ids
+  }
+
+  private isPortTouchingObstacle(portId: string): boolean {
+    const port = this.graph.ports.find((p) => p.portId === portId)
+    if (!port) return false
+    const nodeId1 = port.region1.regionId as CapacityMeshNodeId
+    const nodeId2 = port.region2.regionId as CapacityMeshNodeId
+    const node1 = this.inputNodes.find((n) => n.capacityMeshNodeId === nodeId1)
+    const node2 = this.inputNodes.find((n) => n.capacityMeshNodeId === nodeId2)
+    return Boolean(node1?._containsObstacle || node2?._containsObstacle)
+  }
+
+  private computeChokeBlockedAtDegree(degree: 2): boolean {
+    const portIds = this.discoveredPortIdsByDegree.get(degree)
+    if (!portIds || portIds.size === 0) return false
+    for (const portId of portIds) {
+      if (!this.isPortTouchingObstacle(portId)) return false
+    }
+    return true
   }
 
   _step() {
@@ -270,6 +318,8 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
       this.currentAssignments = []
       this.currentDiscoveredDepthByNodeId = new Map()
       this.currentDiscoveredDepthByEdgeKey = new Map()
+      this.discoveredPortIdsByDegree = new Map([[2, new Set()]])
+      this.currentChokeBlockedAtDegree2 = false
       this.frontier = []
       this.phase = "associate_targets"
       return
@@ -306,6 +356,7 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
 
     if (this.phase === "bfs_degree_2") {
       this.expandOneDegree(2)
+      this.currentChokeBlockedAtDegree2 = this.computeChokeBlockedAtDegree(2)
       this.phase = "finalize_obstacle"
       return
     }
@@ -327,6 +378,7 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
         assignments,
         discoveredDepthByNodeId: new Map(this.currentDiscoveredDepthByNodeId),
         discoveredDepthByEdgeKey: new Map(this.currentDiscoveredDepthByEdgeKey),
+        chokeBlockedAtDegree2: this.currentChokeBlockedAtDegree2,
       })
 
       this.currentObstacleIndex++
@@ -335,6 +387,8 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
       this.currentAssignments = []
       this.currentDiscoveredDepthByNodeId = new Map()
       this.currentDiscoveredDepthByEdgeKey = new Map()
+      this.discoveredPortIdsByDegree = new Map([[2, new Set()]])
+      this.currentChokeBlockedAtDegree2 = false
       this.frontier = []
       this.phase =
         this.currentObstacleIndex >= this.srj.obstacles.length
@@ -378,6 +432,7 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
       assignments: this.currentAssignments,
       discoveredDepthByNodeId: this.currentDiscoveredDepthByNodeId,
       discoveredDepthByEdgeKey: this.currentDiscoveredDepthByEdgeKey,
+      chokeBlockedAtDegree2: this.currentChokeBlockedAtDegree2,
     }
   }
 
@@ -439,7 +494,11 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
 
       const activeRect = rects.find((r) => r.label?.includes("(active)"))
       if (activeRect) {
-        activeRect.label = [activeRect.label, targetStatus].join("\n")
+        activeRect.label = [
+          activeRect.label,
+          `chokeBlocked@2: ${state.chokeBlockedAtDegree2 ? "yes" : "no"}`,
+          targetStatus,
+        ].join("\n")
       }
     }
 
