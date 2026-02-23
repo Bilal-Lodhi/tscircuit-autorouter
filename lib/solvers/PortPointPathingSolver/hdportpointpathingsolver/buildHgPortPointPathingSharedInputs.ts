@@ -38,10 +38,12 @@ export function buildHgPortPointPathingSharedInputs({
   capacityNodes,
   availableSegmentPointSolver,
   simpleRouteJson,
+  selectedCrammedPortPointIds,
 }: {
   capacityNodes: CapacityMeshNode[]
   availableSegmentPointSolver: AvailableSegmentPointSolver
   simpleRouteJson: SimpleRouteJson
+  selectedCrammedPortPointIds?: Set<string>
 }): HgPortPointPathingSharedInputs {
   const inputNodes = capacityNodes.map((node) => ({
     capacityMeshNodeId: node.capacityMeshNodeId,
@@ -57,7 +59,15 @@ export function buildHgPortPointPathingSharedInputs({
   const nodeMap = new Map(inputNodes.map((n) => [n.capacityMeshNodeId, n]))
 
   for (const segment of availableSegmentPointSolver.sharedEdgeSegments) {
-    for (const segmentPortPoint of segment.portPoints) {
+    const selectedCrammedPortPoints = segment.crammedPortPoints.filter((pp) =>
+      selectedCrammedPortPointIds?.has(pp.segmentPortPointId),
+    )
+    const segmentPortPoints = [
+      ...segment.normalPortPoints,
+      ...selectedCrammedPortPoints,
+    ]
+
+    for (const segmentPortPoint of segmentPortPoints) {
       const [nodeId1, nodeId2] = segmentPortPoint.nodeIds
       const inputPortPoint: InputPortPoint = {
         portPointId: segmentPortPoint.segmentPortPointId,

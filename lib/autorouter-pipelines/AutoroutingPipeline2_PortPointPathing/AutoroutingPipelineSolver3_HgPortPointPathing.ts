@@ -41,6 +41,7 @@ import {
   buildHgPortPointPathingSharedInputs,
   HgPortPointPathingSharedInputs,
 } from "../../solvers/PortPointPathingSolver/hdportpointpathingsolver/buildHgPortPointPathingSharedInputs"
+import { buildHgPortPointPathingSharedInputsFromExisting } from "../../solvers/PortPointPathingSolver/hdportpointpathingsolver/buildHgPortPointPathingSharedInputsFromExisting"
 import { CapacityMeshNodeSolver2_NodeUnderObstacle } from "../../solvers/CapacityMeshSolver/CapacityMeshNodeSolver2_NodesUnderObstacles"
 import { MultiSectionPortPointOptimizer } from "../../solvers/MultiSectionPortPointOptimizer"
 import { UniformPortDistributionSolver } from "lib/solvers/UniformPortDistributionSolver/UniformPortDistributionSolver"
@@ -121,7 +122,8 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
   capacityNodes: CapacityMeshNode[] | null = null
   capacityEdges: CapacityMeshEdge[] | null = null
   inputNodeWithPortPoints: InputNodeWithPortPoints[] = []
-  hgPortPointPathingSharedInputs?: HgPortPointPathingSharedInputs
+  hgPortPointPathingSharedInputsBase?: HgPortPointPathingSharedInputs
+  selectedCrammedPortPointIdsForPathing: Set<string> = new Set()
 
   cacheProvider: CacheProvider | null = null
   pipelineDef = [
@@ -228,13 +230,22 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
       "portPointReachability2HopCheck",
       PortPointReachability2HopCheckSolver,
       (cms) => {
-        const sharedInputs = cms.getOrBuildHgPortPointPathingSharedInputs()
+        const sharedInputs =
+          cms.hgPortPointPathingSharedInputsBase ??
+          buildHgPortPointPathingSharedInputs({
+            capacityNodes: cms.capacityNodes!,
+            availableSegmentPointSolver: cms.availableSegmentPointSolver!,
+            simpleRouteJson: cms.srjWithPointPairs!,
+          })
+        cms.hgPortPointPathingSharedInputsBase = sharedInputs
+        cms.inputNodeWithPortPoints = sharedInputs.inputNodes
         return [
           {
             srj: cms.srjWithPointPairs!,
             inputGraph: sharedInputs.graph,
             inputNodes: sharedInputs.inputNodes,
             connectionsWithResults: sharedInputs.connectionsWithResults,
+            sharedEdges: sharedInputs.sharedEdges,
           },
         ]
       },
@@ -243,7 +254,26 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
       "portPointPathingSolver",
       HgPortPointPathingSolver,
       (cms) => {
-        const sharedInputs = cms.getOrBuildHgPortPointPathingSharedInputs()
+        const baseSharedInputs =
+          cms.hgPortPointPathingSharedInputsBase ??
+          buildHgPortPointPathingSharedInputs({
+            capacityNodes: cms.capacityNodes!,
+            availableSegmentPointSolver: cms.availableSegmentPointSolver!,
+            simpleRouteJson: cms.srjWithPointPairs!,
+          })
+        cms.hgPortPointPathingSharedInputsBase = baseSharedInputs
+
+        const selectedCrammedPortPointIds =
+          cms.selectedCrammedPortPointIdsForPathing
+        const hasSelectedCrammed = selectedCrammedPortPointIds.size > 0
+        const sharedInputs = hasSelectedCrammed
+          ? buildHgPortPointPathingSharedInputsFromExisting({
+              baseSharedInputs,
+              simpleRouteJson: cms.srjWithPointPairs!,
+              selectedCrammedPortPointIds,
+            })
+          : baseSharedInputs
+        cms.inputNodeWithPortPoints = sharedInputs.inputNodes
 
         return [
           {
@@ -428,6 +458,11 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
           this.endTimeOfPhase[pipelineStepDef.solverName] -
           this.startTimeOfPhase[pipelineStepDef.solverName]
         pipelineStepDef.onSolved?.(this)
+        if (pipelineStepDef.solverName === "portPointReachability2HopCheck") {
+          this.selectedCrammedPortPointIdsForPathing = new Set(
+            this.portPointReachability2HopCheck?.usedCrammedPortPointIds ?? [],
+          )
+        }
         this.activeSubSolver = null
         this.currentPipelineStepIndex++
       } else if (this.activeSubSolver.failed) {
@@ -454,22 +489,6 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
 
   getCurrentPhase(): string {
     return this.pipelineDef[this.currentPipelineStepIndex]?.solverName ?? "none"
-  }
-
-  private getOrBuildHgPortPointPathingSharedInputs(): HgPortPointPathingSharedInputs {
-    if (this.hgPortPointPathingSharedInputs) {
-      return this.hgPortPointPathingSharedInputs
-    }
-
-    this.hgPortPointPathingSharedInputs = buildHgPortPointPathingSharedInputs({
-      capacityNodes: this.capacityNodes!,
-      availableSegmentPointSolver: this.availableSegmentPointSolver!,
-      simpleRouteJson: this.srjWithPointPairs!,
-    })
-
-    this.inputNodeWithPortPoints =
-      this.hgPortPointPathingSharedInputs.inputNodes
-    return this.hgPortPointPathingSharedInputs
   }
 
   visualize(): GraphicsObject {

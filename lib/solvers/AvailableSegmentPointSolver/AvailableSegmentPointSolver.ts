@@ -28,6 +28,8 @@ export interface SharedEdgeSegment {
   start: { x: number; y: number }
   end: { x: number; y: number }
   availableZ: number[]
+  normalPortPoints: SegmentPortPoint[]
+  crammedPortPoints: SegmentPortPoint[]
   portPoints: SegmentPortPoint[]
 }
 
@@ -66,6 +68,7 @@ export class AvailableSegmentPointSolver extends BaseSolver {
 
   /** Map from segmentPortPointId to SegmentPortPoint */
   portPointMap: Map<string, SegmentPortPoint> = new Map()
+  crammedPortPointMap: Map<string, SegmentPortPoint> = new Map()
 
   colorMap: Record<string, string>
 
@@ -115,13 +118,14 @@ export class AvailableSegmentPointSolver extends BaseSolver {
       if (!node1 || !node2) continue
 
       const segment = this.computeSharedEdgeSegment(edge, node1, node2)
-      if (segment) {
-        this.sharedEdgeSegments.push(segment)
-        this.edgeSegmentMap.set(edge.capacityMeshEdgeId, segment)
+      this.sharedEdgeSegments.push(segment)
+      this.edgeSegmentMap.set(edge.capacityMeshEdgeId, segment)
 
-        for (const portPoint of segment.portPoints) {
-          this.portPointMap.set(portPoint.segmentPortPointId, portPoint)
-        }
+      for (const portPoint of segment.normalPortPoints) {
+        this.portPointMap.set(portPoint.segmentPortPointId, portPoint)
+      }
+      for (const portPoint of segment.crammedPortPoints) {
+        this.crammedPortPointMap.set(portPoint.segmentPortPointId, portPoint)
       }
     }
   }
@@ -130,15 +134,18 @@ export class AvailableSegmentPointSolver extends BaseSolver {
     edge: CapacityMeshEdge,
     node1: CapacityMeshNode,
     node2: CapacityMeshNode,
-  ): SharedEdgeSegment | null {
-    const overlap = this.findOverlappingSegment(node1, node2)
-    if (!overlap) return null
+  ): SharedEdgeSegment {
+    const overlap =
+      this.findOverlappingSegment(node1, node2) ??
+      this.createCrammedFallbackSegment(node1, node2)
 
     // Compute mutually available Z layers
-    const availableZ = node1.availableZ.filter((z) =>
+    let availableZ = node1.availableZ.filter((z) =>
       node2.availableZ.includes(z),
     )
-    if (availableZ.length === 0) return null
+    if (availableZ.length === 0) {
+      availableZ = [node1.availableZ[0] ?? node2.availableZ[0] ?? 0]
+    }
 
     // Compute how many port points can fit on this segment
     const segmentLength = Math.sqrt(
@@ -151,13 +158,8 @@ export class AvailableSegmentPointSolver extends BaseSolver {
     const edgeMargin = (this.minPortSpacing * 3) / 4 // this.edgeMargin + segmentLength * 0.1
     const effectiveLength = Math.max(0, segmentLength - edgeMargin * 2)
 
-    if (
-      effectiveLength <= 0 &&
-      !node1._containsTarget &&
-      !node2._containsTarget
-    ) {
-      return null
-    }
+    const allowNormalPortPoints =
+      effectiveLength > 0 || node1._containsTarget || node2._containsTarget
 
     // At minimum we need 1 port point, at maximum we space them minPortSpacing apart
     let maxPortPoints = Math.max(
@@ -165,16 +167,17 @@ export class AvailableSegmentPointSolver extends BaseSolver {
       Math.floor(effectiveLength / this.minPortSpacing) + 1,
     )
 
+    let shouldCreateOnlyCrammed = false
     if (node1._offBoardConnectionId || node2._offBoardConnectionId) {
       // If one node has offBoardConnectionId and the other doesn't,
       // check if the other is connected to the same offBoardConnectionId via another node
       if (node1._offBoardConnectionId && !node2._offBoardConnectionId) {
         if (this.shouldSkipOffBoardPortPoint(node1, node2)) {
-          return null
+          shouldCreateOnlyCrammed = true
         }
       } else if (node2._offBoardConnectionId && !node1._offBoardConnectionId) {
         if (this.shouldSkipOffBoardPortPoint(node2, node1)) {
-          return null
+          shouldCreateOnlyCrammed = true
         }
       }
       maxPortPoints = 1
@@ -182,7 +185,8 @@ export class AvailableSegmentPointSolver extends BaseSolver {
 
     // Create port points evenly spaced along the segment
     // Each port point is created for a single layer (not multiple layers)
-    const portPoints: SegmentPortPoint[] = []
+    const normalPortPoints: SegmentPortPoint[] = []
+    const crammedPortPoints: SegmentPortPoint[] = []
     const dx = overlap.end.x - overlap.start.x
     const dy = overlap.end.y - overlap.start.y
 
@@ -197,31 +201,34 @@ export class AvailableSegmentPointSolver extends BaseSolver {
     // First pass: compute all XY positions and find which is closest to segment center
     const xyPositions: Array<{ x: number; y: number; distToCenter: number }> =
       []
-    for (let i = 0; i < maxPortPoints; i++) {
-      let fraction: number
-      if (segmentLength === 0) {
-        fraction = 0.5
-      } else if (maxPortPoints === 1) {
-        fraction = 0.5
-      } else {
-        fraction =
-          (edgeMargin + (effectiveLength * i) / (maxPortPoints - 1)) /
-          segmentLength
+    if (allowNormalPortPoints && !shouldCreateOnlyCrammed) {
+      for (let i = 0; i < maxPortPoints; i++) {
+        let fraction: number
+        if (segmentLength === 0) {
+          fraction = 0.5
+        } else if (maxPortPoints === 1) {
+          fraction = 0.5
+        } else {
+          fraction =
+            (edgeMargin + (effectiveLength * i) / (maxPortPoints - 1)) /
+            segmentLength
+        }
+        const x = overlap.start.x + dx * fraction
+        const y = overlap.start.y + dy * fraction
+        const distToCenter = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2)
+        xyPositions.push({ x, y, distToCenter })
       }
-      const x = overlap.start.x + dx * fraction
-      const y = overlap.start.y + dy * fraction
-      const distToCenter = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2)
-      xyPositions.push({ x, y, distToCenter })
     }
 
     // Find the centermost port position (smallest distance to segment center)
-    const centermostPos = xyPositions.reduce((best, pos) =>
-      pos.distToCenter < best.distToCenter ? pos : best,
+    const centermostPos = xyPositions.reduce(
+      (best, pos) => (pos.distToCenter < best.distToCenter ? pos : best),
+      { x: centerX, y: centerY, distToCenter: 0 },
     )
 
     // Second pass: create port points with distance to centermost port
-    for (let i = 0; i < maxPortPoints; i++) {
-      const { x, y } = xyPositions[i]
+    for (let i = 0; i < xyPositions.length; i++) {
+      const { x, y } = xyPositions[i]!
 
       // Calculate XY distance to the centermost port position
       const distToCentermostPortOnZ = Math.sqrt(
@@ -240,8 +247,21 @@ export class AvailableSegmentPointSolver extends BaseSolver {
           connectionName: null,
           distToCentermostPortOnZ,
         }
-        portPoints.push(portPoint)
+        normalPortPoints.push(portPoint)
       }
+    }
+
+    for (const z of availableZ) {
+      crammedPortPoints.push({
+        segmentPortPointId: `${edge.capacityMeshEdgeId}_crammed_z${z}`,
+        x: centerX,
+        y: centerY,
+        availableZ: [z],
+        nodeIds: [node1.capacityMeshNodeId, node2.capacityMeshNodeId],
+        edgeId: edge.capacityMeshEdgeId,
+        connectionName: null,
+        distToCentermostPortOnZ: 0,
+      })
     }
 
     return {
@@ -250,7 +270,23 @@ export class AvailableSegmentPointSolver extends BaseSolver {
       start: overlap.start,
       end: overlap.end,
       availableZ,
-      portPoints,
+      normalPortPoints,
+      crammedPortPoints,
+      portPoints: normalPortPoints,
+    }
+  }
+
+  private createCrammedFallbackSegment(
+    node1: CapacityMeshNode,
+    node2: CapacityMeshNode,
+  ): { start: { x: number; y: number }; end: { x: number; y: number } } {
+    const midpoint = {
+      x: (node1.center.x + node2.center.x) / 2,
+      y: (node1.center.y + node2.center.y) / 2,
+    }
+    return {
+      start: midpoint,
+      end: midpoint,
     }
   }
 
@@ -448,25 +484,51 @@ export class AvailableSegmentPointSolver extends BaseSolver {
       })
 
       // Draw port points
-      for (const portPoint of segment.portPoints) {
+      for (const portPoint of segment.normalPortPoints) {
         const color = portPoint.connectionName
           ? (this.colorMap[portPoint.connectionName] ?? "blue")
           : "rgba(0, 200, 0, 0.7)"
 
+        const label = [
+          portPoint.segmentPortPointId,
+          portPoint.connectionName,
+          portPoint.availableZ.join(","),
+          `cd: ${portPoint.distToCentermostPortOnZ}`,
+          `connects: ${portPoint.nodeIds.join(",")}`,
+          "normal",
+        ]
+          .filter(Boolean)
+          .join("\n")
         graphics.circles!.push({
           center: { x: portPoint.x, y: portPoint.y },
           radius: this.traceWidth / 2,
           fill: color,
           layer: `z${portPoint.availableZ.join(",")}`,
-          label: [
-            portPoint.segmentPortPointId,
-            portPoint.connectionName,
-            portPoint.availableZ.join(","),
-            `cd: ${portPoint.distToCentermostPortOnZ}`,
-            `connects: ${portPoint.nodeIds.join(",")}`,
-          ]
-            .filter(Boolean)
-            .join("\n"),
+          label,
+        })
+      }
+
+      for (const portPoint of segment.crammedPortPoints) {
+        const color = portPoint.connectionName
+          ? (this.colorMap[portPoint.connectionName] ?? "blue")
+          : "rgba(0, 200, 0, 0.7)"
+        const label = [
+          portPoint.segmentPortPointId,
+          portPoint.connectionName,
+          portPoint.availableZ.join(","),
+          `cd: ${portPoint.distToCentermostPortOnZ}`,
+          `connects: ${portPoint.nodeIds.join(",")}`,
+          "crammed",
+        ]
+          .filter(Boolean)
+          .join("\n")
+        graphics.rects!.push({
+          center: { x: portPoint.x, y: portPoint.y },
+          width: this.traceWidth * 1.4,
+          height: this.traceWidth * 1.4,
+          fill: color,
+          stroke: "rgba(0,0,0,0.3)",
+          label,
         })
       }
     }
