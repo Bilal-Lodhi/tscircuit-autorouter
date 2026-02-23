@@ -21,7 +21,7 @@ export const handleFinalizeObstaclePhase = (
   solver.currentAnchorNodeId = null
   solver.resetCurrentObstacleTraversalState()
   solver.phase =
-    solver.currentObstacleIndex >= solver.srj.obstacles.length
+    solver.currentObstacleIndex >= solver.totalObstaclesToProcess
       ? "done"
       : "select_obstacle"
 }

@@ -59,7 +59,7 @@ export function buildHgPortPointPathingSharedInputsFromExisting({
   const { graph, regionMap, portPointMap } = buildHyperGraphFromInputNodes({
     inputNodes,
   })
-  const { connections, connectionsWithResults } =
+  const { connections, connectionsWithResults, connectionNameToGoalNodeIds } =
     buildHyperConnectionsFromSimpleRouteJson({
       simpleRouteJson,
       inputNodes,
@@ -73,6 +73,7 @@ export function buildHgPortPointPathingSharedInputsFromExisting({
     portPointMap,
     connections,
     connectionsWithResults,
+    connectionNameToGoalNodeIds,
     sharedEdges: baseSharedInputs.sharedEdges,
   }
 }

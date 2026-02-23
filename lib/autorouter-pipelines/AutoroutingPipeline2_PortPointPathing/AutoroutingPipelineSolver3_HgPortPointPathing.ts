@@ -246,6 +246,8 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
             inputGraph: sharedInputs.graph,
             inputNodes: sharedInputs.inputNodes,
             connectionsWithResults: sharedInputs.connectionsWithResults,
+            connectionNameToGoalNodeIds:
+              sharedInputs.connectionNameToGoalNodeIds,
             sharedEdges: sharedInputs.sharedEdges,
           },
         ]

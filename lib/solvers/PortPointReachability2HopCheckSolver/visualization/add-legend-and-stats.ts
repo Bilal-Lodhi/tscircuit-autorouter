@@ -14,6 +14,7 @@ export const addLegendAndStats = ({
   solver: PortPointReachability2HopCheckSolver
   rects: Rect[]
 }): void => {
+  const totalObstacles = solver.totalObstaclesToProcess
   rects.push(
     {
       center: {
@@ -56,7 +57,7 @@ export const addLegendAndStats = ({
       stroke: "rgba(255,255,255,0.2)",
       label: [
         `phase: ${solver.phase}`,
-        `obstacle: ${Math.min(solver.currentObstacleIndex, solver.srj.obstacles.length)}/${solver.srj.obstacles.length}`,
+        `obstacle: ${Math.min(solver.currentObstacleIndex, totalObstacles)}/${totalObstacles}`,
         `used crammed total: ${solver.usedCrammedPortPointIds.size}`,
       ].join("\n"),
     },

@@ -26,6 +26,7 @@ export interface HgPortPointPathingSharedInputs {
   portPointMap: Map<string, InputPortPoint>
   connections: Connection[]
   connectionsWithResults: ConnectionPathResult[]
+  connectionNameToGoalNodeIds: Map<string, CapacityMeshNodeId[]>
   sharedEdges: SharedEdge[]
 }
 
@@ -88,7 +89,7 @@ export function buildHgPortPointPathingSharedInputs({
   const { graph, regionMap, portPointMap } = buildHyperGraphFromInputNodes({
     inputNodes,
   })
-  const { connections, connectionsWithResults } =
+  const { connections, connectionsWithResults, connectionNameToGoalNodeIds } =
     buildHyperConnectionsFromSimpleRouteJson({
       simpleRouteJson,
       inputNodes,
@@ -102,6 +103,7 @@ export function buildHgPortPointPathingSharedInputs({
     portPointMap,
     connections,
     connectionsWithResults,
+    connectionNameToGoalNodeIds,
     sharedEdges: availableSegmentPointSolver.sharedEdgeSegments,
   }
 }

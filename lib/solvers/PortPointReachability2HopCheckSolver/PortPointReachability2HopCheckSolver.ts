@@ -38,6 +38,7 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
   graph: HyperGraph
   inputNodes: InputNodeWithPortPoints[]
   connectionsWithResults: ConnectionPathResult[]
+  connectionNameToGoalNodeIds: Map<string, CapacityMeshNodeId[]>
 
   phase: Phase = "select_obstacle"
   currentObstacleIndex = 0
@@ -76,17 +77,23 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
 
   adjacencyByNodeId = new Map<CapacityMeshNodeId, Set<CapacityMeshNodeId>>()
 
+  get totalObstaclesToProcess(): number {
+    return this.orderedObstacleIndices.length
+  }
+
   constructor({
     srj,
     inputGraph,
     inputNodes,
     connectionsWithResults,
+    connectionNameToGoalNodeIds,
     sharedEdges,
   }: {
     srj: SimpleRouteJson
     inputGraph: HyperGraph
     inputNodes: InputNodeWithPortPoints[]
     connectionsWithResults: ConnectionPathResult[]
+    connectionNameToGoalNodeIds: Map<string, CapacityMeshNodeId[]>
     sharedEdges: SharedEdgeSegment[]
   }) {
     super()
@@ -94,6 +101,7 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
     this.graph = inputGraph
     this.inputNodes = inputNodes
     this.connectionsWithResults = connectionsWithResults
+    this.connectionNameToGoalNodeIds = connectionNameToGoalNodeIds
 
     for (const sharedEdge of sharedEdges) {
       const [nodeId1, nodeId2] = sharedEdge.nodeIds
@@ -105,16 +113,40 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
     }
 
     buildAdjacency(this)
+    const targetNodeIds = new Set<CapacityMeshNodeId>(
+      Array.from(this.connectionNameToGoalNodeIds.values()).flat(),
+    )
+    const targetObstacleNodeBoxes = this.inputNodes
+      .filter(
+        (node) =>
+          targetNodeIds.has(node.capacityMeshNodeId) && node._containsObstacle,
+      )
+      .map((node) => ({
+        minX: node.center.x - node.width / 2,
+        maxX: node.center.x + node.width / 2,
+        minY: node.center.y - node.height / 2,
+        maxY: node.center.y + node.height / 2,
+      }))
+
     this.orderedObstacleIndices = this.srj.obstacles
       .map((obstacle, index) => ({
         index,
         x: obstacle.center.x,
         y: obstacle.center.y,
+        minX: obstacle.center.x - obstacle.width / 2,
+        maxX: obstacle.center.x + obstacle.width / 2,
+        minY: obstacle.center.y - obstacle.height / 2,
+        maxY: obstacle.center.y + obstacle.height / 2,
       }))
+      .filter((obstacle) =>
+        targetObstacleNodeBoxes.some((targetNode) =>
+          this.boxesOverlap(obstacle, targetNode),
+        ),
+      )
       .sort((a, b) => (a.x === b.x ? a.y - b.y : a.x - b.x))
       .map((entry) => entry.index)
 
-    this.MAX_ITERATIONS = Math.max(1, this.srj.obstacles.length * 128)
+    this.MAX_ITERATIONS = Math.max(1, this.totalObstaclesToProcess * 128)
   }
 
   /** Returns a stable key for an undirected graph edge. */
@@ -127,13 +159,25 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
     resetCurrentObstacleTraversalState(this)
   }
 
+  boxesOverlap(
+    a: { minX: number; maxX: number; minY: number; maxY: number },
+    b: { minX: number; maxX: number; minY: number; maxY: number },
+  ): boolean {
+    return !(
+      a.maxX < b.minX ||
+      a.minX > b.maxX ||
+      a.maxY < b.minY ||
+      a.minY > b.maxY
+    )
+  }
+
   _step() {
     if (this.phase === "done") {
       this.solved = true
       return
     }
 
-    if (this.currentObstacleIndex >= this.srj.obstacles.length) {
+    if (this.currentObstacleIndex >= this.totalObstaclesToProcess) {
       this.phase = "done"
       this.solved = true
       return

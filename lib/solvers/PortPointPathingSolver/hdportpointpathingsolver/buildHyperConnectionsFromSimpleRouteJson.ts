@@ -1,5 +1,5 @@
 import type { Connection } from "@tscircuit/hypergraph"
-import type { SimpleRouteJson } from "lib/types"
+import type { CapacityMeshNodeId, SimpleRouteJson } from "lib/types"
 import type {
   ConnectionPathResult,
   InputNodeWithPortPoints,
@@ -21,11 +21,10 @@ export function buildHyperConnectionsFromSimpleRouteJson({
 }): {
   connections: Connection[]
   connectionsWithResults: ConnectionPathResult[]
+  connectionNameToGoalNodeIds: Map<string, CapacityMeshNodeId[]>
 } {
-  const { unshuffledConnectionsWithResults } = getConnectionsWithNodes(
-    simpleRouteJson,
-    inputNodes,
-  )
+  const { unshuffledConnectionsWithResults, connectionNameToGoalNodeIds } =
+    getConnectionsWithNodes(simpleRouteJson, inputNodes)
 
   const connections: Connection[] = []
 
@@ -49,5 +48,6 @@ export function buildHyperConnectionsFromSimpleRouteJson({
   return {
     connections,
     connectionsWithResults: unshuffledConnectionsWithResults,
+    connectionNameToGoalNodeIds,
   }
 }
