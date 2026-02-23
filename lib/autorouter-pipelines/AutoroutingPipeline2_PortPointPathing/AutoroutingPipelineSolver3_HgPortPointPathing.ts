@@ -54,6 +54,7 @@ interface CapacityMeshSolverOptions {
   targetMinCapacity?: number
   cacheProvider?: CacheProvider | null
   effort?: number
+  useReachabilitySelectedCrammed?: boolean
 }
 export type AutoroutingPipelineSolverOptions = CapacityMeshSolverOptions
 
@@ -248,6 +249,20 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
             sharedEdges: sharedInputs.sharedEdges,
           },
         ]
+      },
+      {
+        onSolved: (cms) => {
+          const selectedFromReachability = new Set(
+            cms.portPointReachability2HopCheck?.usedCrammedPortPointIds ?? [],
+          )
+          const useReachabilitySelectedCrammed = Boolean(
+            cms.opts.useReachabilitySelectedCrammed,
+          )
+          cms.selectedCrammedPortPointIdsForPathing =
+            useReachabilitySelectedCrammed
+              ? selectedFromReachability
+              : new Set()
+        },
       },
     ),
     definePipelineStep(
@@ -458,11 +473,6 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
           this.endTimeOfPhase[pipelineStepDef.solverName] -
           this.startTimeOfPhase[pipelineStepDef.solverName]
         pipelineStepDef.onSolved?.(this)
-        if (pipelineStepDef.solverName === "portPointReachability2HopCheck") {
-          this.selectedCrammedPortPointIdsForPathing = new Set(
-            this.portPointReachability2HopCheck?.usedCrammedPortPointIds ?? [],
-          )
-        }
         this.activeSubSolver = null
         this.currentPipelineStepIndex++
       } else if (this.activeSubSolver.failed) {
