@@ -254,6 +254,11 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
     if (this.phase === "bfs_degree_2") {
       this.expandOneDegree(2)
       this.currentChokeBlockedAtDegree2 = this.computeChokeBlockedAtDegree(2)
+      if (this.currentChokeBlockedAtDegree2) {
+        this.error = `Obstacle ${this.currentObstacleIndex} failed 2-hop reachability check: all degree-2 ports are blocked by obstacle-touching nodes`
+        this.failed = true
+        return
+      }
       this.phase = "finalize_obstacle"
       return
     }
