@@ -36,7 +36,7 @@ import { TraceSimplificationSolver } from "../../solvers/TraceSimplificationSolv
 import { AvailableSegmentPointSolver } from "../../solvers/AvailableSegmentPointSolver/AvailableSegmentPointSolver"
 import { InputNodeWithPortPoints } from "../../solvers/PortPointPathingSolver/PortPointPathingSolver"
 import { HgPortPointPathingSolver } from "../../solvers/PortPointPathingSolver/hdportpointpathingsolver/HgPortPointPathingSolver"
-import { PortPointReachability2HopCheckSolver } from "../../solvers/PortPointPathingSolver/hdportpointpathingsolver/PortPointReachability2HopCheckSolver"
+import { PortPointReachability2HopCheckSolver } from "../../solvers/PortPointReachability2HopCheckSolver/PortPointReachability2HopCheckSolver"
 import {
   buildHgPortPointPathingSharedInputs,
   HgPortPointPathingSharedInputs,
