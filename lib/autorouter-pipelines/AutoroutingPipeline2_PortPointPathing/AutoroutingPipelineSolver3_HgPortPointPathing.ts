@@ -54,7 +54,6 @@ interface CapacityMeshSolverOptions {
   targetMinCapacity?: number
   cacheProvider?: CacheProvider | null
   effort?: number
-  useReachabilitySelectedCrammed?: boolean
 }
 export type AutoroutingPipelineSolverOptions = CapacityMeshSolverOptions
 
@@ -257,13 +256,7 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
           const selectedFromReachability = new Set(
             cms.portPointReachability2HopCheck?.usedCrammedPortPointIds ?? [],
           )
-          const useReachabilitySelectedCrammed = Boolean(
-            cms.opts.useReachabilitySelectedCrammed,
-          )
-          cms.selectedCrammedPortPointIdsForPathing =
-            useReachabilitySelectedCrammed
-              ? selectedFromReachability
-              : new Set()
+          cms.selectedCrammedPortPointIdsForPathing = selectedFromReachability
         },
       },
     ),
