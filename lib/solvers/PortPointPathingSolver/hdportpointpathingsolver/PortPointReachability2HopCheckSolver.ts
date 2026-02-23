@@ -2,17 +2,11 @@ import type { HyperGraph } from "@tscircuit/hypergraph"
 import { distance } from "@tscircuit/math-utils"
 import type { GraphicsObject, Line, Point, Rect } from "graphics-debug"
 import { BaseSolver } from "lib/solvers/BaseSolver"
-import type {
-  CapacityMeshNodeId,
-  ConnectionPoint,
-  Obstacle,
-  SimpleRouteJson,
-} from "lib/types"
+import type { CapacityMeshNodeId, Obstacle, SimpleRouteJson } from "lib/types"
 import type {
   ConnectionPathResult,
   InputNodeWithPortPoints,
 } from "lib/solvers/PortPointPathingSolver/PortPointPathingSolver"
-import { getConnectionPointLayers } from "lib/types/srj-types"
 
 type Phase =
   | "select_obstacle"
@@ -23,19 +17,10 @@ type Phase =
   | "finalize_obstacle"
   | "done"
 
-interface TargetPointAssignment {
-  connectionName: string
-  pointIndex: number
-  point: ConnectionPoint
-  nodeId: CapacityMeshNodeId | null
-  reachedAtDegree: number | null
-}
-
 interface ObstacleResult {
   obstacleIndex: number
   obstacle: Obstacle
   anchorNodeId: CapacityMeshNodeId | null
-  assignments: TargetPointAssignment[]
   discoveredDepthByNodeId: Map<CapacityMeshNodeId, number>
   discoveredDepthByEdgeKey: Map<string, number>
   chokeBlockedAtDegree2: boolean
@@ -44,16 +29,11 @@ interface ObstacleResult {
 const DEGREE_0_COLOR = "rgba(255, 180, 0, 0.95)"
 const DEGREE_1_COLOR = "rgba(0, 170, 255, 0.95)"
 const DEGREE_2_COLOR = "rgba(160, 95, 255, 0.95)"
-const UNREACHABLE_COLOR = "rgba(255, 0, 0, 0.95)"
-const TARGET_REACHABLE_COLOR = "rgba(34, 197, 94, 0.95)"
-
 /**
  * Fast-check reachability pass for port-point pathing.
  *
  * This solver runs a strict BFS limited to depth 2 (degrees 0, 1, 2 only) on
- * the hypergraph and never attempts full routing/path optimization. The goal
- * is only to verify whether target points near each obstacle are locally
- * reachable in up to 2 hops from that obstacle's center anchor node.
+ * the hypergraph and never attempts full routing/path optimization.
  *
  * Why depth 2 is sufficient here:
  * - In expected capacity-mesh / hypergraph layouts, immediately useful
@@ -82,7 +62,6 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
 
   currentObstacle: Obstacle | null = null
   currentAnchorNodeId: CapacityMeshNodeId | null = null
-  currentAssignments: TargetPointAssignment[] = []
   currentDiscoveredDepthByNodeId: Map<CapacityMeshNodeId, number> = new Map()
   currentDiscoveredDepthByEdgeKey: Map<string, number> = new Map()
   discoveredPortIdsByDegree: Map<2, Set<string>> = new Map([
@@ -91,9 +70,7 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
   currentChokeBlockedAtDegree2 = false
   frontier: CapacityMeshNodeId[] = []
 
-  obstacleTargetMap = new Map<number, TargetPointAssignment[]>()
   adjacencyByNodeId = new Map<CapacityMeshNodeId, Set<CapacityMeshNodeId>>()
-  nodesWithTargets: InputNodeWithPortPoints[]
 
   constructor({
     srj,
@@ -111,10 +88,8 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
     this.graph = inputGraph
     this.inputNodes = inputNodes
     this.connectionsWithResults = connectionsWithResults
-    this.nodesWithTargets = this.inputNodes.filter((n) => n._containsTarget)
 
     this.buildAdjacency()
-    this.buildObstacleTargetMap()
 
     this.MAX_ITERATIONS = Math.max(1, this.srj.obstacles.length * 8)
   }
@@ -139,76 +114,6 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
       this.adjacencyByNodeId.get(nodeId1)?.add(nodeId2)
       this.adjacencyByNodeId.get(nodeId2)?.add(nodeId1)
     }
-  }
-
-  private buildObstacleTargetMap() {
-    for (const connection of this.srj.connections) {
-      connection.pointsToConnect.forEach((point, pointIndex) => {
-        const obstacleIndex = this.findAssociatedObstacleIndex(point)
-        if (obstacleIndex === null) return
-
-        const assignment: TargetPointAssignment = {
-          connectionName: connection.name,
-          pointIndex,
-          point,
-          nodeId: null,
-          reachedAtDegree: null,
-        }
-
-        const current = this.obstacleTargetMap.get(obstacleIndex) ?? []
-        current.push(assignment)
-        this.obstacleTargetMap.set(obstacleIndex, current)
-      })
-    }
-  }
-
-  private findAssociatedObstacleIndex(point: ConnectionPoint): number | null {
-    if (this.srj.obstacles.length === 0) return null
-
-    const layers = getConnectionPointLayers(point)
-    const insideCandidates: Array<{ obstacleIndex: number; dist: number }> = []
-    const fallbackCandidates: Array<{ obstacleIndex: number; dist: number }> =
-      []
-
-    for (let i = 0; i < this.srj.obstacles.length; i++) {
-      const obstacle = this.srj.obstacles[i]
-      const dist = distance(point, obstacle.center)
-      const hasLayerOverlap = layers.some((layer) =>
-        obstacle.layers.includes(layer),
-      )
-      if (!hasLayerOverlap) continue
-
-      fallbackCandidates.push({ obstacleIndex: i, dist })
-      if (this.pointInsideObstacle(point, obstacle)) {
-        insideCandidates.push({ obstacleIndex: i, dist })
-      }
-    }
-
-    if (insideCandidates.length > 0) {
-      insideCandidates.sort((a, b) => a.dist - b.dist)
-      return insideCandidates[0].obstacleIndex
-    }
-
-    if (fallbackCandidates.length > 0) {
-      fallbackCandidates.sort((a, b) => a.dist - b.dist)
-      return fallbackCandidates[0].obstacleIndex
-    }
-
-    return null
-  }
-
-  private pointInsideObstacle(
-    point: { x: number; y: number },
-    obstacle: Obstacle,
-  ): boolean {
-    const halfW = obstacle.width / 2
-    const halfH = obstacle.height / 2
-    return (
-      point.x >= obstacle.center.x - halfW &&
-      point.x <= obstacle.center.x + halfW &&
-      point.y >= obstacle.center.y - halfH &&
-      point.y <= obstacle.center.y + halfH
-    )
   }
 
   private findClosestNodeId(
@@ -315,7 +220,6 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
         this.currentObstacle.center,
         this.inputNodes.filter((n) => n._containsObstacle),
       )
-      this.currentAssignments = []
       this.currentDiscoveredDepthByNodeId = new Map()
       this.currentDiscoveredDepthByEdgeKey = new Map()
       this.discoveredPortIdsByDegree = new Map([[2, new Set()]])
@@ -326,13 +230,6 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
     }
 
     if (this.phase === "associate_targets") {
-      const initialAssignments =
-        this.obstacleTargetMap.get(this.currentObstacleIndex) ?? []
-      this.currentAssignments = initialAssignments.map((assignment) => ({
-        ...assignment,
-        nodeId: this.findClosestNodeId(assignment.point, this.nodesWithTargets),
-        reachedAtDegree: null,
-      }))
       this.phase = "bfs_degree_0"
       return
     }
@@ -362,20 +259,10 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
     }
 
     if (this.phase === "finalize_obstacle") {
-      const assignments = this.currentAssignments.map((assignment) => ({
-        ...assignment,
-        reachedAtDegree:
-          assignment.nodeId === null
-            ? null
-            : (this.currentDiscoveredDepthByNodeId.get(assignment.nodeId) ??
-              null),
-      }))
-
       this.results.push({
         obstacleIndex: this.currentObstacleIndex,
         obstacle: this.currentObstacle!,
         anchorNodeId: this.currentAnchorNodeId,
-        assignments,
         discoveredDepthByNodeId: new Map(this.currentDiscoveredDepthByNodeId),
         discoveredDepthByEdgeKey: new Map(this.currentDiscoveredDepthByEdgeKey),
         chokeBlockedAtDegree2: this.currentChokeBlockedAtDegree2,
@@ -384,7 +271,6 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
       this.currentObstacleIndex++
       this.currentObstacle = null
       this.currentAnchorNodeId = null
-      this.currentAssignments = []
       this.currentDiscoveredDepthByNodeId = new Map()
       this.currentDiscoveredDepthByEdgeKey = new Map()
       this.discoveredPortIdsByDegree = new Map([[2, new Set()]])
@@ -429,7 +315,6 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
       obstacleIndex: this.currentObstacleIndex,
       obstacle: this.currentObstacle,
       anchorNodeId: this.currentAnchorNodeId,
-      assignments: this.currentAssignments,
       discoveredDepthByNodeId: this.currentDiscoveredDepthByNodeId,
       discoveredDepthByEdgeKey: this.currentDiscoveredDepthByEdgeKey,
       chokeBlockedAtDegree2: this.currentChokeBlockedAtDegree2,
@@ -484,20 +369,11 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
         })
       }
 
-      const targetStatus = state.assignments
-        .map((assignment) =>
-          assignment.reachedAtDegree === null
-            ? `${assignment.connectionName}[${assignment.pointIndex}] unreachable`
-            : `${assignment.connectionName}[${assignment.pointIndex}] reachable@${assignment.reachedAtDegree}`,
-        )
-        .join("\n")
-
       const activeRect = rects.find((r) => r.label?.includes("(active)"))
       if (activeRect) {
         activeRect.label = [
           activeRect.label,
           `chokeBlocked@2: ${state.chokeBlockedAtDegree2 ? "yes" : "no"}`,
-          targetStatus,
         ].join("\n")
       }
     }
@@ -525,23 +401,9 @@ export class PortPointReachability2HopCheckSolver extends BaseSolver {
         label: "Degree 2 hyperedge",
       },
       {
-        center: { x: this.srj.bounds.minX + 0.7, y: this.srj.bounds.minY + 2.8 },
-        width: 0.5,
-        height: 0.5,
-        fill: TARGET_REACHABLE_COLOR,
-        label: "target reachable",
-      },
-      {
-        center: { x: this.srj.bounds.minX + 0.7, y: this.srj.bounds.minY + 3.5 },
-        width: 0.5,
-        height: 0.5,
-        fill: UNREACHABLE_COLOR,
-        label: "target unreachable",
-      },
-      {
-        center: { x: this.srj.bounds.minX + 1.8, y: this.srj.bounds.minY + 2.1 },
+        center: { x: this.srj.bounds.minX + 1.8, y: this.srj.bounds.minY + 1.9 },
         width: 2.0,
-        height: 2.8,
+        height: 2.4,
         fill: "rgba(255,255,255,0.03)",
         stroke: "rgba(255,255,255,0.2)",
         label: [
