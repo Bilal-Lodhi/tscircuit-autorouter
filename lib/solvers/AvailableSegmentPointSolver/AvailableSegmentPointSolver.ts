@@ -29,6 +29,7 @@ export interface SharedEdgeSegment {
   end: { x: number; y: number }
   availableZ: number[]
   portPoints: SegmentPortPoint[]
+  crampedPortPoints: SegmentPortPoint[]
 }
 
 /**
@@ -64,8 +65,12 @@ export class AvailableSegmentPointSolver extends BaseSolver {
   /** Map from edgeId to SharedEdgeSegment for quick lookup */
   edgeSegmentMap: Map<string, SharedEdgeSegment> = new Map()
 
+  portPoints: SegmentPortPoint[]
+  crampedPortPoints: SegmentPortPoint[]
+
   /** Map from segmentPortPointId to SegmentPortPoint */
   portPointMap: Map<string, SegmentPortPoint> = new Map()
+  crampedPortPointMap: Map<string, SegmentPortPoint> = new Map()
 
   colorMap: Record<string, string>
 
@@ -97,6 +102,9 @@ export class AvailableSegmentPointSolver extends BaseSolver {
     this.nodeMap = new Map(nodes.map((node) => [node.capacityMeshNodeId, node]))
     this.nodeEdgeMap = getNodeEdgeMap(edges)
 
+    this.portPoints = []
+    this.crampedPortPoints = []
+
     // This solver completes in a single step
     this.MAX_ITERATIONS = 1
   }
@@ -121,6 +129,9 @@ export class AvailableSegmentPointSolver extends BaseSolver {
 
         for (const portPoint of segment.portPoints) {
           this.portPointMap.set(portPoint.segmentPortPointId, portPoint)
+        }
+        for (const portPoint of segment.crampedPortPoints) {
+          this.crampedPortPointMap.set(portPoint.segmentPortPointId, portPoint)
         }
       }
     }
@@ -156,9 +167,29 @@ export class AvailableSegmentPointSolver extends BaseSolver {
       !node1._containsTarget &&
       !node2._containsTarget
     ) {
-      return null
+      const crampedPortPoints: SegmentPortPoint[] = []
+      for (const z of availableZ) {
+        crampedPortPoints.push({
+          segmentPortPointId: `${edge.capacityMeshEdgeId}_pp0_z${z}_cramped`,
+          x: (overlap.start.x + overlap.end.x) / 2,
+          y: (overlap.start.y + overlap.end.y) / 2,
+          availableZ: [z],
+          nodeIds: [node1.capacityMeshNodeId, node2.capacityMeshNodeId],
+          edgeId: edge.capacityMeshEdgeId,
+          connectionName: null,
+          distToCentermostPortOnZ: 0,
+        })
+      }
+      return {
+        edgeId: edge.capacityMeshEdgeId,
+        nodeIds: [node1.capacityMeshNodeId, node2.capacityMeshNodeId],
+        start: overlap.start,
+        end: overlap.end,
+        availableZ,
+        portPoints: [],
+        crampedPortPoints,
+      }
     }
-
     // At minimum we need 1 port point, at maximum we space them minPortSpacing apart
     let maxPortPoints = Math.max(
       1,
@@ -251,6 +282,7 @@ export class AvailableSegmentPointSolver extends BaseSolver {
       end: overlap.end,
       availableZ,
       portPoints,
+      crampedPortPoints: [],
     }
   }
 
@@ -456,6 +488,32 @@ export class AvailableSegmentPointSolver extends BaseSolver {
         graphics.circles!.push({
           center: { x: portPoint.x, y: portPoint.y },
           radius: this.traceWidth / 2,
+          fill: color,
+          layer: `z${portPoint.availableZ.join(",")}`,
+          label: [
+            portPoint.segmentPortPointId,
+            portPoint.connectionName,
+            portPoint.availableZ.join(","),
+            `cd: ${portPoint.distToCentermostPortOnZ}`,
+            `connects: ${portPoint.nodeIds.join(",")}`,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        })
+      }
+    }
+
+    // Draw cramped port points
+    for (const segment of this.sharedEdgeSegments) {
+      for (const portPoint of segment.crampedPortPoints) {
+        const color = portPoint.connectionName
+          ? (this.colorMap[portPoint.connectionName] ?? "blue")
+          : "rgba(0, 200, 0, 0.7)"
+
+        graphics.rects!.push({
+          center: { x: portPoint.x, y: portPoint.y },
+          height: this.traceWidth / 2,
+          width: this.traceWidth / 2,
           fill: color,
           layer: `z${portPoint.availableZ.join(",")}`,
           label: [
