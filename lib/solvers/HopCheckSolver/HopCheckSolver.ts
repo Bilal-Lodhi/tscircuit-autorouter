@@ -21,23 +21,23 @@ type TypedHyperGraph = Omit<HyperGraph, "ports" | "regions"> & {
   regions: TypedRegion[]
 }
 
-type HopeCheckSolverInput = {
+type HopCheckSolverInput = {
   graph: TypedHyperGraph
   graphWithCrampedRegionPort: TypedHyperGraph
   connectionNameToGoalRegionIds: Record<ConnectionName, RegionId[]>
 }
 
-export class HopeCheckSolver extends BasePipelineSolver<HopeCheckSolverInput> {
+export class HopCheckSolver extends BasePipelineSolver<HopCheckSolverInput> {
   pipelineDef: PipelineStep<BaseSolver>[] = []
   regionsWithObstacleQueue: TypedRegion[]
   private crampedPortPointsToInclude: Set<TypedRegionPort> =
     new Set<TypedRegionPort>()
 
   override getSolverName(): string {
-    return "HopeCheckSolver"
+    return "HopCheckSolver"
   }
 
-  constructor(private input: HopeCheckSolverInput) {
+  constructor(private input: HopCheckSolverInput) {
     super(input)
     this.regionsWithObstacleQueue = input.graph.regions.filter(
       (region) => region.d._containsObstacle,
@@ -62,8 +62,10 @@ export class HopeCheckSolver extends BasePipelineSolver<HopeCheckSolverInput> {
         const crampedRegionPort =
           this.input.graphWithCrampedRegionPort.ports.find(
             (p) =>
-              p.region1.regionId === regionPort.region1.regionId &&
-              p.region2.regionId === regionPort.region2.regionId,
+              p.portId === regionPort.portId ||
+              (!!p.d.portPointId &&
+                !!regionPort.d.portPointId &&
+                p.d.portPointId === regionPort.d.portPointId),
           )
         if (crampedRegionPort) {
           this.crampedPortPointsToInclude.add(crampedRegionPort)
@@ -87,25 +89,16 @@ export class HopeCheckSolver extends BasePipelineSolver<HopeCheckSolverInput> {
         (p) => p.regionId === crampedRegionPort.region2.regionId,
       )!
 
-      const newRegion1Port: TypedRegionPort = {
-        ...crampedRegionPort,
-        region1,
-        region2,
-      }
-      const newRegion2Port: TypedRegionPort = {
+      const newPort: TypedRegionPort = {
         ...crampedRegionPort,
         region1,
         region2,
       }
 
-      region1.ports = [...region1.ports, newRegion1Port]
-      region2.ports = [...region2.ports, newRegion2Port]
+      region1.ports = [...region1.ports, newPort]
+      region2.ports = [...region2.ports, newPort]
 
-      cloneInputGraph.ports = [
-        ...cloneInputGraph.ports,
-        newRegion1Port,
-        newRegion2Port,
-      ]
+      cloneInputGraph.ports = [...cloneInputGraph.ports, newPort]
     }
 
     return cloneInputGraph
@@ -133,27 +126,30 @@ const depthLimitedBfsSolver = (
   params: depthLimitedBfsArgs,
 ): TypedRegionPort[] => {
   const { targetRegion, depthLimit } = params
-  const visitedPortIds = new Set<TypedRegionPort>()
+  if (depthLimit < 1) return []
+  const visitedPortIds = new Set<string>()
   const queue: { port: TypedRegionPort; depth: number }[] =
-    targetRegion.ports.map((e) => ({ port: e, depth: 0 }))
+    targetRegion.ports.map((port) => ({ port, depth: 1 }))
   const result: TypedRegionPort[] = []
+  for (const { port } of queue) {
+    visitedPortIds.add(port.portId)
+  }
 
   while (queue.length > 0) {
     const { port, depth } = queue.shift()!
-    visitedPortIds.add(port)
+    if (depth === depthLimit) {
+      result.push(port)
+      continue
+    }
 
     const nextRegionPort = [port.region1.ports, port.region2.ports].flat()
 
-    for (const port of nextRegionPort) {
-      if (visitedPortIds.has(port)) {
+    for (const nextPort of nextRegionPort) {
+      if (visitedPortIds.has(nextPort.portId)) {
         continue
       }
-      if (depth < depthLimit) {
-        queue.push({ port, depth: depth + 1 })
-      }
-      if (depth === depthLimit) {
-        result.push(port)
-      }
+      visitedPortIds.add(nextPort.portId)
+      queue.push({ port: nextPort, depth: depth + 1 })
     }
   }
 
