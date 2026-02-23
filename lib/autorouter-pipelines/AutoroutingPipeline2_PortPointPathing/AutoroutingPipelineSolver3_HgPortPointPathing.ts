@@ -34,16 +34,13 @@ import { NetToPointPairsSolver2_OffBoardConnection } from "../../solvers/NetToPo
 import { RectDiffPipeline } from "@tscircuit/rectdiff"
 import { TraceSimplificationSolver } from "../../solvers/TraceSimplificationSolver/TraceSimplificationSolver"
 import { AvailableSegmentPointSolver } from "../../solvers/AvailableSegmentPointSolver/AvailableSegmentPointSolver"
+import { InputNodeWithPortPoints } from "../../solvers/PortPointPathingSolver/PortPointPathingSolver"
+import { HgPortPointPathingSolver } from "../../solvers/PortPointPathingSolver/hdportpointpathingsolver/HgPortPointPathingSolver"
+import { PortPointReachability2HopCheckSolver } from "../../solvers/PortPointPathingSolver/hdportpointpathingsolver/PortPointReachability2HopCheckSolver"
 import {
-  InputNodeWithPortPoints,
-  InputPortPoint,
-} from "../../solvers/PortPointPathingSolver/PortPointPathingSolver"
-import {
-  HgPortPointPathingSolver,
-  HgPortPointPathingSolverParams,
-} from "../../solvers/PortPointPathingSolver/hdportpointpathingsolver/HgPortPointPathingSolver"
-import { buildHyperGraphFromInputNodes } from "../../solvers/PortPointPathingSolver/hdportpointpathingsolver/buildHyperGraphFromInputNodes"
-import { buildHyperConnectionsFromSimpleRouteJson } from "../../solvers/PortPointPathingSolver/hdportpointpathingsolver/buildHyperConnectionsFromSimpleRouteJson"
+  buildHgPortPointPathingSharedInputs,
+  HgPortPointPathingSharedInputs,
+} from "../../solvers/PortPointPathingSolver/hdportpointpathingsolver/buildHgPortPointPathingSharedInputs"
 import { CapacityMeshNodeSolver2_NodeUnderObstacle } from "../../solvers/CapacityMeshSolver/CapacityMeshNodeSolver2_NodesUnderObstacles"
 import { MultiSectionPortPointOptimizer } from "../../solvers/MultiSectionPortPointOptimizer"
 import { UniformPortDistributionSolver } from "lib/solvers/UniformPortDistributionSolver/UniformPortDistributionSolver"
@@ -105,6 +102,7 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
   deadEndSolver?: DeadEndSolver
   traceSimplificationSolver?: TraceSimplificationSolver
   availableSegmentPointSolver?: AvailableSegmentPointSolver
+  portPointReachability2HopCheck?: PortPointReachability2HopCheckSolver
   portPointPathingSolver?: HgPortPointPathingSolver
   multiSectionPortPointOptimizer?: MultiSectionPortPointOptimizer
   uniformPortDistributionSolver?: UniformPortDistributionSolver
@@ -123,6 +121,7 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
   capacityNodes: CapacityMeshNode[] | null = null
   capacityEdges: CapacityMeshEdge[] | null = null
   inputNodeWithPortPoints: InputNodeWithPortPoints[] = []
+  hgPortPointPathingSharedInputs?: HgPortPointPathingSharedInputs
 
   cacheProvider: CacheProvider | null = null
   pipelineDef = [
@@ -226,67 +225,33 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
       ],
     ),
     definePipelineStep(
+      "portPointReachability2HopCheck",
+      PortPointReachability2HopCheckSolver,
+      (cms) => {
+        const sharedInputs = cms.getOrBuildHgPortPointPathingSharedInputs()
+        return [
+          {
+            srj: cms.srjWithPointPairs!,
+            inputGraph: sharedInputs.graph,
+            inputNodes: sharedInputs.inputNodes,
+            connectionsWithResults: sharedInputs.connectionsWithResults,
+          },
+        ]
+      },
+    ),
+    definePipelineStep(
       "portPointPathingSolver",
       HgPortPointPathingSolver,
       (cms) => {
-        // Convert capacity nodes and segment points to InputNodeWithPortPoints
-        this.inputNodeWithPortPoints = cms.capacityNodes!.map((node) => ({
-          capacityMeshNodeId: node.capacityMeshNodeId,
-          center: node.center,
-          width: node.width,
-          height: node.height,
-          portPoints: [] as InputPortPoint[],
-          availableZ: node.availableZ,
-          _containsTarget: node._containsTarget,
-          _containsObstacle: node._containsObstacle,
-        }))
-
-        // Build a map for quick lookup
-        const nodeMap = new Map(
-          this.inputNodeWithPortPoints.map((n) => [n.capacityMeshNodeId, n]),
-        )
-
-        // Add port points from the available segment point solver
-        const segmentPointSolver = cms.availableSegmentPointSolver!
-        for (const segment of segmentPointSolver.sharedEdgeSegments) {
-          for (const segmentPortPoint of segment.portPoints) {
-            const [nodeId1, nodeId2] = segmentPortPoint.nodeIds
-            const inputPortPoint: InputPortPoint = {
-              portPointId: segmentPortPoint.segmentPortPointId,
-              x: segmentPortPoint.x,
-              y: segmentPortPoint.y,
-              z: segmentPortPoint.availableZ[0] ?? 0,
-              connectionNodeIds: [nodeId1, nodeId2],
-              distToCentermostPortOnZ: segmentPortPoint.distToCentermostPortOnZ,
-            }
-
-            // Add to first node
-            const node1 = nodeMap.get(nodeId1)
-            if (node1) {
-              node1.portPoints.push(inputPortPoint)
-            }
-            // Note: Don't add to second node - the solver will handle the shared edge
-          }
-        }
-
-        const { graph, regionMap, portPointMap } =
-          buildHyperGraphFromInputNodes({
-            inputNodes: this.inputNodeWithPortPoints,
-          })
-        const { connections, connectionsWithResults } =
-          buildHyperConnectionsFromSimpleRouteJson({
-            simpleRouteJson: cms.srjWithPointPairs!,
-            inputNodes: this.inputNodeWithPortPoints,
-            regionMap,
-          })
+        const sharedInputs = cms.getOrBuildHgPortPointPathingSharedInputs()
 
         return [
           {
-            inputGraph: graph,
-            inputConnections: connections,
-            connectionsWithResults,
-            inputNodes: this.inputNodeWithPortPoints,
-            portPointMap,
+            inputGraph: sharedInputs.graph,
+            inputConnections: sharedInputs.connections,
+            connectionsWithResults: sharedInputs.connectionsWithResults,
+            inputNodes: sharedInputs.inputNodes,
+            portPointMap: sharedInputs.portPointMap,
             rippingEnabled: true,
             weights: {
               PORT_USAGE_PENALTY: 0.15,
@@ -491,6 +456,22 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
     return this.pipelineDef[this.currentPipelineStepIndex]?.solverName ?? "none"
   }
 
+  private getOrBuildHgPortPointPathingSharedInputs(): HgPortPointPathingSharedInputs {
+    if (this.hgPortPointPathingSharedInputs) {
+      return this.hgPortPointPathingSharedInputs
+    }
+
+    this.hgPortPointPathingSharedInputs = buildHgPortPointPathingSharedInputs({
+      capacityNodes: this.capacityNodes!,
+      availableSegmentPointSolver: this.availableSegmentPointSolver!,
+      simpleRouteJson: this.srjWithPointPairs!,
+    })
+
+    this.inputNodeWithPortPoints =
+      this.hgPortPointPathingSharedInputs.inputNodes
+    return this.hgPortPointPathingSharedInputs
+  }
+
   visualize(): GraphicsObject {
     if (!this.solved && this.activeSubSolver)
       return this.activeSubSolver.visualize()
@@ -503,6 +484,8 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
     const deadEndViz = this.deadEndSolver?.visualize()
     const availableSegmentPointViz =
       this.availableSegmentPointSolver?.visualize()
+    const portPointReachability2HopCheckViz =
+      this.portPointReachability2HopCheck?.visualize()
     const portPointPathingViz = this.portPointPathingSolver?.visualize()
     const multiSectionOptViz = this.multiSectionPortPointOptimizer?.visualize()
     const uniformPortDistributionViz =
@@ -579,6 +562,7 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
       edgeViz,
       deadEndViz,
       availableSegmentPointViz,
+      portPointReachability2HopCheckViz,
       portPointPathingViz,
       multiSectionOptViz,
       uniformPortDistributionViz,
