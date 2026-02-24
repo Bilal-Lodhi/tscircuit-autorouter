@@ -66,8 +66,7 @@ export class HopCheckSolver extends BasePipelineSolver<HopCheckSolverInput> {
     })
 
     if (areAllRegionPortsBlocked(this.outputPortOfBfs)) {
-      console.log("is this ever triggred");
-      
+
       // since we have the regions that are at level 2 depth
       // and if we find a single cramped port in any of the
       // returned regions that is related to returned port that is it
