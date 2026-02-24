@@ -9,7 +9,7 @@ import { GraphicsObject } from "graphics-debug"
 import { CapacityMeshNode } from "lib/types"
 import { SegmentPortPoint } from "../AvailableSegmentPointSolver/AvailableSegmentPointSolver"
 import { areAllRegionPortsBlocked } from "./areAllRegionPortsBlocked"
-import { depthLimitedBfs } from "./depthLimitedBfsSolver"
+import { candidateToPath, depthLimitedBfs, selectBestCandidate } from "./depthLimitedBfsSolver"
 
 export type TypedRegion = Omit<Region, "d"> & {
   d: CapacityMeshNode
@@ -134,6 +134,7 @@ class FindCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSo
   private regionsWithObstacleQueue: TypedRegion[]
   private currentRegionWithObstacle: TypedRegion | undefined
   private visitedPortPoints: TypedRegionPort[] = []
+  private bestPath: TypedRegionPort[] = []
   override getSolverName(): string {
     return "findCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSolver"
   }
@@ -151,7 +152,7 @@ class FindCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSo
       return
     }
     this.currentRegionWithObstacle = this.regionsWithObstacleQueue.shift()!
-    const { portPointsAtNthDegree, visitedPortPoints } = depthLimitedBfs({
+    const { portPointsAtNthDegree, visitedPortPoints, outputCandidatesAtNthDegreeWhoDoNotShareWithObstacle: outputCandidatesAtNthDegree } = depthLimitedBfs({
       depthLimit: 2,
       targetRegion: this.currentRegionWithObstacle,
       shouldIgnoreCrampedPortPoints: false,
@@ -161,6 +162,7 @@ class FindCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSo
       this.failed = true
       this.error = `Region ${this.currentRegionWithObstacle.regionId} is unreachable even after considering cramped port points`
     }
+    this.bestPath = candidateToPath(selectBestCandidate(outputCandidatesAtNthDegree))
   }
 
   visualize(): GraphicsObject {
@@ -181,7 +183,7 @@ class FindCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSo
       })
     }
 
-    for (const visited of this.visitedPortPoints) {
+    for (const visited of this.bestPath) {
       if (!visited.d.cramped) {
         graphics.points?.push({
           ...visited.d,
@@ -238,5 +240,14 @@ export class HopCheckSolverPipeline extends BasePipelineSolver<HopCheckSolverInp
 
   override getSolverName(): string {
     return "HopCheckSolverPipeline"
+  }
+
+  finalVisualize(): GraphicsObject | null {
+    let graphics: GraphicsObject = {
+      rects: [],
+      points: [],
+    }
+
+    return graphics
   }
 }
