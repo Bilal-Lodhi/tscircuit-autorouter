@@ -37,7 +37,8 @@ export class FindCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReac
     this.currentRegionWithObstacle = this.regionsWithObstacleQueue.shift()!
     const {
       portPointsAtNthDegree,
-      outputCandidatesAtNthDegreeWithoutObstacleShare: outputCandidatesAtNthDegree,
+      outputCandidatesAtNthDegreeWithoutObstacleShare:
+        outputCandidatesAtNthDegree,
     } = depthLimitedBfs({
       depthLimit: 2,
       targetRegion: this.currentRegionWithObstacle,

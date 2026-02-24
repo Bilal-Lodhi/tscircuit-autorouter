@@ -75,15 +75,14 @@ export const depthLimitedBfs = (
   }
 
   const visitedCandidates = Array.from(visitedCandidateByPort.values())
-  const outputCandidatesAtNthDegreeWithoutObstacleShare = resultCandidates.filter(
-    (candidate) => {
+  const outputCandidatesAtNthDegreeWithoutObstacleShare =
+    resultCandidates.filter((candidate) => {
       const candidateRegions = [
         candidate.portPoint.region1,
         candidate.portPoint.region2,
       ]
       return !candidateRegions.some((region) => region.d._containsObstacle)
-    },
-  )
+    })
   return {
     portPointsAtNthDegree: resultCandidates.map(
       (candidate) => candidate.portPoint,
