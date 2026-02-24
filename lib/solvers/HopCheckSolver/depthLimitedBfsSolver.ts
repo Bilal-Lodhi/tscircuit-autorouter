@@ -1,4 +1,4 @@
-import { TypedRegion, TypedRegionPort } from "./HopCheckSolver"
+import { DepthLimitedBfsCandidate, TypedRegion, TypedRegionPort } from "./types"
 
 type depthLimitedBfsArgs = {
   targetRegion: TypedRegion
@@ -6,12 +6,13 @@ type depthLimitedBfsArgs = {
   shouldIgnoreCrampedPortPoints: boolean
 }
 
-export type DepthLimitedBfsCandidate = {
-  portPoint: TypedRegionPort
-  depth: number
-  parent: DepthLimitedBfsCandidate | null
-}
-
+/**
+ * Performs a breadth-first search (BFS) starting from the ports of the target region,
+ * exploring neighboring regions through their ports up to a specified depth limit.
+ * The function returns the port points at the nth degree of separation, all visited
+ * port points, and candidates at the nth degree that do not share an obstacle with the
+ * target region. The BFS can optionally ignore cramped port points during traversal.
+ */
 export const depthLimitedBfs = (
   params: depthLimitedBfsArgs,
 ): {
@@ -91,54 +92,4 @@ export const depthLimitedBfs = (
       }),
     visitedCandidates,
   }
-}
-
-const scoreCandidate = (candidate: DepthLimitedBfsCandidate): number => {
-  let score = 0
-  let current: DepthLimitedBfsCandidate | null = candidate
-  while (current) {
-    const p = current.portPoint
-
-    if (p.d.cramped) {
-      score -= 10
-    } else {
-      score += 5
-    }
-
-    current = current.parent
-  }
-  return score
-}
-
-export const selectBestCandidate = (
-  candidates: DepthLimitedBfsCandidate[],
-): DepthLimitedBfsCandidate => {
-  if (candidates.length === 0) {
-    throw new Error("No candidates to select from")
-  }
-
-  let bestCandidate = candidates[0]
-  let bestScore = scoreCandidate(bestCandidate)
-
-  for (const candidate of candidates) {
-    const currentScore = scoreCandidate(candidate)
-    if (currentScore > bestScore) {
-      bestScore = currentScore
-      bestCandidate = candidate
-    }
-  }
-
-  return bestCandidate
-}
-
-export const candidateToPath = (
-  candidate: DepthLimitedBfsCandidate,
-): TypedRegionPort[] => {
-  const path: TypedRegionPort[] = []
-  let current: DepthLimitedBfsCandidate | null = candidate
-  while (current) {
-    path.push(current.portPoint)
-    current = current.parent
-  }
-  return path.reverse()
 }

@@ -1,5 +1,5 @@
 import { CapacityMeshNode } from "lib/types"
-import { TypedHyperGraph, TypedRegion, TypedRegionPort } from "./HopCheckSolver"
+import { TypedHyperGraph, TypedRegion, TypedRegionPort } from "./types"
 import { SegmentPortPoint } from "../AvailableSegmentPointSolver/AvailableSegmentPointSolver"
 
 type buildGraphParams = {
@@ -7,6 +7,9 @@ type buildGraphParams = {
   portPoints: SegmentPortPoint[]
 }
 
+/**
+ * Builds a typed hypergraph representation from the given capacity mesh nodes and port points. Each capacity mesh node corresponds to a region, and each port point corresponds to a region port connecting two regions.
+ */
 export const buildGraph = (params: buildGraphParams): TypedHyperGraph => {
   const graph: TypedHyperGraph = {
     ports: [],

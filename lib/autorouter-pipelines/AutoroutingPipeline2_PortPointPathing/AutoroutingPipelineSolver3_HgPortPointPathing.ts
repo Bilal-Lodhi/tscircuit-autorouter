@@ -53,11 +53,9 @@ import { UniformPortDistributionSolver } from "lib/solvers/UniformPortDistributi
 import { TraceWidthSolver } from "../../solvers/TraceWidthSolver/TraceWidthSolver"
 import { getDrcErrors } from "lib/testing/getDrcErrors"
 import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
-import {
-  HopCheckSolverPipeline,
-  TypedHyperGraph,
-} from "lib/solvers/HopCheckSolver/HopCheckSolver"
+import { TypedHyperGraph } from "lib/solvers/HopCheckSolver/types"
 import { buildGraph } from "lib/solvers/HopCheckSolver/buildGraph"
+import { HopCheckSolverPipeline } from "lib/solvers/HopCheckSolver/HopCheckSolverPipeline"
 
 interface CapacityMeshSolverOptions {
   capacityDepth?: number
