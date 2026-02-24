@@ -50,6 +50,11 @@ import { UniformPortDistributionSolver } from "lib/solvers/UniformPortDistributi
 import { TraceWidthSolver } from "../../solvers/TraceWidthSolver/TraceWidthSolver"
 import { getDrcErrors } from "lib/testing/getDrcErrors"
 import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
+import {
+  HopCheckSolver,
+  TypedHyperGraph,
+} from "lib/solvers/HopCheckSolver/HopCheckSolver"
+import { buildGraph } from "lib/solvers/HopCheckSolver/buildGraph"
 
 interface CapacityMeshSolverOptions {
   capacityDepth?: number
@@ -109,6 +114,7 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
   multiSectionPortPointOptimizer?: MultiSectionPortPointOptimizer
   uniformPortDistributionSolver?: UniformPortDistributionSolver
   traceWidthSolver?: TraceWidthSolver
+  hopCheckSolver?: HopCheckSolver
   viaDiameter: number
   minTraceWidth: number
   effort: number
@@ -225,6 +231,25 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
         },
       ],
     ),
+    definePipelineStep("hopCheckSolver", HopCheckSolver, (cms) => {
+      const graph: TypedHyperGraph = buildGraph({
+        capacityMeshNodes: cms.capacityNodes!,
+        portPoints: cms.availableSegmentPointSolver!.getOutput().portPoints,
+      })
+
+      const graphWithCrampedRegionPort: TypedHyperGraph = buildGraph({
+        capacityMeshNodes: cms.capacityNodes!,
+        portPoints:
+          cms.availableSegmentPointSolver!.getOutput().crampedPortPoints,
+      })
+
+      return [
+        {
+          graph: graph,
+          graphWithCrampedRegionPort: graphWithCrampedRegionPort,
+        },
+      ]
+    }),
     definePipelineStep(
       "portPointPathingSolver",
       HgPortPointPathingSolver,
