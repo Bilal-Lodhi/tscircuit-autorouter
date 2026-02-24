@@ -33,9 +33,7 @@ import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
 import { NetToPointPairsSolver2_OffBoardConnection } from "../../solvers/NetToPointPairsSolver2_OffBoardConnection/NetToPointPairsSolver2_OffBoardConnection"
 import { RectDiffPipeline } from "@tscircuit/rectdiff"
 import { TraceSimplificationSolver } from "../../solvers/TraceSimplificationSolver/TraceSimplificationSolver"
-import {
-  AvailableSegmentPointSolver,
-} from "../../solvers/AvailableSegmentPointSolver/AvailableSegmentPointSolver"
+import { AvailableSegmentPointSolver } from "../../solvers/AvailableSegmentPointSolver/AvailableSegmentPointSolver"
 import {
   InputNodeWithPortPoints,
   InputPortPoint,
@@ -292,16 +290,18 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
         }
 
         const regionMap = new Map<string, HgRegion>()
-        const routingRegions: HgRegion[] = this.inputNodeWithPortPoints.map((node) => {
-          const region: HgRegion = {
-            regionId: node.capacityMeshNodeId,
-            ports: [],
-            assignments: [],
-            d: node,
-          }
-          regionMap.set(region.regionId, region)
-          return region
-        })
+        const routingRegions: HgRegion[] = this.inputNodeWithPortPoints.map(
+          (node) => {
+            const region: HgRegion = {
+              regionId: node.capacityMeshNodeId,
+              ports: [],
+              assignments: [],
+              d: node,
+            }
+            regionMap.set(region.regionId, region)
+            return region
+          },
+        )
         const routingPorts: HgPort[] = hopCheckedGraph.ports
           .map((port) => {
             const region1 = regionMap.get(port.region1.regionId)

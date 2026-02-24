@@ -93,7 +93,7 @@ export class AvailableSegmentPointSolver extends BaseSolver {
     edges: CapacityMeshEdge[]
     traceWidth: number
     obstacleMargin?: number
-    colorMap?: Record<string, string>,
+    colorMap?: Record<string, string>
     shouldReturnCrampedPortPoints: boolean
   }) {
     super()
@@ -192,7 +192,7 @@ export class AvailableSegmentPointSolver extends BaseSolver {
           cramped: true,
         })
       }
-      if(!this.shouldReturnCrampedPortPoints) {
+      if (!this.shouldReturnCrampedPortPoints) {
         return null
       }
       return {
