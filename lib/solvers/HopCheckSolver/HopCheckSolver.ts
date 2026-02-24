@@ -49,26 +49,24 @@ export class HopCheckSolver extends BasePipelineSolver<HopCheckSolverInput> {
     if (!currentRegionWithObstacle) {
       return
     }
-    const res = depthLimitedBfsSolver({
+    const resultPort = depthLimitedBfsSolver({
       depthLimit: 2,
       targetRegion: currentRegionWithObstacle,
     })
-    if (areAllRegionPortsBlocked(res)) {
-      // iterated over the result port points
-      // and using the region Id get an cramped region port from the graph with cramped region port
-      // and store the id of the cramped region port
-      // in the final output it will be include as an port points
-      for (const regionPort of res) {
+    if (areAllRegionPortsBlocked(resultPort)) {
+      // since we have the regions that are at level 2 depth
+      // and if we find a single cramped port in any of the
+      // returned regions that is it
+      for (const currentRegionPort of resultPort) {
         const crampedRegionPort =
           this.input.graphWithCrampedRegionPort.ports.find(
             (p) =>
-              p.portId === regionPort.portId ||
-              (!!p.d.portPointId &&
-                !!regionPort.d.portPointId &&
-                p.d.portPointId === regionPort.d.portPointId),
-          )
+              p.region1.regionId === currentRegionPort.region1.regionId &&
+              p.region2.regionId === currentRegionPort.region2.regionId,
+          ) // each side always has 1 cramped port not more
         if (crampedRegionPort) {
           this.crampedPortPointsToInclude.add(crampedRegionPort)
+          break
         }
       }
     }
