@@ -233,6 +233,7 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
           edges: cms.capacityEdges || [],
           traceWidth: cms.minTraceWidth,
           colorMap: cms.colorMap,
+          shouldReturnCrampedPortPoints: true,
         },
       ],
     ),

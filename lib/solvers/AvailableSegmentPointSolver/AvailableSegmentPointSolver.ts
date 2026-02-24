@@ -77,6 +77,8 @@ export class AvailableSegmentPointSolver extends BaseSolver {
 
   colorMap: Record<string, string>
 
+  shouldReturnCrampedPortPoints: boolean
+
   // edgeMargin = 0.25
 
   constructor({
@@ -85,18 +87,21 @@ export class AvailableSegmentPointSolver extends BaseSolver {
     traceWidth,
     obstacleMargin,
     colorMap,
+    shouldReturnCrampedPortPoints,
   }: {
     nodes: CapacityMeshNode[]
     edges: CapacityMeshEdge[]
     traceWidth: number
     obstacleMargin?: number
-    colorMap?: Record<string, string>
+    colorMap?: Record<string, string>,
+    shouldReturnCrampedPortPoints: boolean
   }) {
     super()
     this.nodes = nodes
     this.edges = edges
     this.traceWidth = traceWidth
     this.obstacleMargin = obstacleMargin ?? 0.15
+    this.shouldReturnCrampedPortPoints = shouldReturnCrampedPortPoints
     // Port spacing: each trace extends traceWidth/2 from center, plus obstacleMargin clearance
     // Center-to-center distance = traceWidth + obstacleMargin
     this.minPortSpacing = this.traceWidth + this.obstacleMargin
@@ -186,6 +191,9 @@ export class AvailableSegmentPointSolver extends BaseSolver {
           distToCentermostPortOnZ: 0,
           cramped: true,
         })
+      }
+      if(!this.shouldReturnCrampedPortPoints) {
+        return null
       }
       return {
         edgeId: edge.capacityMeshEdgeId,

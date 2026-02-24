@@ -207,6 +207,7 @@ export class AssignableAutoroutingPipeline3 extends BaseSolver {
           edges: cms.capacityEdges || [],
           traceWidth: cms.minTraceWidth,
           colorMap: cms.colorMap,
+          shouldReturnCrampedPortPoints: false,
         },
       ],
     ),
@@ -240,7 +241,6 @@ export class AssignableAutoroutingPipeline3 extends BaseSolver {
         const segmentPointSolver = cms.availableSegmentPointSolver!
         for (const segment of segmentPointSolver.sharedEdgeSegments) {
           for (const segmentPortPoint of segment.portPoints) {
-            if (segmentPortPoint.cramped) continue
             const [nodeId1, nodeId2] = segmentPortPoint.nodeIds
             const inputPortPoint: InputPortPoint = {
               portPointId: segmentPortPoint.segmentPortPointId,
