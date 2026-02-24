@@ -11,8 +11,8 @@ export const visualizationTypedHyperGraph = (graph: TypedHyperGraph) => {
     graphics.rects?.push({
       ...region.d,
       fill: region.d._containsObstacle
-        ? "rgb(255, 0, 0, 0.5)"
-        : "rgb(0, 0, 255, 0.1)",
+        ? "rgba(255, 0, 0, 0.25)"
+        : "rgba(120, 120, 120, 0.12)",
       layer: `availableZ=${region.d.availableZ}`,
       label: `${region.regionId}`,
     })
@@ -26,9 +26,9 @@ export const visualizationTypedHyperGraph = (graph: TypedHyperGraph) => {
           x: port.d.x,
           y: port.d.y,
         },
-        height: -0.1,
-        width: -0.1,
-        fill: "green",
+        height: 0.1,
+        width: 0.1,
+        fill: "rgba(255, 140, 0, 0.9)",
         layer: `availableZ=${port.d.availableZ}`,
         label: `${port.portId}`,
       })
@@ -37,7 +37,7 @@ export const visualizationTypedHyperGraph = (graph: TypedHyperGraph) => {
         ...port.d,
         layer: `availableZ=${port.d.availableZ}`,
         label: `${port.portId}`,
-        color: "green",
+        color: "rgba(0, 160, 0, 0.9)",
       })
     }
   }
