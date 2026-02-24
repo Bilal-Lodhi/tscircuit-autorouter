@@ -13,6 +13,7 @@ import {
   generateJumperX4Grid,
 } from "@tscircuit/hypergraph"
 import { generate0603JumperHyperGraph } from "@tscircuit/jumper-topology-generator"
+import { pointToSegmentDistance } from "@tscircuit/math-utils"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { GraphicsObject } from "graphics-debug"
 import { translate } from "transformation-matrix"
@@ -995,6 +996,84 @@ export class JumperPrepatternSolver2_HyperGraph extends BaseSolver {
         traceThickness: this.traceWidth,
         route: routePoints,
         jumpers: routeInfo.jumpers,
+      })
+    }
+
+    this._removeNonJumpingJumpersFromSolvedRoutes()
+  }
+
+  private _segmentIsJumpedOverByJumper(
+    jumper: Jumper,
+    segStart: Point2D,
+    segEnd: Point2D,
+  ): boolean {
+    const EPS = 1e-4
+    const isSamePoint = (p1: Point2D, p2: Point2D) =>
+      Math.abs(p1.x - p2.x) < EPS && Math.abs(p1.y - p2.y) < EPS
+
+    const touchesJumperEndpoint =
+      isSamePoint(segStart, jumper.start) ||
+      isSamePoint(segStart, jumper.end) ||
+      isSamePoint(segEnd, jumper.start) ||
+      isSamePoint(segEnd, jumper.end)
+
+    if (touchesJumperEndpoint) {
+      return false
+    }
+
+    const maxUnderTraceDistance = Math.max(this.traceWidth * 3, 0.72)
+
+    const minDistance = Math.min(
+      pointToSegmentDistance(jumper.start, segStart, segEnd),
+      pointToSegmentDistance(jumper.end, segStart, segEnd),
+      pointToSegmentDistance(segStart, jumper.start, jumper.end),
+      pointToSegmentDistance(segEnd, jumper.start, jumper.end),
+    )
+
+    return minDistance <= maxUnderTraceDistance
+  }
+
+  private _removeNonJumpingJumpersFromSolvedRoutes() {
+    const getNetworkId = (route: {
+      connectionName: string
+      rootConnectionName?: string
+    }) => route.rootConnectionName ?? route.connectionName
+
+    for (let i = 0; i < this.solvedRoutes.length; i++) {
+      const route = this.solvedRoutes[i]!
+      const routeNetworkId = getNetworkId(route)
+
+      route.jumpers = route.jumpers.filter((jumper) => {
+        for (
+          let otherRouteIdx = 0;
+          otherRouteIdx < this.solvedRoutes.length;
+          otherRouteIdx++
+        ) {
+          if (otherRouteIdx === i) continue
+
+          const otherRoute = this.solvedRoutes[otherRouteIdx]!
+          const otherNetworkId = getNetworkId(otherRoute)
+          if (otherNetworkId === routeNetworkId) continue
+
+          for (let segIdx = 0; segIdx < otherRoute.route.length - 1; segIdx++) {
+            const s1 = otherRoute.route[segIdx]!
+            const s2 = otherRoute.route[segIdx + 1]!
+
+            if (s1.z !== 0 || s2.z !== 0) continue
+
+            if (
+              this._segmentIsJumpedOverByJumper(
+                jumper,
+                { x: s1.x, y: s1.y },
+                { x: s2.x, y: s2.y },
+              )
+            ) {
+              return true
+            }
+          }
+        }
+
+        return false
       })
     }
   }
