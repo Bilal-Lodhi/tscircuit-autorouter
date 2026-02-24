@@ -553,6 +553,7 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
     const deadEndViz = this.deadEndSolver?.visualize()
     const availableSegmentPointViz =
       this.availableSegmentPointSolver?.visualize()
+    const hopCheckViz = this.hopCheckSolver?.visualize()
     const portPointPathingViz = this.portPointPathingSolver?.visualize()
     const multiSectionOptViz = this.multiSectionPortPointOptimizer?.visualize()
     const uniformPortDistributionViz =
@@ -629,6 +630,7 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
       edgeViz,
       deadEndViz,
       availableSegmentPointViz,
+      hopCheckViz,
       portPointPathingViz,
       multiSectionOptViz,
       uniformPortDistributionViz,
