@@ -9,7 +9,11 @@ import { GraphicsObject } from "graphics-debug"
 import { CapacityMeshNode } from "lib/types"
 import { SegmentPortPoint } from "../AvailableSegmentPointSolver/AvailableSegmentPointSolver"
 import { areAllRegionPortsBlocked } from "./areAllRegionPortsBlocked"
-import { candidateToPath, depthLimitedBfs, selectBestCandidate } from "./depthLimitedBfsSolver"
+import {
+  candidateToPath,
+  depthLimitedBfs,
+  selectBestCandidate,
+} from "./depthLimitedBfsSolver"
 
 export type TypedRegion = Omit<Region, "d"> & {
   d: CapacityMeshNode
@@ -152,7 +156,12 @@ class FindCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSo
       return
     }
     this.currentRegionWithObstacle = this.regionsWithObstacleQueue.shift()!
-    const { portPointsAtNthDegree, visitedPortPoints, outputCandidatesAtNthDegreeWhoDoNotShareWithObstacle: outputCandidatesAtNthDegree } = depthLimitedBfs({
+    const {
+      portPointsAtNthDegree,
+      visitedPortPoints,
+      outputCandidatesAtNthDegreeWhoDoNotShareWithObstacle:
+        outputCandidatesAtNthDegree,
+    } = depthLimitedBfs({
       depthLimit: 2,
       targetRegion: this.currentRegionWithObstacle,
       shouldIgnoreCrampedPortPoints: false,
@@ -161,8 +170,21 @@ class FindCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSo
     if (areAllRegionPortsBlocked(portPointsAtNthDegree)) {
       this.failed = true
       this.error = `Region ${this.currentRegionWithObstacle.regionId} is unreachable even after considering cramped port points`
+      return
     }
-    this.bestPath = candidateToPath(selectBestCandidate(outputCandidatesAtNthDegree))
+    if (outputCandidatesAtNthDegree.length === 0) {
+      this.failed = true
+      this.error = `Region ${this.currentRegionWithObstacle.regionId} has no valid candidate path after obstacle-sharing filter`
+      return
+    }
+    this.bestPath = [
+      ...this.bestPath,
+      ...candidateToPath(selectBestCandidate(outputCandidatesAtNthDegree)),
+    ]
+  }
+
+  getOutput(): TypedRegionPort[] {
+    return this.bestPath
   }
 
   visualize(): GraphicsObject {
@@ -213,6 +235,7 @@ class FindCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSo
 
 export class HopCheckSolverPipeline extends BasePipelineSolver<HopCheckSolverInput> {
   findUnreachableRegionsContainingObstacleSolver?: FindUnreachableRegionsContainingObstacleSolver
+  findCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSolver?: FindCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSolver
 
   pipelineDef: PipelineStep<BaseSolver>[] = [
     definePipelineStep(
@@ -240,6 +263,35 @@ export class HopCheckSolverPipeline extends BasePipelineSolver<HopCheckSolverInp
 
   override getSolverName(): string {
     return "HopCheckSolverPipeline"
+  }
+
+  getOutput(): TypedHyperGraph {
+    const graph = structuredClone(this.inputProblem.graph)
+    const bestPath =
+      this.findCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSolver?.getOutput() ??
+      []
+
+    if (bestPath.length === 0) {
+      return graph
+    }
+
+    const portsToUncramp = new Set(bestPath.map((port) => port.portId))
+    for (const portId of portsToUncramp) {
+      const graphPort = graph.ports.find((p) => p.portId === portId)!
+      // TODO: we unmark some of the cramped port points as not cramped,
+      // but this is not the best way to do it.
+      // because we are changing the clone of the original graph
+      // which can be not super intuitive.
+      graphPort.d.cramped = false
+    }
+
+    // delete all port points whose cramped is true
+    graph.ports = graph.ports.filter((port) => !port.d.cramped)
+    for (const region of graph.regions) {
+      region.ports = region.ports.filter((port) => !port.d.cramped)
+    }
+
+    return graph
   }
 
   finalVisualize(): GraphicsObject | null {

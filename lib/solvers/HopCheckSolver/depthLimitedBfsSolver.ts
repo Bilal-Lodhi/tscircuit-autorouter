@@ -28,7 +28,10 @@ export const depthLimitedBfs = (
       outputCandidatesAtNthDegreeWhoDoNotShareWithObstacle: [],
       visitedCandidates: [],
     }
-  const visitedCandidateByPort = new Map<TypedRegionPort, DepthLimitedBfsCandidate>()
+  const visitedCandidateByPort = new Map<
+    TypedRegionPort,
+    DepthLimitedBfsCandidate
+  >()
   const queue: DepthLimitedBfsCandidate[] = targetRegion.ports.map((port) => {
     const candidate: DepthLimitedBfsCandidate = {
       portPoint: port,
@@ -72,23 +75,31 @@ export const depthLimitedBfs = (
 
   const visitedCandidates = Array.from(visitedCandidateByPort.values())
   return {
-    portPointsAtNthDegree: resultCandidates.map((candidate) => candidate.portPoint),
-    visitedPortPoints: visitedCandidates.map((candidate) => candidate.portPoint),
-    outputCandidatesAtNthDegreeWhoDoNotShareWithObstacle: resultCandidates.filter((candidate) => {
-      const candidateRegions = [candidate.portPoint.region1, candidate.portPoint.region2]
-      return !candidateRegions.some((region) => region.d._containsObstacle)
-    }),
+    portPointsAtNthDegree: resultCandidates.map(
+      (candidate) => candidate.portPoint,
+    ),
+    visitedPortPoints: visitedCandidates.map(
+      (candidate) => candidate.portPoint,
+    ),
+    outputCandidatesAtNthDegreeWhoDoNotShareWithObstacle:
+      resultCandidates.filter((candidate) => {
+        const candidateRegions = [
+          candidate.portPoint.region1,
+          candidate.portPoint.region2,
+        ]
+        return !candidateRegions.some((region) => region.d._containsObstacle)
+      }),
     visitedCandidates,
   }
 }
 
 const scoreCandidate = (candidate: DepthLimitedBfsCandidate): number => {
   let score = 0
-  let current:  DepthLimitedBfsCandidate | null = candidate
+  let current: DepthLimitedBfsCandidate | null = candidate
   while (current) {
-    const p  = current.portPoint
+    const p = current.portPoint
 
-    if(p.d.cramped){
+    if (p.d.cramped) {
       score -= 10
     } else {
       score += 5
@@ -99,8 +110,10 @@ const scoreCandidate = (candidate: DepthLimitedBfsCandidate): number => {
   return score
 }
 
-export const selectBestCandidate = (candidates: DepthLimitedBfsCandidate[]): DepthLimitedBfsCandidate => {
-  if(candidates.length === 0){
+export const selectBestCandidate = (
+  candidates: DepthLimitedBfsCandidate[],
+): DepthLimitedBfsCandidate => {
+  if (candidates.length === 0) {
     throw new Error("No candidates to select from")
   }
 
@@ -118,8 +131,9 @@ export const selectBestCandidate = (candidates: DepthLimitedBfsCandidate[]): Dep
   return bestCandidate
 }
 
-
-export const candidateToPath = (candidate: DepthLimitedBfsCandidate): TypedRegionPort[] => {
+export const candidateToPath = (
+  candidate: DepthLimitedBfsCandidate,
+): TypedRegionPort[] => {
   const path: TypedRegionPort[] = []
   let current: DepthLimitedBfsCandidate | null = candidate
   while (current) {
