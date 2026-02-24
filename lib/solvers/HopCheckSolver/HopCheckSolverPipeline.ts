@@ -8,6 +8,7 @@ import { FindUnreachableRegionsContainingObstacleSolver } from "./solver/FindUnr
 import { GraphicsObject } from "graphics-debug"
 import { FindCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSolver } from "./solver/FindCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSolver"
 import { HopCheckSolverInput, TypedHyperGraph } from "./types"
+import { visualizationTypedHyperGraph } from "./visualization/visualizationTypedHyperGraph"
 
 /**
  * The HopCheckSolverPipeline is a pipeline solver that orchestrates the process of
@@ -75,12 +76,14 @@ export class HopCheckSolverPipeline extends BasePipelineSolver<HopCheckSolverInp
     return graph
   }
 
-  finalVisualize(): GraphicsObject | null {
-    let graphics: GraphicsObject = {
-      rects: [],
-      points: [],
+  visualize(): GraphicsObject {
+    if (this.activeSubSolver) {
+      return this.activeSubSolver.visualize()
     }
+    return visualizationTypedHyperGraph(this.inputProblem.graph)
+  }
 
-    return graphics
+  finalVisualize(): GraphicsObject | null {
+    return visualizationTypedHyperGraph(this.getOutput())
   }
 }
