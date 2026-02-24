@@ -20,6 +20,11 @@ export interface SegmentPortPoint {
   rootConnectionName?: string
   /** XY distance to the centermost port on this Z level (centermost port has distance 0) */
   distToCentermostPortOnZ: number
+  /**
+   * This is special port points that exists to be used when reaching an obstacle is super impossible
+   * ideally this port points should be discarded but we need them in some cases
+   */
+  cramped: boolean
 }
 
 export interface SharedEdgeSegment {
@@ -29,7 +34,6 @@ export interface SharedEdgeSegment {
   end: { x: number; y: number }
   availableZ: number[]
   portPoints: SegmentPortPoint[]
-  crampedPortPoints: SegmentPortPoint[]
 }
 
 /**
@@ -66,7 +70,6 @@ export class AvailableSegmentPointSolver extends BaseSolver {
   edgeSegmentMap: Map<string, SharedEdgeSegment> = new Map()
 
   portPoints: SegmentPortPoint[]
-  crampedPortPoints: SegmentPortPoint[]
 
   /** Map from segmentPortPointId to SegmentPortPoint */
   portPointMap: Map<string, SegmentPortPoint> = new Map()
@@ -103,7 +106,6 @@ export class AvailableSegmentPointSolver extends BaseSolver {
     this.nodeEdgeMap = getNodeEdgeMap(edges)
 
     this.portPoints = []
-    this.crampedPortPoints = []
 
     // This solver completes in a single step
     this.MAX_ITERATIONS = 1
@@ -127,13 +129,12 @@ export class AvailableSegmentPointSolver extends BaseSolver {
         this.sharedEdgeSegments.push(segment)
         this.edgeSegmentMap.set(edge.capacityMeshEdgeId, segment)
         this.portPoints.push(...segment.portPoints)
-        this.crampedPortPoints.push(...segment.crampedPortPoints)
 
         for (const portPoint of segment.portPoints) {
           this.portPointMap.set(portPoint.segmentPortPointId, portPoint)
-        }
-        for (const portPoint of segment.crampedPortPoints) {
-          this.crampedPortPointMap.set(portPoint.segmentPortPointId, portPoint)
+          if (portPoint.cramped) {
+            this.crampedPortPointMap.set(portPoint.segmentPortPointId, portPoint)
+          }
         }
       }
     }
@@ -180,6 +181,7 @@ export class AvailableSegmentPointSolver extends BaseSolver {
           edgeId: edge.capacityMeshEdgeId,
           connectionName: null,
           distToCentermostPortOnZ: 0,
+          cramped: true,
         })
       }
       return {
@@ -188,8 +190,7 @@ export class AvailableSegmentPointSolver extends BaseSolver {
         start: overlap.start,
         end: overlap.end,
         availableZ,
-        portPoints: [],
-        crampedPortPoints,
+        portPoints: crampedPortPoints,
       }
     }
     // At minimum we need 1 port point, at maximum we space them minPortSpacing apart
@@ -272,6 +273,7 @@ export class AvailableSegmentPointSolver extends BaseSolver {
           edgeId: edge.capacityMeshEdgeId,
           connectionName: null,
           distToCentermostPortOnZ,
+          cramped: false,
         }
         portPoints.push(portPoint)
       }
@@ -284,7 +286,6 @@ export class AvailableSegmentPointSolver extends BaseSolver {
       end: overlap.end,
       availableZ,
       portPoints,
-      crampedPortPoints: [],
     }
   }
 
@@ -466,14 +467,8 @@ export class AvailableSegmentPointSolver extends BaseSolver {
     return this.getAvailablePortPointsBetweenNodes(nodeId1, nodeId2).length
   }
 
-  getOutput(): {
-    portPoints: SegmentPortPoint[]
-    crampedPortPoints: SegmentPortPoint[]
-  } {
-    return {
-      portPoints: this.portPoints,
-      crampedPortPoints: this.crampedPortPoints,
-    }
+  getOutput(): SegmentPortPoint[] {
+    return this.portPoints
   }
 
   visualize(): GraphicsObject {
@@ -490,6 +485,7 @@ export class AvailableSegmentPointSolver extends BaseSolver {
         points: [segment.start, segment.end],
         strokeColor: "rgba(100, 100, 100, 0.5)",
       })
+      
 
       // Draw port points
       for (const portPoint of segment.portPoints) {
@@ -497,47 +493,32 @@ export class AvailableSegmentPointSolver extends BaseSolver {
           ? (this.colorMap[portPoint.connectionName] ?? "blue")
           : "rgba(0, 200, 0, 0.7)"
 
-        graphics.circles!.push({
-          center: { x: portPoint.x, y: portPoint.y },
-          radius: this.traceWidth / 2,
-          fill: color,
-          layer: `z${portPoint.availableZ.join(",")}`,
-          label: [
-            portPoint.segmentPortPointId,
-            portPoint.connectionName,
-            portPoint.availableZ.join(","),
-            `cd: ${portPoint.distToCentermostPortOnZ}`,
-            `connects: ${portPoint.nodeIds.join(",")}`,
-          ]
-            .filter(Boolean)
-            .join("\n"),
-        })
-      }
-    }
-
-    // Draw cramped port points
-    for (const segment of this.sharedEdgeSegments) {
-      for (const portPoint of segment.crampedPortPoints) {
-        const color = portPoint.connectionName
-          ? (this.colorMap[portPoint.connectionName] ?? "blue")
-          : "rgba(0, 200, 0, 0.7)"
-
-        graphics.rects!.push({
-          center: { x: portPoint.x, y: portPoint.y },
-          height: this.traceWidth / 2,
-          width: this.traceWidth / 2,
-          fill: color,
-          layer: `z${portPoint.availableZ.join(",")}`,
-          label: [
-            portPoint.segmentPortPointId,
-            portPoint.connectionName,
-            portPoint.availableZ.join(","),
-            `cd: ${portPoint.distToCentermostPortOnZ}`,
-            `connects: ${portPoint.nodeIds.join(",")}`,
-          ]
-            .filter(Boolean)
-            .join("\n"),
-        })
+        if (!portPoint.cramped) {
+          graphics.circles!.push({
+            center: { x: portPoint.x, y: portPoint.y },
+            radius: this.traceWidth / 2,
+            fill: color,
+            layer: `z${portPoint.availableZ.join(",")}`,
+            label: [
+              portPoint.segmentPortPointId,
+              portPoint.connectionName,
+              portPoint.availableZ.join(","),
+              `cd: ${portPoint.distToCentermostPortOnZ}`,
+              `connects: ${portPoint.nodeIds.join(",")}`,
+            ]
+              .filter(Boolean)
+              .join("\n"),
+          })
+        } else {
+          graphics.rects!.push({
+            center: { x: portPoint.x, y: portPoint.y },
+            width: 0.1,
+            height: 0.1,
+            fill: color,
+            layer: `z${portPoint.availableZ.join(",")}`,
+            label: `cramped ${portPoint.segmentPortPointId}`,
+          })
+        }
       }
     }
 

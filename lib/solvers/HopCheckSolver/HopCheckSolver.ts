@@ -2,6 +2,7 @@ import { HyperGraph, Region, RegionId, RegionPort } from "@tscircuit/hypergraph"
 import {
   BasePipelineSolver,
   BaseSolver,
+  definePipelineStep,
   PipelineStep,
 } from "@tscircuit/solver-utils"
 import { GraphicsObject } from "graphics-debug"
@@ -9,7 +10,6 @@ import { CapacityMeshNode } from "lib/types"
 import { SegmentPortPoint } from "../AvailableSegmentPointSolver/AvailableSegmentPointSolver"
 import { areAllRegionPortsBlocked } from "./areAllRegionPortsBlocked"
 import { depthLimitedBfsSolver } from "./depthLimitedBfsSolver"
-import { doesLineIntersectLine } from "@tscircuit/math-utils"
 
 export type TypedRegion = Omit<Region, "d"> & {
   d: CapacityMeshNode
@@ -25,26 +25,21 @@ export type TypedHyperGraph = Omit<HyperGraph, "ports" | "regions"> & {
 
 type HopCheckSolverInput = {
   graph: TypedHyperGraph
-  graphWithCrampedRegionPort: TypedHyperGraph
 }
 
-export class HopCheckSolver extends BasePipelineSolver<HopCheckSolverInput> {
-  pipelineDef: PipelineStep<BaseSolver>[] = []
+class FindUnreachableRegionsContainingObstacleSolver extends BaseSolver {
   regionsWithObstacleQueue: TypedRegion[]
-  private crampedPortPointsToInclude: Set<TypedRegionPort> =
-    new Set<TypedRegionPort>()
   private currentRegionWithObstacle: TypedRegion | undefined
   private outputPortOfBfs: TypedRegionPort[] = []
-  private visualizationPhase: "withPortPoints" | "withCrampedPortPoints" =
-    "withPortPoints"
   private allRegionWithObstacle: TypedRegion[]
+  private unreachableRegionsContainingObstacle: TypedRegion[] = []
 
   override getSolverName(): string {
-    return "HopCheckSolver"
+    return "findUnreachableRegionsContainingObstacleSolver"
   }
 
   constructor(private input: HopCheckSolverInput) {
-    super(input)
+    super()
     this.regionsWithObstacleQueue = input.graph.regions.filter(
       (region) => region.d._containsObstacle,
     )
@@ -60,60 +55,22 @@ export class HopCheckSolver extends BasePipelineSolver<HopCheckSolverInput> {
       this.solved = true
       return
     }
-    this.outputPortOfBfs = depthLimitedBfsSolver({
+    const { portPointsAtNthDegree } = depthLimitedBfsSolver({
       depthLimit: 2,
       targetRegion: this.currentRegionWithObstacle,
+      shouldIgnoreCrampedPortPoints: true,
     })
+    this.outputPortOfBfs = portPointsAtNthDegree
 
     if (areAllRegionPortsBlocked(this.outputPortOfBfs)) {
-
-      // since we have the regions that are at level 2 depth
-      // and if we find a single cramped port in any of the
-      // returned regions that is related to returned port that is it
-      for (const currentRegionPort of this.outputPortOfBfs) {
-        this.visualizationPhase = "withCrampedPortPoints"
-        const crampedRegionPort =
-          this.input.graphWithCrampedRegionPort.ports.find(
-            (p) =>
-              p.region1.regionId === currentRegionPort.region1.regionId &&
-              p.region2.regionId === currentRegionPort.region2.regionId,
-          ) // each side always has 1 cramped port not more
-        if (crampedRegionPort) {
-          this.crampedPortPointsToInclude.add(crampedRegionPort)
-          break
-        }
-      }
+      this.unreachableRegionsContainingObstacle.push(
+        this.currentRegionWithObstacle,
+      )
     }
   }
 
-  getOutput(): TypedHyperGraph {
-    if (this.crampedPortPointsToInclude.size === 0) {
-      return this.input.graph
-    }
-
-    const cloneInputGraph = structuredClone(this.input.graph)
-
-    for (const crampedRegionPort of this.crampedPortPointsToInclude) {
-      const region1 = cloneInputGraph.regions.find(
-        (p) => p.regionId === crampedRegionPort.region1.regionId,
-      )!
-      const region2 = cloneInputGraph.regions.find(
-        (p) => p.regionId === crampedRegionPort.region2.regionId,
-      )!
-
-      const newPort: TypedRegionPort = {
-        ...crampedRegionPort,
-        region1,
-        region2,
-      }
-
-      region1.ports = [...region1.ports, newPort]
-      region2.ports = [...region2.ports, newPort]
-
-      cloneInputGraph.ports = [...cloneInputGraph.ports, newPort]
-    }
-
-    return cloneInputGraph
+  getOutput(): Region[] {
+    return this.unreachableRegionsContainingObstacle
   }
 
   visualize(): GraphicsObject {
@@ -146,6 +103,15 @@ export class HopCheckSolver extends BasePipelineSolver<HopCheckSolverInput> {
       })
     }
 
+    for (const region of this.unreachableRegionsContainingObstacle) {
+      graphics.rects?.push({
+        ...region.d,
+        fill: "rgb(0, 0, 255, 0.5)",
+        layer: `availableZ=${region.d.availableZ}`,
+        label: `${region.regionId} (unreachable)`,
+      })
+    }
+
     for (const port of this.outputPortOfBfs) {
       graphics.points?.push({
         ...port.d,
@@ -155,23 +121,107 @@ export class HopCheckSolver extends BasePipelineSolver<HopCheckSolverInput> {
       })
     }
 
-    if (this.visualizationPhase === "withCrampedPortPoints") {
-      this.visualizationPhase = "withPortPoints"
-      for (const crampedRegionPort of this.crampedPortPointsToInclude) {
-        graphics.rects?.push({
-          width: 0.5,
-          height: 0.5,
-          center: {
-            x: crampedRegionPort.d.x,
-            y: crampedRegionPort.d.y,
-          },
-          layer: `availableZ=${crampedRegionPort.d.availableZ}`,
-          label: `cramped-port ${crampedRegionPort.portId}`,
-          fill: "green",
-        })
-      }
+    return graphics
+  }
+}
+
+type FindCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSolverInput =
+  HopCheckSolverInput & {
+    regionsWithObstacle: TypedRegion[]
+  }
+
+class FindCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSolver extends BaseSolver {
+  private regionsWithObstacleQueue: TypedRegion[]
+  private currentRegionWithObstacle: TypedRegion | undefined
+  private visitedPortPoints: TypedRegionPort[] = []
+  override getSolverName(): string {
+    return "findCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSolver"
+  }
+
+  constructor(
+    private input: FindCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSolverInput,
+  ) {
+    super()
+    this.regionsWithObstacleQueue = [...this.input.regionsWithObstacle]
+  }
+
+  step(): void {
+    if (this.regionsWithObstacleQueue.length === 0) {
+      this.solved = true
+      return
+    }
+    this.currentRegionWithObstacle = this.regionsWithObstacleQueue.shift()!
+    const { portPointsAtNthDegree, visitedPortPoints } = depthLimitedBfsSolver({
+      depthLimit: 2,
+      targetRegion: this.currentRegionWithObstacle,
+      shouldIgnoreCrampedPortPoints: false,
+    })
+    this.visitedPortPoints = visitedPortPoints
+    if (areAllRegionPortsBlocked(portPointsAtNthDegree)) {
+      // this.failed = true
+      // this.error = `Region ${this.currentRegionWithObstacle.regionId} is unreachable even after considering cramped port points`
+    }
+  }
+
+  visualize(): GraphicsObject {
+    let graphics: GraphicsObject = {
+      rects: [],
+      points: [],
+    }
+
+    for (const region of this.input.regionsWithObstacle) {
+      graphics.rects?.push({
+        ...region.d,
+        fill:
+          this.currentRegionWithObstacle === region
+            ? "rgb(255, 0, 0, 0.5)"
+            : "rgb(255, 0, 0, 0.2)",
+        layer: `availableZ=${region.d.availableZ}`,
+        label: `${region.regionId}`,
+      })
+    }
+
+    for (const visited of this.visitedPortPoints) {
+      graphics.points?.push({
+        ...visited.d,
+        color: visited.d.cramped ? "red" : "green",
+        layer: `availableZ=${visited.d.availableZ}`,
+        label: `${visited.portId}`,
+      })
     }
 
     return graphics
+  }
+}
+
+export class HopCheckSolverPipeline extends BasePipelineSolver<HopCheckSolverInput> {
+  findUnreachableRegionsContainingObstacleSolver?: FindUnreachableRegionsContainingObstacleSolver
+
+  pipelineDef: PipelineStep<BaseSolver>[] = [
+    definePipelineStep(
+      "findUnreachableRegionsContainingObstacleSolver",
+      FindUnreachableRegionsContainingObstacleSolver,
+      (cms: HopCheckSolverPipeline) => {
+        return [cms.inputProblem]
+      },
+    ),
+    definePipelineStep(
+      "findCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSolver",
+      FindCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSolver,
+      (cms: HopCheckSolverPipeline) => {
+        const unreachableRegionsContainingObstacle =
+          cms.findUnreachableRegionsContainingObstacleSolver?.getOutput() ?? []
+        return [
+          {
+            ...cms.inputProblem,
+            regionsWithObstacle: unreachableRegionsContainingObstacle,
+          },
+        ]
+      },
+    ),
+  ]
+
+  override getSolverName(): string {
+    return "HopCheckSolverPipeline"
   }
 }

@@ -33,7 +33,10 @@ import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
 import { NetToPointPairsSolver2_OffBoardConnection } from "../../solvers/NetToPointPairsSolver2_OffBoardConnection/NetToPointPairsSolver2_OffBoardConnection"
 import { RectDiffPipeline } from "@tscircuit/rectdiff"
 import { TraceSimplificationSolver } from "../../solvers/TraceSimplificationSolver/TraceSimplificationSolver"
-import { AvailableSegmentPointSolver } from "../../solvers/AvailableSegmentPointSolver/AvailableSegmentPointSolver"
+import {
+  AvailableSegmentPointSolver,
+  SegmentPortPoint,
+} from "../../solvers/AvailableSegmentPointSolver/AvailableSegmentPointSolver"
 import {
   InputNodeWithPortPoints,
   InputPortPoint,
@@ -51,7 +54,7 @@ import { TraceWidthSolver } from "../../solvers/TraceWidthSolver/TraceWidthSolve
 import { getDrcErrors } from "lib/testing/getDrcErrors"
 import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
 import {
-  HopCheckSolver,
+  HopCheckSolverPipeline,
   TypedHyperGraph,
 } from "lib/solvers/HopCheckSolver/HopCheckSolver"
 import { buildGraph } from "lib/solvers/HopCheckSolver/buildGraph"
@@ -114,7 +117,7 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
   multiSectionPortPointOptimizer?: MultiSectionPortPointOptimizer
   uniformPortDistributionSolver?: UniformPortDistributionSolver
   traceWidthSolver?: TraceWidthSolver
-  hopCheckSolver?: HopCheckSolver
+  hopCheckSolver?: HopCheckSolverPipeline
   viaDiameter: number
   minTraceWidth: number
   effort: number
@@ -231,22 +234,15 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
         },
       ],
     ),
-    definePipelineStep("hopCheckSolver", HopCheckSolver, (cms) => {
+    definePipelineStep("hopCheckSolver", HopCheckSolverPipeline, (cms) => {
       const graph: TypedHyperGraph = buildGraph({
         capacityMeshNodes: cms.capacityNodes!,
-        portPoints: cms.availableSegmentPointSolver!.getOutput().portPoints,
-      })
-
-      const graphWithCrampedRegionPort: TypedHyperGraph = buildGraph({
-        capacityMeshNodes: cms.capacityNodes!,
-        portPoints:
-          cms.availableSegmentPointSolver!.getOutput().crampedPortPoints,
+        portPoints: cms.availableSegmentPointSolver!.getOutput(),
       })
 
       return [
         {
           graph: graph,
-          graphWithCrampedRegionPort: graphWithCrampedRegionPort,
         },
       ]
     }),
