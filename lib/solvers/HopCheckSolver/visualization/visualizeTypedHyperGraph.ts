@@ -1,7 +1,7 @@
 import { GraphicsObject } from "graphics-debug"
 import { TypedHyperGraph } from "../types"
 
-export const visualizationTypedHyperGraph = (graph: TypedHyperGraph) => {
+export const visualizeTypedHyperGraph = (graph: TypedHyperGraph) => {
   let graphics: GraphicsObject = {
     rects: [],
     points: [],

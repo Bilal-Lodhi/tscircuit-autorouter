@@ -17,8 +17,8 @@ import { TypedRegion, TypedRegionPort, HopCheckSolverInput } from "../types"
 export class FindUnreachableRegionsContainingObstacleSolver extends BaseSolver {
   regionsWithObstacleQueue: TypedRegion[]
   private currentRegionWithObstacle: TypedRegion | undefined
-  private outputPortOfBfs: TypedRegionPort[] = []
-  private allRegionWithObstacle: TypedRegion[]
+  private outputPortsAtDepthLimit: TypedRegionPort[] = []
+  private allRegionsWithObstacle: TypedRegion[]
   private unreachableRegionsContainingObstacle: TypedRegion[] = []
 
   override getSolverName(): string {
@@ -30,7 +30,7 @@ export class FindUnreachableRegionsContainingObstacleSolver extends BaseSolver {
     this.regionsWithObstacleQueue = input.graph.regions.filter(
       (region) => region.d._containsObstacle,
     )
-    this.allRegionWithObstacle = input.graph.regions.filter(
+    this.allRegionsWithObstacle = input.graph.regions.filter(
       (region) => region.d._containsObstacle,
     )
     this.regionsWithObstacleQueue.sort((a, b) => a.d.center.x - b.d.center.x)
@@ -47,9 +47,9 @@ export class FindUnreachableRegionsContainingObstacleSolver extends BaseSolver {
       targetRegion: this.currentRegionWithObstacle,
       shouldIgnoreCrampedPortPoints: true,
     })
-    this.outputPortOfBfs = portPointsAtNthDegree
+    this.outputPortsAtDepthLimit = portPointsAtNthDegree
 
-    if (areAllRegionPortsBlocked(this.outputPortOfBfs)) {
+    if (areAllRegionPortsBlocked(this.outputPortsAtDepthLimit)) {
       this.unreachableRegionsContainingObstacle.push(
         this.currentRegionWithObstacle,
       )
@@ -67,7 +67,7 @@ export class FindUnreachableRegionsContainingObstacleSolver extends BaseSolver {
     }
 
     if (!this.currentRegionWithObstacle) {
-      for (const region of this.allRegionWithObstacle) {
+      for (const region of this.allRegionsWithObstacle) {
         graphics.rects?.push({
           ...region.d,
           fill: "rgb(255, 0, 0, 0.5)",
@@ -78,7 +78,7 @@ export class FindUnreachableRegionsContainingObstacleSolver extends BaseSolver {
       return graphics
     }
 
-    for (const region of this.allRegionWithObstacle) {
+    for (const region of this.allRegionsWithObstacle) {
       graphics.rects?.push({
         ...region.d,
         fill:
@@ -99,7 +99,7 @@ export class FindUnreachableRegionsContainingObstacleSolver extends BaseSolver {
       })
     }
 
-    for (const port of this.outputPortOfBfs) {
+    for (const port of this.outputPortsAtDepthLimit) {
       graphics.points?.push({
         ...port.d,
         color: "green",

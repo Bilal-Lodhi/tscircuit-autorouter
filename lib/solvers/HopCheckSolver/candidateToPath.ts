@@ -1,7 +1,9 @@
 import { DepthLimitedBfsCandidate, TypedRegionPort } from "./types"
 
 /**
- * Converts a DepthLimitedBfsCandidate into a path of TypedRegionPorts by traversing up the parent links until the root candidate is reached. The resulting path is reversed to provide the correct order from the starting point to the target region.
+ * Converts a DepthLimitedBfsCandidate into a TypedRegionPort path.
+ * Traverses parent links up to the root candidate, then reverses the path
+ * so the order is from start to destination.
  */
 export const candidateToPath = (
   candidate: DepthLimitedBfsCandidate,

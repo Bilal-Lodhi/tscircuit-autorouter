@@ -12,7 +12,7 @@ type FindCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSol
   }
 
 /**
- * This solver aims to find cramped port points that can potentially make unreachable regions containing obstacles reachable.
+ * Finds cramped port points that can potentially make unreachable obstacle regions reachable.
  */
 export class FindCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSolver extends BaseSolver {
   private regionsWithObstacleQueue: TypedRegion[]
@@ -37,8 +37,7 @@ export class FindCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReac
     this.currentRegionWithObstacle = this.regionsWithObstacleQueue.shift()!
     const {
       portPointsAtNthDegree,
-      outputCandidatesAtNthDegreeWhoDoNotShareWithObstacle:
-        outputCandidatesAtNthDegree,
+      outputCandidatesAtNthDegreeWithoutObstacleShare: outputCandidatesAtNthDegree,
     } = depthLimitedBfs({
       depthLimit: 2,
       targetRegion: this.currentRegionWithObstacle,

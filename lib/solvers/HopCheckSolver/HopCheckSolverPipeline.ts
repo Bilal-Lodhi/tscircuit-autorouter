@@ -8,7 +8,7 @@ import { FindUnreachableRegionsContainingObstacleSolver } from "./solver/FindUnr
 import { GraphicsObject } from "graphics-debug"
 import { FindCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSolver } from "./solver/FindCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSolver"
 import { HopCheckSolverInput, TypedHyperGraph } from "./types"
-import { visualizationTypedHyperGraph } from "./visualization/visualizationTypedHyperGraph"
+import { visualizeTypedHyperGraph } from "./visualization/visualizeTypedHyperGraph"
 
 /**
  * The HopCheckSolverPipeline is a pipeline solver that orchestrates the process of
@@ -60,14 +60,12 @@ export class HopCheckSolverPipeline extends BasePipelineSolver<HopCheckSolverInp
     const portsToUncramp = new Set(bestPath.map((port) => port.portId))
     for (const portId of portsToUncramp) {
       const graphPort = graph.ports.find((p) => p.portId === portId)!
-      // TODO: we unmark some of the cramped port points as not cramped,
-      // but this is not the best way to do it.
-      // because we are changing the clone of the original graph
-      // which can be not super intuitive.
+      // TODO: We unmark some cramped port points here.
+      // This works, but mutating the cloned graph in place is not ideal.
       graphPort.d.cramped = false
     }
 
-    // delete all port points whose cramped is true
+    // Delete all port points whose cramped flag is true.
     graph.ports = graph.ports.filter((port) => !port.d.cramped)
     for (const region of graph.regions) {
       region.ports = region.ports.filter((port) => !port.d.cramped)
@@ -80,10 +78,10 @@ export class HopCheckSolverPipeline extends BasePipelineSolver<HopCheckSolverInp
     if (this.activeSubSolver) {
       return this.activeSubSolver.visualize()
     }
-    return visualizationTypedHyperGraph(this.inputProblem.graph)
+    return visualizeTypedHyperGraph(this.inputProblem.graph)
   }
 
   finalVisualize(): GraphicsObject | null {
-    return visualizationTypedHyperGraph(this.getOutput())
+    return visualizeTypedHyperGraph(this.getOutput())
   }
 }

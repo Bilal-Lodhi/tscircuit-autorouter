@@ -2,7 +2,7 @@ import { scoreCandidate } from "./scoreCandidate"
 import { DepthLimitedBfsCandidate } from "./types"
 
 /**
- * selects the best candidate from a list of DepthLimitedBfsCandidates based on their scores.
+ * Selects the best candidate from a list of DepthLimitedBfsCandidates based on their scores.
  * The candidate with the highest score is returned as the best candidate.
  * If there are no candidates, an error is thrown.
  */

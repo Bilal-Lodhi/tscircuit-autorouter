@@ -1,6 +1,6 @@
 import { DepthLimitedBfsCandidate, TypedRegion, TypedRegionPort } from "./types"
 
-type depthLimitedBfsArgs = {
+type DepthLimitedBfsArgs = {
   targetRegion: TypedRegion
   depthLimit: number
   shouldIgnoreCrampedPortPoints: boolean
@@ -14,11 +14,11 @@ type depthLimitedBfsArgs = {
  * target region. The BFS can optionally ignore cramped port points during traversal.
  */
 export const depthLimitedBfs = (
-  params: depthLimitedBfsArgs,
+  params: DepthLimitedBfsArgs,
 ): {
   portPointsAtNthDegree: TypedRegionPort[]
   visitedPortPoints: TypedRegionPort[]
-  outputCandidatesAtNthDegreeWhoDoNotShareWithObstacle: DepthLimitedBfsCandidate[]
+  outputCandidatesAtNthDegreeWithoutObstacleShare: DepthLimitedBfsCandidate[]
   visitedCandidates: DepthLimitedBfsCandidate[]
 } => {
   const { targetRegion, depthLimit, shouldIgnoreCrampedPortPoints } = params
@@ -26,7 +26,7 @@ export const depthLimitedBfs = (
     return {
       portPointsAtNthDegree: [],
       visitedPortPoints: [],
-      outputCandidatesAtNthDegreeWhoDoNotShareWithObstacle: [],
+      outputCandidatesAtNthDegreeWithoutObstacleShare: [],
       visitedCandidates: [],
     }
   const visitedCandidateByPort = new Map<
@@ -75,6 +75,15 @@ export const depthLimitedBfs = (
   }
 
   const visitedCandidates = Array.from(visitedCandidateByPort.values())
+  const outputCandidatesAtNthDegreeWithoutObstacleShare = resultCandidates.filter(
+    (candidate) => {
+      const candidateRegions = [
+        candidate.portPoint.region1,
+        candidate.portPoint.region2,
+      ]
+      return !candidateRegions.some((region) => region.d._containsObstacle)
+    },
+  )
   return {
     portPointsAtNthDegree: resultCandidates.map(
       (candidate) => candidate.portPoint,
@@ -82,14 +91,7 @@ export const depthLimitedBfs = (
     visitedPortPoints: visitedCandidates.map(
       (candidate) => candidate.portPoint,
     ),
-    outputCandidatesAtNthDegreeWhoDoNotShareWithObstacle:
-      resultCandidates.filter((candidate) => {
-        const candidateRegions = [
-          candidate.portPoint.region1,
-          candidate.portPoint.region2,
-        ]
-        return !candidateRegions.some((region) => region.d._containsObstacle)
-      }),
+    outputCandidatesAtNthDegreeWithoutObstacleShare,
     visitedCandidates,
   }
 }
