@@ -6,18 +6,19 @@ import {
 } from "@tscircuit/solver-utils"
 import { GraphicsObject } from "graphics-debug"
 import { CapacityMeshNode } from "lib/types"
-import { PortPoint } from "lib/types/high-density-types"
+import { SegmentPortPoint } from "../AvailableSegmentPointSolver/AvailableSegmentPointSolver"
+import { areAllRegionPortsBlocked } from "./areAllRegionPortsBlocked"
+import { depthLimitedBfsSolver } from "./depthLimitedBfsSolver"
+import { doesLineIntersectLine } from "@tscircuit/math-utils"
 
-type ConnectionName = string
-
-type TypedRegion = Omit<Region, "d"> & {
+export type TypedRegion = Omit<Region, "d"> & {
   d: CapacityMeshNode
 }
-type TypedRegionPort = Omit<RegionPort, "d"> & {
-  d: PortPoint
+export type TypedRegionPort = Omit<RegionPort, "d"> & {
+  d: SegmentPortPoint
 }
 
-type TypedHyperGraph = Omit<HyperGraph, "ports" | "regions"> & {
+export type TypedHyperGraph = Omit<HyperGraph, "ports" | "regions"> & {
   ports: TypedRegionPort[]
   regions: TypedRegion[]
 }
@@ -25,7 +26,6 @@ type TypedHyperGraph = Omit<HyperGraph, "ports" | "regions"> & {
 type HopCheckSolverInput = {
   graph: TypedHyperGraph
   graphWithCrampedRegionPort: TypedHyperGraph
-  connectionNameToGoalRegionIds: Record<ConnectionName, RegionId[]>
 }
 
 export class HopCheckSolver extends BasePipelineSolver<HopCheckSolverInput> {
@@ -37,6 +37,7 @@ export class HopCheckSolver extends BasePipelineSolver<HopCheckSolverInput> {
   private outputPortOfBfs: TypedRegionPort[] = []
   private visualizationPhase: "withPortPoints" | "withCrampedPortPoints" =
     "withPortPoints"
+  private allRegionWithObstacle: TypedRegion[]
 
   override getSolverName(): string {
     return "HopCheckSolver"
@@ -47,22 +48,30 @@ export class HopCheckSolver extends BasePipelineSolver<HopCheckSolverInput> {
     this.regionsWithObstacleQueue = input.graph.regions.filter(
       (region) => region.d._containsObstacle,
     )
+    this.allRegionWithObstacle = input.graph.regions.filter(
+      (region) => region.d._containsObstacle,
+    )
+    this.regionsWithObstacleQueue.sort((a, b) => a.d.center.x - b.d.center.x)
   }
 
   step(): void {
     this.currentRegionWithObstacle = this.regionsWithObstacleQueue.shift()
     if (!this.currentRegionWithObstacle) {
+      this.solved = true
       return
     }
-    const outputPortOfBfs = depthLimitedBfsSolver({
+    this.outputPortOfBfs = depthLimitedBfsSolver({
       depthLimit: 2,
       targetRegion: this.currentRegionWithObstacle,
     })
-    if (areAllRegionPortsBlocked(outputPortOfBfs)) {
+
+    if (areAllRegionPortsBlocked(this.outputPortOfBfs)) {
+      console.log("is this ever triggred");
+      
       // since we have the regions that are at level 2 depth
       // and if we find a single cramped port in any of the
-      // returned regions that is it
-      for (const currentRegionPort of outputPortOfBfs) {
+      // returned regions that is related to returned port that is it
+      for (const currentRegionPort of this.outputPortOfBfs) {
         this.visualizationPhase = "withCrampedPortPoints"
         const crampedRegionPort =
           this.input.graphWithCrampedRegionPort.ports.find(
@@ -109,103 +118,61 @@ export class HopCheckSolver extends BasePipelineSolver<HopCheckSolverInput> {
   }
 
   visualize(): GraphicsObject {
-    const graphics: GraphicsObject = {
+    let graphics: GraphicsObject = {
       rects: [],
-      circles: [],
       points: [],
-      lines: [],
-      texts: [],
     }
 
     if (!this.currentRegionWithObstacle) {
+      for (const region of this.allRegionWithObstacle) {
+        graphics.rects?.push({
+          ...region.d,
+          fill: "rgb(255, 0, 0, 0.5)",
+          layer: `availableZ=${region.d.availableZ}`,
+          label: `${region.regionId}`,
+        })
+      }
       return graphics
     }
 
-    // highligh the current region with target obstacle
-    graphics.rects?.push({
-      ...this.currentRegionWithObstacle.d,
-      color: "red",
-      layer: `availableZ=${this.currentRegionWithObstacle.d.availableZ}`
-    })
-
-    for(const port of this.outputPortOfBfs) {
-      graphics.points?.push({
-        ...port.d,
-        color: "green",
-        layer: `availableZ=${port.d.z}`
+    for (const region of this.allRegionWithObstacle) {
+      graphics.rects?.push({
+        ...region.d,
+        fill:
+          this.currentRegionWithObstacle === region
+            ? "rgb(255, 0, 0, 0.5)"
+            : "rgb(255, 0, 0, 0.2)",
+        layer: `availableZ=${region.d.availableZ}`,
+        label: `${region.regionId}`,
       })
     }
 
-    switch (this.visualizationPhase) {
-      case "withCrampedPortPoints": {
-        this.visualizationPhase = "withPortPoints"
-          for (const crampedRegionPort of this.crampedPortPointsToInclude) {
-            graphics.rects?.push({
-              width: .5,
-              height: .5,
-              center: {
-                x: crampedRegionPort.d.x,
-                y: crampedRegionPort.d.y,
-              },
-              layer: `availableZ=${crampedRegionPort.d.z}`,
-              color: "green"
-            })
-          }
-        break
+    for (const port of this.outputPortOfBfs) {
+      graphics.points?.push({
+        ...port.d,
+        color: "green",
+        layer: `availableZ=${port.d.availableZ}`,
+        label: `${port.portId}`,
+      })
+    }
+
+    if (this.visualizationPhase === "withCrampedPortPoints") {
+      this.visualizationPhase = "withPortPoints"
+      for (const crampedRegionPort of this.crampedPortPointsToInclude) {
+        graphics.rects?.push({
+          width: 0.5,
+          height: 0.5,
+          center: {
+            x: crampedRegionPort.d.x,
+            y: crampedRegionPort.d.y,
+          },
+          layer: `availableZ=${crampedRegionPort.d.availableZ}`,
+          label: `cramped-port ${crampedRegionPort.portId}`,
+          fill: "green",
+        })
       }
     }
 
     return graphics
   }
-}
-
-const areAllRegionPortsBlocked = (regionPorts: TypedRegionPort[]) => {
-  for (const port of regionPorts) {
-    const neighborRegions = [port.region1, port.region2]
-    for (const neighborRegion of neighborRegions) {
-      if (!neighborRegion.d._containsObstacle) {
-        return false
-      }
-    }
-  }
-  return true
-}
-
-type depthLimitedBfsArgs = {
-  targetRegion: TypedRegion
-  depthLimit: number
-}
-
-const depthLimitedBfsSolver = (
-  params: depthLimitedBfsArgs,
-): TypedRegionPort[] => {
-  const { targetRegion, depthLimit } = params
-  if (depthLimit < 1) return []
-  const visitedPortIds = new Set<string>()
-  const queue: { port: TypedRegionPort; depth: number }[] =
-    targetRegion.ports.map((port) => ({ port, depth: 1 }))
-  const result: TypedRegionPort[] = []
-  for (const { port } of queue) {
-    visitedPortIds.add(port.portId)
-  }
-
-  while (queue.length > 0) {
-    const { port, depth } = queue.shift()!
-    if (depth === depthLimit) {
-      result.push(port)
-      continue
-    }
-
-    const nextRegionPort = [port.region1.ports, port.region2.ports].flat()
-
-    for (const nextPort of nextRegionPort) {
-      if (visitedPortIds.has(nextPort.portId)) {
-        continue
-      }
-      visitedPortIds.add(nextPort.portId)
-      queue.push({ port: nextPort, depth: depth + 1 })
-    }
-  }
-
-  return result
 }
