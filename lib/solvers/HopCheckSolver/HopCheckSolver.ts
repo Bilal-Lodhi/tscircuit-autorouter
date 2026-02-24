@@ -4,6 +4,7 @@ import {
   BaseSolver,
   PipelineStep,
 } from "@tscircuit/solver-utils"
+import { GraphicsObject } from "graphics-debug"
 import { CapacityMeshNode } from "lib/types"
 import { PortPoint } from "lib/types/high-density-types"
 
@@ -32,6 +33,10 @@ export class HopCheckSolver extends BasePipelineSolver<HopCheckSolverInput> {
   regionsWithObstacleQueue: TypedRegion[]
   private crampedPortPointsToInclude: Set<TypedRegionPort> =
     new Set<TypedRegionPort>()
+  private currentRegionWithObstacle: TypedRegion | undefined
+  private outputPortOfBfs: TypedRegionPort[] = []
+  private visualizationPhase: "withPortPoints" | "withCrampedPortPoints" =
+    "withPortPoints"
 
   override getSolverName(): string {
     return "HopCheckSolver"
@@ -45,19 +50,20 @@ export class HopCheckSolver extends BasePipelineSolver<HopCheckSolverInput> {
   }
 
   step(): void {
-    const currentRegionWithObstacle = this.regionsWithObstacleQueue.shift()
-    if (!currentRegionWithObstacle) {
+    this.currentRegionWithObstacle = this.regionsWithObstacleQueue.shift()
+    if (!this.currentRegionWithObstacle) {
       return
     }
-    const resultPort = depthLimitedBfsSolver({
+    const outputPortOfBfs = depthLimitedBfsSolver({
       depthLimit: 2,
-      targetRegion: currentRegionWithObstacle,
+      targetRegion: this.currentRegionWithObstacle,
     })
-    if (areAllRegionPortsBlocked(resultPort)) {
+    if (areAllRegionPortsBlocked(outputPortOfBfs)) {
       // since we have the regions that are at level 2 depth
       // and if we find a single cramped port in any of the
       // returned regions that is it
-      for (const currentRegionPort of resultPort) {
+      for (const currentRegionPort of outputPortOfBfs) {
+        this.visualizationPhase = "withCrampedPortPoints"
         const crampedRegionPort =
           this.input.graphWithCrampedRegionPort.ports.find(
             (p) =>
@@ -100,6 +106,56 @@ export class HopCheckSolver extends BasePipelineSolver<HopCheckSolverInput> {
     }
 
     return cloneInputGraph
+  }
+
+  visualize(): GraphicsObject {
+    const graphics: GraphicsObject = {
+      rects: [],
+      circles: [],
+      points: [],
+      lines: [],
+      texts: [],
+    }
+
+    if (!this.currentRegionWithObstacle) {
+      return graphics
+    }
+
+    // highligh the current region with target obstacle
+    graphics.rects?.push({
+      ...this.currentRegionWithObstacle.d,
+      color: "red",
+      layer: `availableZ=${this.currentRegionWithObstacle.d.availableZ}`
+    })
+
+    for(const port of this.outputPortOfBfs) {
+      graphics.points?.push({
+        ...port.d,
+        color: "green",
+        layer: `availableZ=${port.d.z}`
+      })
+    }
+
+    switch (this.visualizationPhase) {
+      case "withCrampedPortPoints": {
+        this.visualizationPhase = "withPortPoints"
+          for (const crampedRegionPort of this.crampedPortPointsToInclude) {
+            graphics.rects?.push({
+              width: .5,
+              height: .5,
+              center: {
+                x: crampedRegionPort.d.x,
+                y: crampedRegionPort.d.y,
+              },
+              layer: `availableZ=${crampedRegionPort.d.z}`,
+              color: "green"
+            })
+          }
+        break
+      }
+    }
+
+    return graphics
   }
 }
 
