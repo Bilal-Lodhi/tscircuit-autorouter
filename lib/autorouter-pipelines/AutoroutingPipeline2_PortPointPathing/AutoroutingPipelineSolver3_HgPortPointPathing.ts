@@ -35,7 +35,6 @@ import { RectDiffPipeline } from "@tscircuit/rectdiff"
 import { TraceSimplificationSolver } from "../../solvers/TraceSimplificationSolver/TraceSimplificationSolver"
 import {
   AvailableSegmentPointSolver,
-  SegmentPortPoint,
 } from "../../solvers/AvailableSegmentPointSolver/AvailableSegmentPointSolver"
 import {
   InputNodeWithPortPoints,
@@ -45,7 +44,10 @@ import {
   HgPortPointPathingSolver,
   HgPortPointPathingSolverParams,
 } from "../../solvers/PortPointPathingSolver/hdportpointpathingsolver/HgPortPointPathingSolver"
-import { buildHyperGraphFromInputNodes } from "../../solvers/PortPointPathingSolver/hdportpointpathingsolver/buildHyperGraphFromInputNodes"
+import {
+  HgPort,
+  HgRegion,
+} from "../../solvers/PortPointPathingSolver/hdportpointpathingsolver/buildHyperGraphFromInputNodes"
 import { buildHyperConnectionsFromSimpleRouteJson } from "../../solvers/PortPointPathingSolver/hdportpointpathingsolver/buildHyperConnectionsFromSimpleRouteJson"
 import { CapacityMeshNodeSolver2_NodeUnderObstacle } from "../../solvers/CapacityMeshSolver/CapacityMeshNodeSolver2_NodesUnderObstacles"
 import { MultiSectionPortPointOptimizer } from "../../solvers/MultiSectionPortPointOptimizer"
@@ -250,50 +252,78 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
       "portPointPathingSolver",
       HgPortPointPathingSolver,
       (cms) => {
-        // Convert capacity nodes and segment points to InputNodeWithPortPoints
-        this.inputNodeWithPortPoints = cms.capacityNodes!.map((node) => ({
-          capacityMeshNodeId: node.capacityMeshNodeId,
-          center: node.center,
-          width: node.width,
-          height: node.height,
-          portPoints: [] as InputPortPoint[],
-          availableZ: node.availableZ,
-          _containsTarget: node._containsTarget,
-          _containsObstacle: node._containsObstacle,
-        }))
+        const hopCheckedGraph = cms.hopCheckSolver?.getOutput()
+        if (!hopCheckedGraph) {
+          throw new Error("hopCheckSolver output is required before pathing")
+        }
 
-        // Build a map for quick lookup
-        const nodeMap = new Map(
-          this.inputNodeWithPortPoints.map((n) => [n.capacityMeshNodeId, n]),
-        )
+        const inputNodeById = new Map<string, InputNodeWithPortPoints>()
+        this.inputNodeWithPortPoints = hopCheckedGraph.regions.map((region) => {
+          const node: InputNodeWithPortPoints = {
+            capacityMeshNodeId: region.regionId,
+            center: region.d.center,
+            width: region.d.width,
+            height: region.d.height,
+            portPoints: [],
+            availableZ: region.d.availableZ,
+            _containsTarget: region.d._containsTarget,
+            _containsObstacle: region.d._containsObstacle,
+          }
+          inputNodeById.set(node.capacityMeshNodeId, node)
+          return node
+        })
 
-        // Add port points from the available segment point solver
-        const segmentPointSolver = cms.availableSegmentPointSolver!
-        for (const segment of segmentPointSolver.sharedEdgeSegments) {
-          for (const segmentPortPoint of segment.portPoints) {
-            const [nodeId1, nodeId2] = segmentPortPoint.nodeIds
-            const inputPortPoint: InputPortPoint = {
-              portPointId: segmentPortPoint.segmentPortPointId,
-              x: segmentPortPoint.x,
-              y: segmentPortPoint.y,
-              z: segmentPortPoint.availableZ[0] ?? 0,
-              connectionNodeIds: [nodeId1, nodeId2],
-              distToCentermostPortOnZ: segmentPortPoint.distToCentermostPortOnZ,
-            }
-
-            // Add to first node
-            const node1 = nodeMap.get(nodeId1)
-            if (node1) {
-              node1.portPoints.push(inputPortPoint)
-            }
-            // Note: Don't add to second node - the solver will handle the shared edge
+        const portPointMap = new Map<string, InputPortPoint>()
+        for (const port of hopCheckedGraph.ports) {
+          const inputPortPoint: InputPortPoint = {
+            portPointId: port.portId,
+            x: port.d.x,
+            y: port.d.y,
+            z: port.d.availableZ[0] ?? 0,
+            connectionNodeIds: [port.region1.regionId, port.region2.regionId],
+            distToCentermostPortOnZ: port.d.distToCentermostPortOnZ,
+          }
+          portPointMap.set(inputPortPoint.portPointId, inputPortPoint)
+          const firstNode = inputNodeById.get(port.region1.regionId)
+          if (firstNode) {
+            firstNode.portPoints.push(inputPortPoint)
           }
         }
 
-        const { graph, regionMap, portPointMap } =
-          buildHyperGraphFromInputNodes({
-            inputNodes: this.inputNodeWithPortPoints,
+        const regionMap = new Map<string, HgRegion>()
+        const routingRegions: HgRegion[] = this.inputNodeWithPortPoints.map((node) => {
+          const region: HgRegion = {
+            regionId: node.capacityMeshNodeId,
+            ports: [],
+            assignments: [],
+            d: node,
+          }
+          regionMap.set(region.regionId, region)
+          return region
+        })
+        const routingPorts: HgPort[] = hopCheckedGraph.ports
+          .map((port) => {
+            const region1 = regionMap.get(port.region1.regionId)
+            const region2 = regionMap.get(port.region2.regionId)
+            const inputPortPoint = portPointMap.get(port.portId)
+            if (!region1 || !region2 || !inputPortPoint) {
+              return null
+            }
+            const routingPort: HgPort = {
+              portId: port.portId,
+              region1,
+              region2,
+              d: inputPortPoint,
+            }
+            region1.ports.push(routingPort)
+            region2.ports.push(routingPort)
+            return routingPort
           })
+          .filter((port): port is HgPort => Boolean(port))
+        const inputGraph = {
+          regions: routingRegions,
+          ports: routingPorts,
+        }
         const { connections, connectionsWithResults } =
           buildHyperConnectionsFromSimpleRouteJson({
             simpleRouteJson: cms.srjWithPointPairs!,
@@ -303,7 +333,7 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
 
         return [
           {
-            inputGraph: graph,
+            inputGraph,
             inputConnections: connections,
             connectionsWithResults,
             inputNodes: this.inputNodeWithPortPoints,
