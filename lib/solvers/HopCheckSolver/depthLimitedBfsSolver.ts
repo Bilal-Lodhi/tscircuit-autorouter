@@ -6,7 +6,7 @@ type depthLimitedBfsArgs = {
   shouldIgnoreCrampedPortPoints: boolean
 }
 
-export const depthLimitedBfsSolver = (
+export const depthLimitedBfs = (
   params: depthLimitedBfsArgs,
 ): {
   portPointsAtNthDegree: TypedRegionPort[]

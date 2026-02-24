@@ -9,7 +9,7 @@ import { GraphicsObject } from "graphics-debug"
 import { CapacityMeshNode } from "lib/types"
 import { SegmentPortPoint } from "../AvailableSegmentPointSolver/AvailableSegmentPointSolver"
 import { areAllRegionPortsBlocked } from "./areAllRegionPortsBlocked"
-import { depthLimitedBfsSolver } from "./depthLimitedBfsSolver"
+import { depthLimitedBfs } from "./depthLimitedBfsSolver"
 
 export type TypedRegion = Omit<Region, "d"> & {
   d: CapacityMeshNode
@@ -55,7 +55,7 @@ class FindUnreachableRegionsContainingObstacleSolver extends BaseSolver {
       this.solved = true
       return
     }
-    const { portPointsAtNthDegree } = depthLimitedBfsSolver({
+    const { portPointsAtNthDegree } = depthLimitedBfs({
       depthLimit: 2,
       targetRegion: this.currentRegionWithObstacle,
       shouldIgnoreCrampedPortPoints: true,
@@ -151,15 +151,15 @@ class FindCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSo
       return
     }
     this.currentRegionWithObstacle = this.regionsWithObstacleQueue.shift()!
-    const { portPointsAtNthDegree, visitedPortPoints } = depthLimitedBfsSolver({
+    const { portPointsAtNthDegree, visitedPortPoints } = depthLimitedBfs({
       depthLimit: 2,
       targetRegion: this.currentRegionWithObstacle,
       shouldIgnoreCrampedPortPoints: false,
     })
     this.visitedPortPoints = visitedPortPoints
     if (areAllRegionPortsBlocked(portPointsAtNthDegree)) {
-      // this.failed = true
-      // this.error = `Region ${this.currentRegionWithObstacle.regionId} is unreachable even after considering cramped port points`
+      this.failed = true
+      this.error = `Region ${this.currentRegionWithObstacle.regionId} is unreachable even after considering cramped port points`
     }
   }
 
@@ -182,12 +182,27 @@ class FindCrampedPortPointsToMakeUnreachableRegionsContainingObstacleReachableSo
     }
 
     for (const visited of this.visitedPortPoints) {
-      graphics.points?.push({
-        ...visited.d,
-        color: visited.d.cramped ? "red" : "green",
-        layer: `availableZ=${visited.d.availableZ}`,
-        label: `${visited.portId}`,
-      })
+      if (!visited.d.cramped) {
+        graphics.points?.push({
+          ...visited.d,
+          color: "green",
+          layer: `availableZ=${visited.d.availableZ}`,
+          label: `${visited.portId}`,
+        })
+      } else {
+        graphics.rects?.push({
+          ...visited.d,
+          center: {
+            x: visited.d.x,
+            y: visited.d.y,
+          },
+          width: 0.1,
+          height: 0.1,
+          fill: "green",
+          layer: `availableZ=${visited.d.availableZ}`,
+          label: `${visited.portId}`,
+        })
+      }
     }
 
     return graphics

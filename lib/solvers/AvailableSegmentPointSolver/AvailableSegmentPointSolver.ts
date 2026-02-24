@@ -133,7 +133,10 @@ export class AvailableSegmentPointSolver extends BaseSolver {
         for (const portPoint of segment.portPoints) {
           this.portPointMap.set(portPoint.segmentPortPointId, portPoint)
           if (portPoint.cramped) {
-            this.crampedPortPointMap.set(portPoint.segmentPortPointId, portPoint)
+            this.crampedPortPointMap.set(
+              portPoint.segmentPortPointId,
+              portPoint,
+            )
           }
         }
       }
@@ -485,7 +488,6 @@ export class AvailableSegmentPointSolver extends BaseSolver {
         points: [segment.start, segment.end],
         strokeColor: "rgba(100, 100, 100, 0.5)",
       })
-      
 
       // Draw port points
       for (const portPoint of segment.portPoints) {
