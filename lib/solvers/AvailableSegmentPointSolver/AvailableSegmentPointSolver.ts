@@ -126,6 +126,8 @@ export class AvailableSegmentPointSolver extends BaseSolver {
       if (segment) {
         this.sharedEdgeSegments.push(segment)
         this.edgeSegmentMap.set(edge.capacityMeshEdgeId, segment)
+        this.portPoints.push(...segment.portPoints)
+        this.crampedPortPoints.push(...segment.crampedPortPoints)
 
         for (const portPoint of segment.portPoints) {
           this.portPointMap.set(portPoint.segmentPortPointId, portPoint)
@@ -462,6 +464,16 @@ export class AvailableSegmentPointSolver extends BaseSolver {
     nodeId2: CapacityMeshNodeId,
   ): number {
     return this.getAvailablePortPointsBetweenNodes(nodeId1, nodeId2).length
+  }
+
+  getOutput(): {
+    portPoints: SegmentPortPoint[]
+    crampedPortPoints: SegmentPortPoint[]
+  } {
+    return {
+      portPoints: this.portPoints,
+      crampedPortPoints: this.crampedPortPoints,
+    }
   }
 
   visualize(): GraphicsObject {
