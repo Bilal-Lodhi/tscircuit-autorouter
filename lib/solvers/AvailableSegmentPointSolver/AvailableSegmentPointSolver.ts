@@ -21,7 +21,7 @@ export interface SegmentPortPoint {
   /** XY distance to the centermost port on this Z level (centermost port has distance 0) */
   distToCentermostPortOnZ: number
   /**
-   * This is special port points that exists to be used when reaching an obstacle is super impossible
+   * This is special port point that is created in narrow gaps, and only kept when otherwise reaching the obstacle is impossible
    * ideally this port points should be discarded but we need them in some cases
    */
   cramped: boolean
