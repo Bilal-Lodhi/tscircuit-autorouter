@@ -51,7 +51,7 @@ export class HighDensitySolver extends BaseSolver {
     this.connMap = connMap
     this.routes = []
     this.failedSolvers = []
-    this.MAX_ITERATIONS = 1e6
+    this.MAX_ITERATIONS = 50e6
     this.viaDiameter = viaDiameter ?? this.defaultViaDiameter
     this.traceWidth = traceWidth ?? this.defaultTraceThickness
   }
