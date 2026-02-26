@@ -13,11 +13,11 @@ export const calculateNodeProbabilityOfFailure = (
   const area = node.width * node.height
   const viaArea = Math.PI * (viaDiameter / 2) ** 2
 
-  if (area < 3) {
+  if (!node._containsObstacle && area < 1.5) {
     const totalViasNeeded =
       numSameLayerCrossings + numEntryExitLayerChanges + numTransitionCrossings
     const ratio = (totalViasNeeded * viaArea) / area
-    if (ratio > 0.65) {
+    if (ratio > 0.7) {
       return 1
     }
   }
