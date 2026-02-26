@@ -3,11 +3,27 @@ import { getTunedTotalCapacity1 } from "lib/utils/getTunedTotalCapacity1"
 
 export const calculateNodeProbabilityOfFailure = (
   node: CapacityMeshNode,
+  viaDiameter: number = 0.6,
   numSameLayerCrossings: number,
   numEntryExitLayerChanges: number,
   numTransitionCrossings: number,
 ): number => {
   if (node?._containsTarget) return 0
+
+  const area = node.width * node.height
+  const viaArea = Math.PI * (viaDiameter / 2) ** 2
+
+  if (area < 3) {
+    const ratio =
+      ((numSameLayerCrossings +
+        numEntryExitLayerChanges +
+        numTransitionCrossings) *
+        viaArea) /
+      area
+    if (ratio > 0.7) {
+      return 1
+    }
+  }
 
   const numLayers = node.availableZ?.length ?? 2
 
