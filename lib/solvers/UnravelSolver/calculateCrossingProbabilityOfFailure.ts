@@ -15,15 +15,10 @@ export const calculateNodeProbabilityOfFailure = (
 
   if(area < 3){
     const ratio = ((numSameLayerCrossings + numEntryExitLayerChanges + numTransitionCrossings) * viaArea) / area
-
     if(ratio > 0.7) {
      return 1
     }
-
   }
-
-
-
 
   const numLayers = node.availableZ?.length ?? 2
 
