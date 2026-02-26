@@ -52,7 +52,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
       ["flipTraceAlignmentDirection", "orderings6"],
       ["closedFormSingleTrace"],
       ["closedFormTwoTrace"],
-      ["highDensityA01", "orderings6"],
+      ["highDensityA01"],
     ]
   }
 
