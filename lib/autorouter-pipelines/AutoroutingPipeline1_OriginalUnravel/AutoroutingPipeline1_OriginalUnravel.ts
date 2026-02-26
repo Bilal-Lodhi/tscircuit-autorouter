@@ -303,6 +303,7 @@ export class AutoroutingPipeline1_OriginalUnravel extends BaseSolver {
           colorMap: cms.colorMap,
           nodes: cms.capacityNodes!,
           cacheProvider: this.cacheProvider,
+          viaDiameter: cms.viaDiameter,
         },
       ],
     ),

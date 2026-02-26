@@ -250,6 +250,7 @@ test("createSectionSimpleRouteJson includes cut paths with low expansion degrees
   // Use FRACTION_TO_REPLACE: 1 to test all connections being ripped
   const multiSectionOptimizer = new MultiSectionPortPointOptimizer({
     simpleRouteJson: simpleSrj,
+    viaDiameter: solver.viaDiameter,
     inputNodes: portPointSolver.inputNodes,
     capacityMeshNodes: solver.capacityNodes!,
     capacityMeshEdges: solver.capacityEdges!,

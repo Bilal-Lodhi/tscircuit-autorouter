@@ -231,6 +231,7 @@ export class CachedUnravelSectionSolver
 
     const keyData = {
       hyperParameters: this.hyperParameters,
+      viaDiameter: this.viaDiameter,
       normalizedNodes,
       normalizedSegmentPoints,
       mutableHops: this.MUTABLE_HOPS,

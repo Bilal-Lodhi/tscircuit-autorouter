@@ -17,6 +17,7 @@ export default function UnravelMultiSection02() {
           assignedSegments: unravelmultisection02.assignedSegments,
           nodes: unravelmultisection02.nodes as CapacityMeshNode[],
           colorMap: unravelmultisection02.colorMap,
+        viaDiameter: 0.6,
         })
 
         return solver

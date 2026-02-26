@@ -257,6 +257,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
         return [
           {
             simpleRouteJson: cms.srjWithPointPairs!,
+            viaDiameter: cms.viaDiameter,
             inputNodes,
             capacityMeshNodes: cms.capacityNodes!,
             colorMap: cms.colorMap,
@@ -301,6 +302,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
         return [
           {
             simpleRouteJson: cms.srjWithPointPairs!,
+            viaDiameter: cms.viaDiameter,
             inputNodes: portPointSolver.inputNodes,
             capacityMeshNodes: cms.capacityNodes!,
             capacityMeshEdges: cms.capacityEdges!,

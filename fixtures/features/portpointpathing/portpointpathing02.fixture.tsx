@@ -6,6 +6,7 @@ export default () => {
   const createSolver = () => {
     return new PortPointPathingSolver({
       ...(input[0] as any),
+      viaDiameter: (input[0] as any).simpleRouteJson.minViaDiameter ?? 0.6,
 
       hyperParameters: {
         RIPPING_ENABLED: true,

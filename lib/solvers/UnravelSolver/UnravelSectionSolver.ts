@@ -44,6 +44,7 @@ interface UnravelSectionSolverParams {
   nodeToSegmentPointMap?: Map<CapacityMeshNodeId, SegmentPointId[]>
   segmentToSegmentPointMap?: Map<SegmentId, SegmentPointId[]>
   hyperParameters?: Partial<UnravelSectionHyperParameters>
+  viaDiameter: number
 }
 
 /**
@@ -107,11 +108,13 @@ export class UnravelSectionSolver extends BaseSolver {
   queuedOrExploredCandidatePointModificationHashes: Set<string> = new Set()
 
   constructorParams: UnravelSectionSolverParams
+  viaDiameter: number
 
   constructor(params: UnravelSectionSolverParams) {
     super()
 
     this.constructorParams = params
+    this.viaDiameter = params.viaDiameter
 
     this.MUTABLE_HOPS = params.MUTABLE_HOPS ?? this.MUTABLE_HOPS
     this.MAX_ITERATIONS = 50_000
@@ -769,6 +772,7 @@ export class UnravelSectionSolver extends BaseSolver {
       const estPf = Math.min(
         calculateNodeProbabilityOfFailure(
           node,
+          this.viaDiameter,
           numSameLayerCrossings,
           numEntryExitLayerChanges,
           numTransitionCrossings,
@@ -1019,6 +1023,7 @@ export class UnravelSectionSolver extends BaseSolver {
       const node = this.nodeMap.get(nodeId)!
       stats.estPf = calculateNodeProbabilityOfFailure(
         node,
+        this.viaDiameter,
         stats.numSameLayerCrossings,
         stats.numEntryExitLayerChanges,
         stats.numTransitionCrossings,

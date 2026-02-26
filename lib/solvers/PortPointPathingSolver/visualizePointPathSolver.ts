@@ -520,6 +520,7 @@ export function visualizePointPathSolver(
             } else {
               pf = calculateNodeProbabilityOfFailure(
                 capacityMeshNode,
+                solver.viaDiameter,
                 xSame,
                 xLC,
                 xTransition,

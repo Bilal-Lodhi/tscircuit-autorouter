@@ -265,6 +265,7 @@ export class AssignableAutoroutingPipeline3 extends BaseSolver {
         return [
           {
             simpleRouteJson: cms.srjWithPointPairs!,
+            viaDiameter: cms.viaDiameter,
             inputNodes,
             capacityMeshNodes: cms.capacityNodes!,
             colorMap: cms.colorMap,

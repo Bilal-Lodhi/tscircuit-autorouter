@@ -23,6 +23,7 @@ import type { ConnectionPathResult } from "./PortPointPathingSolver"
 
 export interface HyperPortPointPathingSolverParams {
   simpleRouteJson: SimpleRouteJson
+  viaDiameter: number
   capacityMeshNodes: CapacityMeshNode[]
   inputNodes: InputNodeWithPortPoints[]
   colorMap?: Record<string, string>
@@ -111,6 +112,7 @@ export class HyperPortPointPathingSolver extends HyperParameterSupervisorSolver<
   generateSolver(hyperParameters: any): PortPointPathingSolver {
     return new PortPointPathingSolver({
       simpleRouteJson: this.params.simpleRouteJson,
+      viaDiameter: this.params.viaDiameter,
       capacityMeshNodes: this.params.capacityMeshNodes,
       inputNodes: this.params.inputNodes,
       colorMap: this.params.colorMap,

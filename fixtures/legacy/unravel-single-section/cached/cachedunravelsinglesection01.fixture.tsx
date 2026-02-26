@@ -151,6 +151,7 @@ export default function CachedUnravel1() {
     // This creates a NEW solver instance for the debugger
     return new CachedUnravelSectionSolver({
       ...originalParams,
+      viaDiameter: 0.6,
       cacheProvider,
     })
   }, [originalParams, cacheProvider])
@@ -159,6 +160,7 @@ export default function CachedUnravel1() {
     // This creates a NEW solver instance for the debugger
     return new CachedUnravelSectionSolver({
       ...modifiedParams,
+      viaDiameter: 0.6,
       cacheProvider,
     })
   }, [modifiedParams, cacheProvider])

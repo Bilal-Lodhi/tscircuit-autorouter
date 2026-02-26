@@ -38,6 +38,7 @@ export default function Unravel3() {
           nodeIdToSegmentIds,
           segmentIdToNodeIds,
           colorMap: unravel3.colorMap,
+          viaDiameter: 0.6,
         })
       }}
     />

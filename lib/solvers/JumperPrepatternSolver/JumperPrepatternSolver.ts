@@ -245,6 +245,7 @@ export class JumperPrepatternSolver extends BaseSolver {
         return [
           {
             simpleRouteJson: solver.srjWithPointPairs,
+            viaDiameter: solver.srjWithPointPairs.minViaDiameter ?? 0.6,
             inputNodes,
             capacityMeshNodes: solver.capacityNodes,
             colorMap: solver.colorMap,

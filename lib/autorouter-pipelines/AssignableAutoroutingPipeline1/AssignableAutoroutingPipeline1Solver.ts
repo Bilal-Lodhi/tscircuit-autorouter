@@ -115,6 +115,7 @@ export class AssignableAutoroutingPipeline1Solver extends BaseSolver {
 
   activeSubSolver?: BaseSolver | null = null
   connMap: ConnectivityMap
+  viaDiameter: number
   srjWithPointPairs?: SimpleRouteJson
   capacityNodes: CapacityMeshNode[] | null = null
   capacityEdges: CapacityMeshEdge[] | null = null
@@ -345,6 +346,7 @@ export class AssignableAutoroutingPipeline1Solver extends BaseSolver {
           colorMap: cms.colorMap,
           nodes: cms.capacityNodes!,
           cacheProvider: this.cacheProvider,
+          viaDiameter: cms.viaDiameter,
         },
       ],
     ),
@@ -434,6 +436,7 @@ export class AssignableAutoroutingPipeline1Solver extends BaseSolver {
     this.srj = srj
     this.opts = { ...opts }
     this.MAX_ITERATIONS = 100e6
+    this.viaDiameter = srj.minViaDiameter ?? 0.6
     const mutableOpts = this.opts
 
     // If capacityDepth is not provided, calculate it automatically

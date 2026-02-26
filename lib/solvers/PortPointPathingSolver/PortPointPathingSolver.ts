@@ -302,6 +302,8 @@ export class PortPointPathingSolver extends BaseSolver {
   /** Number of jumpers that can fit per mm² of node area */
   jumpersPerMmSquared = 0.1
 
+  viaDiameter: number
+
   /** Tracks which connections have been test-ripped for each node to avoid retesting */
   testedRipConnections: Map<CapacityMeshNodeId, Set<string>> = new Map()
 
@@ -349,6 +351,7 @@ export class PortPointPathingSolver extends BaseSolver {
   constructor(
     public input: {
       simpleRouteJson: SimpleRouteJson
+      viaDiameter: number
       capacityMeshNodes: CapacityMeshNode[]
       inputNodes: InputNodeWithPortPoints[]
       colorMap?: Record<string, string>
@@ -362,6 +365,7 @@ export class PortPointPathingSolver extends BaseSolver {
     super()
     const {
       simpleRouteJson,
+      viaDiameter,
       capacityMeshNodes,
       inputNodes,
       colorMap,
@@ -373,6 +377,7 @@ export class PortPointPathingSolver extends BaseSolver {
     this.input = structuredClone(input)
     this.MAX_ITERATIONS = 100e6
     this.simpleRouteJson = simpleRouteJson
+    this.viaDiameter = viaDiameter
     this.inputNodes = inputNodes
     this.colorMap = colorMap ?? {}
     this.capacityMeshNodeMap = new Map(
@@ -530,7 +535,9 @@ export class PortPointPathingSolver extends BaseSolver {
         this.capacityMeshNodeMap,
       )
     }
-    return computeSectionScore(allNodesWithPortPoints, this.capacityMeshNodeMap)
+    return computeSectionScore(allNodesWithPortPoints, this.capacityMeshNodeMap, {
+      viaDiameter: this.viaDiameter,
+    })
   }
 
   getMaxIterationsForCurrentPath() {
@@ -631,6 +638,7 @@ export class PortPointPathingSolver extends BaseSolver {
 
     return calculateNodeProbabilityOfFailure(
       this.capacityMeshNodeMap.get(node.capacityMeshNodeId)!,
+      this.viaDiameter,
       crossings.numSameLayerCrossings,
       crossings.numEntryExitLayerChanges,
       crossings.numTransitionPairCrossings,
@@ -1698,6 +1706,7 @@ export class PortPointPathingSolver extends BaseSolver {
 
     const pf = calculateNodeProbabilityOfFailure(
       this.capacityMeshNodeMap.get(node.capacityMeshNodeId)!,
+      this.viaDiameter,
       crossings.numSameLayerCrossings,
       crossings.numEntryExitLayerChanges,
       crossings.numTransitionPairCrossings,

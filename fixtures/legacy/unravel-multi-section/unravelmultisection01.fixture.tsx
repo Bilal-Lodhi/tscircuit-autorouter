@@ -17,6 +17,7 @@ export default function UnravelMultiSection01() {
           assignedSegments: unravel3.assignedSegments,
           nodes: unravel3.nodes as CapacityMeshNode[],
           colorMap: unravel3.colorMap,
+        viaDiameter: 0.6,
         })
 
         return solver

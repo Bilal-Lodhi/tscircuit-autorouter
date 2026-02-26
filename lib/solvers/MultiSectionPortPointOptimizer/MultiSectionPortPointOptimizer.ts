@@ -43,6 +43,7 @@ export type HyperParameterScheduleEntry = PortPointPathingHyperParameters & {
 export interface MultiSectionPortPointOptimizerParams {
   JUMPER_PF_FN_ENABLED?: boolean
   simpleRouteJson: SimpleRouteJson
+  viaDiameter: number
   inputNodes: InputNodeWithPortPoints[]
   capacityMeshNodes: CapacityMeshNode[]
   capacityMeshEdges: CapacityMeshEdge[]
@@ -247,10 +248,13 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
   HYPERPARAMETER_SCHEDULE: HyperParameterScheduleEntry[] =
     DEFAULT_HYPERPARAMETER_SCHEDULE
 
+  viaDiameter: number
+
   constructor(params: MultiSectionPortPointOptimizerParams) {
     super()
     this.MAX_ITERATIONS = 1e6
     this.simpleRouteJson = params.simpleRouteJson
+    this.viaDiameter = params.viaDiameter
     this.inputNodes = params.inputNodes
     this.capacityMeshNodes = params.capacityMeshNodes
     this.capacityMeshEdges = params.capacityMeshEdges
@@ -334,7 +338,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
               getIntraNodeCrossingsUsingCircle(nodeWithPortPoints)
                 .numSameLayerCrossings,
             )
-          : computeNodePf(nodeWithPortPoints, node)
+          : computeNodePf(nodeWithPortPoints, node, this.viaDiameter)
       pfMap.set(node.capacityMeshNodeId, pf)
     }
 
@@ -360,7 +364,9 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
         this.capacityMeshNodeMap,
       )
     }
-    return computeSectionScore(nodesWithPortPoints, this.capacityMeshNodeMap)
+    return computeSectionScore(nodesWithPortPoints, this.capacityMeshNodeMap, {
+      viaDiameter: this.viaDiameter,
+    })
   }
 
   /**
@@ -394,7 +400,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
               getIntraNodeCrossingsUsingCircle(nodeWithPortPoints)
                 .numSameLayerCrossings,
             )
-          : computeNodePf(nodeWithPortPoints, node)
+          : computeNodePf(nodeWithPortPoints, node, this.viaDiameter)
       this.nodePfMap.set(nodeId, pf)
     }
   }
@@ -841,6 +847,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
 
     return new HyperPortPointPathingSolver({
       simpleRouteJson: sectionSrj,
+      viaDiameter: this.viaDiameter,
       inputNodes: preparedInputNodes,
       capacityMeshNodes: section.capacityMeshNodes,
       colorMap: this.colorMap,

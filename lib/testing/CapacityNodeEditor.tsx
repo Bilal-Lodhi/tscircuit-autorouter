@@ -476,6 +476,7 @@ export default function CapacityNodeEditor({
     const diagnostics = getIntraNodeCrossings(nodeForCheck)
     const probabilityOfFailure = calculateNodeProbabilityOfFailure(
       mockNode,
+      viaDiameter,
       diagnostics.numSameLayerCrossings,
       diagnostics.numEntryExitLayerChanges,
       diagnostics.numTransitionPairCrossings,

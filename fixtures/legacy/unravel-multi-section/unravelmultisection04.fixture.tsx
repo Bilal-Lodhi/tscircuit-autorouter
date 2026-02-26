@@ -16,6 +16,7 @@ export default () => (
         assignedSegments: unravelmultisection04[0].assignedSegments,
         nodes: unravelmultisection04[0].nodes as CapacityMeshNode[],
         colorMap: unravelmultisection04[0].colorMap,
+        viaDiameter: 0.6,
       })
 
       return solver

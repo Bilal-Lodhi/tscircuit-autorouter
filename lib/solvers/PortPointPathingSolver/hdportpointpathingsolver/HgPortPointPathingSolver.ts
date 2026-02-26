@@ -47,6 +47,7 @@ export interface HgPortPointPathingSolverParams {
   regionMemoryPfMap: RegionMemoryPfMap
   rippingEnabled: boolean
   forceCenterFirst: boolean
+  viaDiameter: number
   weights: {
     GREEDY_MULTIPLIER: number
     RIP_COST: number
@@ -94,6 +95,7 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
   randomRipFraction: number
   maxRips: number
   MIN_ALLOWED_BOARD_SCORE: number
+  viaDiameter: number
 
   constructor({
     inputGraph,
@@ -105,6 +107,7 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
     rippingEnabled,
     weights,
     forceCenterFirst,
+    viaDiameter,
   }: HgPortPointPathingSolverParams) {
     const {
       GREEDY_MULTIPLIER: greedyMultiplier,
@@ -153,6 +156,7 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
     this.randomRipFraction = randomRipFraction
     this.maxRips = maxRips
     this.MIN_ALLOWED_BOARD_SCORE = MIN_ALLOWED_BOARD_SCORE
+    this.viaDiameter = viaDiameter
     this.MAX_ITERATIONS = 200000
     this.connectionResultByName = new Map(
       connectionsWithResults.map((result) => [result.connection.name, result]),
@@ -537,6 +541,7 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
 
     const pf = calculateNodeProbabilityOfFailure(
       capacityMeshNode,
+      this.viaDiameter,
       crossings.numSameLayerCrossings,
       crossings.numEntryExitLayerChanges,
       crossings.numTransitionPairCrossings,
@@ -568,6 +573,7 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
 
     return calculateNodeProbabilityOfFailure(
       capacityMeshNode,
+      this.viaDiameter,
       crossings.numSameLayerCrossings,
       crossings.numEntryExitLayerChanges,
       crossings.numTransitionPairCrossings,
@@ -850,7 +856,9 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
         this.getDerivedCapacityMeshNode(node),
       ]),
     )
-    return computeSectionScore(nodesWithPortPoints, capacityMeshNodeMap)
+    return computeSectionScore(nodesWithPortPoints, capacityMeshNodeMap, {
+      viaDiameter: this.viaDiameter,
+    })
   }
 
   computeNodePf(node: InputNodeWithPortPoints): number {
@@ -870,6 +878,7 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
 
     const pf = calculateNodeProbabilityOfFailure(
       capacityMeshNode,
+      this.viaDiameter,
       crossings.numSameLayerCrossings,
       crossings.numEntryExitLayerChanges,
       crossings.numTransitionPairCrossings,

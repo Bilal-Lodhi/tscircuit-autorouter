@@ -4,7 +4,10 @@ import input from "./portpointpathing01-input.json"
 
 export default () => {
   const createSolver = () => {
-    return new PortPointPathingSolver(input as any)
+    return new PortPointPathingSolver({
+      ...(input as any),
+      viaDiameter: (input as any).simpleRouteJson.minViaDiameter ?? 0.6,
+    })
   }
 
   return <GenericSolverDebugger createSolver={createSolver} />

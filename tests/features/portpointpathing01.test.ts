@@ -9,6 +9,7 @@ test.skip(
   () => {
     const solver = new HyperPortPointPathingSolver({
       simpleRouteJson: input.simpleRouteJson as any,
+      viaDiameter: (input.simpleRouteJson as any).minViaDiameter ?? 0.6,
       inputNodes: input.inputNodes as any,
       capacityMeshNodes: input.capacityMeshNodes as any,
       colorMap: input.colorMap as any,

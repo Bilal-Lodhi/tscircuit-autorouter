@@ -21,12 +21,14 @@ import { calculateNodeProbabilityOfFailure } from "../UnravelSolver/calculateCro
 export function computeSectionScore(
   nodesWithPortPoints: NodeWithPortPoints[],
   capacityMeshNodeMap: Map<CapacityMeshNodeId, CapacityMeshNode>,
-  opts?: {
+  opts: {
+    viaDiameter: number
     NODE_MAX_PF?: number
   },
 ): number {
   let logSuccess = 0 // log(probability all nodes succeed)
   const NODE_MAX_PF = opts?.NODE_MAX_PF ?? 0.99999
+  const viaDiameter = opts.viaDiameter
 
   for (const nodeWithPortPoints of nodesWithPortPoints) {
     const node = capacityMeshNodeMap.get(nodeWithPortPoints.capacityMeshNodeId)
@@ -42,6 +44,7 @@ export function computeSectionScore(
     const estPf = Math.min(
       calculateNodeProbabilityOfFailure(
         node,
+        viaDiameter,
         crossings.numSameLayerCrossings,
         crossings.numEntryExitLayerChanges,
         crossings.numTransitionPairCrossings,
@@ -72,6 +75,7 @@ export function computeSectionScore(
 export function computeNodePf(
   nodeWithPortPoints: NodeWithPortPoints,
   capacityMeshNode: CapacityMeshNode,
+  viaDiameter: number,
 ): number {
   if (capacityMeshNode._containsTarget) return 0
 
@@ -79,6 +83,7 @@ export function computeNodePf(
 
   return calculateNodeProbabilityOfFailure(
     capacityMeshNode,
+    viaDiameter,
     crossings.numSameLayerCrossings,
     crossings.numEntryExitLayerChanges,
     crossings.numTransitionPairCrossings,

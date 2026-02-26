@@ -59,12 +59,14 @@ export class UnravelMultiSectionSolver extends BaseSolver {
   segmentPointMap: SegmentPointMap
 
   cacheProvider: CacheProvider | null = null
+  viaDiameter: number
 
   constructor({
     assignedSegments,
     colorMap,
     nodes,
     cacheProvider,
+    viaDiameter,
   }: {
     assignedSegments: NodePortSegment[]
     colorMap?: Record<string, string>
@@ -74,6 +76,7 @@ export class UnravelMultiSectionSolver extends BaseSolver {
      */
     nodes: CapacityMeshNode[]
     cacheProvider?: CacheProvider | null
+    viaDiameter: number
   }) {
     super()
 
@@ -83,6 +86,7 @@ export class UnravelMultiSectionSolver extends BaseSolver {
     this.stats.cacheMisses = 0
 
     this.cacheProvider = cacheProvider ?? null
+    this.viaDiameter = viaDiameter
 
     this.MAX_ITERATIONS = 1e6
 
@@ -152,6 +156,7 @@ export class UnravelMultiSectionSolver extends BaseSolver {
 
     const probabilityOfFailure = calculateNodeProbabilityOfFailure(
       node,
+      this.viaDiameter,
       numSameLayerCrossings,
       numEntryExitLayerChanges,
       numTransitionCrossings,
@@ -202,6 +207,7 @@ export class UnravelMultiSectionSolver extends BaseSolver {
         nodeToSegmentPointMap: this.nodeToSegmentPointMap,
         segmentToSegmentPointMap: this.segmentToSegmentPointMap,
         cacheProvider: this.cacheProvider,
+        viaDiameter: this.viaDiameter,
       })
     }
 

@@ -275,6 +275,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
         return [
           {
             simpleRouteJson: cms.srjWithPointPairs!,
+            viaDiameter: cms.viaDiameter,
             inputNodes: this.inputNodeWithPortPoints,
             capacityMeshNodes: cms.capacityNodes!,
             colorMap: cms.colorMap,
@@ -297,6 +298,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
         return [
           {
             simpleRouteJson: cms.srjWithPointPairs!,
+            viaDiameter: cms.viaDiameter,
             inputNodes: portPointSolver.inputNodes,
             capacityMeshNodes: cms.capacityNodes!,
             capacityMeshEdges: cms.capacityEdges!,
