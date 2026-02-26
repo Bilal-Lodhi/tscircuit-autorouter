@@ -211,8 +211,8 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
     if (hyperParameters.HIGH_DENSITY_A01) {
       const solver = new HighDensitySolverA01({
         nodeWithPortPoints: this.nodeWithPortPoints,
-        cellSizeMm: 0.5,
-        viaDiameter: this.constructorParams.viaDiameter ?? 0.75,
+        cellSizeMm: 0.2,
+        viaDiameter: this.constructorParams.viaDiameter ?? 0.3,
         traceMargin: 0.15,
         traceThickness: this.constructorParams.traceWidth ?? 0.15,
         hyperParameters: {
