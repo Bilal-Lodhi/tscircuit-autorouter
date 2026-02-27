@@ -213,6 +213,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
         nodeWithPortPoints: this.nodeWithPortPoints,
         cellSizeMm: 0.1,
         viaDiameter: this.constructorParams.viaDiameter ?? 0.3,
+        viaMinDistFromBorder: 0.15,
         traceMargin: 0.15,
         traceThickness: this.constructorParams.traceWidth ?? 0.15,
         hyperParameters: {
