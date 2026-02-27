@@ -51,7 +51,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
       ["orderings50"],
       ["flipTraceAlignmentDirection", "orderings6"],
       ["closedFormSingleTrace"],
-      ["closedFormTwoTrace"],
+      // ["closedFormTwoTrace"],
       ["highDensityA01"],
     ]
   }
@@ -139,17 +139,17 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
           SHUFFLE_SEED: 100 + i,
         })),
       },
-      {
-        name: "closedFormTwoTrace",
-        possibleValues: [
-          {
-            CLOSED_FORM_TWO_TRACE_SAME_LAYER: true,
-          },
-          {
-            CLOSED_FORM_TWO_TRACE_TRANSITION_CROSSING: true,
-          },
-        ],
-      },
+      // {
+      //   name: "closedFormTwoTrace",
+      //   possibleValues: [
+      //     {
+      //       CLOSED_FORM_TWO_TRACE_SAME_LAYER: true,
+      //     },
+      //     {
+      //       CLOSED_FORM_TWO_TRACE_TRANSITION_CROSSING: true,
+      //     },
+      //   ],
+      // },
       {
         name: "closedFormSingleTrace",
         possibleValues: [
