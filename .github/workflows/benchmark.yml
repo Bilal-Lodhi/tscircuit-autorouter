@@ -9,15 +9,125 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
 jobs:
-  benchmark-main:
-    name: Benchmark main branch
-    if: github.event_name == 'push'
+  post-instructions:
+    name: Post benchmark instructions
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment benchmark usage
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.TSCIRCUIT_BOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const body = [
+              "## 🏃 Benchmark This PR",
+              "",
+              "Run benchmarks by commenting on this PR:",
+              "",
+              "```",
+              "/benchmark [solver-name|_] [scenario-limit] --concurrency <n>",
+              "```",
+              "",
+              "Examples:",
+              "- `/benchmark` -> all solvers, all scenarios (default concurrency 4)",
+              "- `/benchmark AutoroutingPipelineSolver` -> one solver, all scenarios",
+              "- `/benchmark _ 20` -> all solvers, first 20 scenarios",
+              "- `/benchmark AutoroutingPipelineSolver 20 --concurrency 8` -> one solver, 20 scenarios, 8 workers",
+            ].join("\n")
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body,
+            })
+
+  benchmark:
+    name: Run benchmark
+    if: |
+      github.event_name == 'push' || (
+        github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request &&
+        github.event.comment.user.type != 'Bot' &&
+        startsWith(github.event.comment.body, '/benchmark') &&
+        (
+          github.event.comment.author_association == 'OWNER' ||
+          github.event.comment.author_association == 'MEMBER' ||
+          github.event.comment.author_association == 'COLLABORATOR'
+        )
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 360
+
     steps:
+      - name: Parse benchmark command
+        id: parse
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.TSCIRCUIT_BOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const isComment = context.eventName === 'issue_comment'
+            let solverName = ''
+            let scenarioLimit = ''
+            let concurrency = '4'
+            let ref = context.sha
+            let statusCommentId = ''
+
+            if (isComment) {
+              const body = context.payload.comment.body.trim()
+              const tokens = body.split(/\s+/).slice(1)
+              const positional = []
+
+              for (let i = 0; i < tokens.length; i += 1) {
+                const token = tokens[i]
+                if (token === '--concurrency') {
+                  concurrency = tokens[i + 1] || concurrency
+                  i += 1
+                  continue
+                }
+                positional.push(token)
+              }
+
+              if (positional[0] && positional[0] !== '_') {
+                solverName = positional[0]
+              }
+              if (positional[1]) {
+                scenarioLimit = positional[1]
+              }
+
+              const pr = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number,
+              })
+              ref = pr.data.head.sha
+
+              const statusComment = await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `## 🏃 Autorouting Benchmark\n\n⏳ Running benchmark on \`${ref.slice(0, 7)}\`...`,
+              })
+
+              statusCommentId = String(statusComment.data.id)
+            }
+
+            core.setOutput('solver_name', solverName)
+            core.setOutput('scenario_limit', scenarioLimit)
+            core.setOutput('concurrency', concurrency)
+            core.setOutput('ref', ref)
+            core.setOutput('status_comment_id', statusCommentId)
+
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.parse.outputs.ref }}
 
       - name: Setup bun
         uses: oven-sh/setup-bun@v2
@@ -28,366 +138,43 @@ jobs:
         run: bun install
 
       - name: Run benchmark
-        run: chmod +x ./benchmark.sh && ./benchmark.sh
+        env:
+          SOLVER_NAME: ${{ steps.parse.outputs.solver_name }}
+          SCENARIO_LIMIT: ${{ steps.parse.outputs.scenario_limit }}
+          CONCURRENCY: ${{ steps.parse.outputs.concurrency }}
+        run: |
+          chmod +x ./benchmark.sh
+          if [ -n "$SOLVER_NAME" ]; then
+            ./benchmark.sh "$SOLVER_NAME" "$SCENARIO_LIMIT" --concurrency "$CONCURRENCY"
+          elif [ -n "$SCENARIO_LIMIT" ]; then
+            ./benchmark.sh _ "$SCENARIO_LIMIT" --concurrency "$CONCURRENCY"
+          else
+            ./benchmark.sh --concurrency "$CONCURRENCY"
+          fi
 
       - name: Upload benchmark result
         uses: actions/upload-artifact@v4
         with:
-          name: benchmark-result-main
+          name: benchmark-result
           path: ./benchmark-result.txt
           overwrite: true
 
-  post-instructions:
-    name: Post benchmark instructions
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Post comment with benchmark instructions
+      - name: Post benchmark result comment
+        if: github.event_name == 'issue_comment'
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.TSCIRCUIT_BOT_GITHUB_TOKEN }}
+          github-token: ${{ secrets.TSCIRCUIT_BOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              body: `## 🏃 Benchmark This PR
-
-            Maintainers can run benchmarks on this PR by commenting:
-
-            \`\`\`
-            /benchmark [SolverName] [scenario-limit]
-            \`\`\`
-
-            **Examples:**
-            - \`/benchmark\` - Run all solvers, all scenarios
-            - \`/benchmark AutoroutingPipelineSolver3_HgPortPointPathing\` - Run with specific solver
-            - \`/benchmark AutoroutingPipelineSolver3_HgPortPointPathing 10\` - Run with specific solver, 10 scenarios
-            - \`/benchmark _ 20\` - Run all solvers, 20 scenarios`
-            });
-
-  setup:
-    name: Setup benchmark
-    if: |
-      github.event_name == 'issue_comment' &&
-      github.event.issue.pull_request &&
-      github.event.comment.user.type != 'Bot' &&
-      startsWith(github.event.comment.body, '/benchmark') &&
-      (
-        github.event.comment.author_association == 'OWNER' ||
-        github.event.comment.author_association == 'MEMBER' ||
-        github.event.comment.author_association == 'COLLABORATOR'
-      )
-    runs-on: ubuntu-latest
-    timeout-minutes: 360
-
-    outputs:
-      solvers: ${{ steps.discover.outputs.solvers }}
-      scenario_limit: ${{ steps.parse.outputs.scenario_limit }}
-      comment_id: ${{ steps.running-comment.outputs.comment_id }}
-      sha: ${{ steps.parse.outputs.sha }}
-    steps:
-      - name: React to comment and post running status
-        id: running-comment
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.TSCIRCUIT_BOT_GITHUB_TOKEN }}
-          script: |
-            await github.rest.reactions.createForIssueComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: context.payload.comment.id,
-              content: 'rocket'
-            });
-
-            const comment = await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `## 🏃 Autorouting Benchmark\n\n⏳ Running benchmark... [View progress](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`
-            });
-            core.setOutput('comment_id', comment.data.id);
-
-      - name: Parse command and get PR info
-        id: parse
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const pr = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number
-            });
-            core.setOutput('sha', pr.data.head.sha);
-
-            const comment = context.payload.comment.body;
-            const match = comment.match(/\/benchmark(?:\s+(\S+))?(?:\s+(\d+))?/);
-            const solverName = match && match[1] && match[1] !== '_' ? match[1] : '';
-            const scenarioLimit = match && match[2] ? match[2] : '';
-            core.setOutput('solver_name', solverName);
-            core.setOutput('scenario_limit', scenarioLimit);
-
-      - name: Checkout PR branch
-        uses: actions/checkout@v4
-        with:
-          ref: refs/pull/${{ github.event.issue.number }}/head
-
-      - name: Discover solvers from exports
-        id: discover
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-
-            // Read the pipeline solvers index - this is the source of truth for benchmarkable solvers
-            const pipelineIndex = fs.readFileSync('lib/autorouter-pipelines/index.ts', 'utf8');
-            const pipelineNames = [...pipelineIndex.matchAll(/export\s*\{\s*(\w+)\s*\}/g)].map(m => m[1]);
-
-            // Read lib/index.ts to find aliases (e.g. "X as Y")
-            const libIndex = fs.readFileSync('lib/index.ts', 'utf8');
-
-            // Build a map of original name -> exported name (alias or original)
-            const solvers = [];
-            for (const name of pipelineNames) {
-              const aliasMatch = libIndex.match(new RegExp(`${name}\\s+as\\s+(\\w+)`));
-              solvers.push(aliasMatch ? aliasMatch[1] : name);
-            }
-
-            const solverName = '${{ steps.parse.outputs.solver_name }}';
-            const finalSolvers = solverName ? [solverName] : solvers;
-
-            console.log('Discovered solvers:', finalSolvers);
-            core.setOutput('solvers', JSON.stringify(finalSolvers));
-
-  benchmark:
-    name: Benchmark ${{ matrix.solver }}
-    needs: setup
-    runs-on: ubuntu-latest
-    timeout-minutes: 360
-    strategy:
-      fail-fast: false
-      matrix:
-        solver: ${{ fromJson(needs.setup.outputs.solvers) }}
-    steps:
-      - name: Checkout PR branch
-        uses: actions/checkout@v4
-        with:
-          ref: refs/pull/${{ github.event.issue.number }}/head
-
-      - name: Setup bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install dependencies
-        run: bun install
-
-      - name: Build autorouter
-        run: bun run build
-
-      - name: Install benchmark CLI
-        run: bun add -g @tscircuit/autorouting-dataset-01
-
-      - name: Create solver entry file
-        run: |
-          cat > benchmark-solver.ts << 'EOF'
-          export * from "./lib"
-          EOF
-
-      - name: Run benchmark for ${{ matrix.solver }}
-        id: benchmark
-        run: |
-          SCENARIO_LIMIT="${{ needs.setup.outputs.scenario_limit }}"
-          CMD="autorouting-dataset-runner benchmark-solver.ts ${{ matrix.solver }}"
-
-          if [ -n "$SCENARIO_LIMIT" ]; then
-            CMD="$CMD --scenario-limit $SCENARIO_LIMIT"
-          fi
-
-          $CMD 2>&1 | tee /tmp/benchmark_output.txt || true
-
-          # Extract the data row from the results table and save to file
-          mkdir -p /tmp/benchmark-row
-          grep -E "^\|" /tmp/benchmark_output.txt | grep -v "Completed %" > /tmp/benchmark-row/row.txt || true
-
-      - name: Upload benchmark results
-        uses: actions/upload-artifact@v4
-        with:
-          name: results-${{ matrix.solver }}
-          path: results/
-          retention-days: 30
-
-      - name: Upload benchmark row
-        uses: actions/upload-artifact@v4
-        with:
-          name: benchmark-row-${{ matrix.solver }}
-          path: /tmp/benchmark-row/row.txt
-          retention-days: 1
-
-  report:
-    name: Post benchmark results
-    needs: [setup, benchmark]
-    if: always() && needs.setup.result == 'success'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download benchmark row artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: benchmark-rows/
-          pattern: benchmark-row-*
-
-      - name: Download all benchmark result artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: all-results/
-          pattern: results-*
-          merge-multiple: true
-
-      - name: Upload combined benchmark results
-        uses: actions/upload-artifact@v4
-        with:
-          name: benchmark-results
-          path: all-results/
-          retention-days: 30
-
-      - name: Delete per-solver artifacts
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const artifacts = await github.rest.actions.listArtifactsForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              per_page: 100
-            });
-            const runArtifacts = artifacts.data.artifacts.filter(a =>
-              a.workflow_run?.id === ${{ github.run_id }} &&
-              (a.name.startsWith('results-') || a.name.startsWith('benchmark-row-'))
-            );
-            for (const artifact of runArtifacts) {
-              await github.rest.actions.deleteArtifact({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                artifact_id: artifact.id
-              });
-            }
-
-      - name: Download latest main benchmark result
-        id: main-result
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Find the most recent successful benchmark workflow run on main triggered by push
-          RUN_ID=$(gh api \
-            "repos/${{ github.repository }}/actions/workflows/benchmark.yml/runs?branch=main&status=success&event=push&per_page=1" \
-            --jq '.workflow_runs[0].id // empty')
-
-          if [ -z "$RUN_ID" ]; then
-            echo "found=false" >> "$GITHUB_OUTPUT"
-            echo "No successful main benchmark run found"
-            exit 0
-          fi
-
-          # Find the benchmark-result-main artifact from that run
-          ARTIFACT_ID=$(gh api \
-            "repos/${{ github.repository }}/actions/runs/${RUN_ID}/artifacts" \
-            --jq '.artifacts[] | select(.name == "benchmark-result-main") | .id // empty')
-
-          if [ -z "$ARTIFACT_ID" ]; then
-            echo "found=false" >> "$GITHUB_OUTPUT"
-            echo "No benchmark artifact found in run $RUN_ID"
-            exit 0
-          fi
-
-          # Download and extract the artifact
-          mkdir -p ./main-benchmark
-          gh api \
-            "repos/${{ github.repository }}/actions/artifacts/${ARTIFACT_ID}/zip" \
-            > ./main-benchmark/artifact.zip
-          unzip -o ./main-benchmark/artifact.zip -d ./main-benchmark
-          echo "found=true" >> "$GITHUB_OUTPUT"
-
-      - name: Post combined results
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.TSCIRCUIT_BOT_GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-            const solvers = ${{ needs.setup.outputs.solvers }};
-
-            // Parse each solver's result row into columns
-            const results = [];
-            for (const solver of solvers) {
-              const rowFile = `benchmark-rows/benchmark-row-${solver}/row.txt`;
-              let cols = null;
-              if (fs.existsSync(rowFile)) {
-                const row = fs.readFileSync(rowFile, 'utf8').trim();
-                if (row) {
-                  cols = row.split('|').filter(c => c.trim()).map(c => c.trim());
-                }
-              }
-              if (cols && cols.length >= 5) {
-                results.push(cols);
-              } else {
-                results.push([solver, 'failed', 'n/a', 'n/a', 'n/a']);
-              }
-            }
-
-            // Build aligned table
-            const headers = ['Solver', 'Completed %', 'Relaxed DRC Pass %', 'P50 Time', 'P95 Time'];
-            const widths = headers.map((h, i) =>
-              Math.max(h.length, ...results.map(r => (r[i] || '').length))
-            );
-
-            const sep = '+' + widths.map(w => '-'.repeat(w + 2)).join('+') + '+';
-            const headerRow = '|' + headers.map((h, i) => ` ${h.padEnd(widths[i])} `).join('|') + '|';
-            const dataRows = results.map(r =>
-              '|' + r.map((c, i) => ` ${c.padEnd(widths[i])} `).join('|') + '|'
-            ).join('\n');
-
-            const table = [sep, headerRow, sep, dataRows, sep].join('\n');
-
-            // Build main baseline section - extract only table rows
-            let mainSection = '';
-            const mainFound = '${{ steps.main-result.outputs.found }}';
-            if (mainFound === 'true' && fs.existsSync('./main-benchmark/benchmark-result.txt')) {
-              const mainRaw = fs.readFileSync('./main-benchmark/benchmark-result.txt', 'utf8');
-              const mainDataRows = mainRaw.split('\n')
-                .filter(l => l.startsWith('|') && !l.includes('Completed %'))
-                .map(l => l.split('|').filter(c => c.trim()).map(c => c.trim()));
-
-              if (mainDataRows.length > 0) {
-                const mainWidths = headers.map((h, i) =>
-                  Math.max(h.length, ...mainDataRows.map(r => (r[i] || '').length))
-                );
-                const mainSep = '+' + mainWidths.map(w => '-'.repeat(w + 2)).join('+') + '+';
-                const mainHeaderRow = '|' + headers.map((h, i) => ` ${h.padEnd(mainWidths[i])} `).join('|') + '|';
-                const mainRows = mainDataRows.map(r =>
-                  '|' + r.map((c, i) => ` ${(c || '').padEnd(mainWidths[i])} `).join('|') + '|'
-                ).join('\n');
-                const mainTable = [mainSep, mainHeaderRow, mainSep, mainRows, mainSep].join('\n');
-                mainSection = `\n<details><summary>Main branch results (baseline)</summary>\n\n\`\`\`\n${mainTable}\n\`\`\`\n\n</details>\n`;
-              }
-            }
-
-            const scenarioLimit = '${{ needs.setup.outputs.scenario_limit }}' || 'all';
+            const fs = require('node:fs')
+            const bodyText = fs.readFileSync('benchmark-result.txt', 'utf8').trim()
+            const maxLength = 60000
+            const truncated = bodyText.length > maxLength
+              ? `${bodyText.slice(0, maxLength)}\n\n...truncated...`
+              : bodyText
 
             await github.rest.issues.updateComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              comment_id: ${{ needs.setup.outputs.comment_id }},
-              body: `## 🏃 Autorouting Benchmark Results
-
-            **Solvers:** ${solvers.length} | **Scenarios:** ${scenarioLimit}
-
-            <details><summary>PR results</summary>
-
-            \`\`\`
-            ${table}
-            \`\`\`
-
-            </details>
-            ${mainSection}
-            📊 [Download HTML visualization and bundle](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)
-
-            <sub>Triggered by @${{ github.event.comment.user.login }} • Commit: ${{ needs.setup.outputs.sha }}</sub>`
-            });
+              comment_id: Number('${{ steps.parse.outputs.status_comment_id }}'),
+              body: `## 🏃 Autorouting Benchmark Results\n\n\`\`\`\n${truncated}\n\`\`\`\n\n📊 Artifact: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`,
+            })
