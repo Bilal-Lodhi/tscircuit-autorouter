@@ -5,8 +5,38 @@ on:
     types: [created]
   pull_request:
     types: [opened]
+  push:
+    branches:
+      - main
 
 jobs:
+  benchmark-main:
+    name: Benchmark main branch
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run benchmark
+        run: chmod +x ./benchmark.sh && ./benchmark.sh
+
+      - name: Upload benchmark result
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-result-main
+          path: ./benchmark-result.txt
+          overwrite: true
+
   post-instructions:
     name: Post benchmark instructions
     if: github.event_name == 'pull_request'
@@ -241,6 +271,41 @@ jobs:
               });
             }
 
+      - name: Download latest main benchmark result
+        id: main-result
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Find the most recent successful benchmark workflow run on main
+          RUN_ID=$(gh api \
+            "repos/${{ github.repository }}/actions/workflows/benchmark.yml/runs?branch=main&status=success&per_page=1" \
+            --jq '.workflow_runs[0].id // empty')
+
+          if [ -z "$RUN_ID" ]; then
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "No successful main benchmark run found"
+            exit 0
+          fi
+
+          # Find the benchmark-result-main artifact from that run
+          ARTIFACT_ID=$(gh api \
+            "repos/${{ github.repository }}/actions/runs/${RUN_ID}/artifacts" \
+            --jq '.artifacts[] | select(.name == "benchmark-result-main") | .id // empty')
+
+          if [ -z "$ARTIFACT_ID" ]; then
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "No benchmark artifact found in run $RUN_ID"
+            exit 0
+          fi
+
+          # Download and extract the artifact
+          mkdir -p ./main-benchmark
+          gh api \
+            "repos/${{ github.repository }}/actions/artifacts/${ARTIFACT_ID}/zip" \
+            > ./main-benchmark/artifact.zip
+          unzip -o ./main-benchmark/artifact.zip -d ./main-benchmark
+          echo "found=true" >> "$GITHUB_OUTPUT"
+
       - name: Post combined results
         uses: actions/github-script@v7
         with:
@@ -267,7 +332,7 @@ jobs:
               }
             }
 
-            // Calculate max width for each column
+            // Build aligned table
             const headers = ['Solver', 'Completed %', 'Relaxed DRC Pass %', 'P50 Time', 'P95 Time'];
             const widths = headers.map((h, i) =>
               Math.max(h.length, ...results.map(r => (r[i] || '').length))
@@ -281,6 +346,14 @@ jobs:
 
             const table = [sep, headerRow, sep, dataRows, sep].join('\n');
 
+            // Build main baseline section
+            let mainSection = '';
+            const mainFound = '${{ steps.main-result.outputs.found }}';
+            if (mainFound === 'true' && fs.existsSync('./main-benchmark/benchmark-result.txt')) {
+              const mainResults = fs.readFileSync('./main-benchmark/benchmark-result.txt', 'utf8').trim();
+              mainSection = `\n<details><summary>Main branch results (baseline)</summary>\n\n\`\`\`\n${mainResults}\n\`\`\`\n\n</details>\n`;
+            }
+
             const scenarioLimit = '${{ needs.setup.outputs.scenario_limit }}' || 'all';
 
             await github.rest.issues.updateComment({
@@ -291,10 +364,14 @@ jobs:
 
             **Solvers:** ${solvers.length} | **Scenarios:** ${scenarioLimit}
 
+            <details><summary>PR results</summary>
+
             \`\`\`
             ${table}
             \`\`\`
 
+            </details>
+            ${mainSection}
             📊 [Download HTML visualization and bundle](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)
 
             <sub>Triggered by @${{ github.event.comment.user.login }} • Commit: ${{ needs.setup.outputs.sha }}</sub>`
