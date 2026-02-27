@@ -82,7 +82,7 @@ export class CapacitySegmentPointOptimizer extends BaseSolver {
   nodesThatCantFitVias: Set<CapacityMeshNodeId>
   mutableSegments: Set<NodePortSegmentId>
 
-  VIA_DIAMETER = 0.6
+  VIA_DIAMETER = 0.3
   OBSTACLE_MARGIN = 0.15
   MAX_OPERATIONS_PER_MUTATION = 5
   MAX_NODE_CHAIN_PER_MUTATION = 2

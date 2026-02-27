@@ -52,7 +52,7 @@ export class MultipleHighDensityRouteStitchSolver2 extends BaseSolver {
     const firstRoute = params.hdRoutes[0]
     this.defaultTraceThickness = firstRoute?.traceThickness ?? 0.15
     this.defaultViaDiameter =
-      firstRoute?.viaDiameter ?? params.defaultViaDiameter ?? 0.6
+      firstRoute?.viaDiameter ?? params.defaultViaDiameter ?? 0.3
 
     // Create a map from connection name to path results
     const pathResultMap = new Map<string, ConnectionPathResult>()

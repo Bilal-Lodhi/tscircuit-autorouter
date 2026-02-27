@@ -365,7 +365,7 @@ function createPcbSmtPads(srj: SimpleRouteJson): AnyCircuitElement[] {
  */
 function extractViasFromRoutes(
   routes: SimplifiedPcbTrace[] | HighDensityRoute[],
-  minViaDiameter = 0.6,
+  minViaDiameter = 0.3,
 ): PcbVia[] {
   const vias: PcbVia[] = []
   const viaLocations = new Set<string>() // Track unique via locations
@@ -444,7 +444,7 @@ export function convertToCircuitJson(
   srjWithPointPairs: SimpleRouteJson,
   routes: SimplifiedPcbTrace[] | HighDensityRoute[],
   minTraceWidth = 0.1,
-  minViaDiameter = 0.6,
+  minViaDiameter = 0.3,
 ): AnyCircuitElement[] {
   // Start with empty circuit JSON
   const circuitJson: AnyCircuitElement[] = []

@@ -17,7 +17,7 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
 
   const colorMap: Record<string, string> = getColorMap(srj)
   const layerCount = 2
-  const viaRadius = (srj.minViaDiameter ?? 0.6) / 2
+  const viaRadius = (srj.minViaDiameter ?? 0.3) / 2
 
   // Add points for each connection's pointsToConnect
   if (srj.connections) {

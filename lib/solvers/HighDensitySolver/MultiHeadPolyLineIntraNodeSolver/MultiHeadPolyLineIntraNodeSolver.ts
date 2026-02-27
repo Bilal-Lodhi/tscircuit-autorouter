@@ -48,7 +48,7 @@ export class MultiHeadPolyLineIntraNodeSolver extends BaseSolver {
 
   MAX_CANDIDATES = 50e3
 
-  viaDiameter: number = 0.6
+  viaDiameter: number = 0.3
   obstacleMargin: number = 0.1
   traceWidth: number = 0.15
   availableZ: number[] = []

@@ -400,7 +400,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
     this.srj = srj
     this.opts = { ...opts }
     this.MAX_ITERATIONS = 100e6
-    this.viaDiameter = srj.minViaDiameter ?? 0.6
+    this.viaDiameter = srj.minViaDiameter ?? 0.3
     this.minTraceWidth = srj.minTraceWidth
     const mutableOpts = this.opts
     this.effort = mutableOpts.effort ?? 1

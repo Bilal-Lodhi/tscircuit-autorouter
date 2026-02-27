@@ -119,7 +119,7 @@ export class ViaPossibilitiesSolver extends BaseSolver {
     this.portPairMap = getPortPairMap(nodeWithPortPoints)
     this.stats.solutionsFound = 0
     this.availableZ = nodeWithPortPoints.availableZ ?? [0, 1]
-    this.viaDiameter = viaDiameter ?? 0.6
+    this.viaDiameter = viaDiameter ?? 0.3
 
     this.transitionConnectionNames = Array.from(
       this.portPairMap

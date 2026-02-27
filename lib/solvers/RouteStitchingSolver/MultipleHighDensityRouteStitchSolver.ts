@@ -45,7 +45,7 @@ export class MultipleHighDensityRouteStitchSolver extends BaseSolver {
     const firstRoute = params.hdRoutes[0]
     this.defaultTraceThickness = firstRoute?.traceThickness ?? 0.15
     this.defaultViaDiameter =
-      firstRoute?.viaDiameter ?? params.defaultViaDiameter ?? 0.6
+      firstRoute?.viaDiameter ?? params.defaultViaDiameter ?? 0.3
 
     const routeIslandConnectivityMap = new ConnectivityMap({})
     const routeIslandConnections: Array<string[]> = []

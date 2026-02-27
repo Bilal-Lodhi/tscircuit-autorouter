@@ -96,7 +96,7 @@ export class SingleHighDensityRouteSolver extends BaseSolver {
     this.obstacleRoutes = opts.obstacleRoutes
     this.A = opts.A
     this.B = opts.B
-    this.viaDiameter = opts.viaDiameter ?? 0.6
+    this.viaDiameter = opts.viaDiameter ?? 0.3
     this.traceThickness = opts.traceThickness ?? 0.15
     this.obstacleMargin = opts.obstacleMargin ?? 0.2
     this.layerCount = opts.layerCount ?? 2

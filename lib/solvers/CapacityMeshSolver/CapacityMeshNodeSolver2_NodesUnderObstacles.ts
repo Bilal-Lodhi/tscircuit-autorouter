@@ -33,7 +33,7 @@ export class CapacityMeshNodeSolver2_NodeUnderObstacle extends CapacityMeshNodeS
     return "CapacityMeshNodeSolver2_NodeUnderObstacle"
   }
 
-  VIA_DIAMETER = 0.6
+  VIA_DIAMETER = 0.3
   OBSTACLE_MARGIN = 0.1
   /**
    * The threshold for the percentage of a single-layer node that must be

@@ -21,8 +21,8 @@ export class HighDensitySolver extends BaseSolver {
   routes: HighDensityIntraNodeRoute[]
   colorMap: Record<string, string>
 
-  // Defaults as specified: viaDiameter of 0.6 and traceThickness of 0.15
-  readonly defaultViaDiameter = 0.6
+  // Defaults as specified: viaDiameter of 0.3 and traceThickness of 0.15
+  readonly defaultViaDiameter = 0.3
   readonly defaultTraceThickness = 0.15
   viaDiameter: number
   traceWidth: number

@@ -70,7 +70,7 @@ export default function CapacityNodeEditor({
   const [viaMode, setViaMode] = useState(false)
   const [vias, setVias] = useState<Array<{ x: number; y: number }>>([])
   // viaDiameter: used for both visualization AND isHighDensityNodeSolvable diagnostics
-  const [viaDiameter, setViaDiameter] = useState(0.6)
+  const [viaDiameter, setViaDiameter] = useState(0.3)
   // traceWidth: default from HighDensitySolver (0.15mm)
   const traceWidth = 0.15
 

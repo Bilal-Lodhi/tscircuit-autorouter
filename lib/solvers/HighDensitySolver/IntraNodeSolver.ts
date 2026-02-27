@@ -62,7 +62,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
     this.hyperParameters = params.hyperParameters ?? {}
     this.failedSubSolvers = []
     this.connMap = params.connMap
-    this.viaDiameter = params.viaDiameter ?? 0.6
+    this.viaDiameter = params.viaDiameter ?? 0.3
     this.traceWidth = params.traceWidth ?? 0.15
     const unsolvedConnectionsMap: Map<
       string,
@@ -135,7 +135,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
   //       connectionName,
   //       route: points,
   //       traceThickness: 0.1, // TODO load from hyperParameters
-  //       viaDiameter: 0.6,
+  //       viaDiameter: 0.3,
   //       vias: [],
   //     }),
   //   )

@@ -178,7 +178,7 @@ export class SimpleHighDensitySolver extends BaseSolver {
     nodePortPoints,
     colorMap,
     traceWidth = 0.1,
-    viaDiameter = 0.6,
+    viaDiameter = 0.3,
     pushMargin = 0.3,
     numMovablePoints = 2,
   }: {

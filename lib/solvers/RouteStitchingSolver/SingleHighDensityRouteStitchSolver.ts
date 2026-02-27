@@ -53,7 +53,7 @@ export class SingleHighDensityRouteStitchSolver extends BaseSolver {
         route: routePoints,
         vias: vias,
         jumpers: [],
-        viaDiameter: opts.defaultViaDiameter ?? 0.6, // Use default or fallback
+        viaDiameter: opts.defaultViaDiameter ?? 0.3, // Use default or fallback
         traceThickness: opts.defaultTraceThickness ?? 0.15, // Use default or fallback
       }
       this.solved = true

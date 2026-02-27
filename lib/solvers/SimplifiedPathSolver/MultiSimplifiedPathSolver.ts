@@ -52,7 +52,7 @@ export class MultiSimplifiedPathSolver extends BaseSolver {
     this.connMap = params.connMap || new ConnectivityMap({})
     this.colorMap = params.colorMap || {}
     this.outline = params.outline
-    this.defaultViaDiameter = params.defaultViaDiameter ?? 0.6
+    this.defaultViaDiameter = params.defaultViaDiameter ?? 0.3
 
     this.simplifiedHdRoutes = []
   }

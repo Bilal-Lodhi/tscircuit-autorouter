@@ -97,7 +97,7 @@ export class ViaPossibilitiesSolver2 extends BaseSolver {
     this.hyperParameters = hyperParameters ?? {
       SHUFFLE_SEED: 0,
     }
-    this.viaDiameter = viaDiameter ?? 0.6
+    this.viaDiameter = viaDiameter ?? 0.3
 
     this.unprocessedConnections = Array.from(this.portPairMap.keys()).sort()
     if (hyperParameters?.SHUFFLE_SEED) {

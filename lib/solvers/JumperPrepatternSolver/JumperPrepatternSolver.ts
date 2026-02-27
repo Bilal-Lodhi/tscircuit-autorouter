@@ -334,7 +334,7 @@ export class JumperPrepatternSolver extends BaseSolver {
             solver.portPointPathingSolver?.getNodesWithPortPoints() ??
             [],
           colorMap: solver.colorMap,
-          viaDiameter: 0.6,
+          viaDiameter: 0.3,
           traceWidth: solver.traceWidth,
           connMap: solver.connMap,
         },
@@ -349,7 +349,7 @@ export class JumperPrepatternSolver extends BaseSolver {
           hdRoutes: solver.highDensitySolver!.routes,
           colorMap: solver.colorMap,
           layerCount: 1,
-          defaultViaDiameter: 0.6,
+          defaultViaDiameter: 0.3,
         },
       ],
       {
