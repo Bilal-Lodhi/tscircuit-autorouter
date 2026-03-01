@@ -12,7 +12,7 @@ on:
 permissions:
   contents: read
   issues: write
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   post-instructions:
@@ -144,13 +144,14 @@ jobs:
           CONCURRENCY: ${{ steps.parse.outputs.concurrency }}
         run: |
           chmod +x ./benchmark.sh
+          CMD=(./benchmark.sh --concurrency "$CONCURRENCY")
           if [ -n "$SOLVER_NAME" ]; then
-            ./benchmark.sh "$SOLVER_NAME" "$SCENARIO_LIMIT" --concurrency "$CONCURRENCY"
-          elif [ -n "$SCENARIO_LIMIT" ]; then
-            ./benchmark.sh _ "$SCENARIO_LIMIT" --concurrency "$CONCURRENCY"
-          else
-            ./benchmark.sh --concurrency "$CONCURRENCY"
+            CMD+=(--solver "$SOLVER_NAME")
           fi
+          if [ -n "$SCENARIO_LIMIT" ]; then
+            CMD+=(--scenario-limit "$SCENARIO_LIMIT")
+          fi
+          "${CMD[@]}"
 
       - name: Upload benchmark result
         uses: actions/upload-artifact@v4
