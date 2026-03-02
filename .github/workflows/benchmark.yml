@@ -3,7 +3,7 @@ name: Autorouting Benchmark
 on:
   issue_comment:
     types: [created]
-  pull_request:
+  pull_request_target:
     types: [opened]
   push:
     branches:
@@ -17,7 +17,7 @@ permissions:
 jobs:
   post-instructions:
     name: Post benchmark instructions
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
     steps:
       - name: Comment benchmark usage
