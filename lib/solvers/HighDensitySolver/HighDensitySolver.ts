@@ -89,6 +89,17 @@ export class HighDensitySolver extends BaseSolver {
       return
     }
     const node = this.unsolvedNodePortPoints.pop()!
+    const uniqueConnectionNames = new Set(
+      node.portPoints.map((portPoint) => portPoint.connectionName),
+    )
+
+    // A node with 0/1 unique connection names does not need intra-node routing.
+    // This can happen when port-point pathing assigns two points of the same net
+    // into one node; attempting to route those points as a path can fail even
+    // though the connection is already topologically satisfied.
+    if (uniqueConnectionNames.size <= 1) {
+      return
+    }
 
     this.activeSubSolver = new HyperSingleIntraNodeSolver({
       nodeWithPortPoints: node,
