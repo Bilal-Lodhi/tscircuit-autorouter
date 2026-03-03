@@ -137,7 +137,7 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Run benchmark
+      - name: Run benchmark (PR)
         env:
           SOLVER_NAME: ${{ steps.parse.outputs.solver_name }}
           SCENARIO_LIMIT: ${{ steps.parse.outputs.scenario_limit }}
@@ -152,12 +152,33 @@ jobs:
             CMD+=(--scenario-limit "$SCENARIO_LIMIT")
           fi
           "${CMD[@]}"
+          cp benchmark-result.txt benchmark-result-pr.txt
+
+      - name: Download main branch benchmark result
+        if: github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ secrets.TSCIRCUIT_BOT_GITHUB_TOKEN }}
+        run: |
+          RUN_ID=$(gh api "repos/${{ github.repository }}/actions/workflows/benchmark.yml/runs?branch=main&event=push&status=success&per_page=1" --jq '.workflow_runs[0].id' 2>/dev/null || echo "")
+          if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+            echo "(no main branch benchmark result available)" > benchmark-result-main.txt
+            exit 0
+          fi
+          gh run download "$RUN_ID" --repo "${{ github.repository }}" --name benchmark-result --dir ./main-artifact 2>/dev/null || true
+          if [ -f ./main-artifact/benchmark-result.txt ]; then
+            cp ./main-artifact/benchmark-result.txt benchmark-result-main.txt
+          else
+            echo "(no main branch benchmark result available)" > benchmark-result-main.txt
+          fi
 
       - name: Upload benchmark result
         uses: actions/upload-artifact@v4
         with:
           name: benchmark-result
-          path: ./benchmark-result.txt
+          path: |
+            ./benchmark-result.txt
+            ./benchmark-result-pr.txt
+            ./benchmark-result-main.txt
           overwrite: true
 
       - name: Post benchmark result comment
@@ -167,15 +188,41 @@ jobs:
           github-token: ${{ secrets.TSCIRCUIT_BOT_GITHUB_TOKEN }}
           script: |
             const fs = require('node:fs')
-            const bodyText = fs.readFileSync('benchmark-result.txt', 'utf8').trim()
             const maxLength = 60000
-            const truncated = bodyText.length > maxLength
-              ? `${bodyText.slice(0, maxLength)}\n\n...truncated...`
-              : bodyText
+            const truncate = (s, max) => s.length > max ? `${s.slice(0, max)}\n\n...truncated...` : s
+
+            const prText = fs.existsSync('benchmark-result-pr.txt')
+              ? fs.readFileSync('benchmark-result-pr.txt', 'utf8').trim()
+              : fs.readFileSync('benchmark-result.txt', 'utf8').trim()
+            const mainText = fs.existsSync('benchmark-result-main.txt')
+              ? fs.readFileSync('benchmark-result-main.txt', 'utf8').trim()
+              : '(not available)'
+
+            const body = [
+              '## 🏃 Autorouting Benchmark Results',
+              '',
+              '<details>',
+              '<summary>📊 PR Results</summary>',
+              '',
+              '```',
+              truncate(prText, maxLength),
+              '```',
+              '</details>',
+              '',
+              '<details open>',
+              '<summary>📊 Main Branch Results</summary>',
+              '',
+              '```',
+              truncate(mainText, maxLength),
+              '```',
+              '</details>',
+              '',
+              `📦 Artifact: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`,
+            ].join('\n')
 
             await github.rest.issues.updateComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               comment_id: Number('${{ steps.parse.outputs.status_comment_id }}'),
-              body: `## 🏃 Autorouting Benchmark Results\n\n\`\`\`\n${truncated}\n\`\`\`\n\n📊 Artifact: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`,
+              body,
             })
