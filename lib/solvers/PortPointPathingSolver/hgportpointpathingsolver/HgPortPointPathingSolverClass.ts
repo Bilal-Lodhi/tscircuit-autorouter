@@ -127,7 +127,13 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
 
   override computeG(candidate: CandidateHg): number {
     const hgCandidate = candidate as CandidateHg
-    const baseCost = super.computeG(candidate)
+    let baseCost = super.computeG(candidate)
+    if (
+      hgCandidate.lastPort &&
+      hgCandidate.lastPort.d.z !== hgCandidate.port.d.z
+    ) {
+      baseCost += this.params.weights.LAYER_CHANGE_COST
+    }
     if (hgCandidate.nextRegion !== this.currentEndRegion) {
       return baseCost
     }
