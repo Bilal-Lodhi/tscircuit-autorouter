@@ -46,8 +46,7 @@ BaseSolver.prototype.step = function (
     if (!wasDone && !this.__profilingRecorded && (this.solved || this.failed)) {
       this.__profilingRecorded = true
       const timeMs =
-        performance.now() -
-        (this.__profilingStartTime ?? performance.now())
+        performance.now() - (this.__profilingStartTime ?? performance.now())
       allRecords.push({
         name: this.getSolverName(),
         success: this.solved && !this.failed,
@@ -99,9 +98,7 @@ const parseArgs = (): ProfileOptions => {
 const loadScenarios = (scenarioLimit?: number) => {
   const allScenarios = Object.entries(dataset)
     .filter(([, value]) => Boolean(value) && typeof value === "object")
-    .sort(([a], [b]) => a.localeCompare(b)) as Array<
-    [string, SimpleRouteJson]
-  >
+    .sort(([a], [b]) => a.localeCompare(b)) as Array<[string, SimpleRouteJson]>
 
   return scenarioLimit ? allScenarios.slice(0, scenarioLimit) : allScenarios
 }
@@ -128,10 +125,7 @@ const formatIter = (n: number | null): string => {
   return String(Math.round(n))
 }
 
-const formatTable = (
-  headers: string[],
-  body: string[][],
-): string => {
+const formatTable = (headers: string[], body: string[][]): string => {
   const widths = headers.map((h, i) => {
     const maxBody = Math.max(...body.map((row) => row[i].length), 0)
     return Math.max(h.length, maxBody)
@@ -140,8 +134,7 @@ const formatTable = (
   const sep = `+${widths.map((w) => "-".repeat(w + 2)).join("+")}+`
   const headerLine = `| ${headers.map((h, i) => h.padEnd(widths[i])).join(" | ")} |`
   const bodyLines = body.map(
-    (cells) =>
-      `| ${cells.map((c, i) => c.padEnd(widths[i])).join(" | ")} |`,
+    (cells) => `| ${cells.map((c, i) => c.padEnd(widths[i])).join(" | ")} |`,
   )
 
   return [sep, headerLine, sep, ...bodyLines, sep].join("\n")
@@ -156,7 +149,9 @@ const main = () => {
     throw new Error("No scenarios found")
   }
 
-  console.log(`Profiling ${scenarios.length} scenarios with AutoroutingPipelineSolver...\n`)
+  console.log(
+    `Profiling ${scenarios.length} scenarios with AutoroutingPipelineSolver...\n`,
+  )
 
   let solved = 0
   let total = 0
@@ -183,9 +178,7 @@ const main = () => {
   }
 
   const failed = total - solved
-  console.log(
-    `\n${solved}/${total} scenarios solved (${failed} failed)\n`,
-  )
+  console.log(`\n${solved}/${total} scenarios solved (${failed} failed)\n`)
 
   // --- Aggregate by solver name + success/fail ---
   // Skip the top-level pipeline solver itself
