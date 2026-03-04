@@ -226,8 +226,11 @@ const main = () => {
     })
   }
 
-  // Sort by solver name, then success before fail
+  // Sort by P95 time (slowest first), then solver name, then success before fail
   rows.sort((a, b) => {
+    const aP95 = a.p95Time ?? Number.NEGATIVE_INFINITY
+    const bP95 = b.p95Time ?? Number.NEGATIVE_INFINITY
+    if (aP95 !== bP95) return bP95 - aP95
     if (a.name !== b.name) return a.name.localeCompare(b.name)
     return a.status === "success" ? -1 : 1
   })
