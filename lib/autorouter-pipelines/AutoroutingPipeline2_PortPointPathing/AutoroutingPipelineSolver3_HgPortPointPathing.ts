@@ -320,6 +320,7 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
         connMap: cms.connMap,
         viaDiameter: cms.viaDiameter,
         traceWidth: cms.minTraceWidth,
+        effort: cms.effort,
       },
     ]),
     definePipelineStep(

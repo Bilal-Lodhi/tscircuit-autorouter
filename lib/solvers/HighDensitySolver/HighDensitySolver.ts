@@ -26,6 +26,7 @@ export class HighDensitySolver extends BaseSolver {
   readonly defaultTraceThickness = 0.15
   viaDiameter: number
   traceWidth: number
+  effort: number
 
   failedSolvers: (IntraNodeRouteSolver | HyperSingleIntraNodeSolver)[]
   activeSubSolver: IntraNodeRouteSolver | HyperSingleIntraNodeSolver | null =
@@ -38,12 +39,14 @@ export class HighDensitySolver extends BaseSolver {
     connMap,
     viaDiameter,
     traceWidth,
+    effort,
   }: {
     nodePortPoints: NodeWithPortPoints[]
     colorMap?: Record<string, string>
     connMap?: ConnectivityMap
     viaDiameter?: number
     traceWidth?: number
+    effort?: number
   }) {
     super()
     this.unsolvedNodePortPoints = nodePortPoints
@@ -54,6 +57,7 @@ export class HighDensitySolver extends BaseSolver {
     this.MAX_ITERATIONS = 50e6
     this.viaDiameter = viaDiameter ?? this.defaultViaDiameter
     this.traceWidth = traceWidth ?? this.defaultTraceThickness
+    this.effort = effort ?? 1
   }
 
   /**
@@ -96,6 +100,7 @@ export class HighDensitySolver extends BaseSolver {
       connMap: this.connMap,
       viaDiameter: this.viaDiameter,
       traceWidth: this.traceWidth,
+      effort: this.effort,
     })
     this.updateCacheStats()
   }

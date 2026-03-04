@@ -17,6 +17,17 @@ import { MultiHeadPolyLineIntraNodeSolver3 } from "../HighDensitySolver/MultiHea
 import { HighDensitySolverA01 } from "@tscircuit/high-density-a01"
 import { FixedTopologyHighDensityIntraNodeSolver } from "../FixedTopologyHighDensityIntraNodeSolver"
 
+/**
+ * P99 MAX_ITERATIONS: The number of iterations needed to solve 99% of
+ * successful problems. Determined empirically via P95 iteration tuning.
+ * See P95_ITERATION_TUNING_PROCESS.md for how to re-derive this value.
+ *
+ * Tuning results (2026-03-03, 85 scenarios, 8357 solved instances):
+ *   P50: 1, P90: 94, P95: 113, P99: 15,704, P99.9: 109,555, Max: 112,807
+ */
+const P99_MAX_ITERATIONS = 15_704
+const P99_9_MAX_ITERATIONS = 109_555
+
 export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
   | IntraNodeRouteSolver
   | TwoCrossingRoutesHighDensitySolver
@@ -34,13 +45,16 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
   connMap?: ConnectivityMap
 
   constructor(
-    opts: ConstructorParameters<typeof CachedIntraNodeRouteSolver>[0],
+    opts: ConstructorParameters<typeof CachedIntraNodeRouteSolver>[0] & {
+      effort?: number
+    },
   ) {
     super()
     this.nodeWithPortPoints = opts.nodeWithPortPoints
     this.connMap = opts.connMap
     this.constructorParams = opts
-    this.MAX_ITERATIONS = 30_000_000
+    const effort = opts.effort ?? 1
+    this.MAX_ITERATIONS = Math.round(P99_9_MAX_ITERATIONS * effort)
     this.GREEDY_MULTIPLIER = 5
     this.MIN_SUBSTEPS = 100
   }

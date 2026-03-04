@@ -2,6 +2,13 @@ import type { GraphicsObject } from "graphics-debug"
 import { CachableSolver, CacheProvider } from "lib/cache/types"
 
 export class BaseSolver {
+  /**
+   * Set this static callback to record solver completions globally.
+   * Used by P95 iteration tuning to collect iteration counts across
+   * all solver instances. Zero overhead when null.
+   */
+  static onSolverCompleted: ((solver: BaseSolver) => void) | null = null
+
   MAX_ITERATIONS = 1000
   solved = false
   failed = false
@@ -46,6 +53,9 @@ export class BaseSolver {
     if ("computeProgress" in this) {
       // @ts-ignore
       this.progress = this.computeProgress() as number
+    }
+    if ((this.solved || this.failed) && BaseSolver.onSolverCompleted) {
+      BaseSolver.onSolverCompleted(this)
     }
   }
 
