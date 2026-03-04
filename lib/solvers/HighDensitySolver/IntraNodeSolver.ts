@@ -101,7 +101,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
     }
 
     this.totalConnections = this.unsolvedConnections.length
-    this.MAX_ITERATIONS = 1_000 * this.totalConnections ** 1.5
+    this.MAX_ITERATIONS = Math.min(1_000 * this.totalConnections ** 1.5, 15_000)
 
     this.minDistBetweenEnteringPoints = getMinDistBetweenEnteringPoints(
       this.nodeWithPortPoints,

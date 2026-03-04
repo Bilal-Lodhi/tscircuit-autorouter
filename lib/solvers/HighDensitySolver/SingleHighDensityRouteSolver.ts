@@ -103,7 +103,7 @@ export class SingleHighDensityRouteSolver extends BaseSolver {
     this.exploredNodes = new Set()
     this.straightLineDistance = distance(this.A, this.B)
     this.futureConnections = opts.futureConnections ?? []
-    this.MAX_ITERATIONS = 10e3 // 5000
+    this.MAX_ITERATIONS = 7_000
 
     this.debug_exploredNodesOrdered = []
     this.debug_nodesTooCloseToObstacle = new Set()

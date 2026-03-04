@@ -70,7 +70,7 @@ export class FixedTopologyHighDensityIntraNodeSolver extends BaseSolver {
     this.viaTile = defaultViaTile
     this.viaDiameter = this._resolveViaDiameter(params.viaDiameter)
     this.connMap = params.connMap
-    this.MAX_ITERATIONS = 1e6
+    this.MAX_ITERATIONS = 100_000
 
     // Initialize colorMap if not provided
     if (Object.keys(this.colorMap).length === 0) {
