@@ -19,6 +19,7 @@ import { MultiSectionPortPointOptimizer } from "../../solvers/MultiSectionPortPo
 import { NetToPointPairsSolver } from "../../solvers/NetToPointPairsSolver/NetToPointPairsSolver"
 import { NetToPointPairsSolver2_OffBoardConnection } from "../../solvers/NetToPointPairsSolver2_OffBoardConnection/NetToPointPairsSolver2_OffBoardConnection"
 import { InputNodeWithPortPoints } from "../../solvers/PortPointPathingSolver/PortPointPathingSolver"
+import { precomputeSharedParams } from "../../solvers/PortPointPathingSolver/precomputeSharedParams"
 import { MultipleHighDensityRouteStitchSolver } from "../../solvers/RouteStitchingSolver/MultipleHighDensityRouteStitchSolver"
 import { SingleLayerNodeMergerSolver } from "../../solvers/SingleLayerNodeMerger/SingleLayerNodeMergerSolver"
 import { StrawSolver } from "../../solvers/StrawSolver/StrawSolver"
@@ -273,27 +274,54 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
         ]
       },
     ),
-    // definePipelineStep(
-    //   "multiSectionPortPointOptimizer",
-    //   MultiSectionPortPointOptimizer,
-    //   (cms) => {
-    //     const portPointSolver = cms.portPointPathingSolver!
-    //     return [
-    //       {
-    //         simpleRouteJson: cms.srjWithPointPairs!,
-    //         inputNodes: portPointSolver.inputNodes,
-    //         capacityMeshNodes: cms.capacityNodes!,
-    //         capacityMeshEdges: cms.capacityEdges!,
-    //         colorMap: cms.colorMap,
-    //         initialConnectionResults: portPointSolver.connectionsWithResults,
-    //         initialAssignedPortPoints: portPointSolver.assignedPortPoints,
-    //         initialNodeAssignedPortPoints:
-    //           portPointSolver.nodeAssignedPortPoints,
-    //         effort: cms.effort,
-    //       },
-    //     ]
-    //   },
-    // ),
+    definePipelineStep(
+      "multiSectionPortPointOptimizer",
+      MultiSectionPortPointOptimizer,
+      (cms) => {
+        const portPointSolver = cms.portPointPathingSolver!
+        const {
+          nodesWithPortPoints,
+          inputNodeWithPortPoints: inputNodesWithPortPoints,
+        } = portPointSolver.getOutput()
+
+        const initialAssignedPortPoints = new Map<
+          string,
+          { connectionName: string; rootConnectionName?: string }
+        >()
+        const initialNodeAssignedPortPoints = new Map()
+        for (const node of nodesWithPortPoints) {
+          initialNodeAssignedPortPoints.set(node.capacityMeshNodeId, [
+            ...node.portPoints,
+          ])
+          for (const portPoint of node.portPoints) {
+            if (!portPoint.portPointId) continue
+            initialAssignedPortPoints.set(portPoint.portPointId, {
+              connectionName: portPoint.connectionName,
+              rootConnectionName: portPoint.rootConnectionName,
+            })
+          }
+        }
+
+        const { unshuffledConnectionsWithResults } = precomputeSharedParams(
+          cms.srjWithPointPairs!,
+          inputNodesWithPortPoints,
+        )
+
+        return [
+          {
+            simpleRouteJson: cms.srjWithPointPairs!,
+            inputNodes: inputNodesWithPortPoints,
+            capacityMeshNodes: cms.capacityNodes!,
+            capacityMeshEdges: cms.capacityEdges!,
+            colorMap: cms.colorMap,
+            initialConnectionResults: unshuffledConnectionsWithResults,
+            initialAssignedPortPoints,
+            initialNodeAssignedPortPoints,
+            effort: cms.effort,
+          },
+        ]
+      },
+    ),
     definePipelineStep(
       "uniformPortDistributionSolver",
       UniformPortDistributionSolver,
