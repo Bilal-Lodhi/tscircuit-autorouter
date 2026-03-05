@@ -19,6 +19,10 @@ import { MultiSectionPortPointOptimizer } from "../../solvers/MultiSectionPortPo
 import { NetToPointPairsSolver } from "../../solvers/NetToPointPairsSolver/NetToPointPairsSolver"
 import { NetToPointPairsSolver2_OffBoardConnection } from "../../solvers/NetToPointPairsSolver2_OffBoardConnection/NetToPointPairsSolver2_OffBoardConnection"
 import { InputNodeWithPortPoints } from "../../solvers/PortPointPathingSolver/PortPointPathingSolver"
+import {
+  ConnectionPathResult,
+  PortPointCandidate,
+} from "../../solvers/PortPointPathingSolver/PortPointPathingSolver"
 import { precomputeSharedParams } from "../../solvers/PortPointPathingSolver/precomputeSharedParams"
 import { MultipleHighDensityRouteStitchSolver } from "../../solvers/RouteStitchingSolver/MultipleHighDensityRouteStitchSolver"
 import { SingleLayerNodeMergerSolver } from "../../solvers/SingleLayerNodeMerger/SingleLayerNodeMergerSolver"
@@ -33,6 +37,7 @@ import {
   CapacityMeshEdge,
   SimplifiedPcbTraces,
   SimplifiedPcbTrace,
+  CapacityMeshNodeId,
 } from "lib/types"
 import { combineVisualizations } from "lib/utils/combineVisualizations"
 import { calculateOptimalCapacityDepth } from "lib/index"
@@ -40,6 +45,7 @@ import {
   buildHyperGraph,
   HgPortPointPathingSolver,
 } from "lib/solvers/PortPointPathingSolver/hgportpointpathingsolver"
+import { PortPoint } from "lib/types/high-density-types"
 
 interface CapacityMeshSolverOptions {
   capacityDepth?: number
@@ -288,7 +294,10 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
           string,
           { connectionName: string; rootConnectionName?: string }
         >()
-        const initialNodeAssignedPortPoints = new Map()
+        const initialNodeAssignedPortPoints = new Map<
+          CapacityMeshNodeId,
+          PortPoint[]
+        >()
         for (const node of nodesWithPortPoints) {
           initialNodeAssignedPortPoints.set(node.capacityMeshNodeId, [
             ...node.portPoints,
@@ -302,9 +311,81 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
           }
         }
 
+        const initialConnectionResultsFromHg: ConnectionPathResult[] = []
+        for (const solvedRoute of portPointSolver.solvedRoutes ?? []) {
+          const hgConnection = solvedRoute.connection as {
+            simpleRouteConnection?: SimpleRouteJson["connections"][number]
+            startRegion: { regionId: CapacityMeshNodeId }
+            endRegion: { regionId: CapacityMeshNodeId }
+          }
+          const connection = hgConnection.simpleRouteConnection
+          if (!connection) continue
+
+          const path: PortPointCandidate[] = []
+          let prevCandidate: PortPointCandidate | null = null
+
+          for (const candidate of solvedRoute.path) {
+            const currentNodeId =
+              candidate.lastRegion?.regionId ??
+              candidate.nextRegion?.regionId ??
+              hgConnection.startRegion.regionId
+            const nextPathCandidate: PortPointCandidate = {
+              prevCandidate,
+              portPoint: null,
+              currentNodeId,
+              point: { x: candidate.port.d.x, y: candidate.port.d.y },
+              z: candidate.port.d.z,
+              f: candidate.f,
+              g: candidate.g,
+              h: candidate.h,
+              distanceTraveled: 0,
+            }
+            path.push(nextPathCandidate)
+            prevCandidate = nextPathCandidate
+          }
+
+          initialConnectionResultsFromHg.push({
+            connection,
+            nodeIds: [
+              hgConnection.startRegion.regionId,
+              hgConnection.endRegion.regionId,
+            ],
+            path,
+            portPoints: path.map((candidatePoint) => ({
+              x: candidatePoint.point.x,
+              y: candidatePoint.point.y,
+              z: candidatePoint.z,
+              connectionName: connection.name,
+              rootConnectionName:
+                connection.rootConnectionName ?? connection.name,
+            })),
+            straightLineDistance: Math.hypot(
+              connection.pointsToConnect[0]!.x -
+                connection.pointsToConnect[connection.pointsToConnect.length - 1]!
+                  .x,
+              connection.pointsToConnect[0]!.y -
+                connection.pointsToConnect[connection.pointsToConnect.length - 1]!
+                  .y,
+            ),
+          })
+        }
+
         const { unshuffledConnectionsWithResults } = precomputeSharedParams(
           cms.srjWithPointPairs!,
           inputNodesWithPortPoints,
+        )
+        const connectionResultsByName = new Map(
+          initialConnectionResultsFromHg.map((result) => [
+            result.connection.name,
+            result,
+          ]),
+        )
+        const initialConnectionResults = unshuffledConnectionsWithResults.map(
+          (result) =>
+            connectionResultsByName.get(result.connection.name) ?? result,
+        )
+        console.log(
+          `[MultiSection] prepared initialConnectionResults=${initialConnectionResults.length} withPaths=${initialConnectionResultsFromHg.length}`,
         )
 
         return [
@@ -314,12 +395,21 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
             capacityMeshNodes: cms.capacityNodes!,
             capacityMeshEdges: cms.capacityEdges!,
             colorMap: cms.colorMap,
-            initialConnectionResults: unshuffledConnectionsWithResults,
+            initialConnectionResults,
             initialAssignedPortPoints,
             initialNodeAssignedPortPoints,
             effort: cms.effort,
           },
         ]
+      },
+      {
+        onSolved: (cms) => {
+          const optimizer = cms.multiSectionPortPointOptimizer
+          if (!optimizer) return
+          console.log(
+            `[MultiSection] completed attempts=${optimizer.sectionAttempts} successes=${optimizer.stats.successfulOptimizations} failures=${optimizer.stats.failedOptimizations} currentBoardScore=${optimizer.stats.currentBoardScore}`,
+          )
+        },
       },
     ),
     definePipelineStep(
@@ -329,7 +419,9 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
         return [
           {
             nodeWithPortPoints:
-              cms.portPointPathingSolver?.getOutput().nodesWithPortPoints ?? [],
+              cms.multiSectionPortPointOptimizer?.getNodesWithPortPoints() ??
+              cms.portPointPathingSolver?.getOutput().nodesWithPortPoints ??
+              [],
             inputNodesWithPortPoints:
               cms.portPointPathingSolver?.getOutput().inputNodeWithPortPoints ??
               [],
