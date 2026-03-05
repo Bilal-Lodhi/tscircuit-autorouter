@@ -1,11 +1,11 @@
 import objectHash from "object-hash"
 
-import type { HighDensityIntraNodeRoute } from "../../types/high-density-types"
 import {
   getGlobalInMemoryCache,
   setupGlobalCaches,
 } from "lib/cache/setupGlobalCaches"
 import { CachableSolver, CacheProvider } from "lib/cache/types"
+import type { HighDensityIntraNodeRoute } from "../../types/high-density-types"
 
 import { IntraNodeRouteSolver } from "./IntraNodeSolver"
 
@@ -21,6 +21,21 @@ const cloneValue = <T>(value: T): T =>
   typeof structuredClone === "function"
     ? structuredClone(value)
     : JSON.parse(JSON.stringify(value))
+
+const cloneUnsolvedConnections = (
+  unsolvedConnections: {
+    connectionName: string
+    points: { x: number; y: number; z: number }[]
+  }[],
+) =>
+  unsolvedConnections.map(({ connectionName, points }) => ({
+    connectionName,
+    points: points.map((point) => ({
+      x: point.x,
+      y: point.y,
+      z: point.z ?? 0,
+    })),
+  }))
 
 setupGlobalCaches()
 
@@ -58,7 +73,9 @@ export class CachedIntraNodeRouteSolver
       params.cacheProvider === undefined
         ? getGlobalInMemoryCache()
         : params.cacheProvider
-    this.initialUnsolvedConnections = cloneValue(this.unsolvedConnections)
+    this.initialUnsolvedConnections = cloneUnsolvedConnections(
+      this.unsolvedConnections,
+    )
 
     if ((this.solved || this.failed) && this.cacheProvider && !this.cacheHit) {
       this.saveToCacheSync()
@@ -92,17 +109,16 @@ export class CachedIntraNodeRouteSolver
     cacheToSolveSpaceTransform: CacheToIntraNodeSolverTransform
   } {
     const center = this.nodeWithPortPoints.center
-    const normalizedConnections = this.initialUnsolvedConnections.map(
-      ({ connectionName, points }) => ({
+    const normalizedConnections = this.initialUnsolvedConnections
+      .map(({ connectionName, points }) => ({
         connectionName,
         points: points.map((point) => ({
-          connectionName,
           x: roundCoord(point.x - center.x),
           y: roundCoord(point.y - center.y),
           z: point.z ?? 0,
         })),
-      }),
-    )
+      }))
+      .sort((a, b) => a.connectionName.localeCompare(b.connectionName))
 
     const normalizedHyperParameters = Object.fromEntries(
       Object.entries(this.hyperParameters ?? {})
@@ -111,7 +127,7 @@ export class CachedIntraNodeRouteSolver
     )
 
     const normalizedConnMap = this.connMap
-      ? this.initialUnsolvedConnections.map(({ connectionName }) => ({
+      ? normalizedConnections.map(({ connectionName }) => ({
           connectionName,
           connectedIds: [
             ...new Set(

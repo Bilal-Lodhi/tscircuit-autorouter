@@ -61,7 +61,7 @@ export class HighDensitySolver extends BaseSolver {
    * of it.
    */
   _step() {
-    this.updateCacheStats()
+    this.maybeUpdateCacheStats()
     if (this.activeSubSolver) {
       this.activeSubSolver.step()
       if (this.activeSubSolver.solved) {
@@ -71,7 +71,7 @@ export class HighDensitySolver extends BaseSolver {
         this.failedSolvers.push(this.activeSubSolver)
         this.activeSubSolver = null
       }
-      this.updateCacheStats()
+      this.maybeUpdateCacheStats()
       return
     }
     if (this.unsolvedNodePortPoints.length === 0) {
@@ -80,12 +80,12 @@ export class HighDensitySolver extends BaseSolver {
         this.failed = true
         // debugger
         this.error = `Failed to solve ${this.failedSolvers.length} nodes, ${this.failedSolvers.slice(0, 5).map((fs) => fs.nodeWithPortPoints.capacityMeshNodeId)}. err0: ${this.failedSolvers[0].error}.`
-        this.updateCacheStats()
+        this.maybeUpdateCacheStats(true)
         return
       }
 
       this.solved = true
-      this.updateCacheStats()
+      this.maybeUpdateCacheStats(true)
       return
     }
     const node = this.unsolvedNodePortPoints.pop()!
@@ -97,6 +97,13 @@ export class HighDensitySolver extends BaseSolver {
       viaDiameter: this.viaDiameter,
       traceWidth: this.traceWidth,
     })
+    this.maybeUpdateCacheStats()
+  }
+
+  private maybeUpdateCacheStats(force = false) {
+    if (!force && (this.iterations & 127) !== 0) {
+      return
+    }
     this.updateCacheStats()
   }
 

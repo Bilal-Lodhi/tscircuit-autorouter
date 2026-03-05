@@ -1,40 +1,40 @@
-import { BaseSolver } from "../BaseSolver"
+import type { GraphicsObject } from "graphics-debug"
+import { getIntraNodeCrossingsUsingCircle } from "lib/utils/getIntraNodeCrossingsUsingCircle"
 import type {
   CapacityMeshEdge,
   CapacityMeshNode,
   CapacityMeshNodeId,
-  SimpleRouteJson,
   SimpleRouteConnection,
+  SimpleRouteJson,
 } from "../../types"
-import type { GraphicsObject } from "graphics-debug"
 import type {
+  NodeWithPortPoints,
+  PortPoint,
+} from "../../types/high-density-types"
+import { BaseSolver } from "../BaseSolver"
+import { HyperPortPointPathingSolver } from "../PortPointPathingSolver/HyperPortPointPathingSolver"
+import type {
+  ConnectionPathResult,
   InputNodeWithPortPoints,
   InputPortPoint,
-  ConnectionPathResult,
-  PortPointPathingHyperParameters,
   PortPointCandidate,
+  PortPointPathingHyperParameters,
 } from "../PortPointPathingSolver/PortPointPathingSolver"
 import { PortPointPathingSolver } from "../PortPointPathingSolver/PortPointPathingSolver"
 import { precomputeSharedParams } from "../PortPointPathingSolver/precomputeSharedParams"
+import { visualizePointPathSolver } from "../PortPointPathingSolver/visualizePointPathSolver"
+import { calculateNodeProbabilityOfFailureWithJumpers } from "./calculateNodeProbabilityOfFailureWithJumpers"
+import { computeNodePf, computeSectionScore } from "./computeSectionScore"
+import { computeSectionScoreWithJumpers } from "./computeSectionScoreWithJumpers"
 import {
-  createPortPointSection,
   type CreatePortPointSectionInput,
   type PortPointSection,
   type PortPointSectionParams,
   type SectionPath,
+  createPortPointSection,
 } from "./createPortPointSection"
-import type {
-  PortPoint,
-  NodeWithPortPoints,
-} from "../../types/high-density-types"
-import { computeSectionScore, computeNodePf } from "./computeSectionScore"
-import { visualizeSection } from "./visualizeSection"
 import { findConnectionIntersectionPairs } from "./findConnectionIntersectionPairs"
-import { visualizePointPathSolver } from "../PortPointPathingSolver/visualizePointPathSolver"
-import { HyperPortPointPathingSolver } from "../PortPointPathingSolver/HyperPortPointPathingSolver"
-import { computeSectionScoreWithJumpers } from "./computeSectionScoreWithJumpers"
-import { calculateNodeProbabilityOfFailureWithJumpers } from "./calculateNodeProbabilityOfFailureWithJumpers"
-import { getIntraNodeCrossingsUsingCircle } from "lib/utils/getIntraNodeCrossingsUsingCircle"
+import { visualizeSection } from "./visualizeSection"
 
 export type HyperParameterScheduleEntry = PortPointPathingHyperParameters & {
   EXPANSION_DEGREES: number
@@ -522,6 +522,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     section: PortPointSection,
     allConnectionNames: string[],
   ): Set<string> {
+    const allConnectionNameSet = new Set(allConnectionNames)
     // Seed based on section attempt count for deterministic but varying selection
     const seed = this.sectionAttempts * 31337
     const random = seededRandom(seed)
@@ -561,8 +562,8 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
         }
 
         // Both connections are in section - pick one based on seed
-        const conn1InSection = allConnectionNames.includes(conn1)
-        const conn2InSection = allConnectionNames.includes(conn2)
+        const conn1InSection = allConnectionNameSet.has(conn1)
+        const conn2InSection = allConnectionNameSet.has(conn2)
 
         if (conn1InSection && conn2InSection) {
           // Pick one randomly using the seeded random
@@ -596,6 +597,13 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
 
     // First, collect all connection names in this section
     const allConnectionNames: string[] = []
+    const allConnectionNameSet = new Set<string>()
+    const addConnectionName = (name: string) => {
+      if (!allConnectionNameSet.has(name)) {
+        allConnectionNameSet.add(name)
+        allConnectionNames.push(name)
+      }
+    }
 
     // Fully contained connections
     const fullyContainedResults: ConnectionPathResult[] = []
@@ -610,7 +618,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
 
       if (startInSection && endInSection) {
         fullyContainedResults.push(result)
-        allConnectionNames.push(result.connection.name)
+        addConnectionName(result.connection.name)
       }
     }
 
@@ -638,9 +646,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
 
       cutPathCandidates.push({ sectionPath, originalResult })
       // Add the original connection name (not the cut name)
-      if (!allConnectionNames.includes(sectionPath.connectionName)) {
-        allConnectionNames.push(sectionPath.connectionName)
-      }
+      addConnectionName(sectionPath.connectionName)
     }
 
     // Determine which connections to rip
@@ -818,13 +824,16 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
    * Create a PortPointPathingSolver for the current section.
    * This centralizes the solver creation logic that was previously duplicated in 3 places.
    */
-  createSectionSolver(section: PortPointSection): PortPointPathingSolver {
-    const sectionSrj = this.createSectionSimpleRouteJson(section)
+  createSectionSolver(
+    section: PortPointSection,
+    sectionSrj?: SimpleRouteJson,
+  ): PortPointPathingSolver {
+    const routeJson = sectionSrj ?? this.createSectionSimpleRouteJson(section)
     const preparedInputNodes = this.prepareSectionInputNodesForCutPaths(section)
 
     // Precompute shared params and add kept port points
     const precomputedParams = precomputeSharedParams(
-      sectionSrj,
+      routeJson,
       preparedInputNodes,
     )
 
@@ -840,20 +849,18 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     }
 
     return new HyperPortPointPathingSolver({
-      simpleRouteJson: sectionSrj,
+      simpleRouteJson: routeJson,
       inputNodes: preparedInputNodes,
       capacityMeshNodes: section.capacityMeshNodes,
       colorMap: this.colorMap,
       nodeMemoryPfMap: this.nodePfMap,
       numShuffleSeeds:
         this.SHUFFLE_SEEDS_PER_SECTION ??
-        sectionSrj.connections.length * 2 * this.effort,
-      hyperParameters: {
-        ...this.getHyperParametersForScheduleIndex(
-          this.currentScheduleIndex,
-          this.sectionAttempts,
-        ),
-      },
+        routeJson.connections.length * 2 * this.effort,
+      hyperParameters: this.getHyperParametersForScheduleIndex(
+        this.currentScheduleIndex,
+        this.sectionAttempts,
+      ),
       precomputedInitialParams: precomputedParams,
       fixedRoutes: this.currentSectionFixedRoutes,
     }) as unknown as PortPointPathingSolver
@@ -1264,7 +1271,10 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     }
 
     // Create and start PortPointPathingSolver for this section
-    this.activeSubSolver = this.createSectionSolver(this.currentSection)
+    this.activeSubSolver = this.createSectionSolver(
+      this.currentSection,
+      sectionSrj,
+    )
   }
 
   computeProgress(): number {
