@@ -345,8 +345,15 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
    * Compute the score for the ENTIRE board (all nodes with port points).
    */
   computeBoardScore(): number {
-    const allNodesWithPortPoints = this.getNodesWithPortPoints()
-    return this.computeScoreForNodes(allNodesWithPortPoints)
+    let logSuccess = 0
+    const NODE_MAX_PF = 0.99999
+
+    for (const pf of this.nodePfMap.values()) {
+      const boundedPf = Math.min(Math.max(pf, 0), NODE_MAX_PF)
+      logSuccess += Math.log(1 - boundedPf)
+    }
+
+    return logSuccess
   }
 
   /**
@@ -598,6 +605,9 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     // First, collect all connection names in this section
     const allConnectionNames: string[] = []
     const allConnectionNameSet = new Set<string>()
+    const connectionResultByName = new Map(
+      this.connectionResults.map((result) => [result.connection.name, result]),
+    )
     const addConnectionName = (name: string) => {
       if (!allConnectionNameSet.has(name)) {
         allConnectionNameSet.add(name)
@@ -639,8 +649,8 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
       }
 
       // Find the original connection result for this path
-      const originalResult = this.connectionResults.find(
-        (r) => r.connection.name === sectionPath.connectionName,
+      const originalResult = connectionResultByName.get(
+        sectionPath.connectionName,
       )
       if (!originalResult) continue
 

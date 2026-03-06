@@ -1,21 +1,21 @@
+import { HighDensitySolverA01 } from "@tscircuit/high-density-a01"
+import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import {
   HighDensityIntraNodeRoute,
   NodeWithPortPoints,
 } from "lib/types/high-density-types"
+import { FixedTopologyHighDensityIntraNodeSolver } from "../FixedTopologyHighDensityIntraNodeSolver"
 import { CachedIntraNodeRouteSolver } from "../HighDensitySolver/CachedIntraNodeRouteSolver"
 import { IntraNodeRouteSolver } from "../HighDensitySolver/IntraNodeSolver"
+import { MultiHeadPolyLineIntraNodeSolver2 } from "../HighDensitySolver/MultiHeadPolyLineIntraNodeSolver/MultiHeadPolyLineIntraNodeSolver2_Optimized"
+import { MultiHeadPolyLineIntraNodeSolver3 } from "../HighDensitySolver/MultiHeadPolyLineIntraNodeSolver/MultiHeadPolyLineIntraNodeSolver3_ViaPossibilitiesSolverIntegration"
+import { SingleTransitionIntraNodeSolver } from "../HighDensitySolver/SingleTransitionIntraNodeSolver"
+import { SingleTransitionCrossingRouteSolver } from "../HighDensitySolver/TwoRouteHighDensitySolver/SingleTransitionCrossingRouteSolver"
+import { TwoCrossingRoutesHighDensitySolver } from "../HighDensitySolver/TwoRouteHighDensitySolver/TwoCrossingRoutesHighDensitySolver"
 import {
   HyperParameterSupervisorSolver,
   SupervisedSolver,
 } from "../HyperParameterSupervisorSolver"
-import { ConnectivityMap } from "circuit-json-to-connectivity-map"
-import { TwoCrossingRoutesHighDensitySolver } from "../HighDensitySolver/TwoRouteHighDensitySolver/TwoCrossingRoutesHighDensitySolver"
-import { SingleTransitionCrossingRouteSolver } from "../HighDensitySolver/TwoRouteHighDensitySolver/SingleTransitionCrossingRouteSolver"
-import { SingleTransitionIntraNodeSolver } from "../HighDensitySolver/SingleTransitionIntraNodeSolver"
-import { MultiHeadPolyLineIntraNodeSolver2 } from "../HighDensitySolver/MultiHeadPolyLineIntraNodeSolver/MultiHeadPolyLineIntraNodeSolver2_Optimized"
-import { MultiHeadPolyLineIntraNodeSolver3 } from "../HighDensitySolver/MultiHeadPolyLineIntraNodeSolver/MultiHeadPolyLineIntraNodeSolver3_ViaPossibilitiesSolverIntegration"
-import { HighDensitySolverA01 } from "@tscircuit/high-density-a01"
-import { FixedTopologyHighDensityIntraNodeSolver } from "../FixedTopologyHighDensityIntraNodeSolver"
 
 export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
   | IntraNodeRouteSolver
@@ -50,7 +50,6 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
       ["multiHeadPolyLine"],
       ["majorCombinations", "orderings6", "cellSizeFactor"],
       ["noVias"],
-      ["orderings50"],
       ["flipTraceAlignmentDirection", "orderings6"],
       ["closedFormSingleTrace"],
       // ["closedFormTwoTrace"],
@@ -135,12 +134,6 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
             VIA_PENALTY_FACTOR_2: 10,
           },
         ],
-      },
-      {
-        name: "orderings50",
-        possibleValues: Array.from({ length: 50 }, (_, i) => ({
-          SHUFFLE_SEED: 100 + i,
-        })),
       },
       // {
       //   name: "closedFormTwoTrace",

@@ -32,6 +32,8 @@ export class IntraNodeRouteSolver extends BaseSolver {
   minDistBetweenEnteringPoints: number
   viaDiameter: number
   traceWidth: number
+  nodeBounds: { minX: number; maxX: number; minY: number; maxY: number }
+  layerCount: number
 
   activeSubSolver: SingleHighDensityRouteSolver | null = null
   connMap?: ConnectivityMap
@@ -105,6 +107,11 @@ export class IntraNodeRouteSolver extends BaseSolver {
 
     this.minDistBetweenEnteringPoints = getMinDistBetweenEnteringPoints(
       this.nodeWithPortPoints,
+    )
+    this.nodeBounds = getBoundsFromNodeWithPortPoints(this.nodeWithPortPoints)
+    this.layerCount = this.nodeWithPortPoints.portPoints.reduce(
+      (max, p) => Math.max(max, (p.z ?? 0) + 1),
+      2,
     )
 
     // const {
@@ -220,7 +227,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
       new SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost({
         connectionName,
         minDistBetweenEnteringPoints: this.minDistBetweenEnteringPoints,
-        bounds: getBoundsFromNodeWithPortPoints(this.nodeWithPortPoints),
+        bounds: this.nodeBounds,
         A: { x: points[0].x, y: points[0].y, z: points[0].z },
         B: {
           x: points[points.length - 1].x,
@@ -237,10 +244,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
             )
           : this.solvedRoutes,
         futureConnections: this.unsolvedConnections,
-        layerCount: this.nodeWithPortPoints.portPoints.reduce(
-          (max, p) => Math.max(max, (p.z ?? 0) + 1),
-          2,
-        ),
+        layerCount: this.layerCount,
         hyperParameters: this.hyperParameters,
         connMap: this.connMap,
         viaDiameter: this.viaDiameter,
