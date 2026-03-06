@@ -259,7 +259,7 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
             weights: {
               SHUFFLE_SEED: 0,
               MEMORY_PF_FACTOR: 4,
-              CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
+              CENTER_OFFSET_DIST_PENALTY_FACTOR: 0.1,
               CENTER_OFFSET_FOCUS_SHIFT: 0,
               NODE_PF_FACTOR: 0,
               LAYER_CHANGE_COST: 0,
@@ -289,6 +289,13 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
           nodesWithPortPoints,
           inputNodeWithPortPoints: inputNodesWithPortPoints,
         } = portPointSolver.getOutput()
+        const inputPortPointById = new Map(
+          inputNodesWithPortPoints.flatMap((node) =>
+            node.portPoints.map(
+              (portPoint) => [portPoint.portPointId, portPoint] as const,
+            ),
+          ),
+        )
 
         const initialAssignedPortPoints = new Map<
           string,
@@ -323,22 +330,44 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
 
           const path: PortPointCandidate[] = []
           let prevCandidate: PortPointCandidate | null = null
+          let distanceTraveled = 0
 
           for (const candidate of solvedRoute.path) {
+            const fallbackConnectionNodeIds = [
+              candidate.port.d.regions[0]?.regionId ??
+                hgConnection.startRegion.regionId,
+              candidate.port.d.regions[1]?.regionId ??
+                hgConnection.endRegion.regionId,
+            ] as [CapacityMeshNodeId, CapacityMeshNodeId]
+            const inputPortPoint =
+              inputPortPointById.get(candidate.port.d.portId) ?? {
+                portPointId: candidate.port.d.portId,
+                x: candidate.port.d.x,
+                y: candidate.port.d.y,
+                z: candidate.port.d.z,
+                connectionNodeIds: fallbackConnectionNodeIds,
+                distToCentermostPortOnZ: candidate.port.d.distToCentermostPortOnZ,
+              }
             const currentNodeId =
-              candidate.lastRegion?.regionId ??
               candidate.nextRegion?.regionId ??
+              candidate.lastRegion?.regionId ??
               hgConnection.startRegion.regionId
+            if (prevCandidate) {
+              distanceTraveled += Math.hypot(
+                prevCandidate.point.x - inputPortPoint.x,
+                prevCandidate.point.y - inputPortPoint.y,
+              )
+            }
             const nextPathCandidate: PortPointCandidate = {
               prevCandidate,
-              portPoint: null,
+              portPoint: inputPortPoint,
               currentNodeId,
-              point: { x: candidate.port.d.x, y: candidate.port.d.y },
-              z: candidate.port.d.z,
+              point: { x: inputPortPoint.x, y: inputPortPoint.y },
+              z: inputPortPoint.z,
               f: candidate.f,
               g: candidate.g,
               h: candidate.h,
-              distanceTraveled: 0,
+              distanceTraveled,
             }
             path.push(nextPathCandidate)
             prevCandidate = nextPathCandidate
@@ -351,14 +380,17 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
               hgConnection.endRegion.regionId,
             ],
             path,
-            portPoints: path.map((candidatePoint) => ({
-              x: candidatePoint.point.x,
-              y: candidatePoint.point.y,
-              z: candidatePoint.z,
-              connectionName: connection.name,
-              rootConnectionName:
-                connection.rootConnectionName ?? connection.name,
-            })),
+            portPoints: path
+              .filter((candidatePoint) => candidatePoint.portPoint)
+              .map((candidatePoint) => ({
+                portPointId: candidatePoint.portPoint!.portPointId,
+                x: candidatePoint.portPoint!.x,
+                y: candidatePoint.portPoint!.y,
+                z: candidatePoint.portPoint!.z,
+                connectionName: connection.name,
+                rootConnectionName:
+                  connection.rootConnectionName ?? connection.name,
+              })),
             straightLineDistance: Math.hypot(
               connection.pointsToConnect[0]!.x -
                 connection.pointsToConnect[
@@ -398,6 +430,12 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
             initialAssignedPortPoints,
             initialNodeAssignedPortPoints,
             effort: cms.effort,
+            hyperParameters: {
+              NODE_PF_MAX_PENALTY: 100,
+              FORCE_OFF_BOARD_FREQUENCY: 0,
+              STRAIGHT_LINE_DEVIATION_PENALTY_FACTOR: 4,
+              // MAX_ITERATIONS_PER_PATH: 10e3,
+            }
           },
         ]
       },
