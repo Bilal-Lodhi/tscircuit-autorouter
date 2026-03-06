@@ -361,11 +361,13 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
             })),
             straightLineDistance: Math.hypot(
               connection.pointsToConnect[0]!.x -
-                connection.pointsToConnect[connection.pointsToConnect.length - 1]!
-                  .x,
+                connection.pointsToConnect[
+                  connection.pointsToConnect.length - 1
+                ]!.x,
               connection.pointsToConnect[0]!.y -
-                connection.pointsToConnect[connection.pointsToConnect.length - 1]!
-                  .y,
+                connection.pointsToConnect[
+                  connection.pointsToConnect.length - 1
+                ]!.y,
             ),
           })
         }
