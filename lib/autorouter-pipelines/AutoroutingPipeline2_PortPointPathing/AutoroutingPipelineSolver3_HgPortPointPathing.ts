@@ -339,15 +339,16 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
               candidate.port.d.regions[1]?.regionId ??
                 hgConnection.endRegion.regionId,
             ] as [CapacityMeshNodeId, CapacityMeshNodeId]
-            const inputPortPoint =
-              inputPortPointById.get(candidate.port.d.portId) ?? {
-                portPointId: candidate.port.d.portId,
-                x: candidate.port.d.x,
-                y: candidate.port.d.y,
-                z: candidate.port.d.z,
-                connectionNodeIds: fallbackConnectionNodeIds,
-                distToCentermostPortOnZ: candidate.port.d.distToCentermostPortOnZ,
-              }
+            const inputPortPoint = inputPortPointById.get(
+              candidate.port.d.portId,
+            ) ?? {
+              portPointId: candidate.port.d.portId,
+              x: candidate.port.d.x,
+              y: candidate.port.d.y,
+              z: candidate.port.d.z,
+              connectionNodeIds: fallbackConnectionNodeIds,
+              distToCentermostPortOnZ: candidate.port.d.distToCentermostPortOnZ,
+            }
             const currentNodeId =
               candidate.nextRegion?.regionId ??
               candidate.lastRegion?.regionId ??
@@ -435,7 +436,7 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
               FORCE_OFF_BOARD_FREQUENCY: 0,
               STRAIGHT_LINE_DEVIATION_PENALTY_FACTOR: 4,
               // MAX_ITERATIONS_PER_PATH: 10e3,
-            }
+            },
           },
         ]
       },
