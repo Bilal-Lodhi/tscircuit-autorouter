@@ -4,7 +4,7 @@ import type { GraphicsObject, Line } from "graphics-debug"
 import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
 import { CacheProvider } from "lib/cache/types"
 import { UniformPortDistributionSolver } from "lib/solvers/UniformPortDistributionSolver/UniformPortDistributionSolver"
-import { HighDensityRoute } from "lib/types/high-density-types"
+import { HighDensityRoute, PortPoint } from "lib/types/high-density-types"
 import { convertHdRouteToSimplifiedRoute } from "lib/utils/convertHdRouteToSimplifiedRoute"
 import { convertSrjToGraphicsObject } from "lib/utils/convertSrjToGraphicsObject"
 import { getConnectivityMapFromSimpleRouteJson } from "lib/utils/getConnectivityMapFromSimpleRouteJson"
@@ -45,13 +45,46 @@ import {
   buildHyperGraph,
   HgPortPointPathingSolver,
 } from "lib/solvers/PortPointPathingSolver/hgportpointpathingsolver"
-import { PortPoint } from "lib/types/high-density-types"
+import type { HgPortPointPathingSolverParams } from "lib/solvers/PortPointPathingSolver/hgportpointpathingsolver/types"
+import { Global } from "recharts"
+
+type HgPortPointPathingWeights = HgPortPointPathingSolverParams["weights"]
+type HgPortPointPathingFlags = HgPortPointPathingSolverParams["flags"]
+
+export const DEFAULT_HG_PORT_POINT_PATHING_FLAGS: HgPortPointPathingFlags = {
+  FORCE_CENTER_FIRST: true,
+  RIPPING_ENABLED: true,
+}
+
+export const DEFAULT_HG_PORT_POINT_PATHING_WEIGHTS: HgPortPointPathingWeights =
+  {
+    SHUFFLE_SEED: 0,
+    MEMORY_PF_FACTOR: 6,
+    CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
+    CENTER_OFFSET_FOCUS_SHIFT: 0,
+    NODE_PF_FACTOR: 2.5,
+    LAYER_CHANGE_COST: 0.15,
+    RIPPING_PF_COST: 0.5,
+    NODE_PF_MAX_PENALTY: 160,
+    BASE_CANDIDATE_COST: 0.6,
+    MAX_ITERATIONS_PER_PATH: 0,
+    RANDOM_WALK_DISTANCE: 0,
+    START_RIPPING_PF_THRESHOLD: 0.3,
+    END_RIPPING_PF_THRESHOLD: 1,
+    MAX_RIPS: 1000,
+    RANDOM_RIP_FRACTION: 0.3,
+    STRAIGHT_LINE_DEVIATION_PENALTY_FACTOR: 4,
+    GREEDY_MULTIPLIER: 0.6,
+    MIN_ALLOWED_BOARD_SCORE: -10000,
+  }
 
 interface CapacityMeshSolverOptions {
   capacityDepth?: number
   targetMinCapacity?: number
   cacheProvider?: CacheProvider | null
   effort?: number
+  hgFlags?: Partial<HgPortPointPathingFlags>
+  hgWeights?: Partial<HgPortPointPathingWeights>
 }
 export type AutoroutingPipelineSolverOptions = CapacityMeshSolverOptions
 
@@ -237,6 +270,14 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
       "portPointPathingSolver",
       HgPortPointPathingSolver,
       (cms) => {
+        const flags = {
+          ...DEFAULT_HG_PORT_POINT_PATHING_FLAGS,
+          ...(cms.opts.hgFlags ?? {}),
+        }
+        const weights = {
+          ...DEFAULT_HG_PORT_POINT_PATHING_WEIGHTS,
+          ...(cms.opts.hgWeights ?? {}),
+        }
         const { graph, connections } = buildHyperGraph({
           capacityMeshNodes: cms.capacityNodes!,
           layerCount: cms.srj.layerCount,
@@ -252,30 +293,8 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
             connections,
             layerCount: cms.srj.layerCount,
             effort: cms.effort,
-            flags: {
-              FORCE_CENTER_FIRST: true,
-              RIPPING_ENABLED: true,
-            },
-            weights: {
-              SHUFFLE_SEED: 0,
-              MEMORY_PF_FACTOR: 4,
-              CENTER_OFFSET_DIST_PENALTY_FACTOR: 0.1,
-              CENTER_OFFSET_FOCUS_SHIFT: 0,
-              NODE_PF_FACTOR: 0,
-              LAYER_CHANGE_COST: 0,
-              RIPPING_PF_COST: 0.0,
-              NODE_PF_MAX_PENALTY: 100,
-              BASE_CANDIDATE_COST: 0.6,
-              MAX_ITERATIONS_PER_PATH: 0,
-              RANDOM_WALK_DISTANCE: 0,
-              START_RIPPING_PF_THRESHOLD: 0.3,
-              END_RIPPING_PF_THRESHOLD: 1,
-              MAX_RIPS: 1000,
-              RANDOM_RIP_FRACTION: 0.3,
-              STRAIGHT_LINE_DEVIATION_PENALTY_FACTOR: 4,
-              GREEDY_MULTIPLIER: 0.7,
-              MIN_ALLOWED_BOARD_SCORE: -10000,
-            },
+            flags,
+            weights,
           },
         ]
       },
