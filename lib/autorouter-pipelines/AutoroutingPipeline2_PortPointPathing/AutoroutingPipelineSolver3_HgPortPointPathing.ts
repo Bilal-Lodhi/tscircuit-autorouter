@@ -384,9 +384,6 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
           (result) =>
             connectionResultsByName.get(result.connection.name) ?? result,
         )
-        console.log(
-          `[MultiSection] prepared initialConnectionResults=${initialConnectionResults.length} withPaths=${initialConnectionResultsFromHg.length}`,
-        )
 
         return [
           {
@@ -406,9 +403,6 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
         onSolved: (cms) => {
           const optimizer = cms.multiSectionPortPointOptimizer
           if (!optimizer) return
-          console.log(
-            `[MultiSection] completed attempts=${optimizer.sectionAttempts} successes=${optimizer.stats.successfulOptimizations} failures=${optimizer.stats.failedOptimizations} currentBoardScore=${optimizer.stats.currentBoardScore}`,
-          )
         },
       },
     ),

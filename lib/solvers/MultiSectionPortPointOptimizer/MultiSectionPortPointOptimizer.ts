@@ -304,10 +304,6 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     this.stats.initialBoardScore = initialBoardScore
     this.stats.currentBoardScore = initialBoardScore
     this.stats.errors = 0
-
-    console.log(
-      `[MultiSection] init connections=${this.connectionResults.length} nodes=${this.inputNodes.length} maxSectionAttempts=${this.MAX_SECTION_ATTEMPTS} initialBoardScore=${initialBoardScore}`,
-    )
   }
 
   /**
@@ -1171,9 +1167,6 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
           if (newBoardScore > previousBoardScore) {
             this.stats.successfulOptimizations++
             this.stats.currentBoardScore = newBoardScore
-            console.log(
-              `[MultiSection] attempt=${this.sectionAttempts} accepted centerNode=${this.currentSectionCenterNodeId} sectionScoreBefore=${filteredBeforeScore.toFixed(6)} sectionScoreAfter=${newSectionScore.toFixed(6)} boardScoreBefore=${previousBoardScore.toFixed(6)} boardScoreAfter=${newBoardScore.toFixed(6)}`,
-            )
           } else {
             // Board score didn't improve - revert the changes
             this.connectionResults = savedConnectionResults
@@ -1181,9 +1174,6 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
             this.nodeAssignedPortPoints = savedNodeAssignedPortPoints
             this.recomputePfForNodes(this.currentSection!.nodeIds)
             this.stats.failedOptimizations++
-            console.log(
-              `[MultiSection] attempt=${this.sectionAttempts} rejected centerNode=${this.currentSectionCenterNodeId} sectionScoreBefore=${filteredBeforeScore.toFixed(6)} sectionScoreAfter=${newSectionScore.toFixed(6)} boardScoreBefore=${previousBoardScore.toFixed(6)} boardScoreAfter=${newBoardScore.toFixed(6)}`,
-            )
           }
 
           // Reset and move on
@@ -1225,9 +1215,6 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
 
     // Check if we've exceeded the maximum number of section attempts
     if (this.sectionAttempts >= this.MAX_SECTION_ATTEMPTS) {
-      console.log(
-        `[MultiSection] done reason=max-attempts attempts=${this.sectionAttempts} successes=${this.stats.successfulOptimizations} failures=${this.stats.failedOptimizations} finalBoardScore=${this.stats.currentBoardScore}`,
-      )
       this.solved = true
       return
     }
@@ -1236,9 +1223,6 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
 
     if (!highestPfNodeId) {
       // No nodes need optimization
-      console.log(
-        `[MultiSection] done reason=no-high-pf-node attempts=${this.sectionAttempts} successes=${this.stats.successfulOptimizations} failures=${this.stats.failedOptimizations} finalBoardScore=${this.stats.currentBoardScore}`,
-      )
       this.solved = true
       return
     }
@@ -1262,9 +1246,6 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
       centerOfSectionCapacityNodeId: highestPfNodeId,
       expansionDegrees: params.EXPANSION_DEGREES,
     })
-    console.log(
-      `[MultiSection] attempt=${this.sectionAttempts} start centerNode=${highestPfNodeId} expansionDegrees=${params.EXPANSION_DEGREES} scheduleIndex=${this.currentScheduleIndex}`,
-    )
 
     // Compute score before optimization
     const sectionNodesWithPortPoints = this.getSectionNodesWithPortPoints(
@@ -1277,9 +1258,6 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     // Check if section has connections to optimize (create temp SimpleRouteJson to check)
     const sectionSrj = this.createSectionSimpleRouteJson(this.currentSection)
     if (sectionSrj.connections.length === 0) {
-      console.log(
-        `[MultiSection] attempt=${this.sectionAttempts} skipped reason=no-section-connections centerNode=${highestPfNodeId}`,
-      )
       this.currentSection = null
       this.currentSectionCenterNodeId = null
       return
