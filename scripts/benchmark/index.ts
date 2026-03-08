@@ -45,6 +45,7 @@ type WorkerExecutionResult = {
 }
 
 const DEFAULT_TASK_TIMEOUT_MS = 15 * 60 * 1000
+const DEFAULT_TERMINATE_TIMEOUT_MS = 5 * 1000
 
 const formatTime = (timeMs: number | null) => {
   if (timeMs === null) {
@@ -69,6 +70,20 @@ const getTaskTimeoutMs = () => {
   const parsedTimeout = Number.parseInt(rawTimeout, 10)
   if (!Number.isFinite(parsedTimeout) || parsedTimeout < 1) {
     throw new Error("BENCHMARK_TASK_TIMEOUT_MS must be a positive integer")
+  }
+
+  return parsedTimeout
+}
+
+const getTerminateTimeoutMs = () => {
+  const rawTimeout = Bun.env.BENCHMARK_TERMINATE_TIMEOUT_MS?.trim()
+  if (!rawTimeout) {
+    return DEFAULT_TERMINATE_TIMEOUT_MS
+  }
+
+  const parsedTimeout = Number.parseInt(rawTimeout, 10)
+  if (!Number.isFinite(parsedTimeout) || parsedTimeout < 1) {
+    throw new Error("BENCHMARK_TERMINATE_TIMEOUT_MS must be a positive integer")
   }
 
   return parsedTimeout
@@ -235,11 +250,31 @@ const createWorkerSlot = (id: number): WorkerSlot => ({
   currentTask: null,
 })
 
-const terminateWorker = async (worker: Worker) => {
+const terminateWorker = async (worker: Worker, context: string) => {
+  const terminateTimeoutMs = getTerminateTimeoutMs()
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null
+
   try {
-    await worker.terminate()
+    const didTerminate = await Promise.race([
+      Promise.resolve(worker.terminate())
+        .then(() => true)
+        .catch(() => false),
+      new Promise<boolean>((resolve) => {
+        timeoutHandle = setTimeout(() => resolve(false), terminateTimeoutMs)
+      }),
+    ])
+
+    if (!didTerminate) {
+      console.warn(
+        `[benchmark] Worker termination exceeded ${formatDurationLabel(terminateTimeoutMs)} while ${context}; continuing`,
+      )
+    }
   } catch {
     // Ignore termination failures while recovering a stuck worker.
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle)
+    }
   }
 }
 
@@ -247,7 +282,7 @@ const replaceWorker = async (slot: WorkerSlot) => {
   const previousWorker = slot.worker
   slot.currentTask = null
   slot.worker = createWorker()
-  await terminateWorker(previousWorker)
+  await terminateWorker(previousWorker, `replacing worker ${slot.id}`)
 }
 
 const createFailedResult = (
@@ -438,7 +473,7 @@ const runBenchmarkTasks = async (
     await Promise.all(workers.map((worker) => runWorkerLoop(worker)))
   } finally {
     for (const worker of workers) {
-      await terminateWorker(worker.worker)
+      await terminateWorker(worker.worker, `shutting down worker ${worker.id}`)
     }
   }
 
