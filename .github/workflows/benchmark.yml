@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       solver_name:
-        description: Solver name to benchmark (optional)
+        description: 'Solver name to benchmark (optional, default: AutoroutingPipelineSolver; use "all" for all solvers)'
         required: false
         type: string
       scenario_limit:
@@ -71,8 +71,8 @@ jobs:
           script: |
             const isComment = context.eventName === 'issue_comment'
             const allSolversAliases = new Set(['all', '_'])
-            const defaultCommentSolver = 'AutoroutingPipelineSolver'
-            let solverName = ''
+            const defaultSolver = 'AutoroutingPipelineSolver'
+            let solverName = defaultSolver
             let scenarioLimit = ''
             let concurrency = 'auto'
             let ref = context.sha
@@ -109,8 +109,8 @@ jobs:
               if (positional[1]) {
                 scenarioLimit = positional[1]
               }
-              if (!solverName && !usesAllSolvers) {
-                solverName = defaultCommentSolver
+              if (usesAllSolvers) {
+                solverName = ''
               }
 
               const pr = await github.rest.pulls.get({
@@ -133,7 +133,12 @@ jobs:
 
             if (context.eventName === 'workflow_dispatch') {
               const inputs = context.payload.inputs || {}
-              solverName = (inputs.solver_name || '').trim()
+              const requestedSolver = (inputs.solver_name || '').trim()
+              if (requestedSolver) {
+                solverName = allSolversAliases.has(requestedSolver.toLowerCase())
+                  ? ''
+                  : requestedSolver
+              }
               scenarioLimit = (inputs.scenario_limit || '').trim()
               concurrency = (inputs.concurrency || concurrency).trim()
               includeAssignable = inputs.include_assignable === true || inputs.include_assignable === 'true'
