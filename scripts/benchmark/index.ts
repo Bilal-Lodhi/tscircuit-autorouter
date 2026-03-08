@@ -45,6 +45,7 @@ type WorkerExecutionResult = {
 }
 
 const DEFAULT_TASK_TIMEOUT_MS = 15 * 60 * 1000
+const DEFAULT_HEARTBEAT_INTERVAL_MS = 30 * 1000
 const DEFAULT_TERMINATE_TIMEOUT_MS = 5 * 1000
 
 const formatTime = (timeMs: number | null) => {
@@ -73,6 +74,22 @@ const getTaskTimeoutMs = () => {
   }
 
   return parsedTimeout
+}
+
+const getHeartbeatIntervalMs = () => {
+  const rawInterval = Bun.env.BENCHMARK_HEARTBEAT_INTERVAL_MS?.trim()
+  if (!rawInterval) {
+    return DEFAULT_HEARTBEAT_INTERVAL_MS
+  }
+
+  const parsedInterval = Number.parseInt(rawInterval, 10)
+  if (!Number.isFinite(parsedInterval) || parsedInterval < 0) {
+    throw new Error(
+      "BENCHMARK_HEARTBEAT_INTERVAL_MS must be a non-negative integer",
+    )
+  }
+
+  return parsedInterval
 }
 
 const getTerminateTimeoutMs = () => {
@@ -398,11 +415,13 @@ const runBenchmarkTasks = async (
 ) => {
   const workerCount = Math.min(concurrency, tasks.length)
   const taskTimeoutMs = getTaskTimeoutMs()
+  const heartbeatIntervalMs = getHeartbeatIntervalMs()
   const queue = tasks.map((task, index) => ({
     taskId: index + 1,
     task,
   }))
   const results = new Array<WorkerResult>(queue.length)
+  let completedTaskCount = 0
   const progress = new Map<
     string,
     {
@@ -429,6 +448,37 @@ const runBenchmarkTasks = async (
     createWorkerSlot(index + 1),
   )
 
+  const logHeartbeat = () => {
+    const activeWorkers = workers
+      .filter((worker) => worker.currentTask)
+      .map((worker) => {
+        const currentTask = worker.currentTask
+        if (!currentTask) {
+          return null
+        }
+
+        const elapsedTimeMs = Math.max(
+          0,
+          Math.round(performance.now() - currentTask.startedAtMs),
+        )
+        return `worker ${worker.id}: ${currentTask.request.task.scenarioName} ${formatDurationLabel(elapsedTimeMs)}`
+      })
+      .filter(Boolean)
+
+    console.log(
+      `[benchmark] heartbeat ${completedTaskCount}/${tasks.length} complete, ${queue.length} queued, ${activeWorkers.length} running`,
+    )
+
+    if (activeWorkers.length > 0) {
+      console.log(`[benchmark] active ${activeWorkers.join(" | ")}`)
+    }
+  }
+
+  const heartbeat =
+    heartbeatIntervalMs > 0
+      ? setInterval(logHeartbeat, heartbeatIntervalMs)
+      : null
+
   const runWorkerLoop = async (slot: WorkerSlot) => {
     while (queue.length > 0) {
       const request = queue.shift()
@@ -442,6 +492,7 @@ const runBenchmarkTasks = async (
         taskTimeoutMs,
       )
       results[request.taskId - 1] = result
+      completedTaskCount += 1
 
       const solverProgress = progress.get(result.solverName)
       if (!solverProgress) {
@@ -464,6 +515,9 @@ const runBenchmarkTasks = async (
       )
 
       if (restartWorker) {
+        console.warn(
+          `[benchmark] Restarting worker ${slot.id} after ${result.scenarioName}`,
+        )
         await replaceWorker(slot)
       }
     }
@@ -472,6 +526,9 @@ const runBenchmarkTasks = async (
   try {
     await Promise.all(workers.map((worker) => runWorkerLoop(worker)))
   } finally {
+    if (heartbeat) {
+      clearInterval(heartbeat)
+    }
     for (const worker of workers) {
       await terminateWorker(worker.worker, `shutting down worker ${worker.id}`)
     }
