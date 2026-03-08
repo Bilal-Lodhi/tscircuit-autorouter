@@ -3,8 +3,13 @@ set -euo pipefail
 
 SOLVER_NAME=""
 SCENARIO_LIMIT=""
-CONCURRENCY="${BENCHMARK_CONCURRENCY:-4}"
 INCLUDE_ASSIGNABLE=false
+
+default_concurrency() {
+  getconf _NPROCESSORS_ONLN 2>/dev/null || nproc 2>/dev/null || echo 4
+}
+
+CONCURRENCY="${BENCHMARK_CONCURRENCY:-$(default_concurrency)}"
 
 get_solvers() {
   INCLUDE_ASSIGNABLE="$INCLUDE_ASSIGNABLE" bun --eval '
@@ -32,20 +37,20 @@ get_solvers() {
 print_help() {
   cat <<'EOF'
 Usage:
-  ./benchmark.sh [solver-name|_] [scenario-limit] [--concurrency N] [--include-assignable]
+  ./benchmark.sh [solver-name|all] [scenario-limit] [--concurrency N] [--include-assignable]
   ./benchmark.sh [--solver NAME] [--scenario-limit N] [--concurrency N] [--include-assignable]
 
 Options:
   --solver NAME        Run only one solver (same as first positional arg)
   --scenario-limit N   Run only first N scenarios (same as second positional arg)
-  --concurrency N      Number of Bun workers used per solver (default: 4)
+  --concurrency N      Number of Bun workers used per solver, or "auto"
   --include-assignable Include assignable pipelines (excluded by default)
   -h, --help           Show this help
 
 Examples:
   ./benchmark.sh
   ./benchmark.sh AutoroutingPipelineSolver
-  ./benchmark.sh _ 20 --concurrency 8
+  ./benchmark.sh all 20 --concurrency auto
   ./benchmark.sh --solver AutoroutingPipelineSolver --scenario-limit 20
   ./benchmark.sh --include-assignable
 EOF
@@ -88,6 +93,9 @@ while [ "$#" -gt 0 ]; do
       ;;
     --concurrency)
       CONCURRENCY="${2:-}"
+      if [ "$CONCURRENCY" = "auto" ]; then
+        CONCURRENCY="$(default_concurrency)"
+      fi
       shift 2
       ;;
     --include-assignable)
@@ -104,7 +112,7 @@ done
 
 CMD=(bun "scripts/benchmark/index.ts" "--concurrency" "$CONCURRENCY")
 
-if [ -n "$SOLVER_NAME" ] && [ "$SOLVER_NAME" != "_" ]; then
+if [ -n "$SOLVER_NAME" ] && [ "$SOLVER_NAME" != "_" ] && [ "$SOLVER_NAME" != "all" ]; then
   CMD+=("--solver" "$SOLVER_NAME")
 fi
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import { readFile } from "node:fs/promises"
+import os from "node:os"
 import path from "node:path"
 import * as dataset from "@tscircuit/autorouting-dataset-01"
 import type { SimpleRouteJson } from "../../lib/types/srj-types"
@@ -58,7 +59,14 @@ const getPercentileMs = (
 
 const parseArgs = (): BenchmarkOptions => {
   const args = process.argv.slice(2)
-  const options: BenchmarkOptions = { concurrency: 4, excludeAssignable: false }
+  const defaultConcurrency =
+    typeof os.availableParallelism === "function"
+      ? os.availableParallelism()
+      : os.cpus().length
+  const options: BenchmarkOptions = {
+    concurrency: defaultConcurrency,
+    excludeAssignable: false,
+  }
 
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i]
@@ -73,7 +81,11 @@ const parseArgs = (): BenchmarkOptions => {
       continue
     }
     if (arg === "--concurrency") {
-      options.concurrency = Number.parseInt(args[i + 1], 10)
+      const rawConcurrency = args[i + 1]
+      options.concurrency =
+        rawConcurrency === "auto"
+          ? defaultConcurrency
+          : Number.parseInt(rawConcurrency, 10)
       i += 1
       continue
     }
