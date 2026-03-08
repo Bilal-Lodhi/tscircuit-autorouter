@@ -16,6 +16,7 @@ export type WorkerResult = {
   scenarioName: string
   elapsedTimeMs: number
   didSolve: boolean
+  didTimeout: boolean
   relaxedDrcPassed: boolean
   error?: string
 }

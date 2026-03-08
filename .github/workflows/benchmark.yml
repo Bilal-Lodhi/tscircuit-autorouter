@@ -60,7 +60,7 @@ jobs:
         )
       )
     runs-on: ${{ vars.BENCHMARK_RUNNER || 'blacksmith-32vcpu-ubuntu-2404-arm' }}
-    timeout-minutes: 360
+    timeout-minutes: 60
 
     steps:
       - name: Parse benchmark command
@@ -175,7 +175,7 @@ jobs:
           SCENARIO_LIMIT: ${{ steps.parse.outputs.scenario_limit }}
           CONCURRENCY: ${{ steps.parse.outputs.concurrency }}
           INCLUDE_ASSIGNABLE: ${{ steps.parse.outputs.include_assignable }}
-          BENCHMARK_TASK_TIMEOUT_MS: ${{ vars.BENCHMARK_TASK_TIMEOUT_MS || '300000' }}
+          BENCHMARK_TASK_TIMEOUT_PER_EFFORT_MS: ${{ vars.BENCHMARK_TASK_TIMEOUT_PER_EFFORT_MS || vars.BENCHMARK_TASK_TIMEOUT_MS || '60000' }}
           BENCHMARK_HEARTBEAT_INTERVAL_MS: ${{ vars.BENCHMARK_HEARTBEAT_INTERVAL_MS || '30000' }}
           BENCHMARK_TERMINATE_TIMEOUT_MS: ${{ vars.BENCHMARK_TERMINATE_TIMEOUT_MS || '1000' }}
         run: |

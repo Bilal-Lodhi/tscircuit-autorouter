@@ -1,8 +1,10 @@
 #!/usr/bin/env bun
 
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process"
 import { readFile } from "node:fs/promises"
 import * as os from "node:os"
 import * as path from "node:path"
+import * as readline from "node:readline"
 import * as dataset from "@tscircuit/autorouting-dataset-01"
 import type { SimpleRouteJson } from "../../lib/types/srj-types"
 import type {
@@ -14,8 +16,9 @@ import type {
 
 type SolverRunResult = {
   solverName: string
-  successRatePercent: number
-  relaxedDrcRatePercent: number
+  completedRateLabel: string
+  relaxedDrcRateLabel: string
+  timedOutLabel: string
   p50TimeMs: number | null
   p95TimeMs: number | null
 }
@@ -35,7 +38,9 @@ type WorkerTaskAssignment = {
 
 type WorkerSlot = {
   id: number
-  worker: Worker
+  child: ChildProcessWithoutNullStreams
+  stdoutReader: readline.Interface
+  stderrReader: readline.Interface
   currentTask: WorkerTaskAssignment | null
 }
 
@@ -44,7 +49,7 @@ type WorkerExecutionResult = {
   restartWorker: boolean
 }
 
-const DEFAULT_TASK_TIMEOUT_MS = 15 * 60 * 1000
+const DEFAULT_TASK_TIMEOUT_PER_EFFORT_MS = 60 * 1000
 const DEFAULT_HEARTBEAT_INTERVAL_MS = 30 * 1000
 const DEFAULT_TERMINATE_TIMEOUT_MS = 5 * 1000
 
@@ -62,15 +67,19 @@ const formatDurationLabel = (timeMs: number) => {
   return formatTime(timeMs)
 }
 
-const getTaskTimeoutMs = () => {
-  const rawTimeout = Bun.env.BENCHMARK_TASK_TIMEOUT_MS?.trim()
+const getTaskTimeoutPerEffortMs = () => {
+  const rawTimeout =
+    Bun.env.BENCHMARK_TASK_TIMEOUT_PER_EFFORT_MS?.trim() ??
+    Bun.env.BENCHMARK_TASK_TIMEOUT_MS?.trim()
   if (!rawTimeout) {
-    return DEFAULT_TASK_TIMEOUT_MS
+    return DEFAULT_TASK_TIMEOUT_PER_EFFORT_MS
   }
 
   const parsedTimeout = Number.parseInt(rawTimeout, 10)
   if (!Number.isFinite(parsedTimeout) || parsedTimeout < 1) {
-    throw new Error("BENCHMARK_TASK_TIMEOUT_MS must be a positive integer")
+    throw new Error(
+      "BENCHMARK_TASK_TIMEOUT_PER_EFFORT_MS must be a positive integer",
+    )
   }
 
   return parsedTimeout
@@ -226,14 +235,16 @@ const formatTable = (rows: SolverRunResult[]) => {
     "Solver",
     "Completed %",
     "Relaxed DRC Pass %",
+    "Timed Out",
     "P50 Time",
     "P95 Time",
   ]
 
   const body = rows.map((row) => [
     row.solverName,
-    `${row.successRatePercent.toFixed(1)}%`,
-    `${row.relaxedDrcRatePercent.toFixed(1)}%`,
+    row.completedRateLabel,
+    row.relaxedDrcRateLabel,
+    row.timedOutLabel,
     formatTime(row.p50TimeMs),
     formatTime(row.p95TimeMs),
   ])
@@ -256,49 +267,95 @@ const formatTable = (rows: SolverRunResult[]) => {
   return [separator, headerLine, separator, ...bodyLines, separator].join("\n")
 }
 
-const createWorker = () =>
-  new Worker(new URL("./benchmark.worker.ts", import.meta.url), {
-    type: "module",
+const createChildProcess = () =>
+  spawn(process.execPath, ["scripts/benchmark/benchmark.child.ts"], {
+    cwd: process.cwd(),
+    stdio: ["pipe", "pipe", "pipe"],
+    env: process.env,
   })
 
-const createWorkerSlot = (id: number): WorkerSlot => ({
-  id,
-  worker: createWorker(),
-  currentTask: null,
-})
+const createWorkerSlot = (id: number): WorkerSlot => {
+  const child = createChildProcess()
+  child.stdout.setEncoding("utf8")
+  child.stderr.setEncoding("utf8")
 
-const terminateWorker = async (worker: Worker, context: string) => {
-  const terminateTimeoutMs = getTerminateTimeoutMs()
-  let timeoutHandle: ReturnType<typeof setTimeout> | null = null
-
-  try {
-    const didTerminate = await Promise.race([
-      Promise.resolve(worker.terminate())
-        .then(() => true)
-        .catch(() => false),
-      new Promise<boolean>((resolve) => {
-        timeoutHandle = setTimeout(() => resolve(false), terminateTimeoutMs)
-      }),
-    ])
-
-    if (!didTerminate) {
-      console.warn(
-        `[benchmark] Worker termination exceeded ${formatDurationLabel(terminateTimeoutMs)} while ${context}; continuing`,
-      )
-    }
-  } catch {
-    // Ignore termination failures while recovering a stuck worker.
-  } finally {
-    if (timeoutHandle) {
-      clearTimeout(timeoutHandle)
-    }
+  return {
+    id,
+    child,
+    stdoutReader: readline.createInterface({
+      input: child.stdout,
+      crlfDelay: Infinity,
+    }),
+    stderrReader: readline.createInterface({
+      input: child.stderr,
+      crlfDelay: Infinity,
+    }),
+    currentTask: null,
   }
 }
 
+const terminateWorker = async (slot: WorkerSlot, context: string) => {
+  const terminateTimeoutMs = getTerminateTimeoutMs()
+  const closeInterfaces = () => {
+    slot.stdoutReader.close()
+    slot.stderrReader.close()
+  }
+
+  if (slot.child.killed || slot.child.exitCode !== null) {
+    closeInterfaces()
+    return
+  }
+
+  await new Promise<void>((resolve) => {
+    let settled = false
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null
+
+    const finish = () => {
+      if (settled) {
+        return
+      }
+      settled = true
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle)
+      }
+      slot.child.removeListener("close", onClose)
+      closeInterfaces()
+      resolve()
+    }
+
+    const onClose = () => {
+      finish()
+    }
+
+    timeoutHandle = setTimeout(() => {
+      console.warn(
+        `[benchmark] Child termination exceeded ${formatDurationLabel(terminateTimeoutMs)} while ${context}; continuing`,
+      )
+      finish()
+    }, terminateTimeoutMs)
+
+    slot.child.once("close", onClose)
+    try {
+      slot.child.kill("SIGKILL")
+    } catch {
+      finish()
+    }
+  })
+}
+
 const replaceWorker = async (slot: WorkerSlot) => {
-  const previousWorker = slot.worker
+  const previousWorker: WorkerSlot = {
+    id: slot.id,
+    child: slot.child,
+    stdoutReader: slot.stdoutReader,
+    stderrReader: slot.stderrReader,
+    currentTask: slot.currentTask,
+  }
   slot.currentTask = null
-  slot.worker = createWorker()
+  const nextWorker = createWorkerSlot(slot.id)
+  slot.child = nextWorker.child
+  slot.stdoutReader = nextWorker.stdoutReader
+  slot.stderrReader = nextWorker.stderrReader
   await terminateWorker(previousWorker, `replacing worker ${slot.id}`)
 }
 
@@ -306,21 +363,53 @@ const createFailedResult = (
   task: BenchmarkTask,
   elapsedTimeMs: number,
   error: string,
+  didTimeout = false,
 ): WorkerResult => ({
   solverName: task.solverName,
   scenarioName: task.scenarioName,
   elapsedTimeMs,
   didSolve: false,
+  didTimeout,
   relaxedDrcPassed: false,
   error,
 })
 
+const getTaskEffort = (task: BenchmarkTask) => {
+  const rawEffort = (task.scenario as SimpleRouteJson & { effort?: number })
+    .effort
+  if (!Number.isFinite(rawEffort) || rawEffort === undefined || rawEffort < 1) {
+    return 1
+  }
+  return rawEffort
+}
+
+const getTaskTimeoutMs = (task: BenchmarkTask) =>
+  getTaskTimeoutPerEffortMs() * getTaskEffort(task)
+
+const formatPercentWithMargin = (
+  resolvedCount: number,
+  matchedCount: number,
+  timeoutCount: number,
+) => {
+  if (resolvedCount === 0) {
+    return timeoutCount > 0 ? "n/a ± n/a" : "n/a"
+  }
+
+  const ratePercent = (matchedCount / resolvedCount) * 100
+  if (timeoutCount === 0) {
+    return `${ratePercent.toFixed(1)}%`
+  }
+
+  const marginPercent = (timeoutCount / resolvedCount) * 100
+  return `${ratePercent.toFixed(1)}% ± ${marginPercent.toFixed(1)}%`
+}
+
 const executeTaskOnWorker = (
   slot: WorkerSlot,
   request: WorkerTaskMessage,
-  taskTimeoutMs: number,
 ): Promise<WorkerExecutionResult> => {
   return new Promise((resolve) => {
+    const taskTimeoutMs = getTaskTimeoutMs(request.task)
     const startedAtMs = performance.now()
     let settled = false
 
@@ -333,41 +422,52 @@ const executeTaskOnWorker = (
         clearTimeout(slot.currentTask.timeout)
         slot.currentTask = null
       }
-      slot.worker.removeEventListener("message", onMessage)
-      slot.worker.removeEventListener("messageerror", onMessageError)
-      slot.worker.removeEventListener("error", onError)
+      slot.stdoutReader.removeListener("line", onLine)
+      slot.stderrReader.removeListener("line", onStderrLine)
+      slot.child.removeListener("error", onError)
+      slot.child.removeListener("exit", onExit)
       resolve({ result, restartWorker })
     }
 
     const getElapsedTimeMs = () =>
       Math.max(0, Math.round(performance.now() - startedAtMs))
 
-    const onMessage = (event: MessageEvent<WorkerResultMessage>) => {
-      if (event.data.taskId !== request.taskId) {
+    const onLine = (line: string) => {
+      let message: WorkerResultMessage
+      try {
+        message = JSON.parse(line) as WorkerResultMessage
+      } catch {
         return
       }
-      finish(event.data.result, false)
+
+      if (message.taskId !== request.taskId) {
+        return
+      }
+
+      finish(message.result, false)
     }
 
-    const onMessageError = () => {
+    const onStderrLine = (line: string) => {
+      console.error(`[benchmark-child ${slot.id}] ${line}`)
+    }
+
+    const onError = (error: Error) => {
       finish(
         createFailedResult(
           request.task,
           getElapsedTimeMs(),
-          "Worker message serialization failed",
+          `Child process error: ${error.message}`,
         ),
         true,
       )
     }
 
-    const onError = (event: ErrorEvent) => {
-      event.preventDefault()
-      const message = event.message || "Worker crashed"
+    const onExit = (code: number | null, signal: NodeJS.Signals | null) => {
       finish(
         createFailedResult(
           request.task,
           getElapsedTimeMs(),
-          `Worker crashed: ${message}`,
+          `Child process exited unexpectedly (code=${code ?? "null"}, signal=${signal ?? "null"})`,
         ),
         true,
       )
@@ -379,6 +479,7 @@ const executeTaskOnWorker = (
           request.task,
           taskTimeoutMs,
           `Timed out after ${formatDurationLabel(taskTimeoutMs)}`,
+          true,
         ),
         true,
       )
@@ -390,12 +491,13 @@ const executeTaskOnWorker = (
       timeout,
     }
 
-    slot.worker.addEventListener("message", onMessage)
-    slot.worker.addEventListener("messageerror", onMessageError)
-    slot.worker.addEventListener("error", onError)
+    slot.stdoutReader.on("line", onLine)
+    slot.stderrReader.on("line", onStderrLine)
+    slot.child.once("error", onError)
+    slot.child.once("exit", onExit)
 
     try {
-      slot.worker.postMessage(request)
+      slot.child.stdin.write(`${JSON.stringify(request)}\n`)
     } catch (error) {
       finish(
         createFailedResult(
@@ -414,7 +516,6 @@ const runBenchmarkTasks = async (
   concurrency: number,
 ) => {
   const workerCount = Math.min(concurrency, tasks.length)
-  const taskTimeoutMs = getTaskTimeoutMs()
   const heartbeatIntervalMs = getHeartbeatIntervalMs()
   const queue = tasks.map((task, index) => ({
     taskId: index + 1,
@@ -489,7 +590,6 @@ const runBenchmarkTasks = async (
       const { result, restartWorker } = await executeTaskOnWorker(
         slot,
         request,
-        taskTimeoutMs,
       )
       results[request.taskId - 1] = result
       completedTaskCount += 1
@@ -504,7 +604,11 @@ const runBenchmarkTasks = async (
         solverProgress.solved += 1
       }
 
-      const status = result.didSolve ? "solved" : "failed"
+      const status = result.didTimeout
+        ? "timed out"
+        : result.didSolve
+          ? "solved"
+          : "failed"
       const successRate =
         solverProgress.completed === 0
           ? 0
@@ -530,7 +634,7 @@ const runBenchmarkTasks = async (
       clearInterval(heartbeat)
     }
     for (const worker of workers) {
-      await terminateWorker(worker.worker, `shutting down worker ${worker.id}`)
+      await terminateWorker(worker, `shutting down worker ${worker.id}`)
     }
   }
 
@@ -541,7 +645,9 @@ const summarizeSolverResults = (
   solverName: string,
   results: WorkerResult[],
 ): SolverRunResult => {
-  const succeeded = results.filter((result) => result.didSolve)
+  const timedOut = results.filter((result) => result.didTimeout)
+  const resolved = results.filter((result) => !result.didTimeout)
+  const succeeded = resolved.filter((result) => result.didSolve)
   const elapsedForSucceeded = succeeded.map((result) => result.elapsedTimeMs)
   const relaxedDrcPassed = succeeded.filter(
     (result) => result.relaxedDrcPassed,
@@ -549,8 +655,17 @@ const summarizeSolverResults = (
 
   return {
     solverName,
-    successRatePercent: (succeeded.length / results.length) * 100,
-    relaxedDrcRatePercent: (relaxedDrcPassed / results.length) * 100,
+    completedRateLabel: formatPercentWithMargin(
+      resolved.length,
+      succeeded.length,
+      timedOut.length,
+    ),
+    relaxedDrcRateLabel: formatPercentWithMargin(
+      resolved.length,
+      relaxedDrcPassed,
+      timedOut.length,
+    ),
+    timedOutLabel: `${timedOut.length}/${results.length}`,
     p50TimeMs: getPercentileMs(elapsedForSucceeded, 0.5),
     p95TimeMs: getPercentileMs(elapsedForSucceeded, 0.95),
   } satisfies SolverRunResult
