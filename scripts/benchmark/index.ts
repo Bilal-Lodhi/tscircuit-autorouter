@@ -1,10 +1,16 @@
 #!/usr/bin/env bun
 
 import { readFile } from "node:fs/promises"
-import os from "node:os"
-import path from "node:path"
+import * as os from "node:os"
+import * as path from "node:path"
 import * as dataset from "@tscircuit/autorouting-dataset-01"
 import type { SimpleRouteJson } from "../../lib/types/srj-types"
+import type {
+  BenchmarkTask,
+  WorkerResult,
+  WorkerResultMessage,
+  WorkerTaskMessage,
+} from "./benchmark-types"
 
 type SolverRunResult = {
   solverName: string
@@ -14,14 +20,6 @@ type SolverRunResult = {
   p95TimeMs: number | null
 }
 
-type WorkerResult = {
-  scenarioName: string
-  elapsedTimeMs: number
-  didSolve: boolean
-  relaxedDrcPassed: boolean
-  error?: string
-}
-
 type BenchmarkOptions = {
   solverName?: string
   scenarioLimit?: number
@@ -29,11 +27,51 @@ type BenchmarkOptions = {
   excludeAssignable: boolean
 }
 
+type WorkerTaskAssignment = {
+  request: WorkerTaskMessage
+  startedAtMs: number
+  timeout: ReturnType<typeof setTimeout>
+}
+
+type WorkerSlot = {
+  id: number
+  worker: Worker
+  currentTask: WorkerTaskAssignment | null
+}
+
+type WorkerExecutionResult = {
+  result: WorkerResult
+  restartWorker: boolean
+}
+
+const DEFAULT_TASK_TIMEOUT_MS = 15 * 60 * 1000
+
 const formatTime = (timeMs: number | null) => {
   if (timeMs === null) {
     return "n/a"
   }
   return `${(timeMs / 1000).toFixed(1)}s`
+}
+
+const formatDurationLabel = (timeMs: number) => {
+  if (timeMs < 1000) {
+    return `${timeMs}ms`
+  }
+  return formatTime(timeMs)
+}
+
+const getTaskTimeoutMs = () => {
+  const rawTimeout = Bun.env.BENCHMARK_TASK_TIMEOUT_MS?.trim()
+  if (!rawTimeout) {
+    return DEFAULT_TASK_TIMEOUT_MS
+  }
+
+  const parsedTimeout = Number.parseInt(rawTimeout, 10)
+  if (!Number.isFinite(parsedTimeout) || parsedTimeout < 1) {
+    throw new Error("BENCHMARK_TASK_TIMEOUT_MS must be a positive integer")
+  }
+
+  return parsedTimeout
 }
 
 const getPercentileMs = (
@@ -186,76 +224,231 @@ const formatTable = (rows: SolverRunResult[]) => {
   return [separator, headerLine, separator, ...bodyLines, separator].join("\n")
 }
 
-const runSolverWithWorkers = async (
-  solverName: string,
-  scenarios: Array<[string, SimpleRouteJson]>,
+const createWorker = () =>
+  new Worker(new URL("./benchmark.worker.ts", import.meta.url), {
+    type: "module",
+  })
+
+const createWorkerSlot = (id: number): WorkerSlot => ({
+  id,
+  worker: createWorker(),
+  currentTask: null,
+})
+
+const terminateWorker = async (worker: Worker) => {
+  try {
+    await worker.terminate()
+  } catch {
+    // Ignore termination failures while recovering a stuck worker.
+  }
+}
+
+const replaceWorker = async (slot: WorkerSlot) => {
+  const previousWorker = slot.worker
+  slot.currentTask = null
+  slot.worker = createWorker()
+  await terminateWorker(previousWorker)
+}
+
+const createFailedResult = (
+  task: BenchmarkTask,
+  elapsedTimeMs: number,
+  error: string,
+): WorkerResult => ({
+  solverName: task.solverName,
+  scenarioName: task.scenarioName,
+  elapsedTimeMs,
+  didSolve: false,
+  relaxedDrcPassed: false,
+  error,
+})
+
+const executeTaskOnWorker = (
+  slot: WorkerSlot,
+  request: WorkerTaskMessage,
+  taskTimeoutMs: number,
+): Promise<WorkerExecutionResult> => {
+  return new Promise((resolve) => {
+    const startedAtMs = performance.now()
+    let settled = false
+
+    const finish = (result: WorkerResult, restartWorker: boolean) => {
+      if (settled) {
+        return
+      }
+      settled = true
+      if (slot.currentTask) {
+        clearTimeout(slot.currentTask.timeout)
+        slot.currentTask = null
+      }
+      slot.worker.removeEventListener("message", onMessage)
+      slot.worker.removeEventListener("messageerror", onMessageError)
+      slot.worker.removeEventListener("error", onError)
+      resolve({ result, restartWorker })
+    }
+
+    const getElapsedTimeMs = () =>
+      Math.max(0, Math.round(performance.now() - startedAtMs))
+
+    const onMessage = (event: MessageEvent<WorkerResultMessage>) => {
+      if (event.data.taskId !== request.taskId) {
+        return
+      }
+      finish(event.data.result, false)
+    }
+
+    const onMessageError = () => {
+      finish(
+        createFailedResult(
+          request.task,
+          getElapsedTimeMs(),
+          "Worker message serialization failed",
+        ),
+        true,
+      )
+    }
+
+    const onError = (event: ErrorEvent) => {
+      event.preventDefault()
+      const message = event.message || "Worker crashed"
+      finish(
+        createFailedResult(
+          request.task,
+          getElapsedTimeMs(),
+          `Worker crashed: ${message}`,
+        ),
+        true,
+      )
+    }
+
+    const timeout = setTimeout(() => {
+      finish(
+        createFailedResult(
+          request.task,
+          taskTimeoutMs,
+          `Timed out after ${formatDurationLabel(taskTimeoutMs)}`,
+        ),
+        true,
+      )
+    }, taskTimeoutMs)
+
+    slot.currentTask = {
+      request,
+      startedAtMs,
+      timeout,
+    }
+
+    slot.worker.addEventListener("message", onMessage)
+    slot.worker.addEventListener("messageerror", onMessageError)
+    slot.worker.addEventListener("error", onError)
+
+    try {
+      slot.worker.postMessage(request)
+    } catch (error) {
+      finish(
+        createFailedResult(
+          request.task,
+          getElapsedTimeMs(),
+          `Worker dispatch failed: ${error instanceof Error ? error.message : String(error)}`,
+        ),
+        true,
+      )
+    }
+  })
+}
+
+const runBenchmarkTasks = async (
+  tasks: BenchmarkTask[],
   concurrency: number,
 ) => {
-  const workerCount = Math.min(concurrency, scenarios.length)
-  const workers = Array.from(
-    { length: workerCount },
-    () =>
-      new Worker(new URL("./benchmark.worker.ts", import.meta.url), {
-        type: "module",
-      }),
-  )
+  const workerCount = Math.min(concurrency, tasks.length)
+  const taskTimeoutMs = getTaskTimeoutMs()
+  const queue = tasks.map((task, index) => ({
+    taskId: index + 1,
+    task,
+  }))
+  const results = new Array<WorkerResult>(queue.length)
+  const progress = new Map<
+    string,
+    {
+      completed: number
+      solved: number
+      total: number
+    }
+  >()
 
-  const results = new Array<WorkerResult>(scenarios.length)
-  let nextScenarioIndex = 0
-  let completed = 0
-  let solvedCount = 0
-
-  const assignWork = (worker: Worker): Promise<void> => {
-    return new Promise((resolve) => {
-      const sendNext = () => {
-        if (nextScenarioIndex >= scenarios.length) {
-          resolve()
-          return
-        }
-
-        const scenarioIndex = nextScenarioIndex
-        nextScenarioIndex += 1
-        const [scenarioName, scenario] = scenarios[scenarioIndex]
-
-        const onMessage = (event: MessageEvent<WorkerResult>) => {
-          worker.removeEventListener("message", onMessage)
-          const result = event.data
-          results[scenarioIndex] = result
-          completed += 1
-          if (result.didSolve) {
-            solvedCount += 1
-          }
-
-          const status = result.didSolve ? "solved" : "failed"
-          const successRate = (solvedCount / completed) * 100
-          const suffix = result.error ? ` (${result.error})` : ""
-          console.log(
-            `[${solverName}] ${successRate.toFixed(1)}% success (${solvedCount}/${completed}) ${status} ${result.scenarioName} ${formatTime(result.elapsedTimeMs)}${suffix}`,
-          )
-
-          sendNext()
-        }
-
-        worker.addEventListener("message", onMessage)
-        worker.postMessage({
-          solverName,
-          scenarioName,
-          scenario,
-        })
-      }
-
-      sendNext()
+  for (const task of tasks) {
+    const existing = progress.get(task.solverName)
+    if (existing) {
+      existing.total += 1
+      continue
+    }
+    progress.set(task.solverName, {
+      completed: 0,
+      solved: 0,
+      total: 1,
     })
   }
 
-  try {
-    await Promise.all(workers.map((worker) => assignWork(worker)))
-  } finally {
-    for (const worker of workers) {
-      worker.terminate()
+  const workers = Array.from({ length: workerCount }, (_, index) =>
+    createWorkerSlot(index + 1),
+  )
+
+  const runWorkerLoop = async (slot: WorkerSlot) => {
+    while (queue.length > 0) {
+      const request = queue.shift()
+      if (!request) {
+        return
+      }
+
+      const { result, restartWorker } = await executeTaskOnWorker(
+        slot,
+        request,
+        taskTimeoutMs,
+      )
+      results[request.taskId - 1] = result
+
+      const solverProgress = progress.get(result.solverName)
+      if (!solverProgress) {
+        throw new Error(`Missing progress tracker for ${result.solverName}`)
+      }
+
+      solverProgress.completed += 1
+      if (result.didSolve) {
+        solverProgress.solved += 1
+      }
+
+      const status = result.didSolve ? "solved" : "failed"
+      const successRate =
+        solverProgress.completed === 0
+          ? 0
+          : (solverProgress.solved / solverProgress.completed) * 100
+      const suffix = result.error ? ` (${result.error})` : ""
+      console.log(
+        `[${result.solverName}] ${successRate.toFixed(1)}% success (${solverProgress.solved}/${solverProgress.completed}) ${status} ${result.scenarioName} ${formatTime(result.elapsedTimeMs)}${suffix}`,
+      )
+
+      if (restartWorker) {
+        await replaceWorker(slot)
+      }
     }
   }
 
+  try {
+    await Promise.all(workers.map((worker) => runWorkerLoop(worker)))
+  } finally {
+    for (const worker of workers) {
+      await terminateWorker(worker.worker)
+    }
+  }
+
+  return results
+}
+
+const summarizeSolverResults = (
+  solverName: string,
+  results: WorkerResult[],
+): SolverRunResult => {
   const succeeded = results.filter((result) => result.didSolve)
   const elapsedForSucceeded = succeeded.map((result) => result.elapsedTimeMs)
   const relaxedDrcPassed = succeeded.filter(
@@ -264,8 +457,8 @@ const runSolverWithWorkers = async (
 
   return {
     solverName,
-    successRatePercent: (succeeded.length / scenarios.length) * 100,
-    relaxedDrcRatePercent: (relaxedDrcPassed / scenarios.length) * 100,
+    successRatePercent: (succeeded.length / results.length) * 100,
+    relaxedDrcRatePercent: (relaxedDrcPassed / results.length) * 100,
     p50TimeMs: getPercentileMs(elapsedForSucceeded, 0.5),
     p95TimeMs: getPercentileMs(elapsedForSucceeded, 0.95),
   } satisfies SolverRunResult
@@ -288,13 +481,28 @@ const main = async () => {
     throw new Error("No benchmark scenarios found")
   }
 
-  const rows: SolverRunResult[] = []
+  const tasks = solvers.flatMap((solver) =>
+    scenarios.map(
+      ([scenarioName, scenario]) =>
+        ({
+          solverName: solver,
+          scenarioName,
+          scenario,
+        }) satisfies BenchmarkTask,
+    ),
+  )
 
-  for (const solver of solvers) {
-    console.log(`\n=== Benchmarking ${solver} ===`)
-    const row = await runSolverWithWorkers(solver, scenarios, concurrency)
-    rows.push(row)
-  }
+  console.log(
+    `Running ${tasks.length} benchmark tasks across ${concurrency} workers (${solvers.length} solver${solvers.length === 1 ? "" : "s"}, ${scenarios.length} scenario${scenarios.length === 1 ? "" : "s"})`,
+  )
+
+  const results = await runBenchmarkTasks(tasks, concurrency)
+  const rows = solvers.map((solver) =>
+    summarizeSolverResults(
+      solver,
+      results.filter((result) => result.solverName === solver),
+    ),
+  )
 
   const table = formatTable(rows)
   const output = `${table}\n\nScenarios: ${scenarios.length}\n`

@@ -5,20 +5,12 @@ import type {
   SimpleRouteJson,
   SimplifiedPcbTrace,
 } from "../../lib/types/srj-types"
-
-type BenchmarkTask = {
-  solverName: string
-  scenarioName: string
-  scenario: SimpleRouteJson
-}
-
-type BenchmarkResult = {
-  scenarioName: string
-  elapsedTimeMs: number
-  didSolve: boolean
-  relaxedDrcPassed: boolean
-  error?: string
-}
+import type {
+  BenchmarkTask,
+  WorkerResult,
+  WorkerResultMessage,
+  WorkerTaskMessage,
+} from "./benchmark-types"
 
 type SolverInstance = {
   solved?: boolean
@@ -48,7 +40,7 @@ const hasTraceError = (error: unknown): boolean => {
   return (error as { error_type?: string }).error_type === "pcb_trace_error"
 }
 
-const runTask = async (task: BenchmarkTask): Promise<BenchmarkResult> => {
+const runTask = async (task: BenchmarkTask): Promise<WorkerResult> => {
   const SolverConstructor = getSolverConstructor(task.solverName)
   const solver = new SolverConstructor(task.scenario)
   const start = performance.now()
@@ -64,6 +56,7 @@ const runTask = async (task: BenchmarkTask): Promise<BenchmarkResult> => {
 
   if (!didSolve) {
     return {
+      solverName: task.solverName,
       scenarioName: task.scenarioName,
       elapsedTimeMs,
       didSolve,
@@ -85,6 +78,7 @@ const runTask = async (task: BenchmarkTask): Promise<BenchmarkResult> => {
     const relaxedDrcPassed = !checks.some(hasTraceError)
 
     return {
+      solverName: task.solverName,
       scenarioName: task.scenarioName,
       elapsedTimeMs,
       didSolve,
@@ -92,6 +86,7 @@ const runTask = async (task: BenchmarkTask): Promise<BenchmarkResult> => {
     }
   } catch (error) {
     return {
+      solverName: task.solverName,
       scenarioName: task.scenarioName,
       elapsedTimeMs,
       didSolve,
@@ -101,7 +96,26 @@ const runTask = async (task: BenchmarkTask): Promise<BenchmarkResult> => {
   }
 }
 
-self.onmessage = async (event: MessageEvent<BenchmarkTask>) => {
-  const result = await runTask(event.data)
-  self.postMessage(result)
+self.onmessage = async (event: MessageEvent<WorkerTaskMessage>) => {
+  const { taskId, task } = event.data
+
+  try {
+    const result = await runTask(task)
+    self.postMessage({
+      taskId,
+      result,
+    } satisfies WorkerResultMessage)
+  } catch (error) {
+    self.postMessage({
+      taskId,
+      result: {
+        solverName: task.solverName,
+        scenarioName: task.scenarioName,
+        elapsedTimeMs: 0,
+        didSolve: false,
+        relaxedDrcPassed: false,
+        error: error instanceof Error ? error.message : String(error),
+      } satisfies WorkerResult,
+    } satisfies WorkerResultMessage)
+  }
 }
