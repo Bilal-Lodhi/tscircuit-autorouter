@@ -26,6 +26,7 @@ type BenchmarkOptions = {
   scenarioLimit?: number
   concurrency: number
   excludeAssignable: boolean
+  effort: number
 }
 
 const formatTime = (timeMs: number | null) => {
@@ -58,7 +59,11 @@ const getPercentileMs = (
 
 const parseArgs = (): BenchmarkOptions => {
   const args = process.argv.slice(2)
-  const options: BenchmarkOptions = { concurrency: 4, excludeAssignable: false }
+  const options: BenchmarkOptions = {
+    concurrency: 4,
+    excludeAssignable: false,
+    effort: 1,
+  }
 
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i]
@@ -67,9 +72,20 @@ const parseArgs = (): BenchmarkOptions => {
       i += 1
       continue
     }
+    if (arg.startsWith("--solver=")) {
+      options.solverName = arg.slice("--solver=".length)
+      continue
+    }
     if (arg === "--scenario-limit") {
       options.scenarioLimit = Number.parseInt(args[i + 1], 10)
       i += 1
+      continue
+    }
+    if (arg.startsWith("--scenario-limit=")) {
+      options.scenarioLimit = Number.parseInt(
+        arg.slice("--scenario-limit=".length),
+        10,
+      )
       continue
     }
     if (arg === "--concurrency") {
@@ -77,8 +93,24 @@ const parseArgs = (): BenchmarkOptions => {
       i += 1
       continue
     }
+    if (arg.startsWith("--concurrency=")) {
+      options.concurrency = Number.parseInt(
+        arg.slice("--concurrency=".length),
+        10,
+      )
+      continue
+    }
     if (arg === "--exclude-assignable") {
       options.excludeAssignable = true
+      continue
+    }
+    if (arg === "--effort") {
+      options.effort = Number.parseInt(args[i + 1], 10)
+      i += 1
+      continue
+    }
+    if (arg.startsWith("--effort=")) {
+      options.effort = Number.parseInt(arg.slice("--effort=".length), 10)
       continue
     }
     throw new Error(`Unknown argument: ${arg}`)
@@ -86,6 +118,10 @@ const parseArgs = (): BenchmarkOptions => {
 
   if (!Number.isFinite(options.concurrency) || options.concurrency < 1) {
     throw new Error("--concurrency must be a positive integer")
+  }
+
+  if (!Number.isFinite(options.effort) || options.effort < 1) {
+    throw new Error("--effort must be a positive integer")
   }
 
   if (
@@ -178,6 +214,7 @@ const runSolverWithWorkers = async (
   solverName: string,
   scenarios: Array<[string, SimpleRouteJson]>,
   concurrency: number,
+  effort: number,
 ) => {
   const workerCount = Math.min(concurrency, scenarios.length)
   const workers = Array.from(
@@ -229,6 +266,7 @@ const runSolverWithWorkers = async (
           solverName,
           scenarioName,
           scenario,
+          effort,
         })
       }
 
@@ -260,7 +298,7 @@ const runSolverWithWorkers = async (
 }
 
 const main = async () => {
-  const { solverName, scenarioLimit, concurrency, excludeAssignable } =
+  const { solverName, scenarioLimit, concurrency, excludeAssignable, effort } =
     parseArgs()
   const availableSolvers = await loadSolverNames(excludeAssignable)
   const solvers = solverName ? [solverName] : availableSolvers
@@ -280,7 +318,12 @@ const main = async () => {
 
   for (const solver of solvers) {
     console.log(`\n=== Benchmarking ${solver} ===`)
-    const row = await runSolverWithWorkers(solver, scenarios, concurrency)
+    const row = await runSolverWithWorkers(
+      solver,
+      scenarios,
+      concurrency,
+      effort,
+    )
     rows.push(row)
   }
 

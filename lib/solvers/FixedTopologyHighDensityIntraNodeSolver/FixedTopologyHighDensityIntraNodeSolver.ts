@@ -2,10 +2,10 @@ import {
   type XYConnection as HgXYConnection,
   type JPort,
   type JRegion,
-  type ViaData,
   type ViaByNet,
-  type ViaTile,
+  type ViaData,
   ViaGraphSolver,
+  type ViaTile,
   createConvexViaGraphFromXYConnections,
   viaTile as defaultViaTile,
 } from "@tscircuit/hypergraph"
@@ -73,7 +73,10 @@ export class FixedTopologyHighDensityIntraNodeSolver extends BaseSolver {
     this.viaTile = defaultViaTile
     this.viaDiameter = this._resolveViaDiameter(params.viaDiameter)
     this.connMap = params.connMap
-    this.MAX_ITERATIONS = P99_MAX_ITERATIONS * (params.effort ?? 1)
+    this.MAX_ITERATIONS = Math.max(
+      2000,
+      Math.min(P99_MAX_ITERATIONS, Math.round(1200 * (params.effort ?? 1))),
+    )
 
     // Initialize colorMap if not provided
     if (Object.keys(this.colorMap).length === 0) {

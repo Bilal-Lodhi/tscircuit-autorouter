@@ -279,7 +279,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
             inputNodes: this.inputNodeWithPortPoints,
             capacityMeshNodes: cms.capacityNodes!,
             colorMap: cms.colorMap,
-            numShuffleSeeds: 200,
+            numShuffleSeeds: 20 * Math.max(1, Math.ceil(Math.sqrt(cms.effort))),
             hyperParameters: {
               NODE_PF_MAX_PENALTY: 100,
               FORCE_OFF_BOARD_FREQUENCY: 0,
@@ -338,6 +338,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
         connMap: cms.connMap,
         viaDiameter: cms.viaDiameter,
         traceWidth: cms.minTraceWidth,
+        effort: cms.effort,
       },
     ]),
     definePipelineStep(

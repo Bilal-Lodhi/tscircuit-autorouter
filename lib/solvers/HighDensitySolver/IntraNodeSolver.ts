@@ -34,6 +34,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
   traceWidth: number
   nodeBounds: { minX: number; maxX: number; minY: number; maxY: number }
   layerCount: number
+  effort: number
 
   activeSubSolver: SingleHighDensityRouteSolver | null = null
   connMap?: ConnectivityMap
@@ -55,6 +56,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
     connMap?: ConnectivityMap
     viaDiameter?: number
     traceWidth?: number
+    effort?: number
   }) {
     const { nodeWithPortPoints, colorMap } = params
     super()
@@ -66,6 +68,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
     this.connMap = params.connMap
     this.viaDiameter = params.viaDiameter ?? 0.3
     this.traceWidth = params.traceWidth ?? 0.15
+    this.effort = params.effort ?? 1
     const unsolvedConnectionsMap: Map<
       string,
       { x: number; y: number; z: number }[]
@@ -103,7 +106,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
     }
 
     this.totalConnections = this.unsolvedConnections.length
-    this.MAX_ITERATIONS = 1_000 * this.totalConnections ** 1.5
+    this.MAX_ITERATIONS = 100 * this.effort * this.totalConnections ** 1.5
 
     this.minDistBetweenEnteringPoints = getMinDistBetweenEnteringPoints(
       this.nodeWithPortPoints,
@@ -249,6 +252,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
         connMap: this.connMap,
         viaDiameter: this.viaDiameter,
         traceThickness: this.traceWidth,
+        effort: this.effort,
       })
   }
 

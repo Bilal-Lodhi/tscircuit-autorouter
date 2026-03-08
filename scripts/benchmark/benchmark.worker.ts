@@ -10,6 +10,7 @@ type BenchmarkTask = {
   solverName: string
   scenarioName: string
   scenario: SimpleRouteJson
+  effort: number
 }
 
 type BenchmarkResult = {
@@ -35,6 +36,7 @@ const getSolverConstructor = (solverName: string) => {
   }
   return ctor as new (
     srj: SimpleRouteJson,
+    opts?: { effort?: number },
   ) => SolverInstance
 }
 
@@ -50,7 +52,9 @@ const hasTraceError = (error: unknown): boolean => {
 
 const runTask = async (task: BenchmarkTask): Promise<BenchmarkResult> => {
   const SolverConstructor = getSolverConstructor(task.solverName)
-  const solver = new SolverConstructor(task.scenario)
+  const solver = new SolverConstructor(task.scenario, {
+    effort: task.effort,
+  })
   const start = performance.now()
 
   try {

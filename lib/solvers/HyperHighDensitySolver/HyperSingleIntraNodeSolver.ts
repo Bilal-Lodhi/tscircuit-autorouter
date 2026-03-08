@@ -32,6 +32,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
   solvedRoutes: HighDensityIntraNodeRoute[] = []
   nodeWithPortPoints: NodeWithPortPoints
   connMap?: ConnectivityMap
+  effort: number
 
   constructor(
     opts: ConstructorParameters<typeof CachedIntraNodeRouteSolver>[0],
@@ -40,12 +41,21 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
     this.nodeWithPortPoints = opts.nodeWithPortPoints
     this.connMap = opts.connMap
     this.constructorParams = opts
-    this.MAX_ITERATIONS = 30_000_000
+    this.effort = opts.effort ?? 1
+    this.MAX_ITERATIONS = 3_000_000 * this.effort
     this.GREEDY_MULTIPLIER = 5
     this.MIN_SUBSTEPS = 100
   }
 
   getCombinationDefs() {
+    if (this.effort <= 1) {
+      return [
+        ["multiHeadPolyLine"],
+        ["majorCombinations", "orderings6"],
+        ["fixedTopologyHighDensityIntraNodeSolver"],
+      ]
+    }
+
     return [
       ["multiHeadPolyLine"],
       ["majorCombinations", "orderings6", "cellSizeFactor"],
@@ -59,6 +69,14 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
   }
 
   getHyperParameterDefs() {
+    const connectionCount = new Set(
+      this.nodeWithPortPoints.portPoints.map((pp) => pp.connectionName),
+    ).size
+    const orderingSeeds =
+      this.effort > 10 || connectionCount <= 6
+        ? [0, 1, 2, 3, 4, 5]
+        : [0, 1, 2, 3]
+
     return [
       {
         name: "majorCombinations",
@@ -86,26 +104,9 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
       },
       {
         name: "orderings6",
-        possibleValues: [
-          {
-            SHUFFLE_SEED: 0,
-          },
-          {
-            SHUFFLE_SEED: 1,
-          },
-          {
-            SHUFFLE_SEED: 2,
-          },
-          {
-            SHUFFLE_SEED: 3,
-          },
-          {
-            SHUFFLE_SEED: 4,
-          },
-          {
-            SHUFFLE_SEED: 5,
-          },
-        ],
+        possibleValues: orderingSeeds.map((seed) => ({
+          SHUFFLE_SEED: seed,
+        })),
       },
       {
         name: "cellSizeFactor",
@@ -260,6 +261,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
         colorMap: this.constructorParams.colorMap,
         viaDiameter: this.constructorParams.viaDiameter,
         traceWidth: this.constructorParams.traceWidth,
+        effort: this.effort,
       }) as any
     }
     return new CachedIntraNodeRouteSolver({

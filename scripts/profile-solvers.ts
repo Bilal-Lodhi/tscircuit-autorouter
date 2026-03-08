@@ -1,6 +1,5 @@
 #!/usr/bin/env bun
 
-import * as dataset from "@tscircuit/autorouting-dataset-01"
 import { AutoroutingPipelineSolver } from "../lib"
 import { BaseSolver } from "../lib/solvers/BaseSolver"
 import type { SimpleRouteJson } from "../lib/types/srj-types"
@@ -16,7 +15,10 @@ type SolverRecord = {
 }
 
 type ProfileOptions = {
+  datasetPackage: string
+  effort: number
   scenarioLimit?: number
+  scenarioName?: string
 }
 
 // --- Global profiling state ---
@@ -62,20 +64,46 @@ BaseSolver.prototype.step = function (
 // --- Helpers ---
 const parseArgs = (): ProfileOptions => {
   const args = process.argv.slice(2)
-  const options: ProfileOptions = {}
+  const options: ProfileOptions = {
+    datasetPackage: "@tscircuit/autorouting-dataset-01",
+    effort: 1,
+  }
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]
-    if (arg === "--scenario-limit") {
+    if (arg === "--dataset-package") {
+      options.datasetPackage = args[i + 1]!
+      i += 1
+    } else if (arg.startsWith("--dataset-package=")) {
+      options.datasetPackage = arg.slice("--dataset-package=".length)
+    } else if (arg === "--effort") {
+      options.effort = Number.parseInt(args[i + 1], 10)
+      i += 1
+    } else if (arg.startsWith("--effort=")) {
+      options.effort = Number.parseInt(arg.slice("--effort=".length), 10)
+    } else if (arg === "--scenario-limit") {
       options.scenarioLimit = Number.parseInt(args[i + 1], 10)
       i += 1
+    } else if (arg.startsWith("--scenario-limit=")) {
+      options.scenarioLimit = Number.parseInt(
+        arg.slice("--scenario-limit=".length),
+        10,
+      )
+    } else if (arg === "--scenario-name") {
+      options.scenarioName = args[i + 1]!
+      i += 1
+    } else if (arg.startsWith("--scenario-name=")) {
+      options.scenarioName = arg.slice("--scenario-name=".length)
     } else if (arg === "-h" || arg === "--help") {
       console.log(
         [
-          "Usage: bun scripts/profile-solvers.ts [--scenario-limit N]",
+          "Usage: bun scripts/profile-solvers.ts [--dataset-package PKG] [--effort N] [--scenario-limit N] [--scenario-name NAME]",
           "",
           "Options:",
+          "  --dataset-package PKG  Dataset package to import",
+          "  --effort N            Solver effort to use",
           "  --scenario-limit N   Run only first N scenarios",
+          "  --scenario-name NAME Run only the named scenario",
           "  -h, --help           Show this help",
         ].join("\n"),
       )
@@ -92,15 +120,46 @@ const parseArgs = (): ProfileOptions => {
     throw new Error("--scenario-limit must be a positive integer")
   }
 
+  if (!options.datasetPackage) {
+    throw new Error("--dataset-package must be a non-empty string")
+  }
+
+  if (!Number.isFinite(options.effort) || options.effort < 1) {
+    throw new Error("--effort must be a positive integer")
+  }
+
+  if (options.scenarioName !== undefined && !options.scenarioName) {
+    throw new Error("--scenario-name must be a non-empty string")
+  }
+
   return options
 }
 
-const loadScenarios = (scenarioLimit?: number) => {
+const loadScenarios = async ({
+  datasetPackage,
+  scenarioLimit,
+  scenarioName,
+}: ProfileOptions) => {
+  const dataset = (await import(datasetPackage)) as Record<
+    string,
+    SimpleRouteJson
+  >
   const allScenarios = Object.entries(dataset)
     .filter(([, value]) => Boolean(value) && typeof value === "object")
     .sort(([a], [b]) => a.localeCompare(b)) as Array<[string, SimpleRouteJson]>
 
-  return scenarioLimit ? allScenarios.slice(0, scenarioLimit) : allScenarios
+  let scenarios = allScenarios
+
+  if (scenarioName) {
+    scenarios = scenarios.filter(([name]) => name === scenarioName)
+    if (scenarios.length === 0) {
+      throw new Error(
+        `Scenario \"${scenarioName}\" not found in ${datasetPackage}`,
+      )
+    }
+  }
+
+  return scenarioLimit ? scenarios.slice(0, scenarioLimit) : scenarios
 }
 
 const getPercentile = (values: number[], p: number): number | null => {
@@ -141,16 +200,16 @@ const formatTable = (headers: string[], body: string[][]): string => {
 }
 
 // --- Main ---
-const main = () => {
+const main = async () => {
   const opts = parseArgs()
-  const scenarios = loadScenarios(opts.scenarioLimit)
+  const scenarios = await loadScenarios(opts)
 
   if (scenarios.length === 0) {
     throw new Error("No scenarios found")
   }
 
   console.log(
-    `Profiling ${scenarios.length} scenarios with AutoroutingPipelineSolver...\n`,
+    `Profiling ${scenarios.length} scenario(s) from ${opts.datasetPackage} with AutoroutingPipelineSolver...\n`,
   )
 
   let solved = 0
@@ -159,7 +218,9 @@ const main = () => {
   for (const [scenarioName, scenario] of scenarios) {
     currentScenarioName = scenarioName
     total++
-    const solver = new AutoroutingPipelineSolver(scenario)
+    const solver = new AutoroutingPipelineSolver(scenario, {
+      effort: opts.effort,
+    })
 
     try {
       solver.solve()
@@ -264,6 +325,31 @@ const main = () => {
   const table = formatTable(headers, body)
   console.log(table)
   console.log()
+
+  if (opts.scenarioName) {
+    const scenarioRecords = allRecords
+      .filter((r) => r.scenarioName === opts.scenarioName)
+      .sort((a, b) => b.timeMs - a.timeMs)
+
+    const scenarioHeaders = [
+      "Solver",
+      "Status",
+      "Time",
+      "Iterations",
+      "MAX_ITER",
+    ]
+    const scenarioBody = scenarioRecords.map((record) => [
+      record.name,
+      record.success ? "success" : "fail",
+      formatTime(record.timeMs),
+      String(record.iterations),
+      String(record.maxIterations),
+    ])
+
+    console.log(`Detailed solver timings for ${opts.scenarioName}:`)
+    console.log(formatTable(scenarioHeaders, scenarioBody))
+    console.log()
+  }
 }
 
-main()
+void main()

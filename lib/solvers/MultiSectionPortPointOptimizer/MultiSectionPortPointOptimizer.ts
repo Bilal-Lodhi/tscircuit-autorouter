@@ -70,12 +70,12 @@ export interface MultiSectionPortPointOptimizerParams {
   ALWAYS_RIP_INTERSECTIONS?: boolean
   /**
    * Maximum number of attempts to fix a single node before moving on.
-   * Default is 100.
+   * Default is 10.
    */
   MAX_ATTEMPTS_PER_NODE?: number
   /**
    * Maximum total number of section optimization attempts.
-   * Default is 500.
+   * Default is 50 when effort=10.
    */
   MAX_SECTION_ATTEMPTS?: number
   /**
@@ -213,10 +213,10 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
   sectionAttempts: number = 0
 
   /** Maximum number of attempts per node */
-  MAX_ATTEMPTS_PER_NODE = 100
+  MAX_ATTEMPTS_PER_NODE = 10
 
   /** Maximum total number of section optimization attempts */
-  MAX_SECTION_ATTEMPTS = 50
+  MAX_SECTION_ATTEMPTS = 5
 
   /** Acceptable probability of failure threshold */
   ACCEPTABLE_PF = 0.05
@@ -274,8 +274,6 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
     this.JUMPER_PF_FN_ENABLED =
       params.JUMPER_PF_FN_ENABLED ?? this.JUMPER_PF_FN_ENABLED
     this.SHUFFLE_SEEDS_PER_SECTION = params.SHUFFLE_SEEDS_PER_SECTION
-
-    this.MAX_SECTION_ATTEMPTS *= this.effort
 
     this.nodeMap = new Map(
       params.inputNodes.map((n) => [n.capacityMeshNodeId, n]),
@@ -494,7 +492,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
       const pfReduced = pf * (1 - attempts / this.MAX_ATTEMPTS_PER_NODE) ** 2
 
       if (pfReduced > highestPf) {
-        highestPf = pf
+        highestPf = pfReduced
         highestPfNodeId = nodeId
       }
     }
@@ -866,7 +864,7 @@ export class MultiSectionPortPointOptimizer extends BaseSolver {
       nodeMemoryPfMap: this.nodePfMap,
       numShuffleSeeds:
         this.SHUFFLE_SEEDS_PER_SECTION ??
-        routeJson.connections.length * 2 * this.effort,
+        Math.max(4, routeJson.connections.length * 2),
       hyperParameters: this.getHyperParametersForScheduleIndex(
         this.currentScheduleIndex,
         this.sectionAttempts,

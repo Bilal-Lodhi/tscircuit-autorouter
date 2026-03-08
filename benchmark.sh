@@ -5,6 +5,7 @@ SOLVER_NAME=""
 SCENARIO_LIMIT=""
 CONCURRENCY="${BENCHMARK_CONCURRENCY:-4}"
 INCLUDE_ASSIGNABLE=false
+EFFORT=1
 
 get_solvers() {
   INCLUDE_ASSIGNABLE="$INCLUDE_ASSIGNABLE" bun --eval '
@@ -32,13 +33,14 @@ get_solvers() {
 print_help() {
   cat <<'EOF'
 Usage:
-  ./benchmark.sh [solver-name|_] [scenario-limit] [--concurrency N] [--include-assignable]
-  ./benchmark.sh [--solver NAME] [--scenario-limit N] [--concurrency N] [--include-assignable]
+  ./benchmark.sh [solver-name|_] [scenario-limit] [--concurrency N] [--effort N] [--include-assignable]
+  ./benchmark.sh [--solver NAME] [--scenario-limit N] [--concurrency N] [--effort N] [--include-assignable]
 
 Options:
   --solver NAME        Run only one solver (same as first positional arg)
   --scenario-limit N   Run only first N scenarios (same as second positional arg)
   --concurrency N      Number of Bun workers used per solver (default: 4)
+  --effort N           Solver effort to use (default: 1)
   --include-assignable Include assignable pipelines (excluded by default)
   -h, --help           Show this help
 
@@ -46,6 +48,7 @@ Examples:
   ./benchmark.sh
   ./benchmark.sh AutoroutingPipelineSolver
   ./benchmark.sh _ 20 --concurrency 8
+  ./benchmark.sh AutoroutingPipelineSolver --effort 10
   ./benchmark.sh --solver AutoroutingPipelineSolver --scenario-limit 20
   ./benchmark.sh --include-assignable
 EOF
@@ -90,6 +93,14 @@ while [ "$#" -gt 0 ]; do
       CONCURRENCY="${2:-}"
       shift 2
       ;;
+    --effort)
+      EFFORT="${2:-}"
+      shift 2
+      ;;
+    --effort=*)
+      EFFORT="${1#*=}"
+      shift
+      ;;
     --include-assignable)
       INCLUDE_ASSIGNABLE=true
       shift
@@ -102,7 +113,7 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-CMD=(bun "scripts/benchmark/index.ts" "--concurrency" "$CONCURRENCY")
+CMD=(bun "scripts/benchmark/index.ts" "--concurrency" "$CONCURRENCY" "--effort" "$EFFORT")
 
 if [ -n "$SOLVER_NAME" ] && [ "$SOLVER_NAME" != "_" ]; then
   CMD+=("--solver" "$SOLVER_NAME")
