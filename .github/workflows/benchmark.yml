@@ -18,6 +18,10 @@ on:
         description: Number of scenarios to run (optional)
         required: false
         type: string
+      effort:
+        description: Effort multiplier to apply to each scenario (optional)
+        required: false
+        type: string
       concurrency:
         description: Number of workers per solver (or "auto")
         required: false
@@ -74,6 +78,7 @@ jobs:
             const defaultSolver = 'AutoroutingPipelineSolver'
             let solverName = defaultSolver
             let scenarioLimit = ''
+            let effort = ''
             let concurrency = 'auto'
             let ref = context.sha
             let statusCommentId = ''
@@ -88,6 +93,11 @@ jobs:
                 const token = tokens[i]
                 if (token === '--concurrency') {
                   concurrency = tokens[i + 1] || concurrency
+                  i += 1
+                  continue
+                }
+                if (token === '--effort') {
+                  effort = tokens[i + 1] || effort
                   i += 1
                   continue
                 }
@@ -140,6 +150,7 @@ jobs:
                   : requestedSolver
               }
               scenarioLimit = (inputs.scenario_limit || '').trim()
+              effort = (inputs.effort || '').trim()
               concurrency = (inputs.concurrency || concurrency).trim()
               includeAssignable = inputs.include_assignable === true || inputs.include_assignable === 'true'
               ref = (inputs.ref || '').trim() || ref
@@ -151,6 +162,7 @@ jobs:
 
             core.setOutput('solver_name', solverName)
             core.setOutput('scenario_limit', scenarioLimit)
+            core.setOutput('effort', effort)
             core.setOutput('concurrency', concurrency)
             core.setOutput('include_assignable', includeAssignable ? 'true' : 'false')
             core.setOutput('ref', ref)
@@ -173,6 +185,7 @@ jobs:
         env:
           SOLVER_NAME: ${{ steps.parse.outputs.solver_name }}
           SCENARIO_LIMIT: ${{ steps.parse.outputs.scenario_limit }}
+          EFFORT: ${{ steps.parse.outputs.effort }}
           CONCURRENCY: ${{ steps.parse.outputs.concurrency }}
           INCLUDE_ASSIGNABLE: ${{ steps.parse.outputs.include_assignable }}
           BENCHMARK_TASK_TIMEOUT_PER_EFFORT_MS: ${{ vars.BENCHMARK_TASK_TIMEOUT_PER_EFFORT_MS || vars.BENCHMARK_TASK_TIMEOUT_MS || '60000' }}
@@ -191,6 +204,9 @@ jobs:
           fi
           if [ -n "$SCENARIO_LIMIT" ]; then
             CMD+=(--scenario-limit "$SCENARIO_LIMIT")
+          fi
+          if [ -n "$EFFORT" ]; then
+            CMD+=(--effort "$EFFORT")
           fi
           if [ "$INCLUDE_ASSIGNABLE" = "true" ]; then
             CMD+=(--include-assignable)

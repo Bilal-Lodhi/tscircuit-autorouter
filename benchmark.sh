@@ -3,6 +3,8 @@ set -euo pipefail
 
 SOLVER_NAME=""
 SCENARIO_LIMIT=""
+EFFORT=""
+SAMPLE_TIMEOUT=""
 INCLUDE_ASSIGNABLE=false
 
 default_concurrency() {
@@ -37,13 +39,15 @@ get_solvers() {
 print_help() {
   cat <<'EOF'
 Usage:
-  ./benchmark.sh [solver-name|all] [scenario-limit] [--concurrency N] [--include-assignable]
-  ./benchmark.sh [--solver NAME] [--scenario-limit N] [--concurrency N] [--include-assignable]
+  ./benchmark.sh [solver-name|all] [scenario-limit] [--concurrency N] [--effort N] [--sample-timeout DURATION] [--include-assignable]
+  ./benchmark.sh [--solver NAME] [--scenario-limit N] [--concurrency N] [--effort N] [--sample-timeout DURATION] [--include-assignable]
 
 Options:
   --solver NAME        Run only one solver (same as first positional arg)
   --scenario-limit N   Run only first N scenarios (same as second positional arg)
   --concurrency N      Number of Bun workers used per solver, or "auto"
+  --effort N           Override scenario effort multiplier
+  --sample-timeout D   Override per-sample timeout before effort multiplier; accepts ms, s, or m
   --include-assignable Include assignable pipelines (excluded by default)
   -h, --help           Show this help
 
@@ -51,6 +55,8 @@ Examples:
   ./benchmark.sh
   ./benchmark.sh AutoroutingPipelineSolver
   ./benchmark.sh all 20 --concurrency auto
+  ./benchmark.sh --solver AutoroutingPipelineSolver --effort 2
+  ./benchmark.sh --solver AutoroutingPipelineSolver --sample-timeout 90s
   ./benchmark.sh --solver AutoroutingPipelineSolver --scenario-limit 20
   ./benchmark.sh --include-assignable
 EOF
@@ -98,6 +104,14 @@ while [ "$#" -gt 0 ]; do
       fi
       shift 2
       ;;
+    --effort)
+      EFFORT="${2:-}"
+      shift 2
+      ;;
+    --sample-timeout)
+      SAMPLE_TIMEOUT="${2:-}"
+      shift 2
+      ;;
     --include-assignable)
       INCLUDE_ASSIGNABLE=true
       shift
@@ -118,6 +132,14 @@ fi
 
 if [ -n "$SCENARIO_LIMIT" ]; then
   CMD+=("--scenario-limit" "$SCENARIO_LIMIT")
+fi
+
+if [ -n "$EFFORT" ]; then
+  CMD+=("--effort" "$EFFORT")
+fi
+
+if [ -n "$SAMPLE_TIMEOUT" ]; then
+  CMD+=("--sample-timeout" "$SAMPLE_TIMEOUT")
 fi
 
 if [ "$INCLUDE_ASSIGNABLE" != true ]; then

@@ -27,6 +27,8 @@ type BenchmarkOptions = {
   solverName?: string
   scenarioLimit?: number
   concurrency: number
+  effort?: number
+  sampleTimeoutMs?: number
   excludeAssignable: boolean
 }
 
@@ -136,6 +138,22 @@ const getPercentileMs = (
   return sorted[lower] + (sorted[upper] - sorted[lower]) * weight
 }
 
+const parseDurationArg = (rawValue: string, flagName: string) => {
+  const value = rawValue.trim()
+  const match = value.match(/^(\d+)(ms|s|m)?$/)
+  if (!match) {
+    throw new Error(
+      `${flagName} must be an integer with optional ms, s, or m suffix`,
+    )
+  }
+
+  const amount = Number.parseInt(match[1], 10)
+  const unit = match[2] ?? "ms"
+  const multiplier = unit === "m" ? 60_000 : unit === "s" ? 1_000 : 1
+
+  return amount * multiplier
+}
+
 const parseArgs = (): BenchmarkOptions => {
   const args = process.argv.slice(2)
   const defaultConcurrency =
@@ -168,6 +186,19 @@ const parseArgs = (): BenchmarkOptions => {
       i += 1
       continue
     }
+    if (arg === "--effort") {
+      options.effort = Number.parseInt(args[i + 1] ?? "", 10)
+      i += 1
+      continue
+    }
+    if (arg === "--sample-timeout") {
+      options.sampleTimeoutMs = parseDurationArg(
+        args[i + 1] ?? "",
+        "--sample-timeout",
+      )
+      i += 1
+      continue
+    }
     if (arg === "--exclude-assignable") {
       options.excludeAssignable = true
       continue
@@ -184,6 +215,13 @@ const parseArgs = (): BenchmarkOptions => {
     (!Number.isFinite(options.scenarioLimit) || options.scenarioLimit < 1)
   ) {
     throw new Error("--scenario-limit must be a positive integer")
+  }
+
+  if (
+    options.effort !== undefined &&
+    (!Number.isFinite(options.effort) || options.effort < 1)
+  ) {
+    throw new Error("--effort must be a positive integer")
   }
 
   return options
@@ -222,10 +260,22 @@ const loadSolverNames = async (
   return solverNames.filter((name) => !name.includes("Assignable"))
 }
 
-const loadScenarios = (scenarioLimit?: number) => {
+const loadScenarios = (scenarioLimit?: number, effort?: number) => {
   const allScenarios = Object.entries(dataset)
     .filter(([, value]) => Boolean(value) && typeof value === "object")
-    .sort(([a], [b]) => a.localeCompare(b)) as Array<[string, SimpleRouteJson]>
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(
+      ([name, scenario]) =>
+        [
+          name,
+          effort === undefined
+            ? scenario
+            : ({
+                ...scenario,
+                effort,
+              } satisfies SimpleRouteJson & { effort: number }),
+        ] as [string, SimpleRouteJson],
+    ) as Array<[string, SimpleRouteJson]>
 
   return scenarioLimit ? allScenarios.slice(0, scenarioLimit) : allScenarios
 }
@@ -383,33 +433,45 @@ const getTaskEffort = (task: BenchmarkTask) => {
   return rawEffort
 }
 
-const getTaskTimeoutMs = (task: BenchmarkTask) =>
-  getTaskTimeoutPerEffortMs() * getTaskEffort(task)
+const getTaskTimeoutMs = (task: BenchmarkTask, sampleTimeoutMs?: number) =>
+  (sampleTimeoutMs ?? getTaskTimeoutPerEffortMs()) * getTaskEffort(task)
 
-const formatPercentWithMargin = (
-  resolvedCount: number,
+const formatEffortLabel = (efforts: number[]) => {
+  const uniqueEfforts = [...new Set(efforts)].sort((a, b) => a - b)
+  if (uniqueEfforts.length === 0) {
+    return "unknown effort"
+  }
+  if (uniqueEfforts.length === 1) {
+    return `${uniqueEfforts[0]}x effort`
+  }
+  return "mixed effort"
+}
+
+const formatPercentWithTimeoutRate = (
+  totalCount: number,
   matchedCount: number,
   timeoutCount: number,
 ) => {
-  if (resolvedCount === 0) {
-    return timeoutCount > 0 ? "n/a ± n/a" : "n/a"
+  if (totalCount === 0) {
+    return "n/a"
   }
 
-  const ratePercent = (matchedCount / resolvedCount) * 100
+  const ratePercent = (matchedCount / totalCount) * 100
   if (timeoutCount === 0) {
     return `${ratePercent.toFixed(1)}%`
   }
 
-  const marginPercent = (timeoutCount / resolvedCount) * 100
-  return `${ratePercent.toFixed(1)}% ± ${marginPercent.toFixed(1)}%`
+  const timeoutPercent = (timeoutCount / totalCount) * 100
+  return `${ratePercent.toFixed(1)}% (🕒${timeoutPercent.toFixed(1)}%)`
 }
 
 const executeTaskOnWorker = (
   slot: WorkerSlot,
   request: WorkerTaskMessage,
+  sampleTimeoutMs?: number,
 ): Promise<WorkerExecutionResult> => {
   return new Promise((resolve) => {
-    const taskTimeoutMs = getTaskTimeoutMs(request.task)
+    const taskTimeoutMs = getTaskTimeoutMs(request.task, sampleTimeoutMs)
     const startedAtMs = performance.now()
     let settled = false
 
@@ -514,6 +576,7 @@ const executeTaskOnWorker = (
 const runBenchmarkTasks = async (
   tasks: BenchmarkTask[],
   concurrency: number,
+  sampleTimeoutMs?: number,
 ) => {
   const workerCount = Math.min(concurrency, tasks.length)
   const heartbeatIntervalMs = getHeartbeatIntervalMs()
@@ -590,6 +653,7 @@ const runBenchmarkTasks = async (
       const { result, restartWorker } = await executeTaskOnWorker(
         slot,
         request,
+        sampleTimeoutMs,
       )
       results[request.taskId - 1] = result
       completedTaskCount += 1
@@ -643,11 +707,11 @@ const runBenchmarkTasks = async (
 
 const summarizeSolverResults = (
   solverName: string,
+  efforts: number[],
   results: WorkerResult[],
 ): SolverRunResult => {
   const timedOut = results.filter((result) => result.didTimeout)
-  const resolved = results.filter((result) => !result.didTimeout)
-  const succeeded = resolved.filter((result) => result.didSolve)
+  const succeeded = results.filter((result) => result.didSolve)
   const elapsedForSucceeded = succeeded.map((result) => result.elapsedTimeMs)
   const relaxedDrcPassed = succeeded.filter(
     (result) => result.relaxedDrcPassed,
@@ -655,13 +719,13 @@ const summarizeSolverResults = (
 
   return {
     solverName,
-    completedRateLabel: formatPercentWithMargin(
-      resolved.length,
+    completedRateLabel: formatPercentWithTimeoutRate(
+      results.length,
       succeeded.length,
       timedOut.length,
     ),
-    relaxedDrcRateLabel: formatPercentWithMargin(
-      resolved.length,
+    relaxedDrcRateLabel: formatPercentWithTimeoutRate(
+      results.length,
       relaxedDrcPassed,
       timedOut.length,
     ),
@@ -672,8 +736,14 @@ const summarizeSolverResults = (
 }
 
 const main = async () => {
-  const { solverName, scenarioLimit, concurrency, excludeAssignable } =
-    parseArgs()
+  const {
+    solverName,
+    scenarioLimit,
+    concurrency,
+    effort,
+    sampleTimeoutMs,
+    excludeAssignable,
+  } = parseArgs()
   const availableSolvers = await loadSolverNames(excludeAssignable)
   const solvers = solverName ? [solverName] : availableSolvers
 
@@ -683,7 +753,7 @@ const main = async () => {
     )
   }
 
-  const scenarios = loadScenarios(scenarioLimit)
+  const scenarios = loadScenarios(scenarioLimit, effort)
   if (scenarios.length === 0) {
     throw new Error("No benchmark scenarios found")
   }
@@ -703,19 +773,36 @@ const main = async () => {
     `Running ${tasks.length} benchmark tasks across ${concurrency} workers (${solvers.length} solver${solvers.length === 1 ? "" : "s"}, ${scenarios.length} scenario${scenarios.length === 1 ? "" : "s"})`,
   )
 
-  const results = await runBenchmarkTasks(tasks, concurrency)
+  const results = await runBenchmarkTasks(tasks, concurrency, sampleTimeoutMs)
   const rows = solvers.map((solver) =>
     summarizeSolverResults(
       solver,
+      scenarios.map(([, scenario]) =>
+        getTaskEffort({
+          solverName: solver,
+          scenarioName: "",
+          scenario,
+        }),
+      ),
       results.filter((result) => result.solverName === solver),
     ),
   )
 
+  const effortLabel = formatEffortLabel(
+    scenarios.map(([, scenario]) =>
+      getTaskEffort({
+        solverName: solvers[0] ?? "",
+        scenarioName: "",
+        scenario,
+      }),
+    ),
+  )
   const table = formatTable(rows)
-  const output = `${table}\n\nScenarios: ${scenarios.length}\n`
+  const output = `Benchmark Results (${effortLabel})\n\n${table}\n\nScenarios: ${scenarios.length}\n`
   await Bun.write("benchmark-result.txt", output)
 
-  console.log(`\n${table}`)
+  console.log(`\nBenchmark Results (${effortLabel})\n`)
+  console.log(table)
   console.log(`\nScenarios: ${scenarios.length}`)
   console.log("Results written to benchmark-result.txt")
 }

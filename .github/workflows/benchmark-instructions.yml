@@ -24,7 +24,7 @@ jobs:
               "Run benchmarks by commenting on this PR:",
               "",
               "```",
-              "/benchmark [solver-name|all] [scenario-limit] --concurrency <n>",
+              "/benchmark [solver-name|all] [scenario-limit] --concurrency <n> --effort <n>",
               "```",
               "",
               "Examples:",
@@ -32,6 +32,7 @@ jobs:
               "- `/benchmark AutoroutingPipelineSolver` -> one solver, all scenarios",
               "- `/benchmark all 20` -> all solvers, first 20 scenarios",
               "- `/benchmark AutoroutingPipelineSolver 20 --concurrency 8` -> one solver, 20 scenarios, 8 workers",
+              "- `/benchmark AutoroutingPipelineSolver 20 --effort 2` -> one solver, 20 scenarios, 2x effort",
               "",
               "Any PR whose title contains `[BENCHMARK TEST]` will automatically run the benchmark workflow on PR updates.",
             ].join("\n")

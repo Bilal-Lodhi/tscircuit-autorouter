@@ -20,7 +20,9 @@ const getSolverConstructor = (solverName: string) => {
   if (typeof ctor !== "function") {
     throw new Error(`Solver "${solverName}" was not found`)
   }
-  return ctor as new (srj: SimpleRouteJson) => SolverInstance
+  return ctor as new (
+    srj: SimpleRouteJson,
+  ) => SolverInstance
 }
 
 const hasTraceError = (error: unknown): boolean => {
