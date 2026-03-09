@@ -261,7 +261,16 @@ const loadSolverNames = async (
 }
 
 const loadScenarios = (scenarioLimit?: number, effort?: number) => {
-  const allScenarios = Object.entries(dataset)
+  const applyEffortOverride = <T extends SimpleRouteJson>(
+    scenario: T,
+    effortOverride: number,
+  ) =>
+    ({
+      ...scenario,
+      effort: effortOverride,
+    }) as T & { effort: number }
+
+  const allScenarios = (Object.entries(dataset) as Array<[string, SimpleRouteJson]>)
     .filter(([, value]) => Boolean(value) && typeof value === "object")
     .sort(([a], [b]) => a.localeCompare(b))
     .map(
@@ -270,12 +279,9 @@ const loadScenarios = (scenarioLimit?: number, effort?: number) => {
           name,
           effort === undefined
             ? scenario
-            : ({
-                ...scenario,
-                effort,
-              } satisfies SimpleRouteJson & { effort: number }),
+            : applyEffortOverride(scenario, effort),
         ] as [string, SimpleRouteJson],
-    ) as Array<[string, SimpleRouteJson]>
+    )
 
   return scenarioLimit ? allScenarios.slice(0, scenarioLimit) : allScenarios
 }
@@ -433,8 +439,14 @@ const getTaskEffort = (task: BenchmarkTask) => {
   return rawEffort
 }
 
-const getTaskTimeoutMs = (task: BenchmarkTask, sampleTimeoutMs?: number) =>
-  (sampleTimeoutMs ?? getTaskTimeoutPerEffortMs()) * getTaskEffort(task)
+const getTaskTimeoutMs = (task: BenchmarkTask, sampleTimeoutMs?: number) => {
+  if (sampleTimeoutMs !== undefined) {
+    return sampleTimeoutMs
+  }
+
+  const baseTimeoutMs = getTaskTimeoutPerEffortMs()
+  return baseTimeoutMs + baseTimeoutMs * getTaskEffort(task)
+}
 
 const formatEffortLabel = (efforts: number[]) => {
   const uniqueEfforts = [...new Set(efforts)].sort((a, b) => a - b)

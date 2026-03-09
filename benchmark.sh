@@ -47,7 +47,7 @@ Options:
   --scenario-limit N   Run only first N scenarios (same as second positional arg)
   --concurrency N      Number of Bun workers used per solver, or "auto"
   --effort N           Override scenario effort multiplier
-  --sample-timeout D   Override per-sample timeout before effort multiplier; accepts ms, s, or m
+  --sample-timeout D   Override per-sample timeout directly; otherwise timeout is 60s + 60s * effort
   --include-assignable Include assignable pipelines (excluded by default)
   -h, --help           Show this help
 
