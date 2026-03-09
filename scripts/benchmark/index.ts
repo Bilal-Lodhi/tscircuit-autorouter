@@ -270,7 +270,9 @@ const loadScenarios = (scenarioLimit?: number, effort?: number) => {
       effort: effortOverride,
     }) as T & { effort: number }
 
-  const allScenarios = (Object.entries(dataset) as Array<[string, SimpleRouteJson]>)
+  const allScenarios = (
+    Object.entries(dataset) as Array<[string, SimpleRouteJson]>
+  )
     .filter(([, value]) => Boolean(value) && typeof value === "object")
     .sort(([a], [b]) => a.localeCompare(b))
     .map(
