@@ -38,13 +38,20 @@ import { calculateOptimalCapacityDepth } from "lib/index"
 import {
   buildHyperGraph,
   HgPortPointPathingSolver,
+  serializeHyperGraphSnapshot,
 } from "lib/solvers/PortPointPathingSolver/hgportpointpathingsolver"
+import type {
+  ConnectionHg,
+  HyperGraphHg,
+  SolvedRoutesHg,
+} from "lib/solvers/PortPointPathingSolver/hgportpointpathingsolver/types"
 
 interface CapacityMeshSolverOptions {
   capacityDepth?: number
   targetMinCapacity?: number
   cacheProvider?: CacheProvider | null
   effort?: number
+  serializableHypergraphOutputPath?: string
 }
 export type AutoroutingPipelineSolverOptions = CapacityMeshSolverOptions
 
@@ -112,6 +119,8 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
   srjWithPointPairs?: SimpleRouteJson
   capacityNodes: CapacityMeshNode[] | null = null
   capacityEdges: CapacityMeshEdge[] | null = null
+  hgGraph: HyperGraphHg | null = null
+  hgConnections: ConnectionHg[] | null = null
 
   cacheProvider: CacheProvider | null = null
   pipelineDef = [
@@ -238,6 +247,8 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
             .flatMap((seg) => seg.portPoints),
           simpleRouteJsonConnections: cms.srjWithPointPairs!.connections,
         })
+        cms.hgGraph = graph
+        cms.hgConnections = connections
 
         return [
           {
@@ -298,6 +309,7 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
       "uniformPortDistributionSolver",
       UniformPortDistributionSolver,
       (cms) => {
+        cms.writeSerializableHypergraphSnapshot()
         return [
           {
             nodeWithPortPoints:
@@ -404,6 +416,23 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
     this.startTimeOfPhase = {}
     this.endTimeOfPhase = {}
     this.timeSpentOnPhase = {}
+  }
+
+  private writeSerializableHypergraphSnapshot() {
+    const outputPath = this.opts.serializableHypergraphOutputPath
+    if (!outputPath) return
+    if (!this.hgGraph || !this.hgConnections || !this.portPointPathingSolver) {
+      return
+    }
+
+    const snapshot = serializeHyperGraphSnapshot({
+      graph: this.hgGraph,
+      connections: this.hgConnections,
+      solvedRoutes: this.portPointPathingSolver.solvedRoutes as SolvedRoutesHg[],
+      layerCount: this.srj.layerCount,
+    })
+
+    void Bun.write(outputPath, `${JSON.stringify(snapshot, null, 2)}\n`)
   }
 
   getConstructorParams() {
