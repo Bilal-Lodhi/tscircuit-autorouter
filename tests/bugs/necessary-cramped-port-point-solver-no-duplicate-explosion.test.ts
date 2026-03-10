@@ -35,7 +35,6 @@ test("necessary cramped port point solver does not explode duplicate candidates"
     ...singleTargetStats.map((stat) => stat.candidateCount),
   )
 
-  expect(maxCandidateCount).toBeGreaterThan(500)
-  // currently we are at 14144
+  expect(maxCandidateCount).toBeLessThan(500)
   SingleTargetNecessaryCrampedPortPointSolver.prototype._step = originalStep
 })
