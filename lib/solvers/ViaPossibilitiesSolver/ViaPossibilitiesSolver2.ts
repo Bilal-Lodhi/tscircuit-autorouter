@@ -28,6 +28,7 @@ export interface Segment {
 
 export interface ViaPossibilities2HyperParameters {
   SHUFFLE_SEED?: number
+  MAX_VIA_COUNT?: number
 } /**
 This solver uses an intersection-based approach. Here's how it works:
 0. Prepare placeholderPaths
@@ -88,7 +89,7 @@ export class ViaPossibilitiesSolver2 extends BaseSolver {
     this.MAX_ITERATIONS = 100e3
     this.colorMap =
       colorMap ?? generateColorMapFromNodeWithPortPoints(nodeWithPortPoints)
-    this.maxViaCount = 5
+    this.maxViaCount = hyperParameters?.MAX_VIA_COUNT ?? 5
     this.bounds = getBoundsFromNodeWithPortPoints(nodeWithPortPoints)
     this.nodeWidth = this.bounds.maxX - this.bounds.minX
     this.portPairMap = getPortPairMap(nodeWithPortPoints)

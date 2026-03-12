@@ -46,6 +46,11 @@ export class MultiHeadPolyLineIntraNodeSolver3 extends MultiHeadPolyLineIntraNod
       // Pass relevant hyperparameters if needed, e.g., shuffle seed
       hyperParameters: {
         SHUFFLE_SEED: shuffleSeed,
+        MAX_VIA_COUNT: Math.max(
+          5,
+          this.minViaCount * 3,
+          Math.ceil(this.uniqueConnections * 2),
+        ),
       },
       viaDiameter: this.viaDiameter,
     })
