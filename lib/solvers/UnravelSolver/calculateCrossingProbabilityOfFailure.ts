@@ -41,7 +41,10 @@ export const calculateNodeProbabilityOfFailure = (
   // modest crossing counts on otherwise solvable nodes.
   const logistic = 1 / (1 + Math.exp(-5 * (utilization - 0.64)))
 
-  // Keep a low baseline floor for slight congestion while ensuring hard bounds.
-  const calibrated = 0.015 + logistic * 0.83
+  if (effectiveCrossingLoad <= 0) {
+    return 0
+  }
+
+  const calibrated = logistic * 0.9
   return Math.min(1, Math.max(0, calibrated))
 }
