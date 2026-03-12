@@ -22,18 +22,26 @@ export const calculateNodeProbabilityOfFailure = (
 
   // Number of traces through the node
   const totalCapacity = getTunedTotalCapacity1(node)
+  const safeCapacity = Math.max(totalCapacity, 0.05)
 
   // Estimated number of vias based on crossings
-  const estNumVias =
-    numSameLayerCrossings * 0.82 +
-    numEntryExitLayerChanges * 0.41 +
-    numTransitionCrossings * 0.2
+  const weightedCrossingLoad =
+    numSameLayerCrossings * 0.88 +
+    numEntryExitLayerChanges * 0.36 +
+    numTransitionCrossings * 0.18
 
-  const estUsedCapacity = (estNumVias / 2) ** 1.1
+  // Higher layer-count nodes can spread crossings, which lowers risk.
+  const layerRelief = 1 / (1 + Math.max(0, numLayers - 2) * 0.45)
+  const effectiveCrossingLoad = weightedCrossingLoad * layerRelief
 
-  // We could refine this with actual trace capacity
-  const approxProb = estUsedCapacity / totalCapacity
+  // Convert raw crossing load into a capacity pressure ratio.
+  const utilization = effectiveCrossingLoad / (safeCapacity * 2.4)
 
-  // Bounded probability calculation
-  return approxProb
+  // Squash into [0,1] with a soft logistic tail to avoid over-penalizing
+  // modest crossing counts on otherwise solvable nodes.
+  const logistic = 1 / (1 + Math.exp(-5 * (utilization - 0.64)))
+
+  // Keep a low baseline floor for slight congestion while ensuring hard bounds.
+  const calibrated = 0.015 + logistic * 0.83
+  return Math.min(1, Math.max(0, calibrated))
 }
