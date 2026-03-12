@@ -12,6 +12,48 @@ export interface GetConnectionsWithNodesResult {
   connectionNameToGoalNodeIds: Map<string, CapacityMeshNodeId[]>
 }
 
+const getDistanceToNodeBox = (
+  point: { x: number; y: number },
+  node: InputNodeWithPortPoints,
+) => {
+  const minX = node.center.x - node.width / 2
+  const maxX = node.center.x + node.width / 2
+  const minY = node.center.y - node.height / 2
+  const maxY = node.center.y + node.height / 2
+
+  const dx = point.x < minX ? minX - point.x : point.x > maxX ? point.x - maxX : 0
+  const dy = point.y < minY ? minY - point.y : point.y > maxY ? point.y - maxY : 0
+
+  return Math.sqrt(dx * dx + dy * dy)
+}
+
+const getNodeForConnectionPoint = (
+  point: { x: number; y: number },
+  nodesWithTargets: InputNodeWithPortPoints[],
+) => {
+  let bestNode = nodesWithTargets[0]
+  let bestBoxDistance = Number.MAX_VALUE
+  let bestCenterDistance = Number.MAX_VALUE
+
+  for (const node of nodesWithTargets) {
+    const boxDistance = getDistanceToNodeBox(point, node)
+    const centerDistance = Math.sqrt(
+      (node.center.x - point.x) ** 2 + (node.center.y - point.y) ** 2,
+    )
+
+    if (
+      boxDistance < bestBoxDistance ||
+      (boxDistance === bestBoxDistance && centerDistance < bestCenterDistance)
+    ) {
+      bestNode = node
+      bestBoxDistance = boxDistance
+      bestCenterDistance = centerDistance
+    }
+  }
+
+  return bestNode
+}
+
 /**
  * Computes the connections with their node assignments and goal node IDs.
  * This returns the unshuffled connections - shuffling should be done separately
@@ -29,18 +71,7 @@ export function getConnectionsWithNodes(
     const nodesForConnection: InputNodeWithPortPoints[] = []
 
     for (const point of connection.pointsToConnect) {
-      let closestNode = inputNodes[0]
-      let minDistance = Number.MAX_VALUE
-
-      for (const node of nodesWithTargets) {
-        const dist = Math.sqrt(
-          (node.center.x - point.x) ** 2 + (node.center.y - point.y) ** 2,
-        )
-        if (dist < minDistance) {
-          minDistance = dist
-          closestNode = node
-        }
-      }
+      const closestNode = getNodeForConnectionPoint(point, nodesWithTargets)
       nodesForConnection.push(closestNode)
     }
 
