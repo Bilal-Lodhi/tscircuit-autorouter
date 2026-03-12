@@ -4,6 +4,60 @@ import { mapZToLayerName } from "./mapZToLayerName"
 
 type Point = { x: number; y: number; z: number }
 
+const POINT_EPSILON = 1e-3
+const MICRO_DETOUR_MAX_CHORD = 0.06
+const MICRO_DETOUR_MIN_TINY_EDGE = 0.01
+const MICRO_DETOUR_MIN_LARGE_EDGE = 0.03
+const MICRO_DETOUR_MAX_PERPENDICULAR = 0.01
+
+const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y)
+
+const sanitizeLayerPoints = (points: Point[]) => {
+  if (points.length < 2) return points
+
+  const cleaned = [...points]
+  let changed = true
+
+  while (changed) {
+    changed = false
+
+    for (let i = 1; i < cleaned.length; i++) {
+      if (distance(cleaned[i - 1], cleaned[i]) < POINT_EPSILON) {
+        cleaned.splice(i, 1)
+        changed = true
+        break
+      }
+    }
+    if (changed) continue
+
+    for (let i = 1; i < cleaned.length - 1; i++) {
+      const a = cleaned[i - 1]
+      const b = cleaned[i]
+      const c = cleaned[i + 1]
+
+      const chord = distance(a, c)
+      if (chord >= MICRO_DETOUR_MAX_CHORD) continue
+
+      const distAB = distance(a, b)
+      const distBC = distance(b, c)
+      if (Math.min(distAB, distBC) >= MICRO_DETOUR_MIN_TINY_EDGE) continue
+      if (Math.max(distAB, distBC) <= MICRO_DETOUR_MIN_LARGE_EDGE) continue
+
+      const doubledArea = Math.abs(
+        (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x),
+      )
+      const perpendicularDistance = doubledArea / Math.max(chord, 1e-9)
+      if (perpendicularDistance >= MICRO_DETOUR_MAX_PERPENDICULAR) continue
+
+      cleaned.splice(i, 1)
+      changed = true
+      break
+    }
+  }
+
+  return cleaned
+}
+
 /**
  * Extended HD route type that may contain jumpers (from HighDensitySolver)
  */
@@ -30,7 +84,7 @@ export const convertHdRouteToSimplifiedRoute = (
     if (point.z !== currentZ) {
       // Add all wire segments for the current layer
       const layerName = mapZToLayerName(currentZ, layerCount)
-      for (const layerPoint of currentLayerPoints) {
+      for (const layerPoint of sanitizeLayerPoints(currentLayerPoints)) {
         result.push({
           route_type: "wire",
           x: layerPoint.x,
@@ -72,7 +126,7 @@ export const convertHdRouteToSimplifiedRoute = (
 
   // Add the final layer's wire segments
   const layerName = mapZToLayerName(currentZ, layerCount)
-  for (const layerPoint of currentLayerPoints) {
+  for (const layerPoint of sanitizeLayerPoints(currentLayerPoints)) {
     result.push({
       route_type: "wire",
       x: layerPoint.x,
