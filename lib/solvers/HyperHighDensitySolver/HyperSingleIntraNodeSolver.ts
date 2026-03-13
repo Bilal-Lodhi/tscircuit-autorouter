@@ -258,17 +258,26 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
       const solver = new HighDensityA02Solver({
         nodeWithPortPoints: this.nodeWithPortPoints,
         outerGridCellSize: 0.1,
-        outerGridCellThickness: 0.8,
+        outerGridCellThickness: 2,
         innerGridCellSize: 0.4,
         viaDiameter: this.constructorParams.viaDiameter ?? 0.3,
         viaMinDistFromBorder: 0.15,
         traceMargin: 0.15,
-        traceThickness: this.constructorParams.traceWidth ?? 0.15,
+        enableDeferredConflictRepair: true,
+        maxDeferredRepairPasses: 48,
+        edgePenaltyStrength: 0.2,
+        // This likely needs to be corrected to use the actual trace width-
+        // but using anything but 0.1 for traceThickness is causing issues
+        // needs more debugging- repro01 in the high-density-a01 repo
+        // has a good reproduction
+        traceThickness: 0.1, // this.constructorParams.traceWidth ?? 0.15,
         hyperParameters: {
+          greedyMultiplier: 1.2,
           shuffleSeed: hyperParameters.SHUFFLE_SEED ?? 0,
+          ripCost: 1,
         },
       })
-      solver.MAX_ITERATIONS = 10_000_000
+      solver.MAX_ITERATIONS = 20_000_000 * this.effort
       return solver as any
     }
     if (hyperParameters.CLOSED_FORM_TWO_TRACE_SAME_LAYER) {
