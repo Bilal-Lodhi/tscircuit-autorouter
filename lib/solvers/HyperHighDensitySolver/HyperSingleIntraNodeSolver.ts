@@ -16,7 +16,7 @@ import { MultiHeadPolyLineIntraNodeSolver2 } from "../HighDensitySolver/MultiHea
 import { MultiHeadPolyLineIntraNodeSolver3 } from "../HighDensitySolver/MultiHeadPolyLineIntraNodeSolver/MultiHeadPolyLineIntraNodeSolver3_ViaPossibilitiesSolverIntegration"
 import {
   HighDensitySolverA01,
-  HighDensitySolverA02 as HighDensityA02Solver,
+  HighDensitySolverA03 as HighDensityA03Solver,
 } from "@tscircuit/high-density-a01"
 import { FixedTopologyHighDensityIntraNodeSolver } from "../FixedTopologyHighDensityIntraNodeSolver"
 
@@ -26,7 +26,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
   | SingleTransitionCrossingRouteSolver
   | SingleTransitionIntraNodeSolver
   | FixedTopologyHighDensityIntraNodeSolver
-  | HighDensityA02Solver
+  | HighDensityA03Solver
 > {
   override getSolverName(): string {
     return "HyperSingleIntraNodeSolver"
@@ -48,7 +48,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
     this.connMap = opts.connMap
     this.constructorParams = opts
     this.effort = opts.effort ?? 1
-    this.MAX_ITERATIONS = 10_000_000 * this.effort
+    this.MAX_ITERATIONS = 20_000_000 * this.effort
     this.GREEDY_MULTIPLIER = 5
     this.MIN_SUBSTEPS = 100
   }
@@ -63,7 +63,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
       ["closedFormSingleTrace"],
       // ["closedFormTwoTrace"],
       ["highDensityA01"],
-      ["highDensityA02"],
+      ["highDensityA03"],
       ["fixedTopologyHighDensityIntraNodeSolver"],
     ]
   }
@@ -204,10 +204,10 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
         ],
       },
       {
-        name: "highDensityA02",
+        name: "highDensityA03",
         possibleValues: [
           {
-            HIGH_DENSITY_A02: true,
+            HIGH_DENSITY_A03: true,
           },
         ],
       },
@@ -217,7 +217,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
   computeG(solver: IntraNodeRouteSolver) {
     if (
       (solver as any) instanceof HighDensitySolverA01 ||
-      (solver as any) instanceof HighDensityA02Solver
+      (solver as any) instanceof HighDensityA03Solver
     ) {
       return (solver as any).iterations / 1_000_000
     }
@@ -254,30 +254,23 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
       solver.MAX_ITERATIONS = 10_000_000
       return solver as any
     }
-    if (hyperParameters.HIGH_DENSITY_A02) {
-      const solver = new HighDensityA02Solver({
+    if (hyperParameters.HIGH_DENSITY_A03) {
+      const solver = new HighDensityA03Solver({
         nodeWithPortPoints: this.nodeWithPortPoints,
-        outerGridCellSize: 0.1,
-        outerGridCellThickness: 2,
-        innerGridCellSize: 0.4,
+        highResolutionCellSize: 0.1,
+        highResolutionCellThickness: 8,
+        lowResolutionCellSize: 0.4,
         viaDiameter: this.constructorParams.viaDiameter ?? 0.3,
         viaMinDistFromBorder: 0.15,
         traceMargin: 0.15,
-        enableDeferredConflictRepair: true,
-        maxDeferredRepairPasses: 48,
-        edgePenaltyStrength: 0.2,
         // This likely needs to be corrected to use the actual trace width-
         // but using anything but 0.1 for traceThickness is causing issues
         // needs more debugging- repro01 in the high-density-a01 repo
         // has a good reproduction
         traceThickness: 0.1, // this.constructorParams.traceWidth ?? 0.15,
-        hyperParameters: {
-          greedyMultiplier: 1.2,
-          shuffleSeed: hyperParameters.SHUFFLE_SEED ?? 0,
-          ripCost: 1,
-        },
+        hyperParameters,
       })
-      solver.MAX_ITERATIONS = 20_000_000 * this.effort
+      solver.MAX_ITERATIONS *= this.effort
       return solver as any
     }
     if (hyperParameters.CLOSED_FORM_TWO_TRACE_SAME_LAYER) {
@@ -325,7 +318,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
     let routes: HighDensityIntraNodeRoute[]
     if (
       (solver.solver as any) instanceof HighDensitySolverA01 ||
-      (solver.solver as any) instanceof HighDensityA02Solver
+      (solver.solver as any) instanceof HighDensityA03Solver
     ) {
       routes = (solver.solver as any).getOutput()
     } else {
