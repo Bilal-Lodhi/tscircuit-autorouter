@@ -268,7 +268,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
         // needs more debugging- repro01 in the high-density-a01 repo
         // has a good reproduction
         traceThickness: 0.1, // this.constructorParams.traceWidth ?? 0.15,
-        hyperParameters
+        hyperParameters,
       })
       solver.MAX_ITERATIONS *= this.effort
       return solver as any
