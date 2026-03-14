@@ -55,16 +55,16 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
 
   getCombinationDefs() {
     return [
-      // ["multiHeadPolyLine"],
+      ["multiHeadPolyLine"],
       // ["majorCombinations", "orderings6", "cellSizeFactor"],
       // ["noVias"],
       // ["orderings50"],
       // ["flipTraceAlignmentDirection", "orderings6"],
-      // ["closedFormSingleTrace"],
+      ["closedFormSingleTrace"],
       // ["closedFormTwoTrace"],
-      // ["highDensityA01"],
+      ["highDensityA01"],
       ["highDensityA03"],
-      // ["fixedTopologyHighDensityIntraNodeSolver"],
+      ["fixedTopologyHighDensityIntraNodeSolver"],
     ]
   }
 
