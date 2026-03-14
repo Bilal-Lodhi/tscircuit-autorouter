@@ -48,7 +48,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
     this.connMap = opts.connMap
     this.constructorParams = opts
     this.effort = opts.effort ?? 1
-    this.MAX_ITERATIONS = 10_000_000 * this.effort
+    this.MAX_ITERATIONS = 20_000_000 * this.effort
     this.GREEDY_MULTIPLIER = 5
     this.MIN_SUBSTEPS = 100
   }

@@ -6,6 +6,7 @@ SCENARIO_LIMIT=""
 EFFORT=""
 SAMPLE_TIMEOUT=""
 INCLUDE_ASSIGNABLE=false
+DEFAULT_SOLVER_NAME="AutoroutingPipelineSolver"
 
 default_concurrency() {
   getconf _NPROCESSORS_ONLN 2>/dev/null || nproc 2>/dev/null || echo 4
@@ -50,6 +51,10 @@ Options:
   --sample-timeout D   Override per-sample timeout directly; otherwise timeout is 60s + 60s * effort
   --include-assignable Include assignable pipelines (excluded by default)
   -h, --help           Show this help
+
+Defaults:
+  Running ./benchmark.sh with no parameters benchmarks only AutoroutingPipelineSolver.
+  Use "all" to benchmark every available solver.
 
 Examples:
   ./benchmark.sh
@@ -125,6 +130,10 @@ while [ "$#" -gt 0 ]; do
 done
 
 CMD=(bun "scripts/benchmark/index.ts" "--concurrency" "$CONCURRENCY")
+
+if [ -z "$SOLVER_NAME" ]; then
+  SOLVER_NAME="$DEFAULT_SOLVER_NAME"
+fi
 
 if [ -n "$SOLVER_NAME" ] && [ "$SOLVER_NAME" != "_" ] && [ "$SOLVER_NAME" != "all" ]; then
   CMD+=("--solver" "$SOLVER_NAME")
