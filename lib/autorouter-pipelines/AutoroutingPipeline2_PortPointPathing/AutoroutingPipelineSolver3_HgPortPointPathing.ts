@@ -301,10 +301,11 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
         return [
           {
             nodeWithPortPoints:
-              cms.portPointPathingSolver?.getOutput().nodesWithPortPoints ?? [],
+              cms.portPointPathingSolver?.getOutputPortPoints()
+                .nodesWithPortPoints ?? [],
             inputNodesWithPortPoints:
-              cms.portPointPathingSolver?.getOutput().inputNodeWithPortPoints ??
-              [],
+              cms.portPointPathingSolver?.getOutputPortPoints()
+                .inputNodeWithPortPoints ?? [],
             minTraceWidth: cms.minTraceWidth,
             obstacles: cms.srj.obstacles,
             layerCount: cms.srj.layerCount,
