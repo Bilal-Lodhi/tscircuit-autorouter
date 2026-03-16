@@ -754,7 +754,7 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
     return pf
   }
 
-  override getOutput(): {
+  getOutput(): {
     nodesWithPortPoints: NodeWithPortPoints[]
     inputNodeWithPortPoints: InputNodeWithPortPoints[]
   } {
