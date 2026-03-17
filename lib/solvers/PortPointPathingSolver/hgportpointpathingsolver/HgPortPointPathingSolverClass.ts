@@ -31,6 +31,36 @@ import { visualizeHgConnections } from "./visualize/visualizeHgConnections"
 import { visualizeHgHyperGraph } from "./visualize/visualizeHgHyperGraph"
 import { visualizeSolvedRoute } from "./visualize/visualizeSolvedRoute"
 
+const pairPortPointsByKey = <T>(
+  points: T[],
+  getKey: (point: T) => string,
+  options?: { onOddGroup?: (key: string, group: T[]) => void },
+): T[][] => {
+  const groups = new Map<string, T[]>()
+  for (const point of points) {
+    const key = getKey(point)
+    const group = groups.get(key) ?? []
+    group.push(point)
+    groups.set(key, group)
+  }
+
+  const pairs: T[][] = []
+  for (const [key, group] of groups.entries()) {
+    if (group.length % 2 !== 0) {
+      options?.onOddGroup?.(key, group)
+    }
+    for (let i = 0; i + 1 < group.length; i += 2) {
+      pairs.push([group[i], group[i + 1]])
+    }
+    if (group.length % 2 !== 0) {
+      const lastPoint = group[group.length - 1]
+      if (lastPoint) pairs.push([lastPoint])
+    }
+  }
+
+  return pairs
+}
+
 /** Solves port-point routing over an HG hypergraph using heuristics and optional ripping. */
 export class HgPortPointPathingSolver extends HyperGraphSolver<
   RegionHg,
@@ -762,10 +792,42 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
     const regionById = new Map(
       this.params.graph.regions.map((region) => [region.regionId, region]),
     )
+    const portPointRegionIdsById = new Map<string, RegionId[]>()
+    for (const region of this.params.graph.regions) {
+      for (const port of region.ports) {
+        const portId = port.d.portId
+        if (!portId) continue
+        const regionIds = portPointRegionIdsById.get(portId) ?? []
+        for (const portRegion of port.d.regions) {
+          if (!regionIds.includes(portRegion.regionId)) {
+            regionIds.push(portRegion.regionId)
+          }
+        }
+        portPointRegionIdsById.set(portId, regionIds)
+      }
+    }
     const endpointRegionIds = new Set<RegionId>()
     for (const connection of this.params.connections) {
       endpointRegionIds.add(connection.startRegion.regionId)
       endpointRegionIds.add(connection.endRegion.regionId)
+    }
+    const inputPortPointsByRegion = new Map<RegionId, InputPortPoint[]>()
+    for (const region of this.params.graph.regions) {
+      const portPoints = region.ports.map((port) => {
+        const connectsToOffBoardNode = port.d.regions.some((region) =>
+          Boolean(region.d._offBoardConnectionId),
+        )
+        return {
+          portPointId: port.d.portId,
+          x: port.d.x,
+          y: port.d.y,
+          z: port.d.z,
+          connectionNodeIds: port.d.regions.map((region) => region.regionId),
+          distToCentermostPortOnZ: port.d.distToCentermostPortOnZ,
+          connectsToOffBoardNode,
+        } as InputPortPoint
+      })
+      inputPortPointsByRegion.set(region.regionId, portPoints)
     }
     const endpointPortPointsByRegion = new Map<RegionId, PortPoint[]>()
     const edgePortPointsByRegion = new Map<RegionId, Map<string, PortPoint>>()
@@ -816,7 +878,7 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
           connectionName,
           rootConnectionName,
         }
-        for (const region of [port.region1, port.region2]) {
+        for (const region of port.d.regions) {
           const regionId = region.regionId
           const existingMap = edgePortPointsByRegion.get(regionId) ?? new Map()
           const key = `${portPoint.portPointId}:${connectionName}:${rootConnectionName ?? ""}:${regionId}`
@@ -824,6 +886,194 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
             existingMap.set(key, portPoint)
             edgePortPointsByRegion.set(regionId, existingMap)
           }
+        }
+      }
+    }
+
+    const moveInputPortPointToNeighbor = (
+      regionId: RegionId,
+      portPoint: InputPortPoint,
+    ): boolean => {
+      const region = regionById.get(regionId)
+      if (region?.d._containsObstacle) return false
+      const [nodeA, nodeB] = portPoint.connectionNodeIds
+      const neighborRegionId = nodeA === regionId ? nodeB : nodeA
+      if (!neighborRegionId || neighborRegionId === regionId) return false
+      const currentPoints = inputPortPointsByRegion.get(regionId) ?? []
+      const index = currentPoints.findIndex(
+        (point) => point.portPointId === portPoint.portPointId,
+      )
+      if (index === -1) return false
+      currentPoints.splice(index, 1)
+      inputPortPointsByRegion.set(regionId, currentPoints)
+      const neighborPoints = inputPortPointsByRegion.get(neighborRegionId) ?? []
+      neighborPoints.push(portPoint)
+      inputPortPointsByRegion.set(neighborRegionId, neighborPoints)
+      return true
+    }
+
+    for (let pass = 0; pass < 3; pass++) {
+      let movedAny = false
+      for (const [regionId, portPoints] of inputPortPointsByRegion.entries()) {
+        const region = regionById.get(regionId)
+        if (!region || region.d._containsObstacle) continue
+        const pointsByConnection = new Map<string, InputPortPoint[]>()
+        for (const point of portPoints) {
+          const [nodeA, nodeB] = point.connectionNodeIds
+          const key = nodeA < nodeB ? `${nodeA}:${nodeB}` : `${nodeB}:${nodeA}`
+          const points = pointsByConnection.get(key) ?? []
+          points.push(point)
+          pointsByConnection.set(key, points)
+        }
+        for (const group of pointsByConnection.values()) {
+          if (group.length % 2 === 0) continue
+          let moved = false
+          for (const candidate of group) {
+            const [nodeA, nodeB] = candidate.connectionNodeIds
+            const key =
+              nodeA < nodeB ? `${nodeA}:${nodeB}` : `${nodeB}:${nodeA}`
+            const neighborRegionId = nodeA === regionId ? nodeB : nodeA
+            if (!neighborRegionId || neighborRegionId === regionId) continue
+            const neighborPoints =
+              inputPortPointsByRegion.get(neighborRegionId) ?? []
+            const neighborGroupCount = neighborPoints.filter((point) => {
+              const [neighborA, neighborB] = point.connectionNodeIds
+              const neighborKey =
+                neighborA < neighborB
+                  ? `${neighborA}:${neighborB}`
+                  : `${neighborB}:${neighborA}`
+              return neighborKey === key
+            }).length
+            if (neighborGroupCount % 2 !== 0) {
+              if (moveInputPortPointToNeighbor(regionId, candidate)) {
+                movedAny = true
+                moved = true
+                break
+              }
+            }
+          }
+          if (moved) continue
+          const candidate = group[group.length - 1]
+          if (candidate && moveInputPortPointToNeighbor(regionId, candidate)) {
+            movedAny = true
+          }
+        }
+      }
+      if (!movedAny) break
+    }
+
+    const movePortPointToRegion = (
+      regionId: RegionId,
+      neighborRegionId: RegionId,
+      portPoint: PortPoint,
+    ): boolean => {
+      const currentRegion = regionById.get(regionId)
+      if (currentRegion?.d._containsObstacle) return false
+      const portPointId = portPoint.portPointId
+      if (!portPointId) return false
+      const currentMap = edgePortPointsByRegion.get(regionId)
+      if (!currentMap) return false
+      const currentKey = `${portPointId}:${portPoint.connectionName}:${portPoint.rootConnectionName ?? ""}:${regionId}`
+      if (!currentMap.has(currentKey)) return false
+      currentMap.delete(currentKey)
+      if (currentMap.size === 0) {
+        edgePortPointsByRegion.delete(regionId)
+      }
+      const neighborMap =
+        edgePortPointsByRegion.get(neighborRegionId) ?? new Map()
+      const neighborKey = `${portPointId}:${portPoint.connectionName}:${portPoint.rootConnectionName ?? ""}:${neighborRegionId}`
+      if (!neighborMap.has(neighborKey)) {
+        neighborMap.set(neighborKey, portPoint)
+      }
+      edgePortPointsByRegion.set(neighborRegionId, neighborMap)
+      return true
+    }
+
+    const getNeighborRegionIds = (
+      regionId: RegionId,
+      portPoint: PortPoint,
+    ): RegionId[] => {
+      const portPointId = portPoint.portPointId
+      if (!portPointId) return []
+      const regionIds = portPointRegionIdsById.get(portPointId) ?? []
+      return regionIds.filter((id) => id !== regionId)
+    }
+
+    for (let pass = 0; pass < 3; pass++) {
+      let movedAny = false
+      for (const [regionId, regionMap] of edgePortPointsByRegion.entries()) {
+        const region = regionById.get(regionId)
+        if (!region || region.d._containsObstacle) continue
+        const edgePoints = Array.from(regionMap.values())
+        const pointsByConnection = new Map<string, PortPoint[]>()
+        for (const point of edgePoints) {
+          const key = `${point.connectionName}::${point.rootConnectionName ?? ""}`
+          const points = pointsByConnection.get(key) ?? []
+          points.push(point)
+          pointsByConnection.set(key, points)
+        }
+        for (const group of pointsByConnection.values()) {
+          if (group.length % 2 === 0) continue
+          let moved = false
+          for (const candidate of group) {
+            const key = `${candidate.connectionName}::${candidate.rootConnectionName ?? ""}`
+            const neighborRegionIds = getNeighborRegionIds(regionId, candidate)
+            for (const neighborRegionId of neighborRegionIds) {
+              const neighborMap = edgePortPointsByRegion.get(neighborRegionId)
+              const neighborPoints = Array.from(neighborMap?.values() ?? [])
+              const neighborGroupCount = neighborPoints.filter(
+                (point) =>
+                  `${point.connectionName}::${point.rootConnectionName ?? ""}` ===
+                  key,
+              ).length
+              if (neighborGroupCount % 2 !== 0) {
+                if (
+                  movePortPointToRegion(regionId, neighborRegionId, candidate)
+                ) {
+                  movedAny = true
+                  moved = true
+                  break
+                }
+              }
+            }
+            if (moved) break
+          }
+          if (moved) continue
+          const candidate = group[group.length - 1]
+          if (!candidate) continue
+          const neighborRegionId = getNeighborRegionIds(regionId, candidate)[0]
+          if (neighborRegionId) {
+            if (movePortPointToRegion(regionId, neighborRegionId, candidate)) {
+              movedAny = true
+            }
+          }
+        }
+      }
+      if (!movedAny) break
+    }
+
+    const portPointsByKey = new Map<string, PortPoint>()
+    for (const regionMap of edgePortPointsByRegion.values()) {
+      for (const portPoint of regionMap.values()) {
+        const portPointId = portPoint.portPointId
+        if (!portPointId) continue
+        const key = `${portPointId}:${portPoint.connectionName}:${portPoint.rootConnectionName ?? ""}`
+        if (!portPointsByKey.has(key)) {
+          portPointsByKey.set(key, portPoint)
+        }
+      }
+    }
+
+    for (const portPoint of portPointsByKey.values()) {
+      const portPointId = portPoint.portPointId
+      if (!portPointId) continue
+      const regionIds = portPointRegionIdsById.get(portPointId) ?? []
+      for (const regionId of regionIds) {
+        const regionMap = edgePortPointsByRegion.get(regionId) ?? new Map()
+        const key = `${portPointId}:${portPoint.connectionName}:${portPoint.rootConnectionName ?? ""}:${regionId}`
+        if (!regionMap.has(key)) {
+          regionMap.set(key, portPoint)
+          edgePortPointsByRegion.set(regionId, regionMap)
         }
       }
     }
@@ -856,7 +1106,6 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
           }
         }
         edgePortPoints.push(...supplementalEndpointPortPoints)
-
         const edgePortPointsByConnection = new Map<string, PortPoint[]>()
         for (const portPoint of edgePortPoints) {
           const key = `${portPoint.connectionName}::${portPoint.rootConnectionName ?? ""}`
@@ -881,46 +1130,57 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
       }
 
       const nodePortPoints = [...edgePortPoints, ...centerPortPoints]
+      const pairedNodePortPoints = pairPortPointsByKey(
+        nodePortPoints,
+        (point) => `${point.connectionName}:${point.rootConnectionName ?? ""}`,
+      )
 
-      if (nodePortPoints.length > 0) {
+      for (const portPoints of pairedNodePortPoints) {
         nodesWithPortPoints.push({
           capacityMeshNodeId: region.d.capacityMeshNodeId,
           center: region.d.center,
           width: region.d.width,
           height: region.d.height,
-          portPoints: nodePortPoints,
+          portPoints,
           availableZ: region.d.availableZ,
         })
       }
 
-      const inputPortPoints: InputPortPoint[] = region.ports.map((port) => {
-        const connectsToOffBoardNode = port.d.regions.some((region) =>
-          Boolean(region.d._offBoardConnectionId),
-        )
-        return {
-          portPointId: port.d.portId,
-          x: port.d.x,
-          y: port.d.y,
-          z: port.d.z,
-          connectionNodeIds: port.d.regions.map((region) => region.regionId),
-          distToCentermostPortOnZ: port.d.distToCentermostPortOnZ,
-          connectsToOffBoardNode,
-        } as InputPortPoint
-      })
+      const inputPortPoints = inputPortPointsByRegion.get(region.regionId) ?? []
+      const inputPortPointsByConnection = new Map<string, InputPortPoint[]>()
+      for (const point of inputPortPoints) {
+        const [nodeA, nodeB] = point.connectionNodeIds
+        const key = nodeA < nodeB ? `${nodeA}:${nodeB}` : `${nodeB}:${nodeA}`
+        const points = inputPortPointsByConnection.get(key) ?? []
+        points.push(point)
+        inputPortPointsByConnection.set(key, points)
+      }
+      const pairedInputPortPoints: InputPortPoint[][] = []
+      for (const [key, points] of inputPortPointsByConnection.entries()) {
+        for (let i = 0; i + 1 < points.length; i += 2) {
+          pairedInputPortPoints.push([points[i], points[i + 1]])
+        }
+        if (points.length % 2 !== 0) {
+          const lastPoint = points[points.length - 1]
+          if (lastPoint) pairedInputPortPoints.push([lastPoint])
+        }
+      }
 
-      inputNodeWithPortPoints.push({
-        capacityMeshNodeId: region.d.capacityMeshNodeId,
-        center: region.d.center,
-        width: region.d.width,
-        height: region.d.height,
-        portPoints: inputPortPoints,
-        availableZ: region.d.availableZ,
-        _containsObstacle: region.d._containsObstacle,
-        _containsTarget: region.d._containsTarget,
-        _offBoardConnectionId: region.d._offBoardConnectionId,
-        _offBoardConnectedCapacityMeshNodeIds:
-          region.d._offBoardConnectedCapacityMeshNodeIds,
-      })
+      for (const portPoints of pairedInputPortPoints) {
+        inputNodeWithPortPoints.push({
+          capacityMeshNodeId: region.d.capacityMeshNodeId,
+          center: region.d.center,
+          width: region.d.width,
+          height: region.d.height,
+          portPoints,
+          availableZ: region.d.availableZ,
+          _containsObstacle: region.d._containsObstacle,
+          _containsTarget: region.d._containsTarget,
+          _offBoardConnectionId: region.d._offBoardConnectionId,
+          _offBoardConnectedCapacityMeshNodeIds:
+            region.d._offBoardConnectedCapacityMeshNodeIds,
+        })
+      }
     }
 
     return {
