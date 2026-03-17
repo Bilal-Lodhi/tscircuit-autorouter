@@ -51,7 +51,7 @@ export function visualizeSolvedRoute(
           { x: pointB.x, y: pointB.y },
         ],
         strokeColor: connectionColor,
-        strokeWidth: 0.1,
+        strokeWidth: 0.01,
         strokeDash,
       }
       graphics.lines!.push(line)

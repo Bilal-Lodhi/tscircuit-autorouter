@@ -27,7 +27,7 @@ export function visualizeHgConnections(
     graphics.lines!.push({
       points: [startCenter, endCenter],
       strokeColor: connectionColor,
-      strokeWidth: 0.05,
+      strokeWidth: 0.1,
       strokeDash:
         (connection.startRegion.d?.availableZ?.[0] ?? 0) === 0
           ? undefined
