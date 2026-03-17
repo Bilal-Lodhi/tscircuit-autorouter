@@ -1,35 +1,35 @@
+import { NodeWithPortPoints, PortPoint } from "@tscircuit/high-density-a01"
 import { HyperGraphSolver, RegionPortAssignment } from "@tscircuit/hypergraph"
 import {
   distance,
   doSegmentsIntersect,
   pointToSegmentDistance,
 } from "@tscircuit/math-utils"
-import { NodeWithPortPoints, PortPoint } from "@tscircuit/high-density-a01"
-import { cloneAndShuffleArray } from "lib/utils/cloneAndShuffleArray"
-import { getIntraNodeCrossingsUsingCircle } from "lib/utils/getIntraNodeCrossingsUsingCircle"
-import { calculateNodeProbabilityOfFailure } from "lib/solvers/UnravelSolver/calculateCrossingProbabilityOfFailure"
+import type { GraphicsObject } from "graphics-debug"
 import type {
   InputNodeWithPortPoints,
   InputPortPoint,
 } from "lib/solvers/PortPointPathingSolver/PortPointPathingSolver"
-import type { GraphicsObject } from "graphics-debug"
+import { calculateNodeProbabilityOfFailure } from "lib/solvers/UnravelSolver/calculateCrossingProbabilityOfFailure"
+import { cloneAndShuffleArray } from "lib/utils/cloneAndShuffleArray"
+import { getIntraNodeCrossingsUsingCircle } from "lib/utils/getIntraNodeCrossingsUsingCircle"
 import { assertDefined } from "./assertDefined"
 import { mergeGraphicsArray } from "./mergeGraphicsArray"
 import type {
-  HgPortPointPathingSolverParams,
-  RegionId,
-  RegionMemoryPfMap,
-  RegionRipCountMap,
   CandidateHg,
   ConnectionHg,
+  HgPortPointPathingSolverParams,
   RegionHg,
+  RegionId,
+  RegionMemoryPfMap,
   RegionPortHg,
+  RegionRipCountMap,
   SolvedRoutesHg,
 } from "./types"
 import { visualizeCandidate } from "./visualize/visualizeCandidate"
-import { visualizeSolvedRoute } from "./visualize/visualizeSolvedRoute"
 import { visualizeHgConnections } from "./visualize/visualizeHgConnections"
 import { visualizeHgHyperGraph } from "./visualize/visualizeHgHyperGraph"
+import { visualizeSolvedRoute } from "./visualize/visualizeSolvedRoute"
 
 /** Solves port-point routing over an HG hypergraph using heuristics and optional ripping. */
 export class HgPortPointPathingSolver extends HyperGraphSolver<
@@ -44,6 +44,7 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
     super({
       inputConnections: params.connections,
       inputGraph: params.graph,
+      inputSolvedRoutes: params.inputSolvedRoutes,
       greedyMultiplier: params.weights.GREEDY_MULTIPLIER,
       ripCost: params.weights.RIPPING_PF_COST,
       rippingEnabled: params.flags.RIPPING_ENABLED,
@@ -767,6 +768,7 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
       endpointRegionIds.add(connection.endRegion.regionId)
     }
     const endpointPortPointsByRegion = new Map<RegionId, PortPoint[]>()
+    const edgePortPointsByRegion = new Map<RegionId, Map<string, PortPoint>>()
     for (const route of this.solvedRoutes) {
       const path = route.path as CandidateHg[]
       if (path.length === 0) continue
@@ -802,37 +804,37 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
         rootConnectionName,
       })
       endpointPortPointsByRegion.set(endRegionId, endPortPoints)
+
+      for (const candidate of path) {
+        const port = candidate.port
+        if (!port) continue
+        const portPoint: PortPoint = {
+          portPointId: port.d.portId,
+          x: port.d.x,
+          y: port.d.y,
+          z: port.d.z,
+          connectionName,
+          rootConnectionName,
+        }
+        for (const region of [port.region1, port.region2]) {
+          const regionId = region.regionId
+          const existingMap = edgePortPointsByRegion.get(regionId) ?? new Map()
+          const key = `${portPoint.portPointId}:${connectionName}:${rootConnectionName ?? ""}:${regionId}`
+          if (!existingMap.has(key)) {
+            existingMap.set(key, portPoint)
+            edgePortPointsByRegion.set(regionId, existingMap)
+          }
+        }
+      }
     }
 
     const nodesWithPortPoints: NodeWithPortPoints[] = []
     const inputNodeWithPortPoints: InputNodeWithPortPoints[] = []
 
     for (const region of this.params.graph.regions) {
-      const assignments = region.assignments ?? []
-      const edgePortPoints = assignments.flatMap((assignment) => {
-        const connectionName = assignment.connection.connectionId
-        const rootConnectionName =
-          assignment.connection.mutuallyConnectedNetworkId
-
-        return [
-          {
-            portPointId: assignment.regionPort1.d.portId,
-            x: assignment.regionPort1.d.x,
-            y: assignment.regionPort1.d.y,
-            z: assignment.regionPort1.d.z,
-            connectionName,
-            rootConnectionName,
-          },
-          {
-            portPointId: assignment.regionPort2.d.portId,
-            x: assignment.regionPort2.d.x,
-            y: assignment.regionPort2.d.y,
-            z: assignment.regionPort2.d.z,
-            connectionName,
-            rootConnectionName,
-          },
-        ] as PortPoint[]
-      })
+      const edgePortPoints = Array.from(
+        edgePortPointsByRegion.get(region.regionId)?.values() ?? [],
+      )
 
       const centerPortPoints: PortPoint[] = []
       if (

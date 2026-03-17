@@ -1,13 +1,32 @@
+import { HyperGraphSectionOptimizer } from "@tscircuit/hypergraph"
+import type { Region } from "@tscircuit/hypergraph"
 import { RectDiffPipeline } from "@tscircuit/rectdiff"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { GraphicsObject, Line } from "graphics-debug"
 import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
 import { CacheProvider } from "lib/cache/types"
+import { calculateOptimalCapacityDepth } from "lib/index"
+import { MultiTargetNecessaryCrampedPortPointSolver } from "lib/solvers/NecessaryCrampedPortPointSolver/MultiTargetNecessaryCrampedPortPointSolver"
+import {
+  HgPortPointPathingSolver,
+  buildHyperGraph,
+} from "lib/solvers/PortPointPathingSolver/hgportpointpathingsolver"
 import { UniformPortDistributionSolver } from "lib/solvers/UniformPortDistributionSolver/UniformPortDistributionSolver"
+import { calculateNodeProbabilityOfFailure } from "lib/solvers/UnravelSolver/calculateCrossingProbabilityOfFailure"
+import { getColorMap } from "lib/solvers/colors"
+import {
+  CapacityMeshEdge,
+  CapacityMeshNode,
+  SimpleRouteJson,
+  SimplifiedPcbTrace,
+  SimplifiedPcbTraces,
+} from "lib/types"
 import { HighDensityRoute } from "lib/types/high-density-types"
+import { combineVisualizations } from "lib/utils/combineVisualizations"
 import { convertHdRouteToSimplifiedRoute } from "lib/utils/convertHdRouteToSimplifiedRoute"
 import { convertSrjToGraphicsObject } from "lib/utils/convertSrjToGraphicsObject"
 import { getConnectivityMapFromSimpleRouteJson } from "lib/utils/getConnectivityMapFromSimpleRouteJson"
+import { getIntraNodeCrossingsUsingCircle } from "lib/utils/getIntraNodeCrossingsUsingCircle"
 import { AvailableSegmentPointSolver } from "../../solvers/AvailableSegmentPointSolver/AvailableSegmentPointSolver"
 import { BaseSolver } from "../../solvers/BaseSolver"
 import { CapacityMeshEdgeSolver } from "../../solvers/CapacityMeshSolver/CapacityMeshEdgeSolver"
@@ -24,21 +43,6 @@ import { SingleLayerNodeMergerSolver } from "../../solvers/SingleLayerNodeMerger
 import { StrawSolver } from "../../solvers/StrawSolver/StrawSolver"
 import { TraceSimplificationSolver } from "../../solvers/TraceSimplificationSolver/TraceSimplificationSolver"
 import { TraceWidthSolver } from "../../solvers/TraceWidthSolver/TraceWidthSolver"
-import { MultiTargetNecessaryCrampedPortPointSolver } from "lib/solvers/NecessaryCrampedPortPointSolver/MultiTargetNecessaryCrampedPortPointSolver"
-import { getColorMap } from "lib/solvers/colors"
-import {
-  SimpleRouteJson,
-  CapacityMeshNode,
-  CapacityMeshEdge,
-  SimplifiedPcbTraces,
-  SimplifiedPcbTrace,
-} from "lib/types"
-import { combineVisualizations } from "lib/utils/combineVisualizations"
-import { calculateOptimalCapacityDepth } from "lib/index"
-import {
-  buildHyperGraph,
-  HgPortPointPathingSolver,
-} from "lib/solvers/PortPointPathingSolver/hgportpointpathingsolver"
 
 interface CapacityMeshSolverOptions {
   capacityDepth?: number
@@ -95,6 +99,7 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
   traceSimplificationSolver?: TraceSimplificationSolver
   availableSegmentPointSolver?: AvailableSegmentPointSolver
   portPointPathingSolver?: HgPortPointPathingSolver
+  hyperGraphSectionOptimizer?: HyperGraphSectionOptimizer
   multiSectionPortPointOptimizer?: MultiSectionPortPointOptimizer
   uniformPortDistributionSolver?: UniformPortDistributionSolver
   traceWidthSolver?: TraceWidthSolver
@@ -271,6 +276,114 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
             },
           },
         ]
+      },
+    ),
+    definePipelineStep(
+      "hyperGraphSectionOptimizer",
+      HyperGraphSectionOptimizer,
+      (cms) => {
+        const portPointSolver = cms.portPointPathingSolver!
+
+        return [
+          {
+            hyperGraphSolver: portPointSolver,
+            inputSolvedRoutes: portPointSolver.solvedRoutes,
+            expansionHopsFromCentralRegion: 1,
+            createHyperGraphSolver: (input) => {
+              return new HgPortPointPathingSolver({
+                graph: input.inputGraph as any,
+                connections: input.inputConnections as any,
+                inputSolvedRoutes: input.inputSolvedRoutes as any,
+                layerCount: cms.srj.layerCount,
+                effort: cms.effort,
+                flags: {
+                  FORCE_CENTER_FIRST: true,
+                  RIPPING_ENABLED: true,
+                },
+                weights: {
+                  SHUFFLE_SEED: 0,
+                  MEMORY_PF_FACTOR: 4,
+                  CENTER_OFFSET_DIST_PENALTY_FACTOR: 0,
+                  CENTER_OFFSET_FOCUS_SHIFT: 0,
+                  NODE_PF_FACTOR: 0,
+                  LAYER_CHANGE_COST: 0,
+                  RIPPING_PF_COST: 0.0,
+                  NODE_PF_MAX_PENALTY: 100,
+                  BASE_CANDIDATE_COST: 0.6,
+                  MAX_ITERATIONS_PER_PATH: 0,
+                  RANDOM_WALK_DISTANCE: 0,
+                  START_RIPPING_PF_THRESHOLD: 0.3,
+                  END_RIPPING_PF_THRESHOLD: 1,
+                  MAX_RIPS: 1000,
+                  RANDOM_RIP_FRACTION: 0.3,
+                  STRAIGHT_LINE_DEVIATION_PENALTY_FACTOR: 4,
+                  GREEDY_MULTIPLIER: 0.7,
+                  MIN_ALLOWED_BOARD_SCORE: -10000,
+                },
+              })
+            },
+            regionCost: (region: Region) => {
+              if (!region.assignments || region.assignments.length === 0) {
+                if (region.d?.assignment) return 0
+                return 1
+              }
+
+              const existingPortPoints = region.assignments.flatMap(
+                (assignment) => {
+                  const region1PortPoint = assignment.regionPort1.d
+                  const region2PortPoint = assignment.regionPort2.d
+                  const connectionName = assignment.connection.connectionId
+                  const rootConnectionName =
+                    assignment.connection.mutuallyConnectedNetworkId
+                  return [
+                    {
+                      x: region1PortPoint.x,
+                      y: region1PortPoint.y,
+                      z: region1PortPoint.z,
+                      connectionName,
+                      rootConnectionName,
+                    },
+                    {
+                      x: region2PortPoint.x,
+                      y: region2PortPoint.y,
+                      z: region2PortPoint.z,
+                      connectionName,
+                      rootConnectionName,
+                    },
+                  ]
+                },
+              )
+              const nodeWithPortPoints = {
+                ...region.d,
+                portPoints: existingPortPoints,
+              }
+              const crossings =
+                getIntraNodeCrossingsUsingCircle(nodeWithPortPoints)
+
+              const pf = calculateNodeProbabilityOfFailure(
+                region.d,
+                crossings.numSameLayerCrossings,
+                crossings.numEntryExitLayerChanges,
+                crossings.numTransitionPairCrossings,
+              )
+              return pf
+            },
+            effort: cms.effort,
+            ACCEPTABLE_REGION_COST: 0.1,
+            MAX_ATTEMPTS_PER_REGION: Math.max(3, 3 * cms.effort),
+            MAX_ATTEMPTS_PER_SECTION: Math.max(50, 50 * cms.effort),
+            FRACTION_TO_REPLACE: 1,
+            alwaysRipConflicts: true,
+          },
+        ]
+      },
+      {
+        onSolved: (cms) => {
+          if (cms.hyperGraphSectionOptimizer && cms.portPointPathingSolver) {
+            cms.portPointPathingSolver.solvedRoutes =
+              cms.hyperGraphSectionOptimizer.solvedRoutes
+          }
+        },
       },
     ),
     // definePipelineStep(
@@ -467,6 +580,7 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
     const availableSegmentPointViz =
       this.availableSegmentPointSolver?.visualize()
     const portPointPathingViz = this.portPointPathingSolver?.visualize()
+    const hyperGraphSectionOptViz = this.hyperGraphSectionOptimizer?.visualize()
     const multiSectionOptViz = this.multiSectionPortPointOptimizer?.visualize()
     const uniformPortDistributionViz =
       this.uniformPortDistributionSolver?.visualize()
@@ -546,6 +660,7 @@ export class AutoroutingPipelineSolver3_HgPortPointPathing extends BaseSolver {
       availableSegmentPointViz,
       necessaryCrampedPortPointSolverViz,
       portPointPathingViz,
+      hyperGraphSectionOptViz,
       multiSectionOptViz,
       uniformPortDistributionViz,
       highDensityViz ? combineVisualizations(problemViz, highDensityViz) : null,

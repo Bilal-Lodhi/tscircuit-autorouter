@@ -79,6 +79,7 @@ export type RegionRipCountMap = Map<RegionId, number>
 export interface HgPortPointPathingSolverParams {
   graph: HyperGraphHg
   connections: ConnectionHg[]
+  inputSolvedRoutes?: SolvedRoutesHg[]
   colorMap?: Record<string, string>
   layerCount: number
   effort: number
