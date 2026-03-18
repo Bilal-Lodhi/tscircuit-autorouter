@@ -12,6 +12,7 @@ import {
   CapacityMeshSolver,
 } from "lib/autorouter-pipelines/AutoroutingPipeline2_PortPointPathing/AutoroutingPipelineSolver2_PortPointPathing"
 import { AutoroutingPipelineSolver3_HgPortPointPathing } from "lib/autorouter-pipelines/AutoroutingPipeline2_PortPointPathing/AutoroutingPipelineSolver3_HgPortPointPathing"
+import { AutoroutingPipelineSolver4 } from "lib/autorouter-pipelines/AutoroutingPipeline2_PortPointPathing/AutoroutingPipelineSolver4"
 import {
   getGlobalInMemoryCache,
   getGlobalLocalStorageCache,
@@ -43,6 +44,7 @@ import { filterUnravelMultiSectionInput } from "./utils/filterUnravelMultiSectio
 const PIPELINE_SOLVERS = {
   AutoroutingPipelineSolver2_PortPointPathing,
   AutoroutingPipelineSolver3_HgPortPointPathing,
+  AutoroutingPipelineSolver4,
   AssignableAutoroutingPipeline1Solver,
   AssignableAutoroutingPipeline2,
   AssignableAutoroutingPipeline3,
@@ -774,6 +776,7 @@ export const AutoroutingPipelineDebugger = ({
           targetSolverStageKey as
             | keyof AutoroutingPipelineSolver2_PortPointPathing
             | keyof AutoroutingPipelineSolver3_HgPortPointPathing
+            | keyof AutoroutingPipelineSolver4
         ]
       ) {
         break
