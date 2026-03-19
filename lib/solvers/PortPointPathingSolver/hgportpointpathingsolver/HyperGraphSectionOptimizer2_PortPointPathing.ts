@@ -260,6 +260,9 @@ export class HyperGraphSectionOptimizer2_PortPointPathing extends BaseSolver {
 
   protected createHyperGraphSolver(
     input: CreateSectionSolverInput,
+    opts: {
+      shuffleSeedOffset?: number
+    } = {},
   ): HgPortPointPathingSolver {
     const portPointPathingConfig =
       this.portPointPathingConfig ??
@@ -278,6 +281,8 @@ export class HyperGraphSectionOptimizer2_PortPointPathing extends BaseSolver {
       input.inputSolvedRoutes,
       graph,
     ) as SolvedRoutesHg[]
+    const weights = structuredClone(portPointPathingConfig.weights)
+    weights.SHUFFLE_SEED += opts.shuffleSeedOffset ?? 0
 
     return new HgPortPointPathingSolver({
       graph,
@@ -287,7 +292,7 @@ export class HyperGraphSectionOptimizer2_PortPointPathing extends BaseSolver {
       effort: portPointPathingConfig.effort,
       flags: portPointPathingConfig.flags,
       layerCount: portPointPathingConfig.layerCount,
-      weights: portPointPathingConfig.weights,
+      weights,
     })
   }
 
@@ -410,12 +415,15 @@ export class HyperGraphSectionOptimizer2_PortPointPathing extends BaseSolver {
       return
     }
 
-    this.activeSubSolver = this.createHyperGraphSolver({
-      inputGraph: this.activeAttempt.blankSectionProblem,
-      inputConnections:
-        this.activeAttempt.blankSectionProblem.connections ?? [],
-      inputSolvedRoutes: [],
-    })
+    this.activeSubSolver = this.createHyperGraphSolver(
+      {
+        inputGraph: this.activeAttempt.blankSectionProblem,
+        inputConnections:
+          this.activeAttempt.blankSectionProblem.connections ?? [],
+        inputSolvedRoutes: [],
+      },
+      { shuffleSeedOffset: this.attemptedSectionCount },
+    )
     this.lifecyclePhase = "solvingSection"
   }
 
@@ -480,12 +488,16 @@ export class HyperGraphSectionOptimizer2_PortPointPathing extends BaseSolver {
       return
     }
 
-    this.pendingMergedAttempt.mergedSolver = this.createHyperGraphSolver({
-      inputGraph: this.pendingMergedAttempt.mergedGraph,
-      inputConnections: this.pendingMergedAttempt.mergedGraph.connections ?? [],
-      inputSolvedRoutes:
-        this.pendingMergedAttempt.mergedGraph.solvedRoutes ?? [],
-    })
+    this.pendingMergedAttempt.mergedSolver = this.createHyperGraphSolver(
+      {
+        inputGraph: this.pendingMergedAttempt.mergedGraph,
+        inputConnections:
+          this.pendingMergedAttempt.mergedGraph.connections ?? [],
+        inputSolvedRoutes:
+          this.pendingMergedAttempt.mergedGraph.solvedRoutes ?? [],
+      },
+      { shuffleSeedOffset: this.attemptedSectionCount },
+    )
     this.lifecyclePhase = "evaluatingMergedGraph"
   }
 

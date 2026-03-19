@@ -316,9 +316,10 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
       while (currentPf > rippingThreshold) {
         if (this.totalRipCount >= this.params.weights.MAX_RIPS) break
         if (!region.assignments || region.assignments.length === 0) {
-          throw new Error(
-            "We are trying to rip a region with no assignments, this should not happen",
-          )
+          // A low ripping threshold can make the newly proposed route alone
+          // exceed the target Pf in an otherwise empty region. There is
+          // nothing to rip in that case, so stop trying to reduce Pf here.
+          break
         }
 
         const availableRoutesToRegion = region.assignments
