@@ -47,6 +47,18 @@ const MAX_SHIFT_STEPS = 40
 const cloneRoute = (route: HighDensityRoute): HighDensityRoute =>
   structuredClone(route)
 
+function sanitizeRoutesForTwoLayerCheck(
+  routes: HighDensityRoute[],
+): HighDensityRoute[] {
+  return routes.map((route) => ({
+    ...cloneRoute(route),
+    route: route.route.map((point) => ({
+      ...point,
+      z: Math.max(0, Math.min(1, point.z)),
+    })),
+  }))
+}
+
 function rectBounds(rect: Obstacle) {
   return {
     minX: rect.center.x - rect.width / 2,
@@ -233,9 +245,10 @@ export class TraceMarginDrcRepairSolver extends BaseSolver {
   private runTraceSpacingCheck(
     hdRoutes: HighDensityRoute[],
   ): TraceSpacingIssue[] {
+    const sanitizedRoutes = sanitizeRoutesForTwoLayerCheck(hdRoutes)
     const circuitJson = convertToCircuitJson(
       this.input.srj,
-      hdRoutes,
+      sanitizedRoutes,
       this.input.minTraceWidth,
       this.input.srj.minViaDiameter ?? 0.3,
     )
