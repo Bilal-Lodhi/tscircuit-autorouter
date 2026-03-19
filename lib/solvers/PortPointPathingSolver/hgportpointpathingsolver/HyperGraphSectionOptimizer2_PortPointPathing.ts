@@ -3,7 +3,7 @@ import {
   convertHyperGraphToSerializedHyperGraph,
   createBlankHyperGraph,
   extractSectionOfHyperGraph,
-  markDeadEndPorts,
+  markDeadEndPortsInSerializedGraph,
   reattachSectionToGraph,
   type Connection,
   type CreateSectionSolverInput,
@@ -551,29 +551,13 @@ export class HyperGraphSectionOptimizer2_PortPointPathing extends BaseSolver {
   private markSectionDeadEndsForBlanking(
     extractedSection: SerializedHyperGraph,
   ): SerializedHyperGraph {
-    const mutableSectionGraph =
-      convertSerializedHyperGraphToHyperGraph(extractedSection)
     const retainedPortIds = new Set(
       (extractedSection.solvedRoutes ?? []).flatMap((solvedRoute) =>
         solvedRoute.path.map((candidate) => candidate.portId),
       ),
     )
 
-    markDeadEndPorts(mutableSectionGraph, retainedPortIds)
-
-    return {
-      ...convertHyperGraphToSerializedHyperGraph(mutableSectionGraph),
-      connections: extractedSection.connections
-        ? structuredClone(extractedSection.connections)
-        : undefined,
-      solvedRoutes: extractedSection.solvedRoutes
-        ? structuredClone(extractedSection.solvedRoutes)
-        : undefined,
-      _sectionCentralRegionId: extractedSection._sectionCentralRegionId,
-      _sectionRouteBindings: extractedSection._sectionRouteBindings
-        ? structuredClone(extractedSection._sectionRouteBindings)
-        : undefined,
-    }
+    return markDeadEndPortsInSerializedGraph(extractedSection, retainedPortIds)
   }
 
   private acceptMergedSolver(mergedSolver: HgPortPointPathingSolver) {
