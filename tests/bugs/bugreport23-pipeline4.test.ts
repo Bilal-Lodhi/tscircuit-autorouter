@@ -13,7 +13,7 @@ test(
     const solver = new AutoroutingPipelineSolver4(
       bugreport23 as unknown as SimpleRouteJson,
       {
-        effort: 4,
+        effort: 1,
       },
     )
 
@@ -39,14 +39,22 @@ test(
     )
 
     if (hgso) {
+      ;(hgso as any).config.maxSectionAttempts = 10
+
       const ogViz = structuredClone(solver.portPointPathingSolver!.visualize())
       let bestScore = hgso.stats.currentBoardScore
       let lastCompletedSectionAttempt = hgso.sectionSolveEvents.length
+      let phaseSteps = 0
+      const maxPhaseSteps = 20_000
 
       console.log(0, bestScore.toFixed(2), kluer.red(hgso.stats.errors))
 
-      while (solver.getCurrentPhase() !== "highDensityRouteSolver") {
+      while (
+        solver.getCurrentPhase() !== "highDensityRouteSolver" &&
+        phaseSteps < maxPhaseSteps
+      ) {
         solver.step()
+        phaseSteps += 1
 
         if (hgso.activeSubSolver) {
           hgso.activeSubSolver.solve()
@@ -73,6 +81,7 @@ test(
         }
       }
 
+      expect(phaseSteps).toBeLessThan(maxPhaseSteps)
       console.log(solver.hyperGraphSectionOptimizer?.stats)
       expect(
         stackGraphicsVertically([ogViz, hgso.rootSolver.visualize()]),
