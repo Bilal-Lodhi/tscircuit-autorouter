@@ -82,6 +82,9 @@ test(
       }
 
       expect(phaseSteps).toBeLessThan(maxPhaseSteps)
+      expect(
+        hgso.rootSolver.graph.ports.filter((port) => port.d?.deadEnd),
+      ).toHaveLength(0)
       console.log(solver.hyperGraphSectionOptimizer?.stats)
       expect(
         stackGraphicsVertically([ogViz, hgso.rootSolver.visualize()]),

@@ -3,7 +3,7 @@ import {
   convertHyperGraphToSerializedHyperGraph,
   createBlankHyperGraph,
   extractSectionOfHyperGraph,
-  pruneDeadEndPorts,
+  markDeadEndPorts,
   reattachSectionToGraph,
   type Connection,
   type CreateSectionSolverInput,
@@ -79,7 +79,7 @@ type AttemptLifecyclePhase =
   | "startingSectionSolver"
   | "solvingSection"
   | "mergingSolvedSection"
-  | "hydratingMergedGraph"
+  | "deserializingMergedGraph"
   | "evaluatingMergedGraph"
 
 export type SectionSolveEvent = {
@@ -300,8 +300,8 @@ export class HyperGraphSectionOptimizer2_PortPointPathing extends BaseSolver {
       case "mergingSolvedSection":
         this.mergeSolvedSection()
         return
-      case "hydratingMergedGraph":
-        this.hydrateMergedGraph()
+      case "deserializingMergedGraph":
+        this.deserializeMergedGraph()
         return
       case "evaluatingMergedGraph":
         this.evaluateMergedGraph()
@@ -422,10 +422,10 @@ export class HyperGraphSectionOptimizer2_PortPointPathing extends BaseSolver {
       }),
     }
     this.activeSubSolver = null
-    this.lifecyclePhase = "hydratingMergedGraph"
+    this.lifecyclePhase = "deserializingMergedGraph"
   }
 
-  private hydrateMergedGraph() {
+  private deserializeMergedGraph() {
     if (!this.pendingMergedAttempt) {
       this.clearActiveAttempt()
       return
@@ -528,9 +528,10 @@ export class HyperGraphSectionOptimizer2_PortPointPathing extends BaseSolver {
       centralRegionId: targetRegion.regionId,
       expansionHopsFromCentralRegion: this.config.sectionExpansionHops,
     })
-    const preparedSection = this.prepareSectionForBlanking(extractedSection)
+    const sectionWithDeadEndMarks =
+      this.markSectionDeadEndsForBlanking(extractedSection)
 
-    if ((preparedSection.connections?.length ?? 0) === 0) {
+    if ((sectionWithDeadEndMarks.connections?.length ?? 0) === 0) {
       return null
     }
 
@@ -539,7 +540,7 @@ export class HyperGraphSectionOptimizer2_PortPointPathing extends BaseSolver {
       targetRegionId: targetRegion.regionId,
       sectionRegionIds,
       fullGraphSnapshot,
-      blankSectionProblem: createBlankHyperGraph(preparedSection),
+      blankSectionProblem: createBlankHyperGraph(sectionWithDeadEndMarks),
       currentSectionCost: this.computeSectionCostForGraph(
         this.graph,
         sectionRegionIds,
@@ -547,35 +548,20 @@ export class HyperGraphSectionOptimizer2_PortPointPathing extends BaseSolver {
     }
   }
 
-  private prepareSectionForBlanking(
+  private markSectionDeadEndsForBlanking(
     extractedSection: SerializedHyperGraph,
   ): SerializedHyperGraph {
     const mutableSectionGraph =
       convertSerializedHyperGraphToHyperGraph(extractedSection)
-    const retainedEndpointRegionIds = new Set(
-      (extractedSection.connections ?? []).flatMap((connection) => [
-        connection.startRegionId,
-        connection.endRegionId,
-      ]),
-    )
     const retainedPortIds = new Set(
       (extractedSection.solvedRoutes ?? []).flatMap((solvedRoute) =>
         solvedRoute.path.map((candidate) => candidate.portId),
       ),
     )
 
-    for (const port of mutableSectionGraph.ports) {
-      if (
-        retainedEndpointRegionIds.has(port.region1.regionId) ||
-        retainedEndpointRegionIds.has(port.region2.regionId)
-      ) {
-        retainedPortIds.add(port.portId)
-      }
-    }
+    markDeadEndPorts(mutableSectionGraph, retainedPortIds)
 
-    pruneDeadEndPorts(mutableSectionGraph, retainedPortIds)
-
-    return sanitizePreparedSectionGraph({
+    return {
       ...convertHyperGraphToSerializedHyperGraph(mutableSectionGraph),
       connections: extractedSection.connections
         ? structuredClone(extractedSection.connections)
@@ -587,7 +573,7 @@ export class HyperGraphSectionOptimizer2_PortPointPathing extends BaseSolver {
       _sectionRouteBindings: extractedSection._sectionRouteBindings
         ? structuredClone(extractedSection._sectionRouteBindings)
         : undefined,
-    })
+    }
   }
 
   private acceptMergedSolver(mergedSolver: HgPortPointPathingSolver) {
@@ -777,163 +763,6 @@ const createInitialStats = (
   currentBoardScore: initialBoardScore,
   errors: 0,
 })
-
-const sanitizePreparedSectionGraph = (
-  sectionGraph: SerializedHyperGraph,
-): SerializedHyperGraph => {
-  const regionIds = new Set(
-    sectionGraph.regions.map((region) => region.regionId),
-  )
-  const regionById = new Map(
-    sectionGraph.regions.map((region) => [region.regionId, region]),
-  )
-  const portById = new Map(
-    sectionGraph.ports.map((port) => [port.portId, port]),
-  )
-  const portCountsByRegionId = new Map<string, number>()
-
-  for (const port of sectionGraph.ports) {
-    portCountsByRegionId.set(
-      port.region1Id,
-      (portCountsByRegionId.get(port.region1Id) ?? 0) + 1,
-    )
-    portCountsByRegionId.set(
-      port.region2Id,
-      (portCountsByRegionId.get(port.region2Id) ?? 0) + 1,
-    )
-  }
-
-  const getFallbackRegionIdForPort = (portId: string | undefined) => {
-    if (!portId) return null
-    const port = portById.get(portId)
-    if (!port) return null
-
-    const candidateRegionIds = [port.region1Id, port.region2Id].filter(
-      (regionId) => regionIds.has(regionId),
-    )
-
-    if (candidateRegionIds.length === 0) return null
-
-    return (
-      candidateRegionIds.find(
-        (regionId) => !regionById.get(regionId)?.d?.isBoundaryRegion,
-      ) ??
-      candidateRegionIds.find(
-        (regionId) => (portCountsByRegionId.get(regionId) ?? 0) > 1,
-      ) ??
-      candidateRegionIds[0]!
-    )
-  }
-
-  const getAttachedRegionIdForPort = (input: {
-    portId: string | undefined
-    originalRegionId: string
-    preferredRegionId?: string
-  }) => {
-    if (!input.portId) return undefined
-    const port = portById.get(input.portId)
-    if (!port) return input.preferredRegionId
-
-    const attachedRegionIds = [port.region1Id, port.region2Id].filter(
-      (regionId) =>
-        regionIds.has(regionId) && regionId !== input.originalRegionId,
-    )
-
-    if (
-      input.preferredRegionId &&
-      attachedRegionIds.includes(input.preferredRegionId) &&
-      !regionById.get(input.preferredRegionId)?.d?.isBoundaryRegion
-    ) {
-      return input.preferredRegionId
-    }
-
-    return (
-      attachedRegionIds.find(
-        (regionId) => !regionById.get(regionId)?.d?.isBoundaryRegion,
-      ) ??
-      attachedRegionIds[0] ??
-      input.preferredRegionId
-    )
-  }
-
-  const repairedSolvedRoutes =
-    sectionGraph.solvedRoutes?.flatMap((solvedRoute) => {
-      const startRegionId = regionIds.has(solvedRoute.connection.startRegionId)
-        ? solvedRoute.connection.startRegionId
-        : getFallbackRegionIdForPort(solvedRoute.path[0]?.portId)
-      const endRegionId = regionIds.has(solvedRoute.connection.endRegionId)
-        ? solvedRoute.connection.endRegionId
-        : getFallbackRegionIdForPort(
-            solvedRoute.path[solvedRoute.path.length - 1]?.portId,
-          )
-
-      if (!startRegionId || !endRegionId) return []
-
-      const repairedPath = solvedRoute.path.map((candidate, index, path) => {
-        if (index === 0) {
-          return {
-            ...candidate,
-            nextRegionId: getAttachedRegionIdForPort({
-              portId: candidate.portId,
-              originalRegionId: startRegionId,
-              preferredRegionId: candidate.nextRegionId,
-            }),
-          }
-        }
-
-        if (index === path.length - 1) {
-          return {
-            ...candidate,
-            lastRegionId: getAttachedRegionIdForPort({
-              portId: candidate.portId,
-              originalRegionId: endRegionId,
-              preferredRegionId: candidate.lastRegionId,
-            }),
-          }
-        }
-
-        return candidate
-      })
-
-      return [
-        {
-          ...solvedRoute,
-          path: repairedPath,
-          connection: {
-            ...solvedRoute.connection,
-            startRegionId,
-            endRegionId,
-          },
-        },
-      ]
-    }) ?? []
-
-  const repairedConnectionById = new Map(
-    repairedSolvedRoutes.map((solvedRoute) => [
-      solvedRoute.connection.connectionId,
-      solvedRoute.connection,
-    ]),
-  )
-
-  const repairedConnections =
-    sectionGraph.connections?.flatMap((connection) => {
-      const repairedConnection = repairedConnectionById.get(
-        connection.connectionId,
-      )
-      if (repairedConnection) return [repairedConnection]
-
-      const hasValidEndpoints =
-        regionIds.has(connection.startRegionId) &&
-        regionIds.has(connection.endRegionId)
-      return hasValidEndpoints ? [connection] : []
-    }) ?? []
-
-  return {
-    ...sectionGraph,
-    connections: repairedConnections,
-    solvedRoutes: repairedSolvedRoutes,
-  }
-}
 
 const getMaxIterationsForSectionOptimizer = (input: {
   effort: number
