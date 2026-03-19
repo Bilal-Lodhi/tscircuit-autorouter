@@ -36,6 +36,7 @@ type IssueContext = {
   runStartSegIndex: number
   runEndSegIndex: number
   axis: "horizontal" | "vertical"
+  directionOrder: [number, number]
   directionIndex: number
   shiftStep: number
   previousIssueCount: number
@@ -44,6 +45,7 @@ type IssueContext = {
 
 const SHIFT_INCREMENT_MM = 0.05
 const MAX_SHIFT_STEPS = 40
+const LOCAL_ROUTE_WINDOW_MARGIN_MM = 1.0
 
 const cloneRoute = (route: HighDensityRoute): HighDensityRoute =>
   structuredClone(route)
@@ -84,6 +86,25 @@ function expandObstacle(obstacle: Obstacle, margin: number): Obstacle {
 function segmentIntersectsRect(a: Point, b: Point, rect: Obstacle): boolean {
   const rb = rectBounds(rect)
   return doesSegmentIntersectRect(a, b, rb)
+}
+
+function pointInsideRect(point: Point, rect: Obstacle): boolean {
+  const rb = rectBounds(rect)
+  return (
+    point.x >= rb.minX &&
+    point.x <= rb.maxX &&
+    point.y >= rb.minY &&
+    point.y <= rb.maxY
+  )
+}
+
+function boundsIntersect(
+  a: { minX: number; minY: number; maxX: number; maxY: number },
+  b: { minX: number; minY: number; maxX: number; maxY: number },
+): boolean {
+  return (
+    a.minX <= b.maxX && a.maxX >= b.minX && a.minY <= b.maxY && a.maxY >= b.minY
+  )
 }
 
 function normalizeTraceIssues(
@@ -288,6 +309,105 @@ export class TraceMarginDrcRepairSolver extends BaseSolver {
     return issues
   }
 
+  private getRunBounds(
+    route: HighDensityRoute,
+    runStartSegIndex: number,
+    runEndSegIndex: number,
+  ): { minX: number; minY: number; maxX: number; maxY: number } {
+    let minX = Number.POSITIVE_INFINITY
+    let minY = Number.POSITIVE_INFINITY
+    let maxX = Number.NEGATIVE_INFINITY
+    let maxY = Number.NEGATIVE_INFINITY
+
+    for (
+      let pointIndex = runStartSegIndex;
+      pointIndex <= runEndSegIndex + 1;
+      pointIndex++
+    ) {
+      const p = route.route[pointIndex]!
+      if (p.x < minX) minX = p.x
+      if (p.y < minY) minY = p.y
+      if (p.x > maxX) maxX = p.x
+      if (p.y > maxY) maxY = p.y
+    }
+
+    return { minX, minY, maxX, maxY }
+  }
+
+  private isRouteNearBounds(
+    route: HighDensityRoute,
+    bounds: { minX: number; minY: number; maxX: number; maxY: number },
+  ): boolean {
+    for (let i = 0; i < route.route.length - 1; i++) {
+      const a = route.route[i]!
+      const b = route.route[i + 1]!
+      if (a.z !== b.z) continue
+      const segmentBounds = {
+        minX: Math.min(a.x, b.x),
+        minY: Math.min(a.y, b.y),
+        maxX: Math.max(a.x, b.x),
+        maxY: Math.max(a.y, b.y),
+      }
+      if (boundsIntersect(segmentBounds, bounds)) return true
+    }
+    return false
+  }
+
+  private runLocalTraceSpacingCheck(
+    hdRoutes: HighDensityRoute[],
+    context: IssueContext,
+    candidateRoute: HighDensityRoute,
+  ): TraceSpacingIssue[] {
+    const runBounds = this.getRunBounds(
+      candidateRoute,
+      context.runStartSegIndex,
+      context.runEndSegIndex,
+    )
+    const routeWindow = {
+      minX:
+        runBounds.minX -
+        candidateRoute.traceThickness -
+        this.input.obstacleMargin -
+        LOCAL_ROUTE_WINDOW_MARGIN_MM,
+      minY:
+        runBounds.minY -
+        candidateRoute.traceThickness -
+        this.input.obstacleMargin -
+        LOCAL_ROUTE_WINDOW_MARGIN_MM,
+      maxX:
+        runBounds.maxX +
+        candidateRoute.traceThickness +
+        this.input.obstacleMargin +
+        LOCAL_ROUTE_WINDOW_MARGIN_MM,
+      maxY:
+        runBounds.maxY +
+        candidateRoute.traceThickness +
+        this.input.obstacleMargin +
+        LOCAL_ROUTE_WINDOW_MARGIN_MM,
+    }
+
+    const keepRouteIndices = new Set<number>([context.routeIndex])
+    for (let i = 0; i < hdRoutes.length; i++) {
+      if (i === context.routeIndex) continue
+      if (this.isRouteNearBounds(hdRoutes[i]!, routeWindow)) {
+        keepRouteIndices.add(i)
+      }
+    }
+
+    const maskedRoutes = hdRoutes.map((route, index) => {
+      if (keepRouteIndices.has(index)) return route
+      const anchorPoint = route.route[0]
+      return {
+        ...route,
+        route: anchorPoint ? [anchorPoint] : [],
+        vias: [],
+        jumpers: [],
+      }
+    })
+
+    return this.runTraceSpacingCheck(maskedRoutes)
+  }
+
   private getNearbyObstaclesForIssue(
     routeLayer: string,
     center: Point,
@@ -460,6 +580,21 @@ export class TraceMarginDrcRepairSolver extends BaseSolver {
       route,
       segmentIndex,
     )
+    const segmentA = route.route[segmentIndex]!
+    const segmentB = route.route[segmentIndex + 1]!
+    const segmentCenter = {
+      x: (segmentA.x + segmentB.x) / 2,
+      y: (segmentA.y + segmentB.y) / 2,
+    }
+    const obstacleCenter = obstacle?.center ?? issue.center
+    const preferredSign =
+      axis === "horizontal"
+        ? segmentCenter.y >= obstacleCenter.y
+          ? 1
+          : -1
+        : segmentCenter.x >= obstacleCenter.x
+          ? 1
+          : -1
 
     this.currentIssueContext = {
       issue,
@@ -470,6 +605,7 @@ export class TraceMarginDrcRepairSolver extends BaseSolver {
       runStartSegIndex,
       runEndSegIndex,
       axis,
+      directionOrder: [preferredSign, -preferredSign],
       directionIndex: 0,
       shiftStep: 1,
       previousIssueCount: this.latestIssueCount,
@@ -494,7 +630,7 @@ export class TraceMarginDrcRepairSolver extends BaseSolver {
     const candidate = cloneRoute(baseRoute)
     const shiftDistance = context.shiftStep * SHIFT_INCREMENT_MM
     const signedShift =
-      context.directionIndex === 0 ? shiftDistance : -shiftDistance
+      context.directionOrder[context.directionIndex] * shiftDistance
 
     const startPointIndex = context.runStartSegIndex
     const endPointIndex = context.runEndSegIndex + 1
@@ -528,6 +664,34 @@ export class TraceMarginDrcRepairSolver extends BaseSolver {
     this.currentObstacleMarginRect = null
   }
 
+  private candidateStillViolatesCurrentObstacleMargin(
+    context: IssueContext,
+    candidateRoute: HighDensityRoute,
+  ): boolean {
+    const obstacleRect = this.currentObstacleMarginRect
+    if (!obstacleRect) return false
+
+    for (
+      let segIndex = context.runStartSegIndex;
+      segIndex <= context.runEndSegIndex;
+      segIndex++
+    ) {
+      const a = candidateRoute.route[segIndex]!
+      const b = candidateRoute.route[segIndex + 1]!
+      if (a.z !== b.z) continue
+
+      if (segmentIntersectsRect(a, b, obstacleRect)) return true
+      if (
+        pointInsideRect(a, obstacleRect) ||
+        pointInsideRect(b, obstacleRect)
+      ) {
+        return true
+      }
+    }
+
+    return false
+  }
+
   private processCurrentIssue() {
     const context = this.currentIssueContext
     if (!context) return
@@ -542,9 +706,46 @@ export class TraceMarginDrcRepairSolver extends BaseSolver {
       return
     }
     this.currentCandidateRoute = candidateRoute
+    if (
+      this.candidateStillViolatesCurrentObstacleMargin(context, candidateRoute)
+    ) {
+      this.advanceAttemptCursor(context)
+      if (context.directionIndex > 1) {
+        this.finishIssueAsUnresolved(context)
+      }
+      return
+    }
 
     const candidateHdRoutes = this.hdRoutes.map(cloneRoute)
     candidateHdRoutes[context.routeIndex] = candidateRoute
+    const localCandidateIssues = this.runLocalTraceSpacingCheck(
+      candidateHdRoutes,
+      context,
+      candidateRoute,
+    )
+    const localIssueStillPresent = localCandidateIssues.some((issue) =>
+      sameIssue(issue, context.issue),
+    )
+    if (localIssueStillPresent) {
+      this.advanceAttemptCursor(context)
+      if (context.directionIndex > 1) {
+        this.finishIssueAsUnresolved(context)
+      }
+      return
+    }
+    const localCandidateIssueKeys = new Set(
+      localCandidateIssues.map((issue) => this.buildIssueKey(issue)),
+    )
+    const localIntroducedNewIssue = [...localCandidateIssueKeys].some(
+      (key) => !context.previousIssueKeys.has(key),
+    )
+    if (localIntroducedNewIssue) {
+      this.advanceAttemptCursor(context)
+      if (context.directionIndex > 1) {
+        this.finishIssueAsUnresolved(context)
+      }
+      return
+    }
     const candidateIssues = this.runTraceSpacingCheck(candidateHdRoutes)
 
     const issueStillPresent = candidateIssues.some((issue) =>
