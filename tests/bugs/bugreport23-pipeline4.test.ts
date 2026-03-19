@@ -39,13 +39,13 @@ test(
     )
 
     if (hgso) {
-      ;(hgso as any).config.maxSectionAttempts = 10
+      ;(hgso as any).config.maxSectionAttempts = 100
 
       const ogViz = structuredClone(solver.portPointPathingSolver!.visualize())
       let bestScore = hgso.stats.currentBoardScore
       let lastCompletedSectionAttempt = hgso.sectionSolveEvents.length
       let phaseSteps = 0
-      const maxPhaseSteps = 20_000
+      const maxPhaseSteps = 100_000
 
       console.log(0, bestScore.toFixed(2), kluer.red(hgso.stats.errors))
 
@@ -91,5 +91,5 @@ test(
       ).toMatchGraphicsSvg(`${import.meta.path}-portPointPathingSolver`)
     }
   },
-  { timeout: 60_000 },
+  { timeout: 120_000 },
 )

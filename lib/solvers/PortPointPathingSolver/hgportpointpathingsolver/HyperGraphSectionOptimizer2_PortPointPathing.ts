@@ -194,8 +194,16 @@ export class HyperGraphSectionOptimizer2_PortPointPathing extends BaseSolver {
   }
 
   override visualize(): GraphicsObject {
-    if (this.activeSubSolver) {
-      return this.activeSubSolver.visualize()
+    const inProgressSolver = this.getInProgressVisualizationSolver()
+    if (inProgressSolver) {
+      if (this.activeAttempt) {
+        return combineVisualizations(
+          inProgressSolver.visualize(),
+          this.visualizeActiveSection(),
+        )
+      }
+
+      return inProgressSolver.visualize()
     }
 
     if (this.activeAttempt) {
@@ -206,6 +214,18 @@ export class HyperGraphSectionOptimizer2_PortPointPathing extends BaseSolver {
     }
 
     return this.rootSolver.visualize()
+  }
+
+  private getInProgressVisualizationSolver(): HgPortPointPathingSolver | null {
+    if (this.activeSubSolver) {
+      return this.activeSubSolver
+    }
+
+    if (this.pendingMergedAttempt?.mergedSolver) {
+      return this.pendingMergedAttempt.mergedSolver
+    }
+
+    return null
   }
 
   private visualizeActiveSection(): GraphicsObject {
