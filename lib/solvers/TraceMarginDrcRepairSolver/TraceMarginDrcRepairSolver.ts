@@ -8,6 +8,7 @@ import {
 import type { Point, Point3 } from "@tscircuit/math-utils"
 import type { PcbTraceError } from "circuit-json"
 import { GraphicsObject } from "graphics-debug"
+import { ObstacleSpatialHashIndex } from "lib/data-structures/ObstacleTree"
 import { BaseSolver } from "lib/solvers/BaseSolver"
 import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
 import { Obstacle, SimpleRouteJson } from "lib/types"
@@ -47,7 +48,7 @@ const MAX_SHIFT_STEPS = 40
 const cloneRoute = (route: HighDensityRoute): HighDensityRoute =>
   structuredClone(route)
 
-function sanitizeRoutesForTwoLayerCheck(
+function normalizeRoutesForTwoLayerCheck(
   routes: HighDensityRoute[],
 ): HighDensityRoute[] {
   return routes.map((route) => ({
@@ -216,6 +217,8 @@ export class TraceMarginDrcRepairSolver extends BaseSolver {
   private currentIssueContext: IssueContext | null = null
   private currentCandidateRoute: HighDensityRoute | null = null
   private currentObstacleMarginRect: Obstacle | null = null
+  private obstaclesByLayer = new Map<string, Obstacle[]>()
+  private obstacleIndexByLayer = new Map<string, ObstacleSpatialHashIndex>()
   private cachedIssues: TraceSpacingIssue[] = []
   private latestIssueCount = 0
 
@@ -232,6 +235,24 @@ export class TraceMarginDrcRepairSolver extends BaseSolver {
     this.MAX_ITERATIONS = 2e6
     this.originalHdRoutes = input.hdRoutes.map(cloneRoute)
     this.hdRoutes = input.hdRoutes.map(cloneRoute)
+
+    for (const obstacle of this.input.srj.obstacles) {
+      for (const layer of obstacle.layers) {
+        const existing = this.obstaclesByLayer.get(layer)
+        if (existing) {
+          existing.push(obstacle)
+        } else {
+          this.obstaclesByLayer.set(layer, [obstacle])
+        }
+      }
+    }
+
+    for (const [layer, obstacles] of this.obstaclesByLayer.entries()) {
+      this.obstacleIndexByLayer.set(
+        layer,
+        new ObstacleSpatialHashIndex("flatbush", obstacles),
+      )
+    }
   }
 
   get repairedHdRoutes(): HighDensityRoute[] {
@@ -245,10 +266,10 @@ export class TraceMarginDrcRepairSolver extends BaseSolver {
   private runTraceSpacingCheck(
     hdRoutes: HighDensityRoute[],
   ): TraceSpacingIssue[] {
-    const sanitizedRoutes = sanitizeRoutesForTwoLayerCheck(hdRoutes)
+    const normalizedRoutes = normalizeRoutesForTwoLayerCheck(hdRoutes)
     const circuitJson = convertToCircuitJson(
       this.input.srj,
-      sanitizedRoutes,
+      normalizedRoutes,
       this.input.minTraceWidth,
       this.input.srj.minViaDiameter ?? 0.3,
     )
@@ -267,16 +288,49 @@ export class TraceMarginDrcRepairSolver extends BaseSolver {
     return issues
   }
 
+  private getNearbyObstaclesForIssue(
+    routeLayer: string,
+    center: Point,
+  ): Obstacle[] {
+    const layerObstacles = this.obstaclesByLayer.get(routeLayer) ?? []
+    if (layerObstacles.length === 0) return []
+
+    const index = this.obstacleIndexByLayer.get(routeLayer)
+    if (!index) return layerObstacles
+
+    const searchRadii = [0.5, 1, 2, 4, 8, 16]
+    for (const radius of searchRadii) {
+      const nearby = index.search({
+        minX: center.x - radius,
+        minY: center.y - radius,
+        maxX: center.x + radius,
+        maxY: center.y + radius,
+      })
+      if (nearby.length > 0) return nearby
+    }
+
+    return layerObstacles
+  }
+
   private findObstacleForIssue(
     issue: TraceSpacingIssue,
     routeLayer: string,
   ): Obstacle | null {
-    const obstaclesOnLayer = this.input.srj.obstacles.filter((obstacle) =>
-      obstacle.layers.includes(routeLayer),
-    )
+    const obstaclesOnLayer = this.obstaclesByLayer.get(routeLayer) ?? []
     if (obstaclesOnLayer.length === 0) return null
+    const nearbyObstacles = this.getNearbyObstaclesForIssue(
+      routeLayer,
+      issue.center,
+    )
 
     const matchingByPortIds =
+      issue.pcb_port_ids && issue.pcb_port_ids.length > 0
+        ? nearbyObstacles.filter((obstacle) =>
+            obstacle.connectedTo.some((id) => issue.pcb_port_ids!.includes(id)),
+          )
+        : []
+
+    const anyMatchingByPortIds =
       issue.pcb_port_ids && issue.pcb_port_ids.length > 0
         ? obstaclesOnLayer.filter((obstacle) =>
             obstacle.connectedTo.some((id) => issue.pcb_port_ids!.includes(id)),
@@ -284,7 +338,11 @@ export class TraceMarginDrcRepairSolver extends BaseSolver {
         : []
 
     const candidates =
-      matchingByPortIds.length > 0 ? matchingByPortIds : obstaclesOnLayer
+      matchingByPortIds.length > 0
+        ? matchingByPortIds
+        : anyMatchingByPortIds.length > 0
+          ? anyMatchingByPortIds
+          : nearbyObstacles
 
     let best: Obstacle | null = null
     let bestDist = Number.POSITIVE_INFINITY
