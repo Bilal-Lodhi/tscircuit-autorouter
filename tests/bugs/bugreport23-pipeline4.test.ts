@@ -83,7 +83,7 @@ test(
 
       expect(phaseSteps).toBeLessThan(maxPhaseSteps)
       expect(
-        hgso.rootSolver.graph.ports.filter((port) => port.d?.deadEnd),
+        hgso.rootSolver.graph.ports.filter((port) => port._deadendInSection),
       ).toHaveLength(0)
       console.log(solver.hyperGraphSectionOptimizer?.stats)
       expect(
