@@ -34,6 +34,7 @@ import { MultipleHighDensityRouteStitchSolver } from "../../solvers/RouteStitchi
 import { SingleLayerNodeMergerSolver } from "../../solvers/SingleLayerNodeMerger/SingleLayerNodeMergerSolver"
 import { StrawSolver } from "../../solvers/StrawSolver/StrawSolver"
 import { TraceKeepoutSolver } from "../../solvers/TraceKeepoutSolver/TraceKeepoutSolver"
+import { TraceMarginDrcRepairSolver } from "../../solvers/TraceMarginDrcRepairSolver/TraceMarginDrcRepairSolver"
 import { TraceSimplificationSolver } from "../../solvers/TraceSimplificationSolver/TraceSimplificationSolver"
 import { TraceWidthSolver } from "../../solvers/TraceWidthSolver/TraceWidthSolver"
 import { getColorMap } from "../../solvers/colors"
@@ -117,6 +118,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
   traceSimplificationSolver?: TraceSimplificationSolver
   traceKeepoutSolver?: TraceKeepoutSolver
   traceWidthSolver?: TraceWidthSolver
+  traceMarginDrcRepairSolver?: TraceMarginDrcRepairSolver
   availableSegmentPointSolver?: AvailableSegmentPointSolver
   portPointPathingSolver?: PortPointPathingSolver
   multiSectionPortPointOptimizer?: MultiSectionPortPointOptimizer
@@ -391,6 +393,22 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
         layerCount: cms.srj.layerCount,
       },
     ]),
+    definePipelineStep(
+      "traceMarginDrcRepairSolver",
+      TraceMarginDrcRepairSolver,
+      (cms) => [
+        {
+          hdRoutes:
+            cms.traceWidthSolver?.hdRoutesWithWidths ??
+            cms.traceKeepoutSolver?.redrawnHdRoutes ??
+            [],
+          srj: cms.srjWithPointPairs ?? cms.srj,
+          minTraceWidth: cms.minTraceWidth,
+          obstacleMargin: cms.srj.defaultObstacleMargin ?? 0.15,
+          colorMap: cms.colorMap,
+        },
+      ],
+    ),
   ]
 
   constructor(
@@ -504,6 +522,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
     const traceSimplificationViz = this.traceSimplificationSolver?.visualize()
     const traceKeepoutViz = this.traceKeepoutSolver?.visualize()
     const traceWidthViz = this.traceWidthSolver?.visualize()
+    const traceMarginDrcRepairViz = this.traceMarginDrcRepairSolver?.visualize()
     const problemOutline = this.srj.outline
     const problemLines: Line[] = []
 
@@ -595,6 +614,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
       traceSimplificationViz,
       traceKeepoutViz,
       traceWidthViz,
+      traceMarginDrcRepairViz,
       this.solved
         ? combineVisualizations(
             problemViz,
@@ -662,6 +682,7 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
 
   _getOutputHdRoutes(): HighDensityRoute[] {
     return (
+      this.traceMarginDrcRepairSolver?.repairedHdRoutes ??
       this.traceWidthSolver?.hdRoutesWithWidths ??
       this.traceKeepoutSolver?.redrawnHdRoutes ??
       this.traceSimplificationSolver?.simplifiedHdRoutes ??
