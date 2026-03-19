@@ -29,6 +29,8 @@ import type {
 import { visualizeCandidate } from "./visualize/visualizeCandidate"
 import { visualizePointPathSolver } from "../visualizePointPathSolver"
 
+const PIPELINE4_LAYER_VISUAL_OFFSET = 0.01
+
 /** Solves port-point routing over an HG hypergraph using heuristics and optional ripping. */
 export class HgPortPointPathingSolver extends HyperGraphSolver<
   RegionHg,
@@ -778,14 +780,12 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
     nodesWithPortPoints: NodeWithPortPoints[]
     inputNodeWithPortPoints: InputNodeWithPortPoints[]
   } {
-    const regionById = new Map(
-      this.params.graph.regions.map((region) => [region.regionId, region]),
-    )
     const endpointRegionIds = new Set<RegionId>()
     for (const connection of this.params.connections) {
       endpointRegionIds.add(connection.startRegion.regionId)
       endpointRegionIds.add(connection.endRegion.regionId)
     }
+    const edgePortPointsByRegion = new Map<RegionId, PortPoint[]>()
     const endpointPortPointsByRegion = new Map<RegionId, PortPoint[]>()
     for (const route of this.solvedRoutes) {
       const path = route.path as CandidateHg[]
@@ -822,83 +822,78 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
         rootConnectionName,
       })
       endpointPortPointsByRegion.set(endRegionId, endPortPoints)
+
+      for (const candidate of path) {
+        if (!candidate.lastPort || !candidate.lastRegion) {
+          continue
+        }
+
+        const regionPortPoints =
+          edgePortPointsByRegion.get(candidate.lastRegion.regionId) ?? []
+        regionPortPoints.push(
+          {
+            portPointId: candidate.lastPort.d.portId,
+            x: candidate.lastPort.d.x,
+            y: candidate.lastPort.d.y,
+            z: candidate.lastPort.d.z,
+            connectionName,
+            rootConnectionName,
+          },
+          {
+            portPointId: candidate.port.d.portId,
+            x: candidate.port.d.x,
+            y: candidate.port.d.y,
+            z: candidate.port.d.z,
+            connectionName,
+            rootConnectionName,
+          },
+        )
+        edgePortPointsByRegion.set(
+          candidate.lastRegion.regionId,
+          regionPortPoints,
+        )
+      }
     }
 
     const nodesWithPortPoints: NodeWithPortPoints[] = []
     const inputNodeWithPortPoints: InputNodeWithPortPoints[] = []
 
     for (const region of this.params.graph.regions) {
-      const assignments = region.assignments ?? []
-      const edgePortPoints = assignments.flatMap((assignment) => {
-        const connectionName = assignment.connection.connectionId
-        const rootConnectionName =
-          assignment.connection.mutuallyConnectedNetworkId
+      const edgePortPoints = edgePortPointsByRegion.get(region.regionId) ?? []
 
-        return [
-          {
-            portPointId: assignment.regionPort1.d.portId,
-            x: assignment.regionPort1.d.x,
-            y: assignment.regionPort1.d.y,
-            z: assignment.regionPort1.d.z,
-            connectionName,
-            rootConnectionName,
-          },
-          {
-            portPointId: assignment.regionPort2.d.portId,
-            x: assignment.regionPort2.d.x,
-            y: assignment.regionPort2.d.y,
-            z: assignment.regionPort2.d.z,
-            connectionName,
-            rootConnectionName,
-          },
-        ] as PortPoint[]
-      })
-
-      const centerPortPoints: PortPoint[] = []
+      let nodePortPoints = edgePortPoints
       if (
         region.d._containsObstacle &&
         endpointRegionIds.has(region.regionId)
       ) {
         const endpointPortPoints =
           endpointPortPointsByRegion.get(region.regionId) ?? []
-        const supplementalEndpointPortPoints: PortPoint[] = []
-        for (const endpointPort of endpointPortPoints) {
-          const alreadyExists = edgePortPoints.some(
-            (p) =>
-              p.connectionName === endpointPort.connectionName &&
-              p.rootConnectionName === endpointPort.rootConnectionName &&
-              p.portPointId === endpointPort.portPointId,
-          )
-          if (!alreadyExists) {
-            supplementalEndpointPortPoints.push(endpointPort)
+        const endpointPortPointsByConnection = new Map<string, PortPoint>()
+        for (const endpointPortPoint of endpointPortPoints) {
+          const key = `${endpointPortPoint.connectionName}::${endpointPortPoint.rootConnectionName ?? ""}`
+          if (!endpointPortPointsByConnection.has(key)) {
+            endpointPortPointsByConnection.set(key, endpointPortPoint)
           }
         }
-        edgePortPoints.push(...supplementalEndpointPortPoints)
 
-        const edgePortPointsByConnection = new Map<string, PortPoint[]>()
-        for (const portPoint of edgePortPoints) {
-          const key = `${portPoint.connectionName}::${portPoint.rootConnectionName ?? ""}`
-          const points = edgePortPointsByConnection.get(key) ?? []
-          points.push(portPoint)
-          edgePortPointsByConnection.set(key, points)
-        }
-
-        for (const [key, points] of edgePortPointsByConnection.entries()) {
+        const endpointNodePortPoints: PortPoint[] = []
+        for (const [key, endpointPortPoint] of endpointPortPointsByConnection) {
           const [connectionName, rootConnectionName = ""] = key.split("::")
-          const firstPoint = points[0]
-          if (!firstPoint) continue
-          centerPortPoints.push({
+          endpointNodePortPoints.push(endpointPortPoint)
+          endpointNodePortPoints.push({
             portPointId: `center:${region.regionId}:${connectionName}:${rootConnectionName}`,
             x: region.d.center.x,
             y: region.d.center.y,
-            z: firstPoint.z,
+            z: endpointPortPoint.z,
             connectionName,
             rootConnectionName: rootConnectionName || undefined,
           })
         }
-      }
 
-      const nodePortPoints = [...edgePortPoints, ...centerPortPoints]
+        if (endpointNodePortPoints.length > 0) {
+          nodePortPoints = endpointNodePortPoints
+        }
+      }
 
       if (nodePortPoints.length > 0) {
         nodesWithPortPoints.push({
@@ -948,13 +943,15 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
   }
 
   override visualize(): GraphicsObject {
-    return mergeGraphicsArray([
-      visualizePointPathSolver(this.createPipeline2StyleAdapter() as any),
-      visualizeCandidate(
-        this.candidateQueue.peekMany(100) as CandidateHg[] | undefined,
-        this.currentConnection?.startRegion.d.center,
-      ),
-    ])
+    return applyLayerVisualOffset(
+      mergeGraphicsArray([
+        visualizePointPathSolver(this.createPipeline2StyleAdapter() as any),
+        visualizeCandidate(
+          this.candidateQueue.peekMany(100) as CandidateHg[] | undefined,
+          this.currentConnection?.startRegion.d.center,
+        ),
+      ]),
+    )
   }
 
   private createPipeline2StyleAdapter() {
@@ -1104,5 +1101,55 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
     }
 
     return graphics
+  }
+}
+
+const applyLayerVisualOffset = (graphics: GraphicsObject): GraphicsObject => {
+  return {
+    ...graphics,
+    lines: graphics.lines?.map((line) => {
+      const offset = getLayerVisualOffset(line.layer)
+      if (!offset) return line
+      return {
+        ...line,
+        points: line.points.map((point) => ({
+          ...point,
+          x: point.x + offset.x,
+          y: point.y + offset.y,
+        })),
+      }
+    }),
+    points: graphics.points?.map((point) => {
+      const offset = getLayerVisualOffset((point as any).layer)
+      if (!offset) return point
+      return {
+        ...point,
+        x: point.x + offset.x,
+        y: point.y + offset.y,
+      }
+    }),
+    circles: graphics.circles?.map((circle) => {
+      const offset = getLayerVisualOffset(circle.layer)
+      if (!offset) return circle
+      return {
+        ...circle,
+        center: {
+          x: circle.center.x + offset.x,
+          y: circle.center.y + offset.y,
+        },
+      }
+    }),
+  }
+}
+
+const getLayerVisualOffset = (layer: string | undefined) => {
+  const zMatch = layer?.match(/(?:^|[^0-9])z(\d+)(?:$|[^0-9])/)
+  const routeLayerMatch = layer?.match(/route-layer-(\d+)/)
+  const z = Number(zMatch?.[1] ?? routeLayerMatch?.[1])
+  if (!Number.isFinite(z)) return null
+
+  return {
+    x: PIPELINE4_LAYER_VISUAL_OFFSET * z,
+    y: -PIPELINE4_LAYER_VISUAL_OFFSET * z,
   }
 }

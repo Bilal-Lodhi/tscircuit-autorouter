@@ -53,7 +53,8 @@ export class HighDensitySolver extends BaseSolver {
     nodePfById?: Map<string, number | null> | Record<string, number | null>
   }) {
     super()
-    this.unsolvedNodePortPoints = nodePortPoints
+    this.unsolvedNodePortPoints =
+      filterRedundantContainedNodesWithPortPoints(nodePortPoints)
     this.colorMap = colorMap ?? {}
     this.connMap = connMap
     this.routes = []
@@ -288,4 +289,80 @@ export class HighDensitySolver extends BaseSolver {
     }
     return graphics
   }
+}
+
+const REDUNDANT_NODE_EPSILON = 1e-6
+
+const filterRedundantContainedNodesWithPortPoints = (
+  nodes: NodeWithPortPoints[],
+): NodeWithPortPoints[] => {
+  const nodeInfos = nodes.map((node) => ({
+    node,
+    pointKeyCounts: getPortPointKeyCounts(node),
+    pointCount: node.portPoints.length,
+    area: node.width * node.height,
+  }))
+
+  const redundantNodeIds = new Set<string>()
+
+  for (const candidate of nodeInfos) {
+    for (const container of nodeInfos) {
+      if (
+        candidate.node.capacityMeshNodeId === container.node.capacityMeshNodeId
+      ) {
+        continue
+      }
+      if (candidate.pointCount >= container.pointCount) {
+        continue
+      }
+      if (container.area + REDUNDANT_NODE_EPSILON < candidate.area) {
+        continue
+      }
+      if (
+        !isStrictPortPointSubset(
+          candidate.pointKeyCounts,
+          container.pointKeyCounts,
+        )
+      ) {
+        continue
+      }
+      redundantNodeIds.add(candidate.node.capacityMeshNodeId)
+      break
+    }
+  }
+
+  return nodes.filter((node) => !redundantNodeIds.has(node.capacityMeshNodeId))
+}
+
+const getPortPointKeyCounts = (node: NodeWithPortPoints) => {
+  const pointKeyCounts = new Map<string, number>()
+
+  for (const portPoint of node.portPoints) {
+    const key =
+      portPoint.portPointId ??
+      [
+        portPoint.connectionName,
+        portPoint.rootConnectionName ?? "",
+        portPoint.z,
+        portPoint.x.toFixed(6),
+        portPoint.y.toFixed(6),
+      ].join("|")
+    pointKeyCounts.set(key, (pointKeyCounts.get(key) ?? 0) + 1)
+  }
+
+  return pointKeyCounts
+}
+
+const isStrictPortPointSubset = (
+  candidatePointKeyCounts: Map<string, number>,
+  containerPointKeyCounts: Map<string, number>,
+) => {
+  for (const [key, candidateCount] of candidatePointKeyCounts) {
+    const containerCount = containerPointKeyCounts.get(key) ?? 0
+    if (candidateCount > containerCount) {
+      return false
+    }
+  }
+
+  return true
 }

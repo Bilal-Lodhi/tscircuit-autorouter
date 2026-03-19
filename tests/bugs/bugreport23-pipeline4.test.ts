@@ -39,7 +39,7 @@ test(
     )
 
     if (hgso) {
-      ;(hgso as any).config.maxSectionAttempts = 100
+      ;(hgso as any).config.maxSectionAttempts = 300
 
       const ogViz = structuredClone(solver.portPointPathingSolver!.visualize())
       let bestScore = hgso.stats.currentBoardScore
@@ -85,6 +85,24 @@ test(
       expect(
         hgso.rootSolver.graph.ports.filter((port) => port._deadendInSection),
       ).toHaveLength(0)
+      const oddConnectionPointGroups =
+        solver.uniformPortDistributionSolver?.getOutput().flatMap((node) => {
+          const pointGroups = Object.entries(
+            Object.groupBy(
+              node.portPoints,
+              (portPoint) =>
+                `${portPoint.connectionName}::${portPoint.rootConnectionName ?? ""}`,
+            ),
+          )
+          return pointGroups
+            .filter(([, portPoints]) => ((portPoints?.length ?? 0) & 1) === 1)
+            .map(([connectionKey, portPoints]) => ({
+              node: node.capacityMeshNodeId,
+              connectionKey,
+              pointCount: portPoints?.length ?? 0,
+            }))
+        }) ?? []
+      expect(oddConnectionPointGroups).toEqual([])
       console.log(solver.hyperGraphSectionOptimizer?.stats)
       expect(
         stackGraphicsVertically([ogViz, hgso.rootSolver.visualize()]),
