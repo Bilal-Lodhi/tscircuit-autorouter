@@ -107,6 +107,17 @@ function isPortPointPathingSolver(
   return "computeNodePf" in solver && typeof solver.computeNodePf === "function"
 }
 
+function getConnectionColor(
+  colorMap: Record<string, string>,
+  connection: { name: string; rootConnectionName?: string },
+) {
+  return (
+    colorMap[connection.rootConnectionName ?? ""] ??
+    colorMap[connection.name] ??
+    "blue"
+  )
+}
+
 export function visualizePointPathSolver(
   solver: PortPointPathingSolver | MultiSectionPortPointOptimizer,
 ): GraphicsObject {
@@ -223,7 +234,7 @@ export function visualizePointPathSolver(
     if (!result.path) continue
 
     const connection = result.connection
-    const color = solver.colorMap[connection.name] ?? "blue"
+    const color = getConnectionColor(solver.colorMap, connection)
 
     // Build segment points from path, inserting node centers when consecutive
     // points are on the same edge (to visualize the bend through the center)
@@ -317,7 +328,7 @@ export function visualizePointPathSolver(
   ) {
     const currentConnection = solver.currentConnection
     const connectionColor = currentConnection
-      ? (solver.colorMap[currentConnection.connection.name] ?? "blue")
+      ? getConnectionColor(solver.colorMap, currentConnection.connection)
       : "blue"
 
     // Draw dashed line from start to end goal
