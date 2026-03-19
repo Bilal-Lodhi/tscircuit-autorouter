@@ -27,9 +27,7 @@ import type {
   SolvedRoutesHg,
 } from "./types"
 import { visualizeCandidate } from "./visualize/visualizeCandidate"
-import { visualizeSolvedRoute } from "./visualize/visualizeSolvedRoute"
-import { visualizeHgConnections } from "./visualize/visualizeHgConnections"
-import { visualizeHgHyperGraph } from "./visualize/visualizeHgHyperGraph"
+import { visualizePointPathSolver } from "../visualizePointPathSolver"
 
 /** Solves port-point routing over an HG hypergraph using heuristics and optional ripping. */
 export class HgPortPointPathingSolver extends HyperGraphSolver<
@@ -950,18 +948,114 @@ export class HgPortPointPathingSolver extends HyperGraphSolver<
 
   override visualize(): GraphicsObject {
     return mergeGraphicsArray([
-      visualizeHgHyperGraph(this.params.graph),
-      this.visualizePfOverlay(),
-      visualizeHgConnections(
-        this.params.connections,
-        this.params.colorMap ?? {},
-      ),
+      visualizePointPathSolver(this.createPipeline2StyleAdapter() as any),
       visualizeCandidate(
         this.candidateQueue.peekMany(100) as CandidateHg[] | undefined,
         this.currentConnection?.startRegion.d.center,
       ),
-      visualizeSolvedRoute(this.solvedRoutes, this.params.colorMap ?? {}),
     ])
+  }
+
+  private createPipeline2StyleAdapter() {
+    const output = this.getOutput()
+    const inputNodes = output.inputNodeWithPortPoints
+    const nodeMap = new Map(
+      inputNodes.map((node) => [node.capacityMeshNodeId, node]),
+    )
+    const nodeAssignedPortPoints = new Map(
+      output.nodesWithPortPoints.map((node) => [
+        node.capacityMeshNodeId,
+        node.portPoints,
+      ]),
+    )
+    const assignedPortPoints = new Map(
+      output.nodesWithPortPoints.flatMap((node) =>
+        node.portPoints.map((portPoint) => [
+          portPoint.portPointId!,
+          {
+            connectionName: portPoint.connectionName,
+            rootConnectionName: portPoint.rootConnectionName,
+          },
+        ]),
+      ),
+    )
+    const portPointMap = new Map(
+      inputNodes.flatMap((node) =>
+        node.portPoints.map((portPoint) => [portPoint.portPointId, portPoint]),
+      ),
+    )
+    const connectionsWithResults = (this.solvedRoutes as SolvedRoutesHg[])
+      .filter((route) => route.path.length > 0)
+      .map((route) => ({
+        connection: this.getVisualConnection(route),
+        nodeIds: [
+          route.connection.startRegion.regionId,
+          route.connection.endRegion.regionId,
+        ] as [string, string],
+        path: route.path.map((candidate) => ({
+          point: {
+            x: candidate.port.d.x,
+            y: candidate.port.d.y,
+          },
+          z: candidate.port.d.z,
+          currentNodeId:
+            candidate.nextRegion?.regionId ?? candidate.lastRegion?.regionId,
+        })),
+        portPoints: undefined,
+        straightLineDistance: 0,
+      }))
+
+    return {
+      solved: this.solved,
+      failed: this.failed,
+      inputNodes,
+      nodeMap,
+      nodeMemoryPfMap: this.regionMemoryPfMap,
+      nodeAssignedPortPoints,
+      assignedPortPoints,
+      portPointMap,
+      colorMap: this.params.colorMap ?? {},
+      connectionsWithResults,
+      candidates: [],
+      computeNodePf: (node: InputNodeWithPortPoints) =>
+        this.computeNodePf(node) ?? 0,
+      buildNodeWithPortPointsForCrossing: (node: InputNodeWithPortPoints) =>
+        output.nodesWithPortPoints.find(
+          (candidate) =>
+            candidate.capacityMeshNodeId === node.capacityMeshNodeId,
+        ) ?? {
+          capacityMeshNodeId: node.capacityMeshNodeId,
+          center: node.center,
+          width: node.width,
+          height: node.height,
+          portPoints: [],
+          availableZ: node.availableZ,
+        },
+    }
+  }
+
+  private getVisualConnection(route: SolvedRoutesHg) {
+    if (route.connection.simpleRouteConnection) {
+      return route.connection.simpleRouteConnection
+    }
+
+    const firstPort = route.path[0]?.port.d
+    const lastPort = route.path[route.path.length - 1]?.port.d
+
+    return {
+      name: route.connection.connectionId,
+      rootConnectionName: route.connection.mutuallyConnectedNetworkId,
+      pointsToConnect: [
+        {
+          x: firstPort?.x ?? route.connection.startRegion.d.center.x,
+          y: firstPort?.y ?? route.connection.startRegion.d.center.y,
+        },
+        {
+          x: lastPort?.x ?? route.connection.endRegion.d.center.x,
+          y: lastPort?.y ?? route.connection.endRegion.d.center.y,
+        },
+      ],
+    }
   }
 
   private visualizePfOverlay(): GraphicsObject {

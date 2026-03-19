@@ -447,25 +447,6 @@ export class AutoroutingPipelineSolver4 extends BaseSolver {
       return this.activeSubSolver.visualize()
     }
 
-    const netToPPSolver = this.netToPointPairsSolver?.visualize()
-    const nodeViz = this.nodeSolver?.visualize()
-    const nodeTargetMergerViz = this.nodeTargetMerger?.visualize()
-    const singleLayerNodeMergerViz = this.singleLayerNodeMerger?.visualize()
-    const strawSolverViz = this.strawSolver?.visualize()
-    const edgeViz = this.edgeSolver?.visualize()
-    const deadEndViz = this.deadEndSolver?.visualize()
-    const availableSegmentPointViz =
-      this.availableSegmentPointSolver?.visualize()
-    const portPointPathingViz = this.portPointPathingSolver?.visualize()
-    const multiSectionOptViz = this.multiSectionPortPointOptimizer?.visualize()
-    const uniformPortDistributionViz =
-      this.uniformPortDistributionSolver?.visualize()
-    const highDensityViz = this.highDensityRouteSolver?.visualize()
-    const highDensityStitchViz = this.highDensityStitchSolver?.visualize()
-    const traceSimplificationViz = this.traceSimplificationSolver?.visualize()
-    const necessaryCrampedPortPointSolverViz =
-      this.necessaryCrampedPortPointSolver?.visualize()
-    const highDensityRouteSolverViz = this.highDensityRouteSolver?.visualize()
     const problemOutline = this.srj.outline
     const problemLines: Line[] = []
 
@@ -525,24 +506,29 @@ export class AutoroutingPipelineSolver4 extends BaseSolver {
       lines: problemLines,
     } as GraphicsObject
 
+    const stageVisualizations = [
+      this.netToPointPairsSolver?.visualize(),
+      this.nodeSolver?.visualize(),
+      this.edgeSolver?.visualize(),
+      this.availableSegmentPointSolver?.visualize(),
+      this.necessaryCrampedPortPointSolver?.visualize(),
+      this.portPointPathingSolver?.visualize(),
+      this.hyperGraphSectionOptimizer?.visualize(),
+      this.uniformPortDistributionSolver?.visualize(),
+      this.highDensityRouteSolver
+        ? combineVisualizations(
+            problemViz,
+            this.highDensityRouteSolver.visualize(),
+          )
+        : null,
+      this.highDensityStitchSolver?.visualize(),
+      this.traceSimplificationSolver?.visualize(),
+      this.traceWidthSolver?.visualize(),
+    ].filter(Boolean) as GraphicsObject[]
+
     const visualizations = [
       problemViz,
-      netToPPSolver,
-      nodeViz,
-      nodeTargetMergerViz,
-      singleLayerNodeMergerViz,
-      strawSolverViz,
-      edgeViz,
-      deadEndViz,
-      availableSegmentPointViz,
-      necessaryCrampedPortPointSolverViz,
-      portPointPathingViz,
-      highDensityRouteSolverViz,
-      multiSectionOptViz,
-      uniformPortDistributionViz,
-      highDensityViz ? combineVisualizations(problemViz, highDensityViz) : null,
-      highDensityStitchViz,
-      traceSimplificationViz,
+      ...stageVisualizations,
       this.solved
         ? combineVisualizations(
             problemViz,

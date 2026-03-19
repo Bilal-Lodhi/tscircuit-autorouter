@@ -18,6 +18,7 @@ import {
 } from "@tscircuit/hypergraph"
 import type { GraphicsObject } from "graphics-debug"
 import { BaseSolver } from "lib/solvers/BaseSolver"
+import { combineVisualizations } from "lib/utils/combineVisualizations"
 import { computeCostPerRegion } from "./computeCost"
 import { HgPortPointPathingSolver } from "./HgPortPointPathingSolverClass"
 import type {
@@ -197,15 +198,43 @@ export class HyperGraphSectionOptimizer2_PortPointPathing extends BaseSolver {
       return this.activeSubSolver.visualize()
     }
 
+    if (this.activeAttempt) {
+      return combineVisualizations(
+        this.rootSolver.visualize(),
+        this.visualizeActiveSection(),
+      )
+    }
+
+    return this.rootSolver.visualize()
+  }
+
+  private visualizeActiveSection(): GraphicsObject {
+    const output = this.rootSolver.getOutput()
+    const rects =
+      output.inputNodeWithPortPoints
+        .filter((node) =>
+          this.activeAttempt?.sectionRegionIds.has(node.capacityMeshNodeId),
+        )
+        .map((node) => {
+          const isCenter =
+            node.capacityMeshNodeId === this.activeAttempt?.targetRegionId
+          return {
+            center: node.center,
+            width: node.width * 0.9,
+            height: node.height * 0.9,
+            layer: `z${node.availableZ.join(",")}`,
+            fill: isCenter
+              ? "rgba(0, 200, 0, 0.3)"
+              : "rgba(200, 200, 200, 0.2)",
+            label: `${node.capacityMeshNodeId}${isCenter ? " (CENTER)" : ""}`,
+          }
+        }) ?? []
+
     return {
-      title: "HyperGraphSectionOptimizer2_PortPointPathing",
-      points: [],
+      rects,
       lines: [],
-      rects: [],
+      points: [],
       circles: [],
-      texts: [],
-      polygons: [],
-      arrows: [],
     }
   }
 
