@@ -627,13 +627,54 @@ export class TraceMarginDrcRepairSolver extends BaseSolver {
     context: IssueContext,
   ): HighDensityRoute | null {
     const baseRoute = this.hdRoutes[context.routeIndex]!
+    let startPointIndex = context.runStartSegIndex
+    let endPointIndex = context.runEndSegIndex + 1
+    const pointCount = baseRoute.route.length
+    if (pointCount < 2) return null
+
+    const firstPoint = baseRoute.route[0]!
+    const secondPoint = baseRoute.route[1]!
+    const lastPoint = baseRoute.route[pointCount - 1]!
+    const beforeLastPoint = baseRoute.route[pointCount - 2]!
+
+    const firstEndpointIsSensitive =
+      hasPcbPortId(firstPoint) ||
+      this.endpointInsideLayerObstacle(context.routeLayer, firstPoint) ||
+      (firstPoint.z !== secondPoint.z &&
+        Math.abs(firstPoint.x - secondPoint.x) < 0.01 &&
+        Math.abs(firstPoint.y - secondPoint.y) < 0.01)
+    const lastEndpointIsSensitive =
+      hasPcbPortId(lastPoint) ||
+      this.endpointInsideLayerObstacle(context.routeLayer, lastPoint) ||
+      (lastPoint.z !== beforeLastPoint.z &&
+        Math.abs(lastPoint.x - beforeLastPoint.x) < 0.01 &&
+        Math.abs(lastPoint.y - beforeLastPoint.y) < 0.01)
+
+    if (firstEndpointIsSensitive && startPointIndex === 0) startPointIndex = 1
+    if (lastEndpointIsSensitive && endPointIndex === pointCount - 1) {
+      endPointIndex = pointCount - 2
+    }
+    if (startPointIndex > endPointIndex) return null
+
+    // Preserve existing via-style transitions: never move only one side.
+    for (let i = 1; i < pointCount; i++) {
+      const prev = baseRoute.route[i - 1]!
+      const curr = baseRoute.route[i]!
+      const baseViaStyle =
+        prev.z !== curr.z &&
+        Math.abs(prev.x - curr.x) < 0.01 &&
+        Math.abs(prev.y - curr.y) < 0.01
+      if (!baseViaStyle) continue
+      const prevMoved = i - 1 >= startPointIndex && i - 1 <= endPointIndex
+      const currMoved = i >= startPointIndex && i <= endPointIndex
+      if (prevMoved !== currMoved) return null
+    }
+
     const candidate = cloneRoute(baseRoute)
     const shiftDistance = context.shiftStep * SHIFT_INCREMENT_MM
     const signedShift =
       context.directionOrder[context.directionIndex] * shiftDistance
 
-    const startPointIndex = context.runStartSegIndex
-    const endPointIndex = context.runEndSegIndex + 1
     for (let i = startPointIndex; i <= endPointIndex; i++) {
       const point = candidate.route[i]!
       if (hasPcbPortId(point)) {
@@ -648,6 +689,17 @@ export class TraceMarginDrcRepairSolver extends BaseSolver {
 
     candidate.vias = recomputeViasFromRoute(candidate)
     return candidate
+  }
+
+  private endpointInsideLayerObstacle(
+    routeLayer: string,
+    point: Point3,
+  ): boolean {
+    const layerObstacles = this.obstaclesByLayer.get(routeLayer) ?? []
+    for (const obstacle of layerObstacles) {
+      if (pointToRectDistance(point, obstacle) <= 0.001) return true
+    }
+    return false
   }
 
   private advanceAttemptCursor(context: IssueContext) {
