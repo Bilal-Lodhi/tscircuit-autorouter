@@ -40,10 +40,12 @@ export type UnifiedHighDensityRoute =
  */
 function convertJumperRouteToStandard(
   route: HighDensityIntraNodeRouteWithJumpers,
+  capacityMeshNodeId: string,
 ): HighDensityIntraNodeRoute & {
   jumpers?: HighDensityIntraNodeRouteWithJumpers["jumpers"]
 } {
   return {
+    capacityMeshNodeId,
     connectionName: route.connectionName,
     rootConnectionName: route.rootConnectionName,
     traceThickness: route.traceThickness,
@@ -473,7 +475,12 @@ export class JumperHighDensitySolver extends BaseSolver {
     if (currentSolver.solved) {
       // Convert jumper routes to unified format and collect
       for (const jumperRoute of currentSolver.solvedRoutes) {
-        this.routes.push(convertJumperRouteToStandard(jumperRoute))
+        this.routes.push(
+          convertJumperRouteToStandard(
+            jumperRoute,
+            currentSolver.nodeWithPortPoints.capacityMeshNodeId,
+          ),
+        )
       }
 
       // Collect all jumpers from the solver (SRJ format with connectedTo populated)

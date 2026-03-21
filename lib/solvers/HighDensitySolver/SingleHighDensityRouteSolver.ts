@@ -49,6 +49,7 @@ export class SingleHighDensityRouteSolver extends BaseSolver {
   candidates: SingleRouteCandidatePriorityQueue
 
   connectionName: string
+  capacityMeshNodeId: string
   solvedPath: HighDensityIntraNodeRoute | null = null
 
   futureConnections: FutureConnection[]
@@ -72,6 +73,7 @@ export class SingleHighDensityRouteSolver extends BaseSolver {
 
   constructor(opts: {
     connectionName: string
+    capacityMeshNodeId?: string
     obstacleRoutes: HighDensityIntraNodeRoute[]
     minDistBetweenEnteringPoints: number
     bounds: { minX: number; maxX: number; minY: number; maxY: number }
@@ -99,6 +101,7 @@ export class SingleHighDensityRouteSolver extends BaseSolver {
       y: (this.bounds.minY + this.bounds.maxY) / 2,
     }
     this.connectionName = opts.connectionName
+    this.capacityMeshNodeId = opts.capacityMeshNodeId ?? opts.connectionName
     this.obstacleRoutes = opts.obstacleRoutes
     this.A = opts.A
     this.B = opts.B
@@ -198,6 +201,7 @@ export class SingleHighDensityRouteSolver extends BaseSolver {
             B,
           ]
     this.solvedPath = {
+      capacityMeshNodeId: this.capacityMeshNodeId,
       connectionName: this.connectionName,
       route,
       traceThickness: this.traceThickness,
@@ -503,6 +507,7 @@ export class SingleHighDensityRouteSolver extends BaseSolver {
     }
 
     this.solvedPath = {
+      capacityMeshNodeId: this.capacityMeshNodeId,
       connectionName: this.connectionName,
       traceThickness: this.traceThickness,
       viaDiameter: this.viaDiameter,

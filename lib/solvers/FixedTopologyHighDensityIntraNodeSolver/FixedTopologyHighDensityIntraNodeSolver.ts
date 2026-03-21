@@ -546,6 +546,7 @@ export class FixedTopologyHighDensityIntraNodeSolver extends BaseSolver {
       }))
 
       this.solvedRoutes.push({
+        capacityMeshNodeId: this.nodeWithPortPoints.capacityMeshNodeId,
         connectionName,
         rootConnectionName,
         traceThickness: this.traceWidth,

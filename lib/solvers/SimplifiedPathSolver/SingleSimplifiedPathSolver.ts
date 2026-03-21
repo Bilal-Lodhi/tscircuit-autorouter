@@ -63,6 +63,7 @@ export class SingleSimplifiedPathSolver extends BaseSolver {
 
   get simplifiedRoute(): HighDensityIntraNodeRoute {
     return {
+      capacityMeshNodeId: this.inputRoute.capacityMeshNodeId,
       connectionName: this.inputRoute.connectionName,
       rootConnectionName: this.inputRoute.rootConnectionName,
       traceThickness: this.inputRoute.traceThickness,

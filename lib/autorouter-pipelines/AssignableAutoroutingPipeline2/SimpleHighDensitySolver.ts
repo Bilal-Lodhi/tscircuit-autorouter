@@ -611,6 +611,8 @@ export class SimpleHighDensitySolver extends BaseSolver {
   }
 
   _finalizeRoutesForCurrentNode() {
+    const node = this.currentNode!
+
     for (const routeInProgress of this.routesInProgress) {
       const {
         connectionName,
@@ -667,6 +669,7 @@ export class SimpleHighDensitySolver extends BaseSolver {
       routePointList.push({ x: endPoint.x, y: endPoint.y, z: endPoint.z })
 
       const route: HighDensityIntraNodeRoute = {
+        capacityMeshNodeId: node.capacityMeshNodeId,
         connectionName,
         rootConnectionName,
         traceThickness: this.traceWidth,

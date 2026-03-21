@@ -446,6 +446,7 @@ export class TraceWidthSolver extends BaseSolver {
     if (!this.currentTrace) return
 
     const routeWithWidth: HighDensityRoute = {
+      capacityMeshNodeId: this.currentTrace.capacityMeshNodeId,
       connectionName: this.currentTrace.connectionName,
       rootConnectionName: this.currentTrace.rootConnectionName,
       traceThickness: traceWidth,

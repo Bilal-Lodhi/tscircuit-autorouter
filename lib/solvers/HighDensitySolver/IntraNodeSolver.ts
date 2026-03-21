@@ -206,6 +206,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
         )
 
         this.solvedRoutes.push({
+          capacityMeshNodeId: this.nodeWithPortPoints.capacityMeshNodeId,
           connectionName: unsolvedConnection.connectionName,
           traceThickness: this.traceWidth,
           viaDiameter: this.viaDiameter,
@@ -218,6 +219,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
     const { connectionName, points } = unsolvedConnection
     this.activeSubSolver =
       new SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost({
+        capacityMeshNodeId: this.nodeWithPortPoints.capacityMeshNodeId,
         connectionName,
         minDistBetweenEnteringPoints: this.minDistBetweenEnteringPoints,
         bounds: getBoundsFromNodeWithPortPoints(this.nodeWithPortPoints),

@@ -1357,6 +1357,7 @@ export class MultiHeadPolyLineIntraNodeSolver extends BaseSolver {
       // TODO: Optimize the route points (remove collinear points on the same layer)
 
       solvedRoutes.push({
+        capacityMeshNodeId: this.nodeWithPortPoints.capacityMeshNodeId,
         connectionName: polyLine.connectionName,
         traceThickness: this.traceWidth,
         viaDiameter: this.viaDiameter,

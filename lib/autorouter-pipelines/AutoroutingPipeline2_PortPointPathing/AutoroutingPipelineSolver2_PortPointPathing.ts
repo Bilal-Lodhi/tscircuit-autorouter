@@ -21,6 +21,7 @@ import { CapacityMeshNodeSolver2_NodeUnderObstacle } from "../../solvers/Capacit
 import { CapacityNodeTargetMerger } from "../../solvers/CapacityNodeTargetMerger/CapacityNodeTargetMerger"
 import { DeadEndSolver } from "../../solvers/DeadEndSolver/DeadEndSolver"
 import { HighDensitySolver } from "../../solvers/HighDensitySolver/HighDensitySolver"
+import { HighDensityRepairSolver } from "../../solvers/HighDensityRepairSolver/HighDensityRepairSolver"
 import { MultiSectionPortPointOptimizer } from "../../solvers/MultiSectionPortPointOptimizer"
 import { NetToPointPairsSolver } from "../../solvers/NetToPointPairsSolver/NetToPointPairsSolver"
 import { NetToPointPairsSolver2_OffBoardConnection } from "../../solvers/NetToPointPairsSolver2_OffBoardConnection/NetToPointPairsSolver2_OffBoardConnection"
@@ -103,6 +104,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
   edgeSolver?: CapacityMeshEdgeSolver
   colorMap: Record<string, string>
   highDensityRouteSolver?: HighDensitySolver
+  highDensityRepairSolver?: HighDensityRepairSolver
   highDensityStitchSolver?: MultipleHighDensityRouteStitchSolver
   singleLayerNodeMerger?: SingleLayerNodeMergerSolver
   strawSolver?: StrawSolver
@@ -352,12 +354,30 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
       },
     ]),
     definePipelineStep(
+      "highDensityRepairSolver",
+      HighDensityRepairSolver,
+      (cms) => [
+        {
+          nodePortPoints:
+            cms.uniformPortDistributionSolver?.getOutput() ??
+            cms.multiSectionPortPointOptimizer?.getNodesWithPortPoints() ??
+            cms.portPointPathingSolver?.getNodesWithPortPoints() ??
+            [],
+          obstacles: cms.srj.obstacles,
+          hdRoutes: cms.highDensityRouteSolver!.routes,
+          connMap: cms.connMap,
+        },
+      ],
+    ),
+    definePipelineStep(
       "highDensityStitchSolver",
       MultipleHighDensityRouteStitchSolver,
       (cms) => [
         {
           connections: cms.srjWithPointPairs!.connections,
-          hdRoutes: cms.highDensityRouteSolver!.routes,
+          hdRoutes:
+            cms.highDensityRepairSolver?.repairedHdRoutes ??
+            cms.highDensityRouteSolver!.routes,
           colorMap: cms.colorMap,
           layerCount: cms.srj.layerCount,
           defaultViaDiameter: cms.viaDiameter,
@@ -517,6 +537,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
     const uniformPortDistributionViz =
       this.uniformPortDistributionSolver?.visualize()
     const highDensityViz = this.highDensityRouteSolver?.visualize()
+    const highDensityRepairViz = this.highDensityRepairSolver?.visualize()
     const highDensityStitchViz = this.highDensityStitchSolver?.visualize()
     const traceSimplificationViz = this.traceSimplificationSolver?.visualize()
     const traceMarginDrcRepairViz = this.traceMarginDrcRepairSolver?.visualize()
@@ -593,6 +614,7 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
       multiSectionOptViz,
       uniformPortDistributionViz,
       highDensityViz ? combineVisualizations(problemViz, highDensityViz) : null,
+      highDensityRepairViz,
       highDensityStitchViz,
       traceSimplificationViz,
       traceMarginDrcRepairViz,
@@ -617,6 +639,26 @@ export class AutoroutingPipelineSolver2_PortPointPathing extends BaseSolver {
    * 3. High Density Route Solver Output, max 200 lines
    */
   preview(): GraphicsObject {
+    if (this.highDensityRepairSolver) {
+      const lines: Line[] = []
+      for (
+        let i = this.highDensityRepairSolver.repairedHdRoutes.length - 1;
+        i >= 0;
+        i--
+      ) {
+        const route = this.highDensityRepairSolver.repairedHdRoutes[i]
+        lines.push({
+          points: route.route.map((n) => ({
+            x: n.x,
+            y: n.y,
+          })),
+          strokeColor: this.colorMap[route.connectionName],
+        })
+        if (lines.length > 200) break
+      }
+      return { lines }
+    }
+
     if (this.highDensityRouteSolver) {
       const lines: Line[] = []
       for (let i = this.highDensityRouteSolver.routes.length - 1; i >= 0; i--) {

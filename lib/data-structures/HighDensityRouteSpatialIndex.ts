@@ -1,5 +1,13 @@
 import { doSegmentsIntersect, Point3 } from "@tscircuit/math-utils" // Assuming this is available and correct
-import type { Jumper } from "lib/types/high-density-types"
+import type {
+  HighDensityIntraNodeRoute,
+  HighDensityRoute,
+  Jumper,
+} from "lib/types/high-density-types"
+export type {
+  HighDensityIntraNodeRoute,
+  HighDensityRoute,
+} from "lib/types/high-density-types"
 
 // --- Interfaces and Types (Unchanged) ---
 
@@ -12,17 +20,6 @@ interface Point {
 type Point2D = { x: number; y: number } // Use Point2D for clarity in calculations
 
 type Segment = [Point, Point]
-
-export type HighDensityIntraNodeRoute = {
-  connectionName: string // Assuming this is unique per route
-  rootConnectionName?: string // Parent connection for merged routes
-  traceThickness: number
-  viaDiameter: number // Now used in conflict calculation
-  route: Array<{ x: number; y: number; z: number; insideJumperPad?: boolean }>
-  vias: Array<{ x: number; y: number }> // Will be indexed
-  jumpers?: Jumper[]
-}
-export type HighDensityRoute = HighDensityIntraNodeRoute
 
 // --- Utility Functions (Unchanged) ---
 

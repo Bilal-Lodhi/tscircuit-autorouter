@@ -31,6 +31,7 @@ export type NodeWithPortPoints = {
  * z must be an integer
  */
 export type HighDensityIntraNodeRoute = {
+  capacityMeshNodeId: string
   connectionName: string
   rootConnectionName?: string
   traceThickness: number

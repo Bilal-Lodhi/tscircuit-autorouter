@@ -68,7 +68,7 @@ export class HighDensitySolver extends BaseSolver {
       | Record<string, number | null>
   }) {
     super()
-    this.unsolvedNodePortPoints = nodePortPoints
+    this.unsolvedNodePortPoints = [...nodePortPoints]
     this.colorMap = colorMap ?? {}
     this.connMap = connMap
     this.routes = []

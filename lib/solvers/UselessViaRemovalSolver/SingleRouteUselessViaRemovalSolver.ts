@@ -323,6 +323,7 @@ export class SingleRouteUselessViaRemovalSolver extends BaseSolver {
       }
     }
     return {
+      capacityMeshNodeId: this.unsimplifiedRoute.capacityMeshNodeId,
       connectionName: this.unsimplifiedRoute.connectionName,
       rootConnectionName: this.unsimplifiedRoute.rootConnectionName,
       route,

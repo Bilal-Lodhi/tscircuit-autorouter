@@ -144,6 +144,7 @@ export class MultipleHighDensityRouteStitchSolver2 extends BaseSolver {
     if (hdRoutes.length === 0) {
       // No routes, just create a direct connection
       return {
+        capacityMeshNodeId: connectionName,
         connectionName,
         traceThickness: this.defaultTraceThickness,
         viaDiameter: this.defaultViaDiameter,
@@ -170,6 +171,8 @@ export class MultipleHighDensityRouteStitchSolver2 extends BaseSolver {
     const mergedRoute: Array<{ x: number; y: number; z: number }> = []
     const mergedVias: Array<{ x: number; y: number }> = []
     const mergedJumpers: HighDensityIntraNodeRoute["jumpers"] = []
+    const capacityMeshNodeId =
+      orderedRoutes[0]?.capacityMeshNodeId ?? connectionName
 
     // Always add start point - it's where the connection begins
     mergedRoute.push({ x: start.x, y: start.y, z: start.z })
@@ -234,6 +237,7 @@ export class MultipleHighDensityRouteStitchSolver2 extends BaseSolver {
     }
 
     return {
+      capacityMeshNodeId,
       connectionName,
       rootConnectionName: hdRoutes[0]?.rootConnectionName,
       traceThickness: hdRoutes[0]?.traceThickness ?? this.defaultTraceThickness,

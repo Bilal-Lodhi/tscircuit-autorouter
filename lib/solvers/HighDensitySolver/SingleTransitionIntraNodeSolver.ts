@@ -137,6 +137,7 @@ export class SingleTransitionIntraNodeSolver extends BaseSolver {
     ]
 
     return {
+      capacityMeshNodeId: this.nodeWithPortPoints.capacityMeshNodeId,
       connectionName,
       route,
       traceThickness: this.traceThickness,

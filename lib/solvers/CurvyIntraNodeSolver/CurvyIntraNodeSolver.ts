@@ -188,6 +188,7 @@ export class CurvyIntraNodeSolver extends BaseSolver {
       if (!info) continue
 
       const route: HighDensityIntraNodeRoute = {
+        capacityMeshNodeId: node.capacityMeshNodeId,
         connectionName: info.connectionName,
         rootConnectionName: info.rootConnectionName,
         traceThickness: this.traceWidth,

@@ -48,6 +48,7 @@ export class SingleHighDensityRouteStitchSolver extends BaseSolver {
       routePoints.push({ x: opts.end.x, y: opts.end.y, z: opts.end.z })
 
       this.mergedHdRoute = {
+        capacityMeshNodeId: opts.connectionName,
         connectionName: opts.connectionName,
         rootConnectionName: opts.hdRoutes[0]?.rootConnectionName,
         route: routePoints,
@@ -116,6 +117,7 @@ export class SingleHighDensityRouteStitchSolver extends BaseSolver {
       distToFirst <= distToLast ? firstRouteFirstPoint : firstRouteLastPoint
 
     this.mergedHdRoute = {
+      capacityMeshNodeId: firstRoute.capacityMeshNodeId,
       connectionName: opts.connectionName, // Use mandatory connectionName
       rootConnectionName: firstRoute.rootConnectionName,
       route: [

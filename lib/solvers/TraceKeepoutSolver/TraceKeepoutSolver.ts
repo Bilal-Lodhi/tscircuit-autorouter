@@ -774,6 +774,7 @@ export class TraceKeepoutSolver extends BaseSolver {
 
     // Create the redrawn trace
     const redrawnTrace: HighDensityRoute = {
+      capacityMeshNodeId: this.currentTrace.capacityMeshNodeId,
       connectionName: this.currentTrace.connectionName,
       rootConnectionName: this.currentTrace.rootConnectionName,
       traceThickness: this.currentTrace.traceThickness,
@@ -902,8 +903,10 @@ export class TraceKeepoutSolver extends BaseSolver {
       const end = outlinePoints[(i + 1) % outlinePoints.length]!
 
       for (let layerIndex = 0; layerIndex < layerCount; layerIndex++) {
+        const connectionName = `${BOARD_OUTLINE_CONNECTION_NAME}_${i}_z${layerIndex}`
         routes.push({
-          connectionName: `${BOARD_OUTLINE_CONNECTION_NAME}_${i}_z${layerIndex}`,
+          capacityMeshNodeId: connectionName,
+          connectionName,
           traceThickness: 0.01, // Thin trace for outline
           viaDiameter: 0,
           route: [
