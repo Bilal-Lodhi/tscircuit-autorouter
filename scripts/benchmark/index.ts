@@ -1,11 +1,10 @@
 #!/usr/bin/env bun
 
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process"
+import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process"
 import { readFile } from "node:fs/promises"
 import * as os from "node:os"
 import * as path from "node:path"
 import * as readline from "node:readline"
-import * as dataset from "@tscircuit/autorouting-dataset-01"
 import type { SimpleRouteJson } from "../../lib/types/srj-types"
 import type {
   BenchmarkTask,
@@ -30,6 +29,7 @@ type BenchmarkOptions = {
   effort?: number
   sampleTimeoutMs?: number
   excludeAssignable: boolean
+  datasetName: DatasetName
 }
 
 type WorkerTaskAssignment = {
@@ -54,6 +54,24 @@ type WorkerExecutionResult = {
 const DEFAULT_TASK_TIMEOUT_PER_EFFORT_MS = 60 * 1000
 const DEFAULT_HEARTBEAT_INTERVAL_MS = 30 * 1000
 const DEFAULT_TERMINATE_TIMEOUT_MS = 5 * 1000
+const DATASET_NAMES = ["dataset01", "zdwiel"] as const
+
+type DatasetName = (typeof DATASET_NAMES)[number]
+type DatasetModule = Record<string, unknown>
+
+const isDatasetName = (value: string): value is DatasetName =>
+  DATASET_NAMES.includes(value as DatasetName)
+
+const datasetLoaders: Record<DatasetName, () => Promise<DatasetModule>> = {
+  dataset01: async () =>
+    (await import("@tscircuit/autorouting-dataset-01")) as DatasetModule,
+  zdwiel: async () => (await import("zdwiel-dataset")) as DatasetModule,
+}
+
+const datasetScenarioKeyPatterns: Record<DatasetName, RegExp> = {
+  dataset01: /^circuit\d+$/,
+  zdwiel: /^ts\d+_/,
+}
 
 const formatTime = (timeMs: number | null) => {
   if (timeMs === null) {
@@ -163,6 +181,7 @@ const parseArgs = (): BenchmarkOptions => {
   const options: BenchmarkOptions = {
     concurrency: defaultConcurrency,
     excludeAssignable: false,
+    datasetName: "dataset01",
   }
 
   for (let i = 0; i < args.length; i += 1) {
@@ -201,6 +220,22 @@ const parseArgs = (): BenchmarkOptions => {
     }
     if (arg === "--exclude-assignable") {
       options.excludeAssignable = true
+      continue
+    }
+    if (arg === "--dataset") {
+      const rawDatasetName = args[i + 1]
+      if (!rawDatasetName || rawDatasetName.startsWith("-")) {
+        throw new Error(
+          `--dataset requires a value (${DATASET_NAMES.join(", ")})`,
+        )
+      }
+      if (!isDatasetName(rawDatasetName)) {
+        throw new Error(
+          `Unknown dataset "${rawDatasetName}". Available: ${DATASET_NAMES.join(", ")}`,
+        )
+      }
+      options.datasetName = rawDatasetName
+      i += 1
       continue
     }
     throw new Error(`Unknown argument: ${arg}`)
@@ -260,7 +295,11 @@ const loadSolverNames = async (
   return solverNames.filter((name) => !name.includes("Assignable"))
 }
 
-const loadScenarios = (scenarioLimit?: number, effort?: number) => {
+const loadScenarios = async (
+  datasetName: DatasetName,
+  scenarioLimit?: number,
+  effort?: number,
+) => {
   const applyEffortOverride = <T extends SimpleRouteJson>(
     scenario: T,
     effortOverride: number,
@@ -270,10 +309,13 @@ const loadScenarios = (scenarioLimit?: number, effort?: number) => {
       effort: effortOverride,
     }) as T & { effort: number }
 
+  const datasetModule = await datasetLoaders[datasetName]()
+  const scenarioKeyPattern = datasetScenarioKeyPatterns[datasetName]
   const allScenarios = (
-    Object.entries(dataset) as Array<[string, SimpleRouteJson]>
+    Object.entries(datasetModule) as Array<[string, SimpleRouteJson]>
   )
     .filter(([, value]) => Boolean(value) && typeof value === "object")
+    .filter(([name]) => scenarioKeyPattern.test(name))
     .sort(([a], [b]) => a.localeCompare(b))
     .map(
       ([name, scenario]) =>
@@ -757,6 +799,7 @@ const main = async () => {
     effort,
     sampleTimeoutMs,
     excludeAssignable,
+    datasetName,
   } = parseArgs()
   const availableSolvers = await loadSolverNames(excludeAssignable)
   const solvers = solverName ? [solverName] : availableSolvers
@@ -767,9 +810,9 @@ const main = async () => {
     )
   }
 
-  const scenarios = loadScenarios(scenarioLimit, effort)
+  const scenarios = await loadScenarios(datasetName, scenarioLimit, effort)
   if (scenarios.length === 0) {
-    throw new Error("No benchmark scenarios found")
+    throw new Error(`No benchmark scenarios found for dataset "${datasetName}"`)
   }
 
   const tasks = solvers.flatMap((solver) =>
@@ -784,7 +827,7 @@ const main = async () => {
   )
 
   console.log(
-    `Running ${tasks.length} benchmark tasks across ${concurrency} workers (${solvers.length} solver${solvers.length === 1 ? "" : "s"}, ${scenarios.length} scenario${scenarios.length === 1 ? "" : "s"})`,
+    `Running ${tasks.length} benchmark tasks across ${concurrency} workers (${solvers.length} solver${solvers.length === 1 ? "" : "s"}, ${scenarios.length} scenario${scenarios.length === 1 ? "" : "s"}, dataset: ${datasetName})`,
   )
 
   const results = await runBenchmarkTasks(tasks, concurrency, sampleTimeoutMs)
@@ -812,11 +855,12 @@ const main = async () => {
     ),
   )
   const table = formatTable(rows)
-  const output = `Benchmark Results (${effortLabel})\n\n${table}\n\nScenarios: ${scenarios.length}\n`
+  const output = `Benchmark Results (${effortLabel})\n\n${table}\n\nDataset: ${datasetName}\nScenarios: ${scenarios.length}\n`
   await Bun.write("benchmark-result.txt", output)
 
   console.log(`\nBenchmark Results (${effortLabel})\n`)
   console.log(table)
+  console.log(`\nDataset: ${datasetName}`)
   console.log(`\nScenarios: ${scenarios.length}`)
   console.log("Results written to benchmark-result.txt")
 }
