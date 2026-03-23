@@ -25,7 +25,7 @@ const cacheProviders: CacheProviderName[] = [
 
 export const EFFORT_LEVELS = [1, 2, 5, 10, 20, 50, 100] as const
 export type EffortLevel = (typeof EFFORT_LEVELS)[number]
-export const LAYER_OVERRIDE_OPTIONS = ["auto", 2, 4] as const
+export const LAYER_OVERRIDE_OPTIONS = ["auto", 1, 2, 4] as const
 export type LayerOverride = (typeof LAYER_OVERRIDE_OPTIONS)[number]
 
 export const PIPELINE_OPTIONS = [
