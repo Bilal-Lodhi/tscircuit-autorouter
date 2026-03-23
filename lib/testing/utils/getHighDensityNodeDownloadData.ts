@@ -1,47 +1,96 @@
-const findNodeById = (nodes: Array<any> | undefined, nodeId: string) =>
-  nodes?.find((node) => node?.capacityMeshNodeId === nodeId) ?? null
+import type { CapacityMeshNode } from "lib/types"
+import type { NodeWithPortPoints } from "lib/types/high-density-types"
+import type { InputNodeWithPortPoints } from "lib/solvers/PortPointPathingSolver/PortPointPathingSolver"
+
+type NodeLike = {
+  capacityMeshNodeId: string
+}
+
+type NodeSolverOutput = {
+  meshNodes?: CapacityMeshNode[]
+}
+
+type PortPointPathingOutput = {
+  nodesWithPortPoints?: NodeWithPortPoints[]
+  inputNodeWithPortPoints?: InputNodeWithPortPoints[]
+}
+
+type HighDensityDownloadSolver = {
+  nodeTargetMerger?: {
+    newNodes?: CapacityMeshNode[]
+  }
+  nodeSolver?: {
+    finishedNodes?: CapacityMeshNode[]
+    getOutput?: () => NodeSolverOutput
+  }
+  capacityNodes?: CapacityMeshNode[]
+  uniformPortDistributionSolver?: {
+    getOutput?: () => NodeWithPortPoints[]
+  }
+  multiSectionPortPointOptimizer?: {
+    getNodesWithPortPoints?: () => NodeWithPortPoints[]
+  }
+  segmentToPointOptimizer?: {
+    getNodesWithPortPoints?: () => NodeWithPortPoints[]
+  }
+  unravelMultiSectionSolver?: {
+    getNodesWithPortPoints?: () => NodeWithPortPoints[]
+  }
+  portPointPathingSolver?: {
+    getNodesWithPortPoints?: () => NodeWithPortPoints[]
+    getOutput?: () => PortPointPathingOutput
+  }
+}
+
+type HighDensityNodeDownloadData = {
+  nodeId: string
+  capacityMeshNode: CapacityMeshNode | null
+  nodeWithPortPoints: NodeWithPortPoints | null
+  inputNodeWithPortPoints: InputNodeWithPortPoints | null
+}
+
+const findNodeById = <T extends NodeLike>(
+  nodeId: string,
+  ...collections: Array<T[] | undefined>
+): T | null => {
+  for (const nodes of collections) {
+    const match = nodes?.find((node) => node.capacityMeshNodeId === nodeId)
+    if (match) {
+      return match
+    }
+  }
+
+  return null
+}
 
 export const getHighDensityNodeDownloadData = (
-  solver: any,
+  solver: HighDensityDownloadSolver,
   nodeId: string,
-) => {
-  const capacityMeshNode =
-    findNodeById(solver.nodeTargetMerger?.newNodes, nodeId) ??
-    findNodeById(solver.nodeSolver?.finishedNodes, nodeId) ??
-    findNodeById(solver.nodeSolver?.getOutput?.().meshNodes, nodeId) ??
-    findNodeById(solver.capacityNodes, nodeId)
-
+): HighDensityNodeDownloadData => {
+  const nodeSolverOutput = solver.nodeSolver?.getOutput?.()
   const portPointPathingOutput = solver.portPointPathingSolver?.getOutput?.()
-
-  const nodeWithPortPoints =
-    findNodeById(solver.uniformPortDistributionSolver?.getOutput?.(), nodeId) ??
-    findNodeById(
-      solver.multiSectionPortPointOptimizer?.getNodesWithPortPoints?.(),
-      nodeId,
-    ) ??
-    findNodeById(
-      solver.segmentToPointOptimizer?.getNodesWithPortPoints?.(),
-      nodeId,
-    ) ??
-    findNodeById(
-      solver.unravelMultiSectionSolver?.getNodesWithPortPoints?.(),
-      nodeId,
-    ) ??
-    findNodeById(
-      solver.portPointPathingSolver?.getNodesWithPortPoints?.(),
-      nodeId,
-    ) ??
-    findNodeById(portPointPathingOutput?.nodesWithPortPoints, nodeId)
-
-  const inputNodeWithPortPoints = findNodeById(
-    portPointPathingOutput?.inputNodeWithPortPoints,
-    nodeId,
-  )
 
   return {
     nodeId,
-    capacityMeshNode,
-    nodeWithPortPoints,
-    inputNodeWithPortPoints,
+    capacityMeshNode: findNodeById(
+      nodeId,
+      solver.nodeTargetMerger?.newNodes,
+      solver.nodeSolver?.finishedNodes,
+      nodeSolverOutput?.meshNodes,
+      solver.capacityNodes,
+    ),
+    nodeWithPortPoints: findNodeById(
+      nodeId,
+      solver.uniformPortDistributionSolver?.getOutput?.(),
+      solver.multiSectionPortPointOptimizer?.getNodesWithPortPoints?.(),
+      solver.segmentToPointOptimizer?.getNodesWithPortPoints?.(),
+      solver.unravelMultiSectionSolver?.getNodesWithPortPoints?.(),
+      solver.portPointPathingSolver?.getNodesWithPortPoints?.(),
+      portPointPathingOutput?.nodesWithPortPoints,
+    ),
+    inputNodeWithPortPoints: findNodeById(
+      nodeId,
+      portPointPathingOutput?.inputNodeWithPortPoints,
+    ),
   }
 }

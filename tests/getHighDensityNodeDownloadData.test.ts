@@ -37,9 +37,9 @@ test("getHighDensityNodeDownloadData finds pipeline 4 node data from solver outp
         },
       ],
     },
-  }
+  } as any
 
-  expect(getHighDensityNodeDownloadData(solver, "cn_1")).toEqual({
+  expect(getHighDensityNodeDownloadData(solver, "cn_1") as any).toEqual({
     nodeId: "cn_1",
     capacityMeshNode: {
       capacityMeshNodeId: "cn_1",
@@ -66,9 +66,9 @@ test("getHighDensityNodeDownloadData falls back to legacy solver collections", (
         { capacityMeshNodeId: "cn_2", source: "port-point-pathing" },
       ],
     },
-  }
+  } as any
 
-  expect(getHighDensityNodeDownloadData(solver, "cn_2")).toEqual({
+  expect(getHighDensityNodeDownloadData(solver, "cn_2") as any).toEqual({
     nodeId: "cn_2",
     capacityMeshNode: {
       capacityMeshNodeId: "cn_2",
