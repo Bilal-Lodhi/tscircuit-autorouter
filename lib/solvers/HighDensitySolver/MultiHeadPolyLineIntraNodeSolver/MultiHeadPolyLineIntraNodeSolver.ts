@@ -247,6 +247,49 @@ export class MultiHeadPolyLineIntraNodeSolver extends BaseSolver {
     return minGaps
   }
 
+  computeRequiredMinGapBtwPolyLines(polyLines: PolyLine2[]) {
+    const requiredMinGaps = []
+
+    for (let i = 0; i < polyLines.length; i++) {
+      for (let j = i + 1; j < polyLines.length; j++) {
+        if (
+          this.connMap?.areIdsConnected(
+            polyLines[i].connectionName,
+            polyLines[j].connectionName,
+          )
+        ) {
+          continue
+        }
+
+        const fixedEndpoints1 = [polyLines[i].start, polyLines[i].end]
+        const fixedEndpoints2 = [polyLines[j].start, polyLines[j].end]
+
+        let unavoidableGap = Infinity
+
+        for (const point1 of fixedEndpoints1) {
+          for (const point2 of fixedEndpoints2) {
+            if (point1.z2 !== point2.z2) continue
+            unavoidableGap = Math.min(
+              unavoidableGap,
+              distance(point1, point2) - this.traceWidth,
+            )
+          }
+        }
+
+        requiredMinGaps.push(
+          Math.min(
+            this.obstacleMargin,
+            Number.isFinite(unavoidableGap)
+              ? unavoidableGap
+              : this.obstacleMargin,
+          ),
+        )
+      }
+    }
+
+    return requiredMinGaps
+  }
+
   insertCandidate(candidate: any) {
     // Binary search to find the correct position
     let low = 0
@@ -1062,15 +1105,36 @@ export class MultiHeadPolyLineIntraNodeSolver extends BaseSolver {
   }
 
   checkIfSolved(candidate: Pick<Candidate, "polyLines" | "minGaps">) {
+    const requiredMinGaps = this.computeRequiredMinGapBtwPolyLines(
+      candidate.polyLines,
+    )
     const minGapsToOtherConnectionsValid = candidate.minGaps.every(
-      (minGap) => minGap >= this.obstacleMargin,
+      (minGap, index) =>
+        minGap >= (requiredMinGaps[index] ?? this.obstacleMargin),
     )
 
     const allPointsWithinBounds = candidate.polyLines.every((polyLine) => {
-      return polyLine.mPoints.every((mPoint) => {
+      const getBorderDist = (point: { x: number; y: number }) =>
+        Math.min(
+          point.x - this.bounds.minX,
+          this.bounds.maxX - point.x,
+          point.y - this.bounds.minY,
+          this.bounds.maxY - point.y,
+        )
+
+      return polyLine.mPoints.every((mPoint, index) => {
         const basePadding =
           mPoint.z1 !== mPoint.z2 ? this.viaDiameter / 2 : this.traceWidth / 2
-        const padding = basePadding + this.BOUNDARY_PADDING
+        const normalPadding = basePadding + this.BOUNDARY_PADDING
+        let padding = normalPadding
+
+        if (index === 0) {
+          padding = Math.min(padding, getBorderDist(polyLine.start))
+        }
+        if (index === polyLine.mPoints.length - 1) {
+          padding = Math.min(padding, getBorderDist(polyLine.end))
+        }
+
         return withinBounds(mPoint, this.bounds, padding)
       })
     })
