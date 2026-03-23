@@ -41,6 +41,7 @@ import { RELAXED_DRC_OPTIONS } from "./drcPresets"
 import { getDrcErrors } from "./getDrcErrors"
 import { convertToCircuitJson } from "./utils/convertToCircuitJson"
 import { filterUnravelMultiSectionInput } from "./utils/filterUnravelMultiSectionInput"
+import { getHighDensityNodeDownloadData } from "./utils/getHighDensityNodeDownloadData"
 
 const PIPELINE_SOLVERS = {
   AutoroutingPipelineSolver2_PortPointPathing,
@@ -1130,41 +1131,10 @@ export const AutoroutingPipelineDebugger = ({
                           dialogObject.label.match(/cmn_(\d+)/)
                         if (match?.[0]) {
                           const nodeId = match[0]
-
-                          // Find the node in the solver's data
-                          let nodeData = null
-
-                          if (solver.nodeTargetMerger?.newNodes) {
-                            nodeData = solver.nodeTargetMerger.newNodes.find(
-                              (n: any) => n.capacityMeshNodeId === nodeId,
-                            )
-                          } else if (
-                            solver.nodeSolver &&
-                            "finishedNodes" in solver.nodeSolver
-                          ) {
-                            const finishedNodes = (solver.nodeSolver as any)
-                              .finishedNodes as Array<any> | undefined
-                            nodeData = finishedNodes?.find(
-                              (n: any) => n.capacityMeshNodeId === nodeId,
-                            )
-                          }
-
-                          // Get the node with port points from the portPointPathingSolver
-                          let nodeWithPortPoints = null
-                          if (
-                            solver.portPointPathingSolver
-                              ?.getNodesWithPortPoints
-                          ) {
-                            nodeWithPortPoints = solver
-                              .portPointPathingSolver!.getNodesWithPortPoints()
-                              .find((n: any) => n.capacityMeshNodeId === nodeId)
-                          }
-
-                          const dataToDownload = {
+                          const dataToDownload = getHighDensityNodeDownloadData(
+                            solver,
                             nodeId,
-                            capacityMeshNode: nodeData,
-                            nodeWithPortPoints: nodeWithPortPoints,
-                          }
+                          )
 
                           const dataStr = JSON.stringify(
                             dataToDownload,
