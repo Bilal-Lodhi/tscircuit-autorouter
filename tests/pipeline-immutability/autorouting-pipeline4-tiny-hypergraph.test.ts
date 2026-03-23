@@ -14,6 +14,11 @@ test(
 
     expect(solver.solved).toBe(true)
     expect(solver.failed).toBe(false)
+    expect(solver.unravelMultiSectionSolver).toBeDefined()
+    expect(solver.unravelMultiSectionSolver?.solved).toBe(true)
+    expect(
+      solver.unravelMultiSectionSolver?.getNodesWithPortPoints().length,
+    ).toBeGreaterThan(0)
     expect(srj).toEqual(before)
   },
   { timeout: 180_000 },

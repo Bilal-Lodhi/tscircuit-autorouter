@@ -6,6 +6,7 @@ import { CacheProvider } from "lib/cache/types"
 import { MultiTargetNecessaryCrampedPortPointSolver } from "lib/solvers/NecessaryCrampedPortPointSolver/MultiTargetNecessaryCrampedPortPointSolver"
 import { buildHyperGraph } from "lib/solvers/PortPointPathingSolver/hgportpointpathingsolver"
 import { TinyHypergraphPortPointPathingSolver } from "lib/solvers/PortPointPathingSolver/tinyhypergraph/TinyHypergraphPortPointPathingSolver"
+import { UnravelMultiSectionSolver } from "lib/solvers/UnravelSolver/UnravelMultiSectionSolver"
 import { UniformPortDistributionSolver } from "lib/solvers/UniformPortDistributionSolver/UniformPortDistributionSolver"
 import { getColorMap } from "lib/solvers/colors"
 import {
@@ -15,14 +16,19 @@ import {
   SimplifiedPcbTrace,
   SimplifiedPcbTraces,
 } from "lib/types"
-import { HighDensityRoute } from "lib/types/high-density-types"
+import {
+  HighDensityRoute,
+  NodeWithPortPoints,
+} from "lib/types/high-density-types"
 import { combineVisualizations } from "lib/utils/combineVisualizations"
 import { convertHdRouteToSimplifiedRoute } from "lib/utils/convertHdRouteToSimplifiedRoute"
 import { convertSrjToGraphicsObject } from "lib/utils/convertSrjToGraphicsObject"
 import { getConnectivityMapFromSimpleRouteJson } from "lib/utils/getConnectivityMapFromSimpleRouteJson"
 import { calculateOptimalCapacityDepth } from "lib/utils/getTunedTotalCapacity1"
 import { AvailableSegmentPointSolver } from "../../solvers/AvailableSegmentPointSolver/AvailableSegmentPointSolver"
+import type { SharedEdgeSegment } from "../../solvers/AvailableSegmentPointSolver/AvailableSegmentPointSolver"
 import { BaseSolver } from "../../solvers/BaseSolver"
+import type { SegmentWithAssignedPoints } from "../../solvers/CapacityMeshSolver/CapacitySegmentToPointSolver"
 import { CapacityMeshEdgeSolver } from "../../solvers/CapacityMeshSolver/CapacityMeshEdgeSolver"
 import { CapacityMeshEdgeSolver2_NodeTreeOptimization } from "../../solvers/CapacityMeshSolver/CapacityMeshEdgeSolver2_NodeTreeOptimization"
 import { CapacityNodeTargetMerger } from "../../solvers/CapacityNodeTargetMerger/CapacityNodeTargetMerger"
@@ -77,6 +83,117 @@ function definePipelineStep<
   }
 }
 
+const TINY_TERMINAL_PORT_PREFIX = "tiny-terminal:"
+
+const normalizeTinyHypergraphPortPointId = (portPointId: string) =>
+  portPointId.replace(/::[^:]+$/, "")
+
+const isTinyTerminalPortPoint = (portPointId: string) =>
+  normalizeTinyHypergraphPortPointId(portPointId).startsWith(
+    TINY_TERMINAL_PORT_PREFIX,
+  )
+
+const createAssignedSegmentsFromTinyHypergraphOutput = ({
+  sharedEdgeSegments,
+  nodesWithPortPoints,
+}: {
+  sharedEdgeSegments: SharedEdgeSegment[]
+  nodesWithPortPoints: NodeWithPortPoints[]
+}): SegmentWithAssignedPoints[] => {
+  const sharedEdgeSegmentByPortPointId = new Map<
+    string,
+    { sharedEdgeSegment: SharedEdgeSegment }
+  >()
+
+  for (const sharedEdgeSegment of sharedEdgeSegments) {
+    for (const portPoint of sharedEdgeSegment.portPoints) {
+      sharedEdgeSegmentByPortPointId.set(portPoint.segmentPortPointId, {
+        sharedEdgeSegment,
+      })
+    }
+  }
+
+  const segmentByNodeAndEdgeId = new Map<string, SegmentWithAssignedPoints>()
+
+  for (const node of nodesWithPortPoints) {
+    for (const portPoint of node.portPoints) {
+      if (!portPoint.portPointId) {
+        continue
+      }
+
+      if (isTinyTerminalPortPoint(portPoint.portPointId)) {
+        continue
+      }
+
+      const sharedPortPointId = normalizeTinyHypergraphPortPointId(
+        portPoint.portPointId,
+      )
+      const sharedEdgeSegmentEntry =
+        sharedEdgeSegmentByPortPointId.get(sharedPortPointId)
+      if (!sharedEdgeSegmentEntry) {
+        continue
+      }
+
+      const { sharedEdgeSegment } = sharedEdgeSegmentEntry
+      if (!sharedEdgeSegment.nodeIds.includes(node.capacityMeshNodeId)) {
+        continue
+      }
+
+      const segmentKey = `${node.capacityMeshNodeId}::${sharedEdgeSegment.edgeId}`
+      let segment = segmentByNodeAndEdgeId.get(segmentKey)
+
+      if (!segment) {
+        segment = {
+          capacityMeshNodeId: node.capacityMeshNodeId,
+          start: sharedEdgeSegment.start,
+          end: sharedEdgeSegment.end,
+          availableZ: [...sharedEdgeSegment.availableZ].sort((a, b) => a - b),
+          connectionNames: [],
+          rootConnectionNames: [],
+          assignedPoints: [],
+        }
+        segmentByNodeAndEdgeId.set(segmentKey, segment)
+      }
+
+      if (!segment.connectionNames.includes(portPoint.connectionName)) {
+        segment.connectionNames.push(portPoint.connectionName)
+      }
+
+      const { rootConnectionName } = portPoint
+      if (
+        rootConnectionName &&
+        !segment.rootConnectionNames?.includes(rootConnectionName)
+      ) {
+        segment.rootConnectionNames?.push(rootConnectionName)
+      }
+
+      const alreadyAssigned = segment.assignedPoints?.some(
+        (assignedPoint) =>
+          assignedPoint.connectionName === portPoint.connectionName &&
+          assignedPoint.point.x === portPoint.x &&
+          assignedPoint.point.y === portPoint.y &&
+          assignedPoint.point.z === portPoint.z,
+      )
+
+      if (!alreadyAssigned) {
+        segment.assignedPoints?.push({
+          connectionName: portPoint.connectionName,
+          rootConnectionName: portPoint.rootConnectionName,
+          point: {
+            x: portPoint.x,
+            y: portPoint.y,
+            z: portPoint.z,
+          },
+        })
+      }
+    }
+  }
+
+  return Array.from(segmentByNodeAndEdgeId.values()).filter(
+    (segment) => (segment.assignedPoints?.length ?? 0) > 0,
+  )
+}
+
 export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
   netToPointPairsSolver?: NetToPointPairsSolver
   nodeSolver?: RectDiffPipeline
@@ -91,6 +208,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
   traceSimplificationSolver?: TraceSimplificationSolver
   availableSegmentPointSolver?: AvailableSegmentPointSolver
   portPointPathingSolver?: TinyHypergraphPortPointPathingSolver
+  unravelMultiSectionSolver?: UnravelMultiSectionSolver
   multiSectionPortPointOptimizer?: MultiSectionPortPointOptimizer
   uniformPortDistributionSolver?: UniformPortDistributionSolver
   traceWidthSolver?: TraceWidthSolver
@@ -218,12 +336,31 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
       },
     ),
     definePipelineStep(
+      "unravelMultiSectionSolver",
+      UnravelMultiSectionSolver,
+      (cms) => [
+        {
+          assignedSegments: createAssignedSegmentsFromTinyHypergraphOutput({
+            sharedEdgeSegments:
+              cms.availableSegmentPointSolver?.getOutput() ?? [],
+            nodesWithPortPoints:
+              cms.portPointPathingSolver?.getOutput().nodesWithPortPoints ?? [],
+          }),
+          colorMap: cms.colorMap,
+          nodes: cms.capacityNodes!,
+          cacheProvider: cms.cacheProvider,
+        },
+      ],
+    ),
+    definePipelineStep(
       "uniformPortDistributionSolver",
       UniformPortDistributionSolver,
       (cms) => [
         {
           nodeWithPortPoints:
-            cms.portPointPathingSolver?.getOutput().nodesWithPortPoints ?? [],
+            cms.unravelMultiSectionSolver?.getNodesWithPortPoints() ??
+            cms.portPointPathingSolver?.getOutput().nodesWithPortPoints ??
+            [],
           inputNodesWithPortPoints:
             cms.portPointPathingSolver?.getOutput().inputNodeWithPortPoints ??
             [],
@@ -235,16 +372,22 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
     ),
     definePipelineStep("highDensityRouteSolver", HighDensitySolver, (cms) => [
       {
-        nodePortPoints: cms.uniformPortDistributionSolver?.getOutput() ?? [],
-        nodePfById: new Map(
-          (
-            cms.portPointPathingSolver?.getOutput().inputNodeWithPortPoints ??
-            []
-          ).map((node) => [
-            node.capacityMeshNodeId,
-            cms.portPointPathingSolver?.computeNodePf(node) ?? null,
-          ]),
-        ),
+        nodePortPoints:
+          cms.uniformPortDistributionSolver?.getOutput() ??
+          cms.unravelMultiSectionSolver?.getNodesWithPortPoints() ??
+          cms.portPointPathingSolver?.getOutput().nodesWithPortPoints ??
+          [],
+        nodePfById:
+          cms.unravelMultiSectionSolver?.nodePfMap ??
+          new Map(
+            (
+              cms.portPointPathingSolver?.getOutput().inputNodeWithPortPoints ??
+              []
+            ).map((node) => [
+              node.capacityMeshNodeId,
+              cms.portPointPathingSolver?.computeNodePf(node) ?? null,
+            ]),
+          ),
         colorMap: cms.colorMap,
         connMap: cms.connMap,
         viaDiameter: cms.viaDiameter,
@@ -392,6 +535,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
     const availableSegmentPointViz =
       this.availableSegmentPointSolver?.visualize()
     const portPointPathingViz = this.portPointPathingSolver?.visualize()
+    const unravelMultiSectionViz = this.unravelMultiSectionSolver?.visualize()
     const multiSectionOptViz = this.multiSectionPortPointOptimizer?.visualize()
     const uniformPortDistributionViz =
       this.uniformPortDistributionSolver?.visualize()
@@ -465,6 +609,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
       availableSegmentPointViz,
       necessaryCrampedPortPointSolverViz,
       portPointPathingViz,
+      unravelMultiSectionViz,
       highDensityRouteSolverViz,
       multiSectionOptViz,
       uniformPortDistributionViz,
