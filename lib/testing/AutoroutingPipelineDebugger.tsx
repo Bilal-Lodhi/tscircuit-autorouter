@@ -56,6 +56,7 @@ const PIPELINE_SOLVERS = {
 const PIPELINE_STORAGE_KEY = "selectedPipeline"
 const EFFORT_STORAGE_KEY = "selectedEffort"
 const LAYER_OVERRIDE_STORAGE_KEY = "selectedLayerOverride"
+const AUTO_RUN_DRC_STORAGE_KEY = "autoRunDrc"
 
 const parseLayerOverride = (value: string | null): LayerOverride => {
   if (value === "auto") return "auto"
@@ -299,6 +300,19 @@ export const AutoroutingPipelineDebugger = ({
     }
   }
 
+  const [autoRunDrc, setAutoRunDrcState] = useState<boolean>(
+    () => localStorage.getItem(AUTO_RUN_DRC_STORAGE_KEY) === "true",
+  )
+
+  const setAutoRunDrc = (enabled: boolean) => {
+    setAutoRunDrcState(enabled)
+    try {
+      localStorage.setItem(AUTO_RUN_DRC_STORAGE_KEY, String(enabled))
+    } catch (e) {
+      console.warn("Could not save auto-run DRC preference to localStorage:", e)
+    }
+  }
+
   const createNewSolver = (
     opts: {
       cacheProvider?: CacheProvider | null
@@ -403,6 +417,7 @@ export const AutoroutingPipelineDebugger = ({
     () => window.localStorage.getItem("lastBreakpointNodeId") || "",
   )
   const isSolvingToBreakpointRef = useRef(false) // Ref to track breakpoint solving state
+  const autoRanDrcForSolveRef = useRef(false)
 
   // Reset solver
   const resetSolver = () => {
@@ -410,6 +425,7 @@ export const AutoroutingPipelineDebugger = ({
     setDrcErrors(null) // Clear DRC errors when resetting
     setDrcErrorCount(0)
     setLastDrcMode(null)
+    autoRanDrcForSolveRef.current = false
     isSolvingToBreakpointRef.current = false // Stop breakpoint solving on reset
   }
 
@@ -447,6 +463,20 @@ export const AutoroutingPipelineDebugger = ({
       }
     }
   }, [isAnimating, speedLevel, solver, animationSpeed])
+
+  useEffect(() => {
+    if (!solver.solved) {
+      autoRanDrcForSolveRef.current = false
+      return
+    }
+
+    if (!autoRunDrc || autoRanDrcForSolveRef.current) {
+      return
+    }
+
+    autoRanDrcForSolveRef.current = true
+    runDrcChecks("strict")
+  }, [autoRunDrc, solver, solver.solved])
 
   // Manual step function
   const handleStep = () => {
@@ -685,15 +715,9 @@ export const AutoroutingPipelineDebugger = ({
 
         setDrcErrors(errorGraphics)
         setDrcErrorCount(allErrors.length)
-        alert(
-          `Found ${allErrors.length} ${mode === "relaxed" ? "relaxed " : ""}DRC errors. See the highlighted areas.`,
-        )
       } else {
         setDrcErrors(null)
         setDrcErrorCount(0)
-        alert(
-          `No ${mode === "relaxed" ? "relaxed " : ""}DRC errors found! All traces are properly spaced.`,
-        )
       }
     } catch (error) {
       console.error("DRC check error:", error)
@@ -900,6 +924,8 @@ export const AutoroutingPipelineDebugger = ({
         onSetCanSelectObjects={setCanSelectObjects}
         onRunDrcChecks={handleRunDrcChecks}
         onRunRelaxedDrcChecks={handleRunRelaxedDrcChecks}
+        autoRunDrc={autoRunDrc}
+        onSetAutoRunDrc={setAutoRunDrc}
         animationSpeed={speedLevel}
         onSetAnimationSpeed={setSpeedLevel}
         onSolveToBreakpointClick={() => {
@@ -931,6 +957,7 @@ export const AutoroutingPipelineDebugger = ({
           setDrcErrors(null)
           setDrcErrorCount(0)
           setLastDrcMode(null)
+          autoRanDrcForSolveRef.current = false
         }}
         effort={effort}
         onSetEffort={(newEffort: EffortLevel) => {
@@ -939,6 +966,7 @@ export const AutoroutingPipelineDebugger = ({
           setDrcErrors(null)
           setDrcErrorCount(0)
           setLastDrcMode(null)
+          autoRanDrcForSolveRef.current = false
         }}
         layerOverride={layerOverride}
         defaultLayerCount={srj.layerCount}
@@ -948,6 +976,7 @@ export const AutoroutingPipelineDebugger = ({
           setDrcErrors(null)
           setDrcErrorCount(0)
           setLastDrcMode(null)
+          autoRanDrcForSolveRef.current = false
         }}
       />
       <div className="flex gap-2 mb-4 text-xs">
