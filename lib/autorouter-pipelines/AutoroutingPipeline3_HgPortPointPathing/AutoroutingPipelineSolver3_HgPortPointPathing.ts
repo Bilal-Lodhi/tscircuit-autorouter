@@ -1,5 +1,5 @@
 import { HyperGraphSectionOptimizer } from "@tscircuit/hypergraph"
-import { RectDiffPipeline } from "@tscircuit/rectdiff"
+import { RectDiffPipeline } from "@tscircuit/rectdiff/lib/index.ts"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { GraphicsObject, Line } from "graphics-debug"
 import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
