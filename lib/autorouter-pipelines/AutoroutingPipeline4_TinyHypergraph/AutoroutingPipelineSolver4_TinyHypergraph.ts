@@ -4,6 +4,7 @@ import type { GraphicsObject, Line } from "graphics-debug"
 import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
 import { CacheProvider } from "lib/cache/types"
 import { MultiTargetNecessaryCrampedPortPointSolver } from "lib/solvers/NecessaryCrampedPortPointSolver/MultiTargetNecessaryCrampedPortPointSolver"
+import { NodeDimensionSubdivisionSolver } from "lib/solvers/NodeDimensionSubdivisionSolver/NodeDimensionSubdivisionSolver"
 import { buildHyperGraph } from "lib/solvers/PortPointPathingSolver/hgportpointpathingsolver"
 import { TinyHypergraphPortPointPathingSolver } from "lib/solvers/PortPointPathingSolver/tinyhypergraph/TinyHypergraphPortPointPathingSolver"
 import { UniformPortDistributionSolver } from "lib/solvers/UniformPortDistributionSolver/UniformPortDistributionSolver"
@@ -42,6 +43,7 @@ interface CapacityMeshSolverOptions {
   targetMinCapacity?: number
   cacheProvider?: CacheProvider | null
   effort?: number
+  maxNodeDimension?: number
 }
 export type AutoroutingPipelineSolverOptions = CapacityMeshSolverOptions
 
@@ -80,6 +82,7 @@ function definePipelineStep<
 export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
   netToPointPairsSolver?: NetToPointPairsSolver
   nodeSolver?: RectDiffPipeline
+  nodeDimensionSubdivisionSolver?: NodeDimensionSubdivisionSolver
   nodeTargetMerger?: CapacityNodeTargetMerger
   edgeSolver?: CapacityMeshEdgeSolver
   colorMap: Record<string, string>
@@ -98,6 +101,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
   viaDiameter: number
   minTraceWidth: number
   effort: number
+  maxNodeDimension: number
 
   startTimeOfPhase: Record<string, number>
   endTimeOfPhase: Record<string, number>
@@ -133,6 +137,17 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
       {
         onSolved: (cms) => {
           cms.capacityNodes = cms.nodeSolver?.getOutput().meshNodes ?? []
+        },
+      },
+    ),
+    definePipelineStep(
+      "nodeDimensionSubdivisionSolver",
+      NodeDimensionSubdivisionSolver,
+      (cms) => [cms.capacityNodes!, cms.maxNodeDimension],
+      {
+        onSolved: (cms) => {
+          cms.capacityNodes =
+            cms.nodeDimensionSubdivisionSolver?.outputNodes ?? []
         },
       },
     ),
@@ -305,6 +320,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
     this.minTraceWidth = srj.minTraceWidth
     const mutableOpts = this.opts
     this.effort = mutableOpts.effort ?? 1
+    this.maxNodeDimension = mutableOpts.maxNodeDimension ?? 16
 
     if (mutableOpts.capacityDepth === undefined) {
       const boundsWidth = srj.bounds.maxX - srj.bounds.minX
@@ -384,6 +400,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
     }
     const netToPPSolver = this.netToPointPairsSolver?.visualize()
     const nodeViz = this.nodeSolver?.visualize()
+    const nodeSubdivisionViz = this.nodeDimensionSubdivisionSolver?.visualize()
     const nodeTargetMergerViz = this.nodeTargetMerger?.visualize()
     const singleLayerNodeMergerViz = this.singleLayerNodeMerger?.visualize()
     const strawSolverViz = this.strawSolver?.visualize()
@@ -457,6 +474,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
       problemViz,
       netToPPSolver,
       nodeViz,
+      nodeSubdivisionViz,
       nodeTargetMergerViz,
       singleLayerNodeMergerViz,
       strawSolverViz,
