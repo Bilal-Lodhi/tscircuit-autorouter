@@ -1,4 +1,4 @@
-import { RectDiffPipeline } from "@tscircuit/rectdiff/lib/index.ts"
+import { RectDiffPipeline } from "@tscircuit/rectdiff/lib/index"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { GraphicsObject } from "graphics-debug"
 import { JUMPER_DIMENSIONS, JumperFootprint } from "lib/utils/jumperSizes"

@@ -1,4 +1,4 @@
-import { RectDiffPipeline } from "@tscircuit/rectdiff/lib/index.ts"
+import { RectDiffPipeline } from "@tscircuit/rectdiff/lib/index"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { GraphicsObject, Line } from "graphics-debug"
 import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
