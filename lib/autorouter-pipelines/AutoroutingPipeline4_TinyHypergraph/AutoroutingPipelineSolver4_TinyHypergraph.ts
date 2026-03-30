@@ -16,7 +16,10 @@ import {
   SimplifiedPcbTrace,
   SimplifiedPcbTraces,
 } from "lib/types"
-import { HighDensityRoute } from "lib/types/high-density-types"
+import {
+  HighDensityRoute,
+  NodeWithPortPoints,
+} from "lib/types/high-density-types"
 import { combineVisualizations } from "lib/utils/combineVisualizations"
 import { convertHdRouteToSimplifiedRoute } from "lib/utils/convertHdRouteToSimplifiedRoute"
 import { convertSrjToGraphicsObject } from "lib/utils/convertSrjToGraphicsObject"
@@ -28,6 +31,7 @@ import { CapacityMeshEdgeSolver } from "../../solvers/CapacityMeshSolver/Capacit
 import { CapacityMeshEdgeSolver2_NodeTreeOptimization } from "../../solvers/CapacityMeshSolver/CapacityMeshEdgeSolver2_NodeTreeOptimization"
 import { CapacityNodeTargetMerger } from "../../solvers/CapacityNodeTargetMerger/CapacityNodeTargetMerger"
 import { DeadEndSolver } from "../../solvers/DeadEndSolver/DeadEndSolver"
+import { Pipeline4HighDensityRepairSolver } from "../../solvers/HighDensityRepairSolver/Pipeline4HighDensityRepairSolver"
 import { HighDensitySolver } from "../../solvers/HighDensitySolver/HighDensitySolver"
 import { MultiSectionPortPointOptimizer } from "../../solvers/MultiSectionPortPointOptimizer"
 import { NetToPointPairsSolver } from "../../solvers/NetToPointPairsSolver/NetToPointPairsSolver"
@@ -87,6 +91,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
   edgeSolver?: CapacityMeshEdgeSolver
   colorMap: Record<string, string>
   highDensityRouteSolver?: HighDensitySolver
+  highDensityRepairSolver?: Pipeline4HighDensityRepairSolver
   highDensityStitchSolver?: MultipleHighDensityRouteStitchSolver
   singleLayerNodeMerger?: SingleLayerNodeMergerSolver
   strawSolver?: StrawSolver
@@ -112,6 +117,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
   srjWithPointPairs?: SimpleRouteJson
   capacityNodes: CapacityMeshNode[] | null = null
   capacityEdges: CapacityMeshEdge[] | null = null
+  highDensityNodePortPoints?: NodeWithPortPoints[]
 
   cacheProvider: CacheProvider | null = null
   pipelineDef = [
@@ -248,31 +254,56 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
         },
       ],
     ),
-    definePipelineStep("highDensityRouteSolver", HighDensitySolver, (cms) => [
-      {
-        nodePortPoints: cms.uniformPortDistributionSolver?.getOutput() ?? [],
-        nodePfById: new Map(
-          (
-            cms.portPointPathingSolver?.getOutput().inputNodeWithPortPoints ??
-            []
-          ).map((node) => [
-            node.capacityMeshNodeId,
-            cms.portPointPathingSolver?.computeNodePf(node) ?? null,
-          ]),
-        ),
-        colorMap: cms.colorMap,
-        connMap: cms.connMap,
-        viaDiameter: cms.viaDiameter,
-        traceWidth: cms.minTraceWidth,
-      },
-    ]),
+    definePipelineStep("highDensityRouteSolver", HighDensitySolver, (cms) => {
+      const uniformNodes = cms.uniformPortDistributionSolver?.getOutput() ?? []
+      const fallbackNodes =
+        cms.portPointPathingSolver?.getOutput().nodesWithPortPoints ?? []
+      const nodePortPointsSource =
+        uniformNodes.length > 0 ? uniformNodes : fallbackNodes
+
+      cms.highDensityNodePortPoints = structuredClone(nodePortPointsSource)
+
+      return [
+        {
+          nodePortPoints: nodePortPointsSource,
+          nodePfById: new Map(
+            (
+              cms.portPointPathingSolver?.getOutput().inputNodeWithPortPoints ??
+              []
+            ).map((node) => [
+              node.capacityMeshNodeId,
+              cms.portPointPathingSolver?.computeNodePf(node) ?? null,
+            ]),
+          ),
+          colorMap: cms.colorMap,
+          connMap: cms.connMap,
+          viaDiameter: cms.viaDiameter,
+          traceWidth: cms.minTraceWidth,
+        },
+      ]
+    }),
+    definePipelineStep(
+      "highDensityRepairSolver",
+      Pipeline4HighDensityRepairSolver,
+      (cms) => [
+        {
+          nodeWithPortPoints: cms.highDensityNodePortPoints ?? [],
+          hdRoutes: cms.highDensityRouteSolver!.routes,
+          obstacles: cms.srj.obstacles,
+          colorMap: cms.colorMap,
+          repairMargin: cms.srj.defaultObstacleMargin ?? 0.2,
+        },
+      ],
+    ),
     definePipelineStep(
       "highDensityStitchSolver",
       MultipleHighDensityRouteStitchSolver,
       (cms) => [
         {
           connections: cms.srjWithPointPairs!.connections,
-          hdRoutes: cms.highDensityRouteSolver!.routes,
+          hdRoutes:
+            cms.highDensityRepairSolver?.getOutput() ??
+            cms.highDensityRouteSolver!.routes,
           colorMap: cms.colorMap,
           layerCount: cms.srj.layerCount,
           defaultViaDiameter: cms.viaDiameter,
@@ -413,6 +444,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
     const uniformPortDistributionViz =
       this.uniformPortDistributionSolver?.visualize()
     const highDensityViz = this.highDensityRouteSolver?.visualize()
+    const highDensityRepairViz = this.highDensityRepairSolver?.visualize()
     const highDensityStitchViz = this.highDensityStitchSolver?.visualize()
     const traceSimplificationViz = this.traceSimplificationSolver?.visualize()
     const necessaryCrampedPortPointSolverViz =
@@ -487,6 +519,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
       multiSectionOptViz,
       uniformPortDistributionViz,
       highDensityViz ? combineVisualizations(problemViz, highDensityViz) : null,
+      highDensityRepairViz,
       highDensityStitchViz,
       traceSimplificationViz,
       this.solved
