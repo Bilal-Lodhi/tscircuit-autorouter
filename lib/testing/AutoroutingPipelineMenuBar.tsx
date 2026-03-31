@@ -72,6 +72,9 @@ interface AutoroutingPipelineMenuBarProps {
   onSetCanSelectObjects: (canSelect: boolean) => void
   onRunDrcChecks: () => void
   onRunRelaxedDrcChecks: () => void
+  canTogglePcbSvg: boolean
+  pcbSvgEnabled: boolean
+  onTogglePcbSvg: () => void
   autoSolve: boolean
   onSetAutoSolve: (autoSolve: boolean) => void
   autoRunDrc: boolean
@@ -101,6 +104,9 @@ export const AutoroutingPipelineMenuBar = ({
   onSetCanSelectObjects,
   onRunDrcChecks,
   onRunRelaxedDrcChecks,
+  canTogglePcbSvg,
+  pcbSvgEnabled,
+  onTogglePcbSvg,
   autoSolve,
   onSetAutoSolve,
   autoRunDrc,
@@ -222,6 +228,14 @@ export const AutoroutingPipelineMenuBar = ({
           <MenubarItem onClick={onRunDrcChecks}>Run DRC Checks</MenubarItem>
           <MenubarItem onClick={onRunRelaxedDrcChecks}>
             Run Relaxed DRC Checks
+          </MenubarItem>
+          <MenubarSeparator />
+          <MenubarItem
+            onClick={onTogglePcbSvg}
+            disabled={!canTogglePcbSvg && !pcbSvgEnabled}
+          >
+            Show PCB SVG
+            {pcbSvgEnabled && <MenubarShortcut>✓</MenubarShortcut>}
           </MenubarItem>
         </MenubarContent>
       </MenubarMenu>

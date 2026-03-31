@@ -285,10 +285,10 @@ export class HighDensitySolver extends BaseSolver {
           strokeColor:
             segment.z === 0
               ? segment.color
-              : safeTransparentize(segment.color, 0.75),
+              : safeTransparentize(segment.color, 0.5),
           layer: `z${segment.z}`,
           strokeWidth: route.traceThickness,
-          strokeDash: segment.z !== 0 ? "10, 5" : undefined,
+          strokeDash: segment.z !== 0 ? [0.1, 0.3] : undefined,
         })
       }
       for (const via of route.vias) {

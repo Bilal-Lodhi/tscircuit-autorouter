@@ -1,4 +1,5 @@
 import { PipelineStagesTable } from "@tscircuit/solver-utils/react"
+import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
 import { GraphicsObject, Line, Point, Rect } from "graphics-debug"
 import {
   InteractiveGraphics,
@@ -41,6 +42,7 @@ import { CacheDebugger } from "./CacheDebugger"
 import { SolveBreakpointDialog } from "./SolveBreakpointDialog"
 import { RELAXED_DRC_OPTIONS } from "./drcPresets"
 import { getDrcErrors } from "./getDrcErrors"
+import { getCurrentCircuitJson } from "./autorouting-pipeline-debugger/getCurrentCircuitJson"
 import { convertToCircuitJson } from "./utils/convertToCircuitJson"
 import { filterUnravelMultiSectionInput } from "./utils/filterUnravelMultiSectionInput"
 import { getHighDensityNodeDownloadData } from "./utils/getHighDensityNodeDownloadData"
@@ -478,6 +480,7 @@ export const AutoroutingPipelineDebugger = ({
     useState(false)
   const [showGenericPipelineSteps, setShowGenericPipelineSteps] =
     useState(false)
+  const [pcbSvgMarkup, setPcbSvgMarkup] = useState<string | null>(null)
   const [isBreakpointDialogOpen, setIsBreakpointDialogOpen] = useState(false)
   const [breakpointNodeId, setBreakpointNodeId] = useState<string>(
     () => window.localStorage.getItem("lastBreakpointNodeId") || "",
@@ -543,6 +546,7 @@ export const AutoroutingPipelineDebugger = ({
   // Reset solver
   const resetSolver = () => {
     setSolver(createNewSolver())
+    setPcbSvgMarkup(null)
     setDrcErrors(null) // Clear DRC errors when resetting
     setDrcErrorCount(0)
     setLastDrcMode(null)
@@ -914,6 +918,37 @@ export const AutoroutingPipelineDebugger = ({
   const handleRunDrcChecks = () => runDrcChecks("strict")
   const handleRunRelaxedDrcChecks = () => runDrcChecks("relaxed")
 
+  const handleTogglePcbSvg = () => {
+    if (pcbSvgMarkup) {
+      setPcbSvgMarkup(null)
+      return
+    }
+
+    if (!solver.solved || solver.failed) {
+      window.alert(
+        "Show PCB SVG is available after the routing problem is solved successfully.",
+      )
+      return
+    }
+
+    try {
+      const circuitJson = getCurrentCircuitJson(solver, (message) =>
+        window.alert(message),
+      )
+      if (!circuitJson) return
+
+      const svg = convertCircuitJsonToPcbSvg(circuitJson)
+      setPcbSvgMarkup(svg)
+    } catch (error) {
+      console.error("Failed to render PCB SVG:", error)
+      window.alert(
+        `Failed to render PCB SVG: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      )
+    }
+  }
+
   // Solve to Breakpoint logic
   const handleSolveToBreakpoint = (
     targetSolverName: string,
@@ -1112,6 +1147,9 @@ export const AutoroutingPipelineDebugger = ({
         onSetCanSelectObjects={setCanSelectObjects}
         onRunDrcChecks={handleRunDrcChecks}
         onRunRelaxedDrcChecks={handleRunRelaxedDrcChecks}
+        canTogglePcbSvg={solver.solved && !solver.failed}
+        pcbSvgEnabled={Boolean(pcbSvgMarkup)}
+        onTogglePcbSvg={handleTogglePcbSvg}
         autoSolve={autoSolve}
         onSetAutoSolve={setAutoSolve}
         autoRunDrc={autoRunDrc}
@@ -1138,6 +1176,7 @@ export const AutoroutingPipelineDebugger = ({
         onSetPipelineId={(pipelineId: PipelineId) => {
           setSelectedPipelineId(pipelineId)
           setLayerOverride("auto")
+          setPcbSvgMarkup(null)
           setSolver(
             createNewSolver({
               pipelineId,
@@ -1152,6 +1191,7 @@ export const AutoroutingPipelineDebugger = ({
         effort={effort}
         onSetEffort={(newEffort: EffortLevel) => {
           setEffort(newEffort)
+          setPcbSvgMarkup(null)
           setSolver(createNewSolver({ effort: newEffort }))
           setDrcErrors(null)
           setDrcErrorCount(0)
@@ -1162,6 +1202,7 @@ export const AutoroutingPipelineDebugger = ({
         defaultLayerCount={srj.layerCount}
         onSetLayerOverride={(newLayerOverride: LayerOverride) => {
           setLayerOverride(newLayerOverride)
+          setPcbSvgMarkup(null)
           setSolver(createNewSolver({ layerOverride: newLayerOverride }))
           setDrcErrors(null)
           setDrcErrorCount(0)
@@ -1211,6 +1252,14 @@ export const AutoroutingPipelineDebugger = ({
         >
           Reset
         </button>
+        {pcbSvgMarkup && (
+          <button
+            className="border rounded-md p-2 hover:bg-gray-100"
+            onClick={() => setPcbSvgMarkup(null)}
+          >
+            Back to Solver Preview
+          </button>
+        )}
       </div>
 
       <div className="flex gap-4 mb-4 tabular-nums text-xs">
@@ -1295,27 +1344,35 @@ export const AutoroutingPipelineDebugger = ({
       />
 
       <div className="border rounded-md p-4 mb-4">
-        {canSelectObjects || renderer === "vector" ? (
-          <InteractiveGraphics
-            graphics={visualization}
-            onObjectClicked={({ object }) => {
-              if (!canSelectObjects) return
-              const objectLabel = object.label ?? ""
-              if (
-                !objectLabel.includes("cn") &&
-                !objectLabel.includes("cmn") &&
-                !objectLabel.includes("hd_node_marker")
-              )
-                return
-              setDialogObject(object)
-            }}
-            objectLimit={20e3}
-          />
+        {pcbSvgMarkup ? (
+          <div className="overflow-auto">
+            <div dangerouslySetInnerHTML={{ __html: pcbSvgMarkup }} />
+          </div>
         ) : (
-          <InteractiveGraphicsCanvas
-            graphics={visualization}
-            showLabelsByDefault={false}
-          />
+          <>
+            {canSelectObjects || renderer === "vector" ? (
+              <InteractiveGraphics
+                graphics={visualization}
+                onObjectClicked={({ object }) => {
+                  if (!canSelectObjects) return
+                  const objectLabel = object.label ?? ""
+                  if (
+                    !objectLabel.includes("cn") &&
+                    !objectLabel.includes("cmn") &&
+                    !objectLabel.includes("hd_node_marker")
+                  )
+                    return
+                  setDialogObject(object)
+                }}
+                objectLimit={20e3}
+              />
+            ) : (
+              <InteractiveGraphicsCanvas
+                graphics={visualization}
+                showLabelsByDefault={false}
+              />
+            )}
+          </>
         )}
       </div>
 
@@ -1606,11 +1663,10 @@ export const AutoroutingPipelineDebugger = ({
         </button>
         <button
           onClick={() => {
-            const circuitJson = convertToCircuitJson(
-              solver.srjWithPointPairs!,
-              solver.getOutputSimplifiedPcbTraces(),
-              solver.srj.minTraceWidth,
+            const circuitJson = getCurrentCircuitJson(solver, (message) =>
+              window.alert(message),
             )
+            if (!circuitJson) return
             const blob = new Blob([JSON.stringify(circuitJson, null, 2)], {
               type: "application/json",
             })
