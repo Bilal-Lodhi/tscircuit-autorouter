@@ -361,7 +361,7 @@ export class HighDensitySolver extends BaseSolver {
           graphics.points!.push({
             x: metadata.node.center.x,
             y: metadata.node.center.y,
-            color: "red",
+            color: "blue",
             layer: "hd_node_markers",
             label,
           })
@@ -374,6 +374,16 @@ export class HighDensitySolver extends BaseSolver {
             width: rectWidth,
             height: rectHeight,
             fill: "red",
+            label,
+          })
+          graphics.lines!.push({
+            points: [
+              { x: 0, y: 0 },
+              { x: metadata.node.center.x, y: metadata.node.center.y },
+            ],
+            layer: "hd_failed_node_connectors",
+            strokeColor: "red",
+            strokeDash: "4px 4px",
             label,
           })
         }

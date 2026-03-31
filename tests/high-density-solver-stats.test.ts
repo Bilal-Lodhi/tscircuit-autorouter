@@ -156,7 +156,7 @@ test("HighDensitySolver emits node markers only after completion", () => {
 
   expect(rectMarkers.length).toBe(0)
   expect(pointMarkers.length).toBe(2)
-  expect(pointMarkers[0].color).toBe("red")
+  expect(pointMarkers[0].color).toBe("blue")
   expect(pointMarkers[0].label).toContain("solver:")
   expect(pointMarkers[0].label).toContain("node:")
   expect(pointMarkers[0].label).toContain("status: solved")
@@ -165,4 +165,66 @@ test("HighDensitySolver emits node markers only after completion", () => {
     finalViz.lines?.filter((line) => line.layer === "hd_node_boundaries") ?? []
   expect(dashedBoundaryLines.length).toBe(8)
   expect(dashedBoundaryLines[0].strokeDash).toBe("6, 4")
+})
+
+test("HighDensitySolver draws failed-node connector lines from origin", () => {
+  const failingNode = {
+    capacityMeshNodeId: "cn-failed",
+    portPoints: [
+      {
+        x: 1,
+        y: 1,
+        z: 0,
+        connectionName: "conn1",
+      },
+      {
+        x: 2,
+        y: 2,
+        z: 0,
+        connectionName: "conn1",
+      },
+    ],
+    center: {
+      x: 3,
+      y: 4,
+    },
+    width: 2,
+    height: 2,
+  }
+
+  const solver = new HighDensitySolver({
+    nodePortPoints: [failingNode],
+    colorMap: {
+      conn1: "hsl(0, 100%, 50%)",
+    },
+  })
+
+  solver.failed = true
+  solver.nodeSolveMetadataById.set(failingNode.capacityMeshNodeId, {
+    node: failingNode,
+    status: "failed",
+    solverType: "TestSolver",
+    iterations: 10,
+    routeCount: 0,
+    nodePf: null,
+    error: "test failure",
+  })
+
+  const finalViz = solver.visualize()
+  const failedRectMarkers =
+    finalViz.rects?.filter((rect) => rect.label?.includes("status: failed")) ??
+    []
+  expect(failedRectMarkers.length).toBe(1)
+
+  const failedConnector = finalViz.lines?.find(
+    (line) => line.layer === "hd_failed_node_connectors",
+  )
+  expect(failedConnector).toBeDefined()
+  expect(failedConnector?.points).toEqual([
+    { x: 0, y: 0 },
+    { x: failingNode.center.x, y: failingNode.center.y },
+  ])
+  expect(failedConnector?.strokeDash).toBe("4px 4px")
+  expect(failedConnector?.strokeWidth).toBeUndefined()
+  expect(failedConnector?.strokeColor).toBe("red")
 })
