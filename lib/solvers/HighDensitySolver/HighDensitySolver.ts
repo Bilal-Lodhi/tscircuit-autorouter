@@ -310,6 +310,8 @@ export class HighDensitySolver extends BaseSolver {
 
         const label = this.createNodeMarkerLabel(capacityMeshNodeId, metadata)
 
+        const statusColor = metadata.status === "solved" ? "blue" : "red"
+
         graphics.lines!.push(
           {
             points: [
@@ -317,7 +319,7 @@ export class HighDensitySolver extends BaseSolver {
               { x: right, y: top },
             ],
             layer: "hd_node_boundaries",
-            strokeColor: "red",
+            strokeColor: statusColor,
             strokeDash: "6, 4",
             strokeWidth: 0.03,
             label,
@@ -328,7 +330,7 @@ export class HighDensitySolver extends BaseSolver {
               { x: right, y: bottom },
             ],
             layer: "hd_node_boundaries",
-            strokeColor: "red",
+            strokeColor: statusColor,
             strokeDash: "6, 4",
             strokeWidth: 0.03,
             label,
@@ -339,7 +341,7 @@ export class HighDensitySolver extends BaseSolver {
               { x: left, y: bottom },
             ],
             layer: "hd_node_boundaries",
-            strokeColor: "red",
+            strokeColor: statusColor,
             strokeDash: "6, 4",
             strokeWidth: 0.03,
             label,
@@ -350,7 +352,7 @@ export class HighDensitySolver extends BaseSolver {
               { x: left, y: top },
             ],
             layer: "hd_node_boundaries",
-            strokeColor: "red",
+            strokeColor: statusColor,
             strokeDash: "6, 4",
             strokeWidth: 0.03,
             label,
@@ -361,7 +363,7 @@ export class HighDensitySolver extends BaseSolver {
           graphics.points!.push({
             x: metadata.node.center.x,
             y: metadata.node.center.y,
-            color: "red",
+            color: "blue",
             layer: "hd_node_markers",
             label,
           })
@@ -374,6 +376,16 @@ export class HighDensitySolver extends BaseSolver {
             width: rectWidth,
             height: rectHeight,
             fill: "red",
+            label,
+          })
+          graphics.lines!.push({
+            points: [
+              { x: 0, y: 0 },
+              { x: metadata.node.center.x, y: metadata.node.center.y },
+            ],
+            layer: "hd_failed_node_links",
+            strokeColor: "red",
+            strokeDash: "4px 4px",
             label,
           })
         }

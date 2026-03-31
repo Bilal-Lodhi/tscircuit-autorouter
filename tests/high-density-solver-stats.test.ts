@@ -156,7 +156,7 @@ test("HighDensitySolver emits node markers only after completion", () => {
 
   expect(rectMarkers.length).toBe(0)
   expect(pointMarkers.length).toBe(2)
-  expect(pointMarkers[0].color).toBe("red")
+  expect(pointMarkers[0].color).toBe("blue")
   expect(pointMarkers[0].label).toContain("solver:")
   expect(pointMarkers[0].label).toContain("node:")
   expect(pointMarkers[0].label).toContain("status: solved")
@@ -165,4 +165,56 @@ test("HighDensitySolver emits node markers only after completion", () => {
     finalViz.lines?.filter((line) => line.layer === "hd_node_boundaries") ?? []
   expect(dashedBoundaryLines.length).toBe(8)
   expect(dashedBoundaryLines[0].strokeDash).toBe("6, 4")
+})
+
+test("HighDensitySolver visualizes failed nodes with red marker and origin link", () => {
+  const solver = new HighDensitySolver({
+    nodePortPoints: [],
+    colorMap: {},
+  })
+
+  const failedNode = {
+    capacityMeshNodeId: "cn_failed",
+    portPoints: [],
+    center: { x: 3, y: -2 },
+    width: 1,
+    height: 1,
+  }
+
+  solver.nodeSolveMetadataById.set("cn_failed", {
+    status: "failed",
+    node: failedNode,
+    solverType: "HyperSingleIntraNodeSolver",
+    iterations: 1,
+    routeCount: 0,
+    nodePf: null,
+    error: "example failure",
+  })
+  solver.failed = true
+
+  const viz = solver.visualize()
+  const failedMarker = viz.rects?.find((rect) =>
+    rect.label?.includes("node: cn_failed"),
+  )
+  expect(failedMarker?.fill).toBe("red")
+
+  const failedBoundary = viz.lines?.find(
+    (line) =>
+      line.layer === "hd_node_boundaries" &&
+      line.label?.includes("node: cn_failed"),
+  )
+  expect(failedBoundary?.strokeColor).toBe("red")
+
+  const failedLink = viz.lines?.find(
+    (line) =>
+      line.layer === "hd_failed_node_links" &&
+      line.label?.includes("node: cn_failed"),
+  )
+  expect(failedLink?.points).toEqual([
+    { x: 0, y: 0 },
+    { x: 3, y: -2 },
+  ])
+  expect(failedLink?.strokeColor).toBe("red")
+  expect(failedLink?.strokeDash).toBe("4px 4px")
+  expect(failedLink?.strokeWidth).toBeUndefined()
 })
