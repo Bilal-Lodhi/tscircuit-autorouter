@@ -1,4 +1,8 @@
-import { distance } from "@tscircuit/math-utils"
+import {
+  distance,
+  doSegmentsIntersect,
+  pointToSegmentDistance,
+} from "@tscircuit/math-utils"
 import { SingleHighDensityRouteSolver } from "./SingleHighDensityRouteSolver"
 import { Node } from "lib/data-structures/SingleRouteCandidatePriorityQueue"
 
@@ -114,4 +118,61 @@ export class SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost extends Sing
       this.getFutureConnectionPenalty(node, node.z !== node.parent?.z)
     )
   }
+
+  /**
+   * Keep the future-cost variant from accepting a route segment that runs
+   * too close to an existing segment on the same layer from a different net.
+   */
+  override doesPathToParentIntersectObstacle(node: Node) {
+    if (super.doesPathToParentIntersectObstacle(node)) {
+      return true
+    }
+    const parent = node.parent
+    if (!parent || !this.obstacleSegmentIndex) return false
+
+    const clearance = this.traceThickness + this.obstacleMargin
+    const minX = Math.min(node.x, parent.x) - clearance
+    const maxX = Math.max(node.x, parent.x) + clearance
+    const minY = Math.min(node.y, parent.y) - clearance
+    const maxY = Math.max(node.y, parent.y) + clearance
+
+    const nearbySegmentIds = this.obstacleSegmentIndex.search(
+      minX,
+      minY,
+      maxX,
+      maxY,
+    )
+
+    for (const segmentId of nearbySegmentIds) {
+      const segment = this.obstacleSegments[segmentId]
+      if (!segment || segment.connectedToCurrentConnection) continue
+      if (segment.z !== node.z) continue
+
+      const centerlineDistance = getSegmentToSegmentCenterlineDistance(
+        { A: node, B: parent },
+        segment,
+      )
+      if (centerlineDistance < clearance) {
+        return true
+      }
+    }
+
+    return false
+  }
+}
+
+const getSegmentToSegmentCenterlineDistance = (
+  left: { A: { x: number; y: number }; B: { x: number; y: number } },
+  right: { A: { x: number; y: number }; B: { x: number; y: number } },
+) => {
+  if (doSegmentsIntersect(left.A, left.B, right.A, right.B)) {
+    return 0
+  }
+
+  return Math.min(
+    pointToSegmentDistance(left.A, right.A, right.B),
+    pointToSegmentDistance(left.B, right.A, right.B),
+    pointToSegmentDistance(right.A, left.A, left.B),
+    pointToSegmentDistance(right.B, left.A, left.B),
+  )
 }
