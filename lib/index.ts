@@ -12,6 +12,10 @@ export {
   AutoroutingPipelineSolver4_TinyHypergraph as AutoroutingPipelineSolver,
 } from "./autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
 export {
+  AutoroutingPipelineSolver5,
+  AutoroutingPipelineSolver5_HdCache,
+} from "./autorouter-pipelines/AutoroutingPipeline5_HdCache/AutoroutingPipelineSolver5_HdCache"
+export {
   getTunedTotalCapacity1,
   calculateOptimalCapacityDepth,
 } from "./utils/getTunedTotalCapacity1"

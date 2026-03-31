@@ -9,3 +9,7 @@ export {
   AutoroutingPipelineSolver4_TinyHypergraph,
   AutoroutingPipelineSolver4_TinyHypergraph as AutoroutingPipelineSolver,
 } from "./AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
+export {
+  AutoroutingPipelineSolver5,
+  AutoroutingPipelineSolver5_HdCache,
+} from "./AutoroutingPipeline5_HdCache/AutoroutingPipelineSolver5_HdCache"

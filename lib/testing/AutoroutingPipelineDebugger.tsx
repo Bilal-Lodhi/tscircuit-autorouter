@@ -10,6 +10,7 @@ import { AssignableAutoroutingPipeline3 } from "lib/autorouter-pipelines/Assigna
 import { AutoroutingPipeline1_OriginalUnravel } from "lib/autorouter-pipelines/AutoroutingPipeline1_OriginalUnravel/AutoroutingPipeline1_OriginalUnravel"
 import { AutoroutingPipelineSolver3_HgPortPointPathing } from "lib/autorouter-pipelines/AutoroutingPipeline3_HgPortPointPathing/AutoroutingPipelineSolver3_HgPortPointPathing"
 import { AutoroutingPipelineSolver4 } from "lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
+import { AutoroutingPipelineSolver5 } from "lib/autorouter-pipelines/AutoroutingPipeline5_HdCache/AutoroutingPipelineSolver5_HdCache"
 import {
   AutoroutingPipelineSolver2_PortPointPathing,
   CapacityMeshSolver,
@@ -47,6 +48,7 @@ const PIPELINE_SOLVERS = {
   AutoroutingPipelineSolver2_PortPointPathing,
   AutoroutingPipelineSolver3_HgPortPointPathing,
   AutoroutingPipelineSolver4,
+  AutoroutingPipelineSolver5,
   AssignableAutoroutingPipeline1Solver,
   AssignableAutoroutingPipeline2,
   AssignableAutoroutingPipeline3,
@@ -182,6 +184,23 @@ type PipelineDebuggerSolver = BaseSolver & {
   timeSpentOnPhase?: Record<string, number>
   [key: string]: any
 }
+
+type AsyncPipelineDebuggerSolver = PipelineDebuggerSolver & {
+  stepAsync?: () => Promise<void>
+  solveAsync?: () => Promise<void>
+}
+
+const solverSupportsAsyncStep = (
+  solver: AsyncPipelineDebuggerSolver,
+): solver is AsyncPipelineDebuggerSolver & {
+  stepAsync: () => Promise<void>
+} => typeof solver.stepAsync === "function"
+
+const solverSupportsAsyncSolve = (
+  solver: AsyncPipelineDebuggerSolver,
+): solver is AsyncPipelineDebuggerSolver & {
+  solveAsync: () => Promise<void>
+} => typeof solver.solveAsync === "function"
 
 const createGenericPipelineTableAdapter = (solver: PipelineDebuggerSolver) => {
   const pipelineDef = solver.pipelineDef ?? []
@@ -434,6 +453,24 @@ export const AutoroutingPipelineDebugger = ({
   const autoSolvedSolverRef = useRef<any>(null)
   const autoRanDrcForSolveRef = useRef(false)
 
+  const stepSolver = async (solverToStep: AsyncPipelineDebuggerSolver) => {
+    if (solverSupportsAsyncStep(solverToStep)) {
+      await solverToStep.stepAsync()
+      return
+    }
+
+    solverToStep.step()
+  }
+
+  const solveSolver = async (solverToSolve: AsyncPipelineDebuggerSolver) => {
+    if (solverSupportsAsyncSolve(solverToSolve)) {
+      await solverToSolve.solveAsync()
+      return
+    }
+
+    solverToSolve.solve()
+  }
+
   // Reset solver
   const resetSolver = () => {
     setSolver(createNewSolver())
@@ -447,6 +484,8 @@ export const AutoroutingPipelineDebugger = ({
   // Animation effect
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval> | undefined
+    let isTickRunning = false
+    let cancelled = false
 
     if (isSolvingToBreakpointRef.current) {
       setIsAnimating(false)
@@ -460,24 +499,39 @@ export const AutoroutingPipelineDebugger = ({
       const delay = speedLevel < 4 ? speedDef.delay : animationSpeed
 
       intervalId = setInterval(() => {
-        const stepsPerInterval = speedDef.steps
-
-        for (let i = 0; i < stepsPerInterval; i++) {
-          if (solver.solved || solver.failed) {
-            break
-          }
-          solver.step()
+        if (isTickRunning) {
+          return
         }
-        setForceUpdate((prev) => prev + 1)
+
+        isTickRunning = true
+
+        const stepsPerInterval = speedDef.steps
+        void (async () => {
+          try {
+            for (let i = 0; i < stepsPerInterval; i++) {
+              if (solver.solved || solver.failed) {
+                break
+              }
+              await stepSolver(solver as AsyncPipelineDebuggerSolver)
+            }
+
+            if (!cancelled) {
+              setForceUpdate((prev) => prev + 1)
+            }
+          } finally {
+            isTickRunning = false
+          }
+        })()
       }, delay)
     }
 
     return () => {
+      cancelled = true
       if (intervalId !== undefined) {
         clearInterval(intervalId)
       }
     }
-  }, [isAnimating, speedLevel, solver, animationSpeed])
+  }, [animationSpeed, isAnimating, solver, speedLevel])
 
   useEffect(() => {
     if (!autoSolve || solver.solved || solver.failed) {
@@ -492,11 +546,22 @@ export const AutoroutingPipelineDebugger = ({
     isSolvingToBreakpointRef.current = false
     setIsAnimating(false)
 
-    const startTime = performance.now() / 1000
-    solver.solve()
-    const endTime = performance.now() / 1000
-    setSolveTime(endTime - startTime)
-    setForceUpdate((prev) => prev + 1)
+    let cancelled = false
+
+    void (async () => {
+      const startTime = performance.now() / 1000
+      await solveSolver(solver as AsyncPipelineDebuggerSolver)
+      const endTime = performance.now() / 1000
+
+      if (!cancelled) {
+        setSolveTime(endTime - startTime)
+        setForceUpdate((prev) => prev + 1)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
   }, [autoSolve, solver])
 
   useEffect(() => {
@@ -514,16 +579,16 @@ export const AutoroutingPipelineDebugger = ({
   }, [autoRunDrc, solver, solver.solved])
 
   // Manual step function
-  const handleStep = () => {
+  const handleStep = async () => {
     if (!solver.solved && !solver.failed) {
-      solver.step()
+      await stepSolver(solver as AsyncPipelineDebuggerSolver)
       setForceUpdate((prev) => prev + 1)
     }
     isSolvingToBreakpointRef.current = false // Stop breakpoint solving on manual step
   }
 
   // Next Stage function
-  const handleNextStage = () => {
+  const handleNextStage = async () => {
     if (!solver.solved && !solver.failed) {
       const initialSubSolver = solver.activeSubSolver
 
@@ -534,7 +599,7 @@ export const AutoroutingPipelineDebugger = ({
           !solver.failed &&
           solver.activeSubSolver === null
         ) {
-          solver.step()
+          await stepSolver(solver as AsyncPipelineDebuggerSolver)
         }
       }
 
@@ -545,7 +610,7 @@ export const AutoroutingPipelineDebugger = ({
           !solver.failed &&
           solver.activeSubSolver !== null
         ) {
-          solver.step()
+          await stepSolver(solver as AsyncPipelineDebuggerSolver)
         }
       }
 
@@ -555,12 +620,12 @@ export const AutoroutingPipelineDebugger = ({
   }
 
   // Solve Sub function - steps until activeSubSolver of current phase changes or is solved
-  const handleSolveSub = () => {
+  const handleSolveSub = async () => {
     if (!solver.solved && !solver.failed) {
       const currentPhase = solver.activeSubSolver
       if (!currentPhase) {
         // No active phase, just step once
-        solver.step()
+        await stepSolver(solver as AsyncPipelineDebuggerSolver)
         setForceUpdate((prev) => prev + 1)
         return
       }
@@ -586,7 +651,7 @@ export const AutoroutingPipelineDebugger = ({
           break
         }
 
-        solver.step()
+        await stepSolver(solver as AsyncPipelineDebuggerSolver)
       }
 
       setForceUpdate((prev) => prev + 1)
@@ -595,10 +660,10 @@ export const AutoroutingPipelineDebugger = ({
   }
 
   // Solve completely
-  const handleSolveCompletely = () => {
+  const handleSolveCompletely = async () => {
     if (!solver.solved && !solver.failed) {
       const startTime = performance.now() / 1000
-      solver.solve()
+      await solveSolver(solver as AsyncPipelineDebuggerSolver)
       const endTime = performance.now() / 1000
       setSolveTime(endTime - startTime)
     }
@@ -606,7 +671,7 @@ export const AutoroutingPipelineDebugger = ({
   }
 
   // Go to specific iteration
-  const handleGoToIteration = () => {
+  const handleGoToIteration = async () => {
     const targetIteration = window.prompt(
       "Enter target iteration number:",
       lastTargetIteration.toString(),
@@ -637,12 +702,12 @@ export const AutoroutingPipelineDebugger = ({
         !newSolver.solved &&
         !newSolver.failed
       ) {
-        newSolver.step()
+        await stepSolver(newSolver as AsyncPipelineDebuggerSolver)
       }
     } else {
       // We just need to run until we reach the target
       while (solver.iterations < target && !solver.solved && !solver.failed) {
-        solver.step()
+        await stepSolver(solver as AsyncPipelineDebuggerSolver)
       }
     }
 
@@ -781,7 +846,7 @@ export const AutoroutingPipelineDebugger = ({
     isSolvingToBreakpointRef.current = true
     setIsAnimating(false) // Ensure regular animation is stopped
 
-    const checkBreakpoint = () => {
+    const checkBreakpoint = async () => {
       if (!isSolvingToBreakpointRef.current) return // Stop if cancelled
 
       let deepestSolver = solver.activeSubSolver
@@ -818,19 +883,23 @@ export const AutoroutingPipelineDebugger = ({
 
       // If breakpoint not hit, take a step
       if (!solver.solved && !solver.failed) {
-        solver.step()
+        await stepSolver(solver as AsyncPipelineDebuggerSolver)
         setForceUpdate((prev) => prev + 1) // Update UI after step
-        requestAnimationFrame(checkBreakpoint) // Continue checking in the next frame
+        requestAnimationFrame(() => {
+          void checkBreakpoint()
+        }) // Continue checking in the next frame
       } else {
         isSolvingToBreakpointRef.current = false // Solver finished or failed
       }
     }
 
-    requestAnimationFrame(checkBreakpoint) // Start the checking loop
+    requestAnimationFrame(() => {
+      void checkBreakpoint()
+    }) // Start the checking loop
   }
 
   // Play until a specific stage
-  const handlePlayStage = (targetSolverStageKey: string) => {
+  const handlePlayStage = async (targetSolverStageKey: string) => {
     if (solver.solved || solver.failed) return
 
     // Stop any ongoing animation or breakpoint solving
@@ -843,7 +912,7 @@ export const AutoroutingPipelineDebugger = ({
       !solver.failed &&
       solver.activeSubSolver?.constructor.name !== targetSolverStageKey
     ) {
-      solver.step()
+      await stepSolver(solver as AsyncPipelineDebuggerSolver)
       // Check if the target solver became active *after* the step
       if (
         solver?.[
@@ -859,7 +928,9 @@ export const AutoroutingPipelineDebugger = ({
     setForceUpdate((prev) => prev + 1) // Update UI
   }
 
-  const handleSolveUntilStageComplete = (targetSolverStageKey: string) => {
+  const handleSolveUntilStageComplete = async (
+    targetSolverStageKey: string,
+  ) => {
     if (solver.solved || solver.failed) return
 
     const targetStageIndex = solver.pipelineDef?.findIndex(
@@ -877,7 +948,7 @@ export const AutoroutingPipelineDebugger = ({
       (solver.currentPipelineStepIndex ?? Number.POSITIVE_INFINITY) <=
         targetStageIndex
     ) {
-      solver.step()
+      await stepSolver(solver as AsyncPipelineDebuggerSolver)
     }
 
     setForceUpdate((prev) => prev + 1)
