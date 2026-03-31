@@ -21,6 +21,7 @@ import {
 } from "lib/cache/setupGlobalCaches"
 import { CacheProvider } from "lib/cache/types"
 import { BaseSolver } from "lib/solvers/BaseSolver"
+import { getPendingEffectsFromSolverTree } from "lib/solvers/getPendingEffectsFromSolverTree"
 import { getNodesNearNode } from "lib/solvers/UnravelSolver/getNodesNearNode"
 import { SimpleRouteJson } from "lib/types"
 import { addVisualizationToLastStep } from "lib/utils/addVisualizationToLastStep"
@@ -190,6 +191,19 @@ type AsyncPipelineDebuggerSolver = PipelineDebuggerSolver & {
   solveAsync?: () => Promise<void>
 }
 
+const waitForNextPaint = () =>
+  new Promise<void>((resolve) => {
+    if (
+      typeof window !== "undefined" &&
+      typeof window.requestAnimationFrame === "function"
+    ) {
+      window.requestAnimationFrame(() => resolve())
+      return
+    }
+
+    setTimeout(resolve, 0)
+  })
+
 const solverSupportsAsyncStep = (
   solver: AsyncPipelineDebuggerSolver,
 ): solver is AsyncPipelineDebuggerSolver & {
@@ -201,6 +215,25 @@ const solverSupportsAsyncSolve = (
 ): solver is AsyncPipelineDebuggerSolver & {
   solveAsync: () => Promise<void>
 } => typeof solver.solveAsync === "function"
+
+const waitForNextPendingEffect = async (
+  solver: AsyncPipelineDebuggerSolver,
+) => {
+  const pendingEffects = getPendingEffectsFromSolverTree(solver)
+  if (pendingEffects.length === 0) {
+    return false
+  }
+
+  await Promise.race(
+    pendingEffects.map((effect) =>
+      effect.promise.then(
+        () => effect.name,
+        () => effect.name,
+      ),
+    ),
+  )
+  return true
+}
 
 const createGenericPipelineTableAdapter = (solver: PipelineDebuggerSolver) => {
   const pipelineDef = solver.pipelineDef ?? []
@@ -462,7 +495,43 @@ export const AutoroutingPipelineDebugger = ({
     solverToStep.step()
   }
 
-  const solveSolver = async (solverToSolve: AsyncPipelineDebuggerSolver) => {
+  const solveSolver = async (
+    solverToSolve: AsyncPipelineDebuggerSolver,
+    opts: {
+      onProgress?: () => Promise<void> | void
+    } = {},
+  ) => {
+    if (solverSupportsAsyncStep(solverToSolve) && opts.onProgress) {
+      while (!solverToSolve.solved && !solverToSolve.failed) {
+        let steppedSynchronously = false
+
+        while (
+          !solverToSolve.solved &&
+          !solverToSolve.failed &&
+          getPendingEffectsFromSolverTree(solverToSolve).length === 0
+        ) {
+          solverToSolve.step()
+          steppedSynchronously = true
+        }
+
+        if (steppedSynchronously) {
+          await opts.onProgress()
+        }
+
+        if (solverToSolve.solved || solverToSolve.failed) {
+          break
+        }
+
+        const waitedForAsync = await waitForNextPendingEffect(solverToSolve)
+        if (!waitedForAsync) {
+          continue
+        }
+
+        await opts.onProgress()
+      }
+      return
+    }
+
     if (solverSupportsAsyncSolve(solverToSolve)) {
       await solverToSolve.solveAsync()
       return
@@ -550,7 +619,15 @@ export const AutoroutingPipelineDebugger = ({
 
     void (async () => {
       const startTime = performance.now() / 1000
-      await solveSolver(solver as AsyncPipelineDebuggerSolver)
+      await solveSolver(solver as AsyncPipelineDebuggerSolver, {
+        onProgress: async () => {
+          if (cancelled) {
+            return
+          }
+          setForceUpdate((prev) => prev + 1)
+          await waitForNextPaint()
+        },
+      })
       const endTime = performance.now() / 1000
 
       if (!cancelled) {
@@ -663,7 +740,12 @@ export const AutoroutingPipelineDebugger = ({
   const handleSolveCompletely = async () => {
     if (!solver.solved && !solver.failed) {
       const startTime = performance.now() / 1000
-      await solveSolver(solver as AsyncPipelineDebuggerSolver)
+      await solveSolver(solver as AsyncPipelineDebuggerSolver, {
+        onProgress: async () => {
+          setForceUpdate((prev) => prev + 1)
+          await waitForNextPaint()
+        },
+      })
       const endTime = performance.now() / 1000
       setSolveTime(endTime - startTime)
     }

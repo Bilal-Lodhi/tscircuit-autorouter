@@ -521,6 +521,18 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
     })
   }
 
+  private getVisibleRoutes() {
+    if (this.solved) {
+      return this.routes
+    }
+
+    const visibleRoutes: HighDensityIntraNodeRoute[] = []
+    for (let i = 0; i < this.unsolvedNodePortPoints.length; i++) {
+      visibleRoutes.push(...(this.solvedRoutesByNodeIndex.get(i) ?? []))
+    }
+    return visibleRoutes
+  }
+
   private createNodeMarkerLabel(
     capacityMeshNodeId: CapacityMeshNodeId,
     metadata: NodeSolveMetadata,
@@ -596,7 +608,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
       circles: [],
     }
 
-    for (const route of this.routes) {
+    for (const route of this.getVisibleRoutes()) {
       const mergedSegments = mergeRouteSegments(
         route.route,
         route.connectionName,

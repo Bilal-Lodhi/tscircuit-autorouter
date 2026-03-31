@@ -86,7 +86,14 @@ export class AutoroutingPipelineSolver5_HdCache extends AutoroutingPipelineSolve
       return
     }
 
-    await Promise.allSettled(pendingEffects.map((effect) => effect.promise))
+    await Promise.race(
+      pendingEffects.map((effect) =>
+        effect.promise.then(
+          () => effect.name,
+          () => effect.name,
+        ),
+      ),
+    )
 
     if (!this.solved && !this.failed) {
       this.step()
