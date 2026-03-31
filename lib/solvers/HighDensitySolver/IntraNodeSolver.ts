@@ -1,5 +1,10 @@
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { GraphicsObject } from "graphics-debug"
+import {
+  distance,
+  doSegmentsIntersect,
+  pointToSegmentDistance,
+} from "@tscircuit/math-utils"
 import { cloneAndShuffleArray } from "lib/utils/cloneAndShuffleArray"
 import { getBoundsFromNodeWithPortPoints } from "lib/utils/getBoundsFromNodeWithPortPoints"
 import { getMinDistBetweenEnteringPoints } from "lib/utils/getMinDistBetweenEnteringPoints"
@@ -255,6 +260,137 @@ export class IntraNodeRouteSolver extends BaseSolver {
     return true
   }
 
+  private getPureOverlapError() {
+    const overlappingGapTarget =
+      this.hyperParameters.MINIMUM_FINAL_ACCEPTANCE_GAP ?? 0
+    const segments = this.solvedRoutes.flatMap(getRouteSameLayerSegments)
+    const vias = this.solvedRoutes.flatMap(getRouteVias)
+
+    for (let i = 0; i < segments.length; i++) {
+      const left = segments[i]!
+      for (let j = i + 1; j < segments.length; j++) {
+        const right = segments[j]!
+        if (left.z !== right.z) continue
+        if (
+          this.connMap?.areIdsConnected(left.connectionName, right.connectionName)
+        ) {
+          continue
+        }
+
+        const gap = getCopperGapBetweenSegments(left, right)
+        if (gap < overlappingGapTarget) {
+          return [
+            `Pure overlap between traces in ${this.nodeWithPortPoints.capacityMeshNodeId}`,
+            `${left.connectionName} vs ${right.connectionName}`,
+            `gap=${gap.toFixed(6)}`,
+          ].join(" ")
+        }
+      }
+    }
+
+    for (const via of vias) {
+      for (const segment of segments) {
+        if (
+          this.connMap?.areIdsConnected(via.connectionName, segment.connectionName)
+        ) {
+          continue
+        }
+
+        const gap = getCopperGapBetweenViaAndSegment(via, segment)
+        if (gap < overlappingGapTarget) {
+          return [
+            `Pure overlap between via and trace in ${this.nodeWithPortPoints.capacityMeshNodeId}`,
+            `${via.connectionName} vs ${segment.connectionName}`,
+            `gap=${gap.toFixed(6)}`,
+          ].join(" ")
+        }
+      }
+    }
+
+    for (let i = 0; i < vias.length; i++) {
+      const left = vias[i]!
+      for (let j = i + 1; j < vias.length; j++) {
+        const right = vias[j]!
+        if (
+          this.connMap?.areIdsConnected(left.connectionName, right.connectionName)
+        ) {
+          continue
+        }
+
+        const gap = getCopperGapBetweenVias(left, right)
+        if (gap < overlappingGapTarget) {
+          return [
+            `Pure overlap between vias in ${this.nodeWithPortPoints.capacityMeshNodeId}`,
+            `${left.connectionName} vs ${right.connectionName}`,
+            `gap=${gap.toFixed(6)}`,
+          ].join(" ")
+        }
+      }
+    }
+
+    return null
+  }
+
+  private getIllegalSameLayerCrossingError() {
+    const bounds = getBoundsFromNodeWithPortPoints(this.nodeWithPortPoints)
+    const sameLayerRoutes = this.solvedRoutes
+      .map((route) => ({
+        connectionName: route.connectionName,
+        start: route.route[0]!,
+        end: route.route[route.route.length - 1]!,
+      }))
+      .filter(({ start, end }) => start.z === end.z)
+
+    for (let i = 0; i < sameLayerRoutes.length; i++) {
+      const left = sameLayerRoutes[i]!
+      const leftA = getPerimeterCoordinate(left.start, bounds)
+      const leftB = getPerimeterCoordinate(left.end, bounds)
+      const leftMin = Math.min(leftA, leftB)
+      const leftMax = Math.max(leftA, leftB)
+
+      for (let j = i + 1; j < sameLayerRoutes.length; j++) {
+        const right = sameLayerRoutes[j]!
+        if (left.start.z !== right.start.z) continue
+        if (
+          this.connMap?.areIdsConnected(left.connectionName, right.connectionName)
+        ) {
+          continue
+        }
+
+        const rightA = getPerimeterCoordinate(right.start, bounds)
+        const rightB = getPerimeterCoordinate(right.end, bounds)
+        const rightMin = Math.min(rightA, rightB)
+        const rightMax = Math.max(rightA, rightB)
+
+        if (
+          arePerimeterCoordsCoincident(leftMin, rightMin) ||
+          arePerimeterCoordsCoincident(leftMin, rightMax) ||
+          arePerimeterCoordsCoincident(leftMax, rightMin) ||
+          arePerimeterCoordsCoincident(leftMax, rightMax)
+        ) {
+          continue
+        }
+
+        const interleaves =
+          (leftMin < rightMin &&
+            rightMin < leftMax &&
+            leftMax < rightMax) ||
+          (rightMin < leftMin &&
+            leftMin < rightMax &&
+            rightMax < leftMax)
+
+        if (interleaves) {
+          return [
+            `Illegal same-layer crossing in ${this.nodeWithPortPoints.capacityMeshNodeId}`,
+            `${left.connectionName} vs ${right.connectionName}`,
+          ].join(" ")
+        }
+      }
+    }
+
+    return null
+  }
+
   _step() {
     if (this.activeSubSolver) {
       this.activeSubSolver.step()
@@ -274,7 +410,26 @@ export class IntraNodeRouteSolver extends BaseSolver {
     const unsolvedConnection = this.unsolvedConnections.pop()
     this.progress = this.computeProgress()
     if (!unsolvedConnection) {
-      this.solved = this.failedSubSolvers.length === 0
+      if (this.failedSubSolvers.length > 0) {
+        this.solved = false
+        return
+      }
+
+      const overlapError = this.getPureOverlapError()
+      if (overlapError) {
+        this.failed = true
+        this.error = overlapError
+        return
+      }
+
+      const sameLayerCrossingError = this.getIllegalSameLayerCrossingError()
+      if (sameLayerCrossingError) {
+        this.failed = true
+        this.error = sameLayerCrossingError
+        return
+      }
+
+      this.solved = true
       return
     }
     if (unsolvedConnection.points.length === 1) {
@@ -399,6 +554,133 @@ export class IntraNodeRouteSolver extends BaseSolver {
     return graphics
   }
 }
+
+type SameLayerSegment = {
+  connectionName: string
+  traceThickness: number
+  z: number
+  A: { x: number; y: number; z: number }
+  B: { x: number; y: number; z: number }
+}
+
+type RouteVia = {
+  connectionName: string
+  viaDiameter: number
+  x: number
+  y: number
+}
+
+const getRouteSameLayerSegments = (route: HighDensityIntraNodeRoute) => {
+  const segments: SameLayerSegment[] = []
+
+  for (let i = 0; i < route.route.length - 1; i++) {
+    const A = route.route[i]!
+    const B = route.route[i + 1]!
+    if (A.z !== B.z) continue
+    segments.push({
+      connectionName: route.connectionName,
+      traceThickness: route.traceThickness,
+      z: A.z,
+      A,
+      B,
+    })
+  }
+
+  return segments
+}
+
+const getRouteVias = (route: HighDensityIntraNodeRoute) =>
+  route.vias.map(
+    (via) =>
+      ({
+        connectionName: route.connectionName,
+        viaDiameter: route.viaDiameter,
+        x: via.x,
+        y: via.y,
+      }) satisfies RouteVia,
+  )
+
+const getSegmentToSegmentCenterlineDistance = (
+  left: SameLayerSegment,
+  right: SameLayerSegment,
+) => {
+  if (doSegmentsIntersect(left.A, left.B, right.A, right.B)) {
+    return 0
+  }
+
+  return Math.min(
+    pointToSegmentDistance(left.A, right.A, right.B),
+    pointToSegmentDistance(left.B, right.A, right.B),
+    pointToSegmentDistance(right.A, left.A, left.B),
+    pointToSegmentDistance(right.B, left.A, left.B),
+  )
+}
+
+const getCopperGapBetweenSegments = (
+  left: SameLayerSegment,
+  right: SameLayerSegment,
+) =>
+  getSegmentToSegmentCenterlineDistance(left, right) -
+  (left.traceThickness + right.traceThickness) / 2
+
+const getCopperGapBetweenViaAndSegment = (
+  via: RouteVia,
+  segment: SameLayerSegment,
+) =>
+  pointToSegmentDistance(via, segment.A, segment.B) -
+  (via.viaDiameter + segment.traceThickness) / 2
+
+const getCopperGapBetweenVias = (left: RouteVia, right: RouteVia) =>
+  distance(left, right) - (left.viaDiameter + right.viaDiameter) / 2
+
+const getPerimeterCoordinate = (
+  point: { x: number; y: number },
+  bounds: { minX: number; maxX: number; minY: number; maxY: number },
+) => {
+  const width = bounds.maxX - bounds.minX
+  const height = bounds.maxY - bounds.minY
+  const eps = 1e-6
+
+  if (Math.abs(point.y - bounds.maxY) < eps) {
+    return point.x - bounds.minX
+  }
+  if (Math.abs(point.x - bounds.maxX) < eps) {
+    return width + (bounds.maxY - point.y)
+  }
+  if (Math.abs(point.y - bounds.minY) < eps) {
+    return width + height + (bounds.maxX - point.x)
+  }
+  if (Math.abs(point.x - bounds.minX) < eps) {
+    return 2 * width + height + (point.y - bounds.minY)
+  }
+
+  const distTop = Math.abs(point.y - bounds.maxY)
+  const distRight = Math.abs(point.x - bounds.maxX)
+  const distBottom = Math.abs(point.y - bounds.minY)
+  const distLeft = Math.abs(point.x - bounds.minX)
+  const minDist = Math.min(distTop, distRight, distBottom, distLeft)
+
+  if (minDist === distTop) {
+    return Math.max(0, Math.min(width, point.x - bounds.minX))
+  }
+  if (minDist === distRight) {
+    return width + Math.max(0, Math.min(height, bounds.maxY - point.y))
+  }
+  if (minDist === distBottom) {
+    return width + height + Math.max(0, Math.min(width, bounds.maxX - point.x))
+  }
+  return (
+    2 * width +
+    height +
+    Math.max(0, Math.min(height, point.y - bounds.minY))
+  )
+}
+
+const arePerimeterCoordsCoincident = (
+  left: number,
+  right: number,
+  eps = 1e-6,
+) => Math.abs(left - right) < eps
 
 const isEndpointViaSafe = (
   obstacleChecker: SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost,
