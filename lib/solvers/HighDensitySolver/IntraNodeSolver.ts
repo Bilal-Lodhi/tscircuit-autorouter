@@ -2,6 +2,7 @@ import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { GraphicsObject } from "graphics-debug"
 import { cloneAndShuffleArray } from "lib/utils/cloneAndShuffleArray"
 import { getBoundsFromNodeWithPortPoints } from "lib/utils/getBoundsFromNodeWithPortPoints"
+import { getIntraNodeCrossingsUsingCircle } from "lib/utils/getIntraNodeCrossingsUsingCircle"
 import { getMinDistBetweenEnteringPoints } from "lib/utils/getMinDistBetweenEnteringPoints"
 import type {
   HighDensityIntraNodeRoute,
@@ -255,6 +256,40 @@ export class IntraNodeRouteSolver extends BaseSolver {
     return true
   }
 
+  private getIllegalSameLayerCrossingError() {
+    const availableZ = this.nodeWithPortPoints.availableZ ?? []
+    if (availableZ.length !== 1) return null
+
+    const nodeToCheck: NodeWithPortPoints = {
+      ...this.nodeWithPortPoints,
+      portPoints: this.solvedRoutes.flatMap((route) => {
+        const start = route.route[0]
+        const end = route.route[route.route.length - 1]
+        if (!start || !end || start.z !== end.z) return []
+        return [
+          {
+            connectionName: route.connectionName,
+            x: start.x,
+            y: start.y,
+            z: start.z,
+          },
+          {
+            connectionName: route.connectionName,
+            x: end.x,
+            y: end.y,
+            z: end.z,
+          },
+        ]
+      }),
+    }
+
+    const { numSameLayerCrossings } =
+      getIntraNodeCrossingsUsingCircle(nodeToCheck)
+    if (numSameLayerCrossings === 0) return null
+
+    return `Illegal same-layer crossing in ${this.nodeWithPortPoints.capacityMeshNodeId}`
+  }
+
   _step() {
     if (this.activeSubSolver) {
       this.activeSubSolver.step()
@@ -274,7 +309,19 @@ export class IntraNodeRouteSolver extends BaseSolver {
     const unsolvedConnection = this.unsolvedConnections.pop()
     this.progress = this.computeProgress()
     if (!unsolvedConnection) {
-      this.solved = this.failedSubSolvers.length === 0
+      if (this.failedSubSolvers.length > 0) {
+        this.solved = false
+        return
+      }
+
+      const sameLayerCrossingError = this.getIllegalSameLayerCrossingError()
+      if (sameLayerCrossingError) {
+        this.failed = true
+        this.error = sameLayerCrossingError
+        return
+      }
+
+      this.solved = true
       return
     }
     if (unsolvedConnection.points.length === 1) {
