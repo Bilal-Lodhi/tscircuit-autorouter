@@ -48,16 +48,15 @@ test(
     const nodeSolveMetadata = Array.from(
       highDensitySolver?.nodeSolveMetadataById.values() ?? [],
     )
-    const markerLabels =
-      highDensitySolver
-        ?.visualize()
-        .points?.map((point) => point.label ?? "") ?? []
+    const markerPoints = highDensitySolver?.visualize().points ?? []
+    const markerLabels = markerPoints.map((point) => point.label ?? "")
 
     expect(nodeSolveMetadata.length).toBeGreaterThan(0)
     expect(nodeSolveMetadata.length).toBe(
       pipeline5Solver.highDensityNodePortPoints?.length ?? 0,
     )
     expect(markerLabels.length).toBe(nodeSolveMetadata.length)
+    expect(markerPoints.every((point) => point.color === "blue")).toBe(true)
     expect(highDensitySolver?.stats.localFallbackNodeCount).toBe(
       nodeSolveMetadata.filter(
         (metadata) => metadata.resolution === "local-fallback",
@@ -99,6 +98,8 @@ test(
       expect(label).toContain("pairCount: ")
       expect(label).toContain("resolution: ")
       expect(label).toContain("remoteAttempted: ")
+      expect(label).not.toContain("remoteEndpoint: ")
+      expect(label).not.toContain("connections: ")
     }
 
     expect(pipeline5Traces.length).toBe(pipeline4Traces.length)

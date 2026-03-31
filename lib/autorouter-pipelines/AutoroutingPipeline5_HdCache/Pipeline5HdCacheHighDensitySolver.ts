@@ -537,10 +537,6 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
     capacityMeshNodeId: CapacityMeshNodeId,
     metadata: NodeSolveMetadata,
   ): string {
-    const connectionNames = Array.from(
-      new Set(metadata.node.portPoints.map((p) => p.connectionName)),
-    )
-
     return [
       "hd_node_marker",
       `node: ${capacityMeshNodeId}`,
@@ -557,9 +553,6 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
       `routes: ${metadata.routeCount}`,
       `nodePf: ${metadata.nodePf ?? "n/a"}`,
       `remoteAttempted: ${metadata.remoteAttempt.attempted ? "yes" : "no"}`,
-      ...(metadata.remoteAttempt.endpoint
-        ? [`remoteEndpoint: ${metadata.remoteAttempt.endpoint}`]
-        : []),
       ...(metadata.remoteAttempt.source
         ? [`remoteSource: ${metadata.remoteAttempt.source}`]
         : []),
@@ -570,7 +563,6 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
         ? [`remoteError: ${metadata.remoteAttempt.error}`]
         : []),
       `portPoints: ${metadata.node.portPoints.length}`,
-      `connections: ${connectionNames.join(", ")}`,
       ...(metadata.error ? [`error: ${metadata.error}`] : []),
     ].join("\n")
   }
@@ -646,6 +638,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
       const top = metadata.node.center.y - metadata.node.height / 2
       const bottom = metadata.node.center.y + metadata.node.height / 2
       const label = this.createNodeMarkerLabel(capacityMeshNodeId, metadata)
+      const markerColor = metadata.status === "solved" ? "blue" : "red"
 
       graphics.lines!.push(
         {
@@ -654,7 +647,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
             { x: right, y: top },
           ],
           layer: "hd_node_boundaries",
-          strokeColor: "red",
+          strokeColor: markerColor,
           strokeDash: "6, 4",
           strokeWidth: 0.03,
           label,
@@ -665,7 +658,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
             { x: right, y: bottom },
           ],
           layer: "hd_node_boundaries",
-          strokeColor: "red",
+          strokeColor: markerColor,
           strokeDash: "6, 4",
           strokeWidth: 0.03,
           label,
@@ -676,7 +669,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
             { x: left, y: bottom },
           ],
           layer: "hd_node_boundaries",
-          strokeColor: "red",
+          strokeColor: markerColor,
           strokeDash: "6, 4",
           strokeWidth: 0.03,
           label,
@@ -687,7 +680,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
             { x: left, y: top },
           ],
           layer: "hd_node_boundaries",
-          strokeColor: "red",
+          strokeColor: markerColor,
           strokeDash: "6, 4",
           strokeWidth: 0.03,
           label,
@@ -698,7 +691,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
         graphics.points!.push({
           x: metadata.node.center.x,
           y: metadata.node.center.y,
-          color: "red",
+          color: markerColor,
           layer: "hd_node_markers",
           label,
         })
@@ -710,7 +703,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
           layer: "hd_node_markers",
           width: rectWidth,
           height: rectHeight,
-          fill: "red",
+          fill: markerColor,
           label,
         })
       }

@@ -62,24 +62,30 @@ test(
     const highDensitySolver = pipeline5Solver.highDensityRouteSolver as
       | Pipeline5HdCacheHighDensitySolver
       | undefined
-    const remoteNodeMetadata =
-      highDensitySolver?.nodeSolveMetadataById.get("cmn_0")
-    const remoteNodeMarkerLabel = highDensitySolver
+    const remoteNodeEntry = Array.from(
+      highDensitySolver?.nodeSolveMetadataById.entries() ?? [],
+    ).find(([, metadata]) => metadata.remoteAttempt.attempted)
+    const remoteNodeId = remoteNodeEntry?.[0]
+    const remoteNodeMetadata = remoteNodeEntry?.[1]
+    const remoteNodeMarker = highDensitySolver
       ?.visualize()
-      .points?.find((point) => point.label?.includes("node: cmn_0"))?.label
+      .points?.find((point) =>
+        remoteNodeId ? point.label?.includes(`node: ${remoteNodeId}`) : false,
+      )
+    const remoteNodeMarkerLabel = remoteNodeMarker?.label
 
     expect(remoteNodeMetadata).toBeDefined()
     expect(remoteNodeMetadata?.status).toBe("solved")
-    expect(remoteNodeMetadata?.pairCount).toBeGreaterThanOrEqual(4)
+    expect(remoteNodeMetadata?.pairCount).toBeGreaterThanOrEqual(3)
     expect(remoteNodeMetadata?.remoteAttempt.attempted).toBe(true)
-    expect(remoteNodeMarkerLabel).toContain("node: cmn_0")
+    expect(remoteNodeMarker?.color).toBe("blue")
+    expect(remoteNodeMarkerLabel).toContain(`node: ${remoteNodeId}`)
     expect(remoteNodeMarkerLabel).toContain("resolution: ")
     expect(remoteNodeMarkerLabel).toContain("solver: ")
     expect(remoteNodeMarkerLabel).toContain("pairCount: ")
     expect(remoteNodeMarkerLabel).toContain("remoteAttempted: yes")
-    expect(remoteNodeMarkerLabel).toContain(
-      "remoteEndpoint: https://hd-cache.tscircuit.com/solve",
-    )
+    expect(remoteNodeMarkerLabel).not.toContain("remoteEndpoint: ")
+    expect(remoteNodeMarkerLabel).not.toContain("connections: ")
     expect(remoteNodeMarkerLabel).toContain("remoteDurationMs: ")
 
     if (remoteNodeMetadata?.resolution === "local-fallback") {

@@ -351,7 +351,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
     this.minTraceWidth = srj.minTraceWidth
     const mutableOpts = this.opts
     this.effort = mutableOpts.effort ?? 1
-    this.maxNodeDimension = mutableOpts.maxNodeDimension ?? 16
+    this.maxNodeDimension = mutableOpts.maxNodeDimension ?? 8
 
     if (mutableOpts.capacityDepth === undefined) {
       const boundsWidth = srj.bounds.maxX - srj.bounds.minX
