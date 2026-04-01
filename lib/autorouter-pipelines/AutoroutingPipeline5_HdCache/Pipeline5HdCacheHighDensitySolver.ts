@@ -27,6 +27,31 @@ type HdCacheSolveResponseBody = {
   message?: string
 }
 
+type FailedHdCacheRequestRecord = {
+  nodeId: CapacityMeshNodeId
+  pairCount: number
+  failedAt: string
+  durationMs: number
+  error: string
+  url: string
+  request: {
+    method: "POST"
+    headers: {
+      "content-type": "application/json"
+    }
+    body: string
+    bodyJson: {
+      nodeWithPortPoints: NodeWithPortPoints
+    }
+  }
+  response?: {
+    status?: number
+    ok?: boolean
+    text?: string
+    body?: HdCacheSolveResponseBody | null
+  }
+}
+
 type NodeSolveMetadata = {
   node: NodeWithPortPoints
   status: "solved" | "failed"
@@ -53,6 +78,22 @@ const getHdCacheSolveUrl = (baseUrl: string) =>
   /\/solve\/?$/.test(baseUrl)
     ? baseUrl.replace(/\/+$/, "")
     : `${baseUrl.replace(/\/+$/, "")}/solve`
+
+const getFailedHdCacheRequestStore = () => {
+  if (typeof window === "undefined") {
+    return null
+  }
+
+  const failedRequestWindow = window as Window & {
+    __FAILED_HD_CACHE_REQUESTS?: FailedHdCacheRequestRecord[]
+  }
+
+  if (!Array.isArray(failedRequestWindow.__FAILED_HD_CACHE_REQUESTS)) {
+    failedRequestWindow.__FAILED_HD_CACHE_REQUESTS = []
+  }
+
+  return failedRequestWindow.__FAILED_HD_CACHE_REQUESTS
+}
 
 const createConnectionRootMap = (node: NodeWithPortPoints) => {
   const connectionRootMap = new Map<string, string>()
@@ -109,6 +150,18 @@ const getErrorMessage = (error: unknown) =>
 
 const getNodePairCount = (node: NodeWithPortPoints) =>
   new Set(node.portPoints.map((point) => point.connectionName)).size
+
+const shouldSolveNodeViaHdCache = (node: NodeWithPortPoints) => {
+  if (getNodePairCount(node) < 3) {
+    return false
+  }
+
+  if ((node.availableZ?.length ?? 0) === 1) {
+    return false
+  }
+
+  return true
+}
 
 const getIntraNodeStrategyName = (
   hyperParameters: Record<string, any> | undefined,
@@ -359,25 +412,32 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
     node: NodeWithPortPoints,
     nodeIndex: number,
   ): Promise<void> {
+    const requestUrl = getHdCacheSolveUrl(this.hdCacheBaseUrl)
+    const requestHeaders = {
+      "content-type": "application/json" as const,
+    }
+    const requestBodyJson = {
+      nodeWithPortPoints: node,
+    }
+    const requestBody = JSON.stringify(requestBodyJson)
     const requestStartedAt = Date.now()
     let remoteDurationMs: number | null = null
+    let responseStatus: number | undefined
+    let responseOk: boolean | undefined
+    let responseText: string | undefined
+    let responseBody: HdCacheSolveResponseBody | null = null
     try {
-      const response = await this.fetchImpl(
-        getHdCacheSolveUrl(this.hdCacheBaseUrl),
-        {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            nodeWithPortPoints: node,
-          }),
-        },
-      )
+      const response = await this.fetchImpl(requestUrl, {
+        method: "POST",
+        headers: requestHeaders,
+        body: requestBody,
+      })
 
-      const responseText = await response.text()
+      responseStatus = response.status
+      responseOk = response.ok
+      responseText = await response.text()
       remoteDurationMs = Date.now() - requestStartedAt
-      const responseBody = responseText
+      responseBody = responseText
         ? (JSON.parse(responseText) as HdCacheSolveResponseBody)
         : null
 
@@ -424,6 +484,32 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
     } catch (error) {
       remoteDurationMs ??= Date.now() - requestStartedAt
       const errorMessage = getErrorMessage(error)
+      this.recordFailedHdCacheRequest({
+        nodeId: node.capacityMeshNodeId,
+        pairCount: getNodePairCount(node),
+        failedAt: new Date().toISOString(),
+        durationMs: remoteDurationMs,
+        error: errorMessage,
+        url: requestUrl,
+        request: {
+          method: "POST",
+          headers: requestHeaders,
+          body: requestBody,
+          bodyJson: requestBodyJson,
+        },
+        response:
+          responseStatus !== undefined ||
+          responseOk !== undefined ||
+          responseText !== undefined ||
+          responseBody !== null
+            ? {
+                status: responseStatus,
+                ok: responseOk,
+                text: responseText,
+                body: responseBody,
+              }
+            : undefined,
+      })
       this.recordRemoteSource("error")
       this.solveNodeLocally(node, nodeIndex, {
         resolution: "local-fallback",
@@ -443,7 +529,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
     const pendingEffects: PendingEffect[] = []
 
     this.unsolvedNodePortPoints.forEach((node, nodeIndex) => {
-      if (getNodePairCount(node) < 3) {
+      if (!shouldSolveNodeViaHdCache(node)) {
         this.solveNodeLocally(node, nodeIndex)
         return
       }
@@ -510,6 +596,14 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
         : (sortedDurations[middleIndex - 1] + sortedDurations[middleIndex]) / 2
   }
 
+  private recordFailedHdCacheRequest(
+    failedRequest: FailedHdCacheRequestRecord,
+  ) {
+    const failedRequestStore = getFailedHdCacheRequestStore()
+    if (!failedRequestStore) return
+    failedRequestStore.push(failedRequest)
+  }
+
   private recordNodeSolveMetadata(
     node: NodeWithPortPoints,
     result: Omit<NodeSolveMetadata, "node" | "nodePf">,
@@ -537,7 +631,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
         pairCount: getNodePairCount(failedResult.node),
         routeCount: 0,
         remoteAttempt: {
-          attempted: getNodePairCount(failedResult.node) >= 3,
+          attempted: shouldSolveNodeViaHdCache(failedResult.node),
           source: "error",
           error: failedResult.error,
         },

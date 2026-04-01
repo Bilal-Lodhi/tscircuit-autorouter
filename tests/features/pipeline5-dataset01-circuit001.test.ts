@@ -6,6 +6,11 @@ import type { Pipeline5HdCacheHighDensitySolver } from "lib/autorouter-pipelines
 import { AutoroutingPipelineSolver5 } from "lib/autorouter-pipelines/AutoroutingPipeline5_HdCache/AutoroutingPipelineSolver5_HdCache"
 import type { SimpleRouteJson } from "lib/types"
 
+const shouldAttemptRemoteSolve = (metadata: {
+  pairCount: number
+  node: { availableZ?: number[] }
+}) => metadata.pairCount >= 3 && metadata.node.availableZ?.length !== 1
+
 test(
   "pipeline5 visualizes exact high-density solver metadata for dataset01 circuit001",
   async () => {
@@ -39,7 +44,7 @@ test(
             | Pipeline5HdCacheHighDensitySolver
             | undefined
         )?.nodeSolveMetadataById.values() ?? [],
-      ).filter((metadata) => metadata.pairCount >= 3).length,
+      ).filter(shouldAttemptRemoteSolve).length,
     )
 
     const highDensitySolver = pipeline5Solver.highDensityRouteSolver as
@@ -74,20 +79,22 @@ test(
 
     for (const metadata of nodeSolveMetadata) {
       expect(metadata.status).toBe("solved")
-      expect(metadata.remoteAttempt.attempted).toBe(metadata.pairCount >= 3)
+      expect(metadata.remoteAttempt.attempted).toBe(
+        shouldAttemptRemoteSolve(metadata),
+      )
       expect(metadata.solverType.length).toBeGreaterThan(0)
       if (metadata.resolution === "local") {
-        expect(metadata.pairCount).toBeLessThan(3)
+        expect(shouldAttemptRemoteSolve(metadata)).toBe(false)
         expect(metadata.remoteAttempt.attempted).toBe(false)
         expect(metadata.supervisorType).toBe("HyperSingleIntraNodeSolver")
       } else if (metadata.resolution === "local-fallback") {
-        expect(metadata.pairCount).toBeGreaterThanOrEqual(3)
+        expect(shouldAttemptRemoteSolve(metadata)).toBe(true)
         expect(metadata.remoteAttempt.attempted).toBe(true)
         expect(metadata.remoteAttempt.error).toBeTruthy()
         expect(metadata.supervisorType).toBe("HyperSingleIntraNodeSolver")
       } else {
         expect(metadata.resolution).toBe("remote")
-        expect(metadata.pairCount).toBeGreaterThanOrEqual(3)
+        expect(shouldAttemptRemoteSolve(metadata)).toBe(true)
         expect(metadata.remoteAttempt.attempted).toBe(true)
         expect(metadata.solverType).toContain("hd-cache.tscircuit.com")
       }

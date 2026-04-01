@@ -6,6 +6,11 @@ import { AutoroutingPipelineSolver5 } from "lib/autorouter-pipelines/Autorouting
 import type { SimpleRouteJson } from "lib/types"
 import e2e3Fixture from "../../fixtures/legacy/assets/e2e3.json"
 
+const shouldAttemptRemoteSolve = (metadata: {
+  pairCount: number
+  node: { availableZ?: number[] }
+}) => metadata.pairCount >= 3 && metadata.node.availableZ?.length !== 1
+
 test(
   "pipeline5 routes pair-count >= 3 nodes remotely for e2e3",
   async () => {
@@ -34,10 +39,10 @@ test(
       highDensitySolver?.nodeSolveMetadataById.values() ?? [],
     )
     const remoteEligibleNodeCount = nodeSolveMetadata.filter(
-      (metadata) => metadata.pairCount >= 3,
+      shouldAttemptRemoteSolve,
     ).length
     const localOnlyNodeCount = nodeSolveMetadata.filter(
-      (metadata) => metadata.pairCount < 3,
+      (metadata) => !shouldAttemptRemoteSolve(metadata),
     ).length
 
     expect(highDensitySolver?.stats.remoteRequestsStarted).toBe(
@@ -53,8 +58,10 @@ test(
     )
 
     for (const metadata of nodeSolveMetadata) {
-      expect(metadata.remoteAttempt.attempted).toBe(metadata.pairCount >= 3)
-      if (metadata.pairCount < 3) {
+      expect(metadata.remoteAttempt.attempted).toBe(
+        shouldAttemptRemoteSolve(metadata),
+      )
+      if (!shouldAttemptRemoteSolve(metadata)) {
         expect(metadata.resolution).toBe("local")
       } else {
         expect(["remote", "local-fallback"]).toContain(metadata.resolution)
