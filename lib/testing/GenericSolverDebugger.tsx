@@ -5,6 +5,7 @@ import {
 } from "graphics-debug/react"
 import { BaseSolver } from "lib/solvers/BaseSolver"
 import { combineVisualizations } from "lib/utils/combineVisualizations"
+import { prepareParamsForDownload } from "lib/testing/utils/prepareParamsForDownload"
 import {
   Menubar,
   MenubarContent,
@@ -355,18 +356,24 @@ export const GenericSolverDebugger = ({
       return
     }
 
-    const paramsJson = JSON.stringify(params, null, 2)
-    const blob = new Blob([paramsJson], {
-      type: "application/json",
-    })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.download = `${solver.constructor.name}_input.json`
-    a.href = url
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    try {
+      const paramsJson = JSON.stringify(
+        prepareParamsForDownload(params),
+      )
+      const blob = new Blob([paramsJson], {
+        type: "application/json",
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.download = `${solver.constructor.name}_input.json`
+      a.href = url
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (e: any) {
+      window.alert(`Unable to download solver input: ${e.toString()}`)
+    }
   }
 
   // Safely get visualization
@@ -801,18 +808,24 @@ export const GenericSolverDebugger = ({
                   return
                 }
 
-                const paramsJson = JSON.stringify(params, null, 2)
-                const blob = new Blob([paramsJson], {
-                  type: "application/json",
-                })
-                const url = URL.createObjectURL(blob)
-                const a = document.createElement("a")
-                a.download = `${deepestActiveSubSolver.constructor.name}_input.json`
-                a.href = url
-                document.body.appendChild(a)
-                a.click()
-                document.body.removeChild(a)
-                URL.revokeObjectURL(url)
+                try {
+                  const paramsJson = JSON.stringify(
+                    prepareParamsForDownload(params),
+                  )
+                  const blob = new Blob([paramsJson], {
+                    type: "application/json",
+                  })
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement("a")
+                  a.download = `${deepestActiveSubSolver.constructor.name}_input.json`
+                  a.href = url
+                  document.body.appendChild(a)
+                  a.click()
+                  document.body.removeChild(a)
+                  URL.revokeObjectURL(url)
+                } catch (e: any) {
+                  window.alert(`Unable to download solver input: ${e.toString()}`)
+                }
               }}
             >
               Download Active Sub Solver Input (

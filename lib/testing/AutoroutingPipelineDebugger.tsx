@@ -46,6 +46,7 @@ import { getCurrentCircuitJson } from "./autorouting-pipeline-debugger/getCurren
 import { convertToCircuitJson } from "./utils/convertToCircuitJson"
 import { filterUnravelMultiSectionInput } from "./utils/filterUnravelMultiSectionInput"
 import { getHighDensityNodeDownloadData } from "./utils/getHighDensityNodeDownloadData"
+import { prepareParamsForDownload } from "./utils/prepareParamsForDownload"
 
 const PIPELINE_SOLVERS = {
   AutoroutingPipelineSolver2_PortPointPathing,
@@ -81,59 +82,6 @@ const applyLayerOverrideToSrj = (
     ...srj,
     layerCount: layerOverride,
   }
-}
-
-const sanitizeParamsForDownload = (
-  value: any,
-  seen = new WeakMap<object, any>(),
-): any => {
-  if (value === null || typeof value !== "object") {
-    return value
-  }
-
-  if (seen.has(value as object)) {
-    return seen.get(value as object)
-  }
-
-  if (value instanceof Map) {
-    const sanitizedMap: Record<string, any> = {}
-    seen.set(value as object, sanitizedMap)
-    for (const [key, val] of value.entries()) {
-      sanitizedMap[String(key)] = sanitizeParamsForDownload(val, seen)
-    }
-    return sanitizedMap
-  }
-
-  if (value instanceof Set) {
-    const sanitizedArray: any[] = []
-    seen.set(value as object, sanitizedArray)
-    for (const item of value.values()) {
-      sanitizedArray.push(sanitizeParamsForDownload(item, seen))
-    }
-    return sanitizedArray
-  }
-
-  if (Array.isArray(value)) {
-    const sanitizedArray: any[] = []
-    seen.set(value as object, sanitizedArray)
-    for (const item of value) {
-      sanitizedArray.push(sanitizeParamsForDownload(item, seen))
-    }
-    return sanitizedArray
-  }
-
-  const sanitizedObject: Record<string, any> = {}
-  seen.set(value as object, sanitizedObject)
-  for (const key of Object.keys(value)) {
-    if (key === "_parent" && value._parent) {
-      sanitizedObject._parent = value._parent.capacityMeshNodeId
-        ? { capacityMeshNodeId: value._parent.capacityMeshNodeId }
-        : sanitizeParamsForDownload(value._parent, seen)
-    } else {
-      sanitizedObject[key] = sanitizeParamsForDownload(value[key], seen)
-    }
-  }
-  return sanitizedObject
 }
 
 interface CapacityMeshPipelineDebuggerProps {
@@ -205,6 +153,20 @@ const waitForNextPaint = () =>
 
     setTimeout(resolve, 0)
   })
+
+const downloadJsonFile = (filename: string, data: unknown) => {
+  const blob = new Blob([JSON.stringify(data)], {
+    type: "application/json",
+  })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.download = filename
+  a.href = url
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
 
 const solverSupportsAsyncStep = (
   solver: AsyncPipelineDebuggerSolver,
@@ -1459,19 +1421,18 @@ export const AutoroutingPipelineDebugger = ({
             solver={genericPipelineTableSolver as any}
             onStepUntilPhase={handleSolveUntilStageComplete}
             onDownloadInput={(stepSolver, stepName) => {
-              const params = sanitizeParamsForDownload(
-                stepSolver.getConstructorParams(),
-              )
-              const paramsJson = JSON.stringify(params, null, 2)
-              const blob = new Blob([paramsJson], {
-                type: "application/json",
-              })
-              const url = URL.createObjectURL(blob)
-              const a = document.createElement("a")
-              a.download = `${stepName}_input.json`
-              a.href = url
-              a.click()
-              URL.revokeObjectURL(url)
+              try {
+                downloadJsonFile(
+                  `${stepName}_input.json`,
+                  prepareParamsForDownload(stepSolver.getConstructorParams()),
+                )
+              } catch (error) {
+                window.alert(
+                  `Unable to download input: ${
+                    error instanceof Error ? error.message : String(error)
+                  }`,
+                )
+              }
             }}
             triggerRender={() => setForceUpdate((prev) => prev + 1)}
           />
@@ -1602,19 +1563,22 @@ export const AutoroutingPipelineDebugger = ({
                         <button
                           className="text-blue-600 hover:underline"
                           onClick={() => {
-                            const params = sanitizeParamsForDownload(
-                              step.getConstructorParams(solver),
-                            )
-                            const paramsJson = JSON.stringify(params, null, 2)
-                            const blob = new Blob([paramsJson], {
-                              type: "application/json",
-                            })
-                            const url = URL.createObjectURL(blob)
-                            const a = document.createElement("a")
-                            a.download = `${step.solverName}_input.json`
-                            a.href = url
-                            a.click()
-                            URL.revokeObjectURL(url)
+                            try {
+                              downloadJsonFile(
+                                `${step.solverName}_input.json`,
+                                prepareParamsForDownload(
+                                  step.getConstructorParams(solver),
+                                ),
+                              )
+                            } catch (error) {
+                              window.alert(
+                                `Unable to download input: ${
+                                  error instanceof Error
+                                    ? error.message
+                                    : String(error)
+                                }`,
+                              )
+                            }
                           }}
                           disabled={!stepSolver}
                         >
@@ -1645,17 +1609,21 @@ export const AutoroutingPipelineDebugger = ({
               params = deepestActiveSubSolver.getConstructorParams()
             } catch (e: any) {
               window.alert(`Unable to get constructor params: ${e.toString()}`)
+              return
             }
 
-            const sanitizedParams = sanitizeParamsForDownload(params)
-            const paramsJson = JSON.stringify(sanitizedParams, null, 2)
-            const blob = new Blob([paramsJson], { type: "application/json" })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement("a")
-            a.href = url
-            a.download = `${deepestActiveSubSolver.constructor.name}_input.json`
-            a.click()
-            URL.revokeObjectURL(url)
+            try {
+              downloadJsonFile(
+                `${deepestActiveSubSolver.constructor.name}_input.json`,
+                prepareParamsForDownload(params),
+              )
+            } catch (error) {
+              window.alert(
+                `Unable to download input: ${
+                  error instanceof Error ? error.message : String(error)
+                }`,
+              )
+            }
           }}
         >
           Download Active Sub Solver Input (
