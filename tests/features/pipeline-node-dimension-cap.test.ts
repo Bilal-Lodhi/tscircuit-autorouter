@@ -3,10 +3,13 @@ import * as dataset01 from "@tscircuit/autorouting-dataset-01"
 import { AutoroutingPipelineSolver4 } from "lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
 import { AutoroutingPipelineSolver5 } from "lib/autorouter-pipelines/AutoroutingPipeline5_HdCache/AutoroutingPipelineSolver5_HdCache"
 
-const getCircuit011 = () => (dataset01 as Record<string, unknown>).circuit011 as any
+const getCircuit011 = () =>
+  (dataset01 as Record<string, unknown>).circuit011 as any
 
 test("pipeline4 defaults node subdivision to 16mm", () => {
-  const pipeline = new AutoroutingPipelineSolver4(structuredClone(getCircuit011()))
+  const pipeline = new AutoroutingPipelineSolver4(
+    structuredClone(getCircuit011()),
+  )
 
   pipeline.solveUntilPhase("edgeSolver")
 
@@ -37,7 +40,9 @@ test("pipeline4 defaults node subdivision to 16mm", () => {
 })
 
 test("pipeline5 defaults node subdivision to 8mm", () => {
-  const pipeline = new AutoroutingPipelineSolver5(structuredClone(getCircuit011()))
+  const pipeline = new AutoroutingPipelineSolver5(
+    structuredClone(getCircuit011()),
+  )
 
   pipeline.solveUntilPhase("edgeSolver")
 

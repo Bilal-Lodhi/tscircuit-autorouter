@@ -75,9 +75,8 @@ test(
     )
     expect(explicit8mmNode.portPoints.length).toBe(8)
     expect(
-      new Set(
-        explicit8mmNode.portPoints.map((point) => point.connectionName),
-      ).size,
+      new Set(explicit8mmNode.portPoints.map((point) => point.connectionName))
+        .size,
     ).toBe(3)
 
     getGlobalInMemoryCache().clearCache()
