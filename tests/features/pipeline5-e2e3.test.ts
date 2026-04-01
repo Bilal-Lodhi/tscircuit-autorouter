@@ -17,7 +17,9 @@ test(
     const pipeline4Input = structuredClone(e2e3Fixture as SimpleRouteJson)
     const pipeline5Input = structuredClone(e2e3Fixture as SimpleRouteJson)
 
-    const pipeline4Solver = new AutoroutingPipelineSolver4(pipeline4Input)
+    const pipeline4Solver = new AutoroutingPipelineSolver4(pipeline4Input, {
+      maxNodeDimension: 8,
+    })
     pipeline4Solver.solve()
 
     const pipeline5Solver = new AutoroutingPipelineSolver5(pipeline5Input)
