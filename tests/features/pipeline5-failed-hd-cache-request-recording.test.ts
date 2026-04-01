@@ -54,7 +54,6 @@ test("pipeline5 records failed hd-cache requests on window for replay", async ()
     nodeIndex: number
     opts: Record<string, unknown>
   }> = []
-
   ;(solver as any).solveNodeLocally = (
     node: NodeWithPortPoints,
     nodeIndex: number,
@@ -81,9 +80,8 @@ test("pipeline5 records failed hd-cache requests on window for replay", async ()
     "Solver did not find a solution.",
   )
 
-  const failedRequests = failedRequestWindow.__FAILED_HD_CACHE_REQUESTS as Array<
-    Record<string, any>
-  >
+  const failedRequests =
+    failedRequestWindow.__FAILED_HD_CACHE_REQUESTS as Array<Record<string, any>>
   expect(Array.isArray(failedRequests)).toBe(true)
   expect(failedRequests).toHaveLength(1)
 

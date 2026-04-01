@@ -87,9 +87,7 @@ test("pipeline5 visualizes failed high-density nodes with a visible red marker",
   expect(failedCrossLines.every((line) => line.strokeColor === "red")).toBe(
     true,
   )
-  expect(failedCrossLines.every((line) => line.strokeWidth === 0.16)).toBe(
-    true,
-  )
+  expect(failedCrossLines.every((line) => line.strokeWidth === 0.16)).toBe(true)
   expect(failedBoundaryLines).toHaveLength(4)
   expect(failedBoundaryLines.every((line) => line.strokeColor === "red")).toBe(
     true,

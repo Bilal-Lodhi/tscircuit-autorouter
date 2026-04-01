@@ -9,9 +9,7 @@
     "width": 1.65001,
     "height": 6.568796,
     "layer": "top",
-    "availableZ": [
-      1
-    ]
+    "availableZ": [1]
   },
   "nodeWithPortPoints": {
     "capacityMeshNodeId": "cmn_79",
@@ -119,9 +117,7 @@
         "rootConnectionName": "source_net_5"
       }
     ],
-    "availableZ": [
-      1
-    ]
+    "availableZ": [1]
   },
   "inputNodeWithPortPoints": {
     "capacityMeshNodeId": "cmn_79",
@@ -137,10 +133,7 @@
         "x": 5.088495,
         "y": -2.6999999999999997,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_0__sub_0_2",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_0__sub_0_2", "cmn_79"],
         "distToCentermostPortOnZ": 1.07625,
         "connectsToOffBoardNode": false
       },
@@ -149,10 +142,7 @@
         "x": 5.088495,
         "y": -2.3412499999999996,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_0__sub_0_2",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_0__sub_0_2", "cmn_79"],
         "distToCentermostPortOnZ": 0.7174999999999998,
         "connectsToOffBoardNode": false
       },
@@ -161,10 +151,7 @@
         "x": 5.088495,
         "y": -1.9825,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_0__sub_0_2",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_0__sub_0_2", "cmn_79"],
         "distToCentermostPortOnZ": 0.3587500000000001,
         "connectsToOffBoardNode": false
       },
@@ -173,10 +160,7 @@
         "x": 5.088495,
         "y": -1.6237499999999998,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_0__sub_0_2",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_0__sub_0_2", "cmn_79"],
         "distToCentermostPortOnZ": 0,
         "connectsToOffBoardNode": false
       },
@@ -185,10 +169,7 @@
         "x": 5.088495,
         "y": -1.2650000000000001,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_0__sub_0_2",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_0__sub_0_2", "cmn_79"],
         "distToCentermostPortOnZ": 0.3587499999999997,
         "connectsToOffBoardNode": false
       },
@@ -197,10 +178,7 @@
         "x": 5.088495,
         "y": -0.90625,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_0__sub_0_2",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_0__sub_0_2", "cmn_79"],
         "distToCentermostPortOnZ": 0.7174999999999998,
         "connectsToOffBoardNode": false
       },
@@ -209,10 +187,7 @@
         "x": 5.088495,
         "y": -0.5474999999999999,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_0__sub_0_2",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_0__sub_0_2", "cmn_79"],
         "distToCentermostPortOnZ": 1.07625,
         "connectsToOffBoardNode": false
       },
@@ -221,10 +196,7 @@
         "x": 5.088495,
         "y": -0.09749999999999936,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_0__sub_1_2",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_0__sub_1_2", "cmn_79"],
         "distToCentermostPortOnZ": 1.5069839999999997,
         "connectsToOffBoardNode": false
       },
@@ -233,10 +205,7 @@
         "x": 5.088495,
         "y": 0.40482800000000063,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_0__sub_1_2",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_0__sub_1_2", "cmn_79"],
         "distToCentermostPortOnZ": 1.0046559999999998,
         "connectsToOffBoardNode": false
       },
@@ -245,10 +214,7 @@
         "x": 5.088495,
         "y": 0.9071560000000005,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_0__sub_1_2",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_0__sub_1_2", "cmn_79"],
         "distToCentermostPortOnZ": 0.5023279999999999,
         "connectsToOffBoardNode": false
       },
@@ -257,10 +223,7 @@
         "x": 5.088495,
         "y": 1.4094840000000004,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_0__sub_1_2",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_0__sub_1_2", "cmn_79"],
         "distToCentermostPortOnZ": 0,
         "connectsToOffBoardNode": false
       },
@@ -269,10 +232,7 @@
         "x": 5.088495,
         "y": 1.9118120000000007,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_0__sub_1_2",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_0__sub_1_2", "cmn_79"],
         "distToCentermostPortOnZ": 0.5023280000000003,
         "connectsToOffBoardNode": false
       },
@@ -281,10 +241,7 @@
         "x": 5.088495,
         "y": 2.4141400000000006,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_0__sub_1_2",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_0__sub_1_2", "cmn_79"],
         "distToCentermostPortOnZ": 1.0046560000000002,
         "connectsToOffBoardNode": false
       },
@@ -293,10 +250,7 @@
         "x": 5.088495,
         "y": 2.916468,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_0__sub_1_2",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_0__sub_1_2", "cmn_79"],
         "distToCentermostPortOnZ": 1.5069839999999997,
         "connectsToOffBoardNode": false
       },
@@ -305,10 +259,7 @@
         "x": 5.088495,
         "y": 3.4187960000000004,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_0__sub_1_2",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_0__sub_1_2", "cmn_79"],
         "distToCentermostPortOnZ": 2.009312,
         "connectsToOffBoardNode": false
       },
@@ -317,10 +268,7 @@
         "x": 6.738505,
         "y": -2.6999999999999997,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_1",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_1", "cmn_79"],
         "distToCentermostPortOnZ": 3.3993311111111106,
         "connectsToOffBoardNode": false
       },
@@ -329,10 +277,7 @@
         "x": 6.738505,
         "y": -2.0201337777777777,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_1",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_1", "cmn_79"],
         "distToCentermostPortOnZ": 2.7194648888888886,
         "connectsToOffBoardNode": false
       },
@@ -341,10 +286,7 @@
         "x": 6.738505,
         "y": -1.3402675555555557,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_1",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_1", "cmn_79"],
         "distToCentermostPortOnZ": 2.0395986666666666,
         "connectsToOffBoardNode": false
       },
@@ -353,10 +295,7 @@
         "x": 6.738505,
         "y": -0.6604013333333332,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_1",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_1", "cmn_79"],
         "distToCentermostPortOnZ": 1.359732444444444,
         "connectsToOffBoardNode": false
       },
@@ -365,10 +304,7 @@
         "x": 6.738505,
         "y": 0.019464888888888865,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_1",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_1", "cmn_79"],
         "distToCentermostPortOnZ": 0.679866222222222,
         "connectsToOffBoardNode": false
       },
@@ -377,10 +313,7 @@
         "x": 6.738505,
         "y": 0.6993311111111109,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_1",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_1", "cmn_79"],
         "distToCentermostPortOnZ": 0,
         "connectsToOffBoardNode": false
       },
@@ -389,10 +322,7 @@
         "x": 6.738505,
         "y": 1.379197333333333,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_1",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_1", "cmn_79"],
         "distToCentermostPortOnZ": 0.679866222222222,
         "connectsToOffBoardNode": false
       },
@@ -401,10 +331,7 @@
         "x": 6.738505,
         "y": 2.0590635555555545,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_1",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_1", "cmn_79"],
         "distToCentermostPortOnZ": 1.3597324444444436,
         "connectsToOffBoardNode": false
       },
@@ -413,10 +340,7 @@
         "x": 6.738505,
         "y": 2.738929777777777,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_1",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_1", "cmn_79"],
         "distToCentermostPortOnZ": 2.039598666666666,
         "connectsToOffBoardNode": false
       },
@@ -425,10 +349,7 @@
         "x": 6.738505,
         "y": 3.4187959999999995,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_1",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_1", "cmn_79"],
         "distToCentermostPortOnZ": 2.7194648888888886,
         "connectsToOffBoardNode": false
       },
@@ -437,10 +358,7 @@
         "x": 5.313495,
         "y": 3.643796,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_76",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_76", "cmn_79"],
         "distToCentermostPortOnZ": 0.6000050000000003,
         "connectsToOffBoardNode": false
       },
@@ -449,10 +367,7 @@
         "x": 5.6134975,
         "y": 3.643796,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_76",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_76", "cmn_79"],
         "distToCentermostPortOnZ": 0.3000024999999997,
         "connectsToOffBoardNode": false
       },
@@ -461,10 +376,7 @@
         "x": 5.9135,
         "y": 3.643796,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_76",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_76", "cmn_79"],
         "distToCentermostPortOnZ": 0,
         "connectsToOffBoardNode": false
       },
@@ -473,10 +385,7 @@
         "x": 6.213502500000001,
         "y": 3.643796,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_76",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_76", "cmn_79"],
         "distToCentermostPortOnZ": 0.3000025000000006,
         "connectsToOffBoardNode": false
       },
@@ -485,10 +394,7 @@
         "x": 6.513505,
         "y": 3.643796,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_76",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_76", "cmn_79"],
         "distToCentermostPortOnZ": 0.6000050000000003,
         "connectsToOffBoardNode": false
       },
@@ -497,10 +403,7 @@
         "x": 5.313495,
         "y": -2.925,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_78",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_78", "cmn_79"],
         "distToCentermostPortOnZ": 0.6000050000000003,
         "connectsToOffBoardNode": false
       },
@@ -509,10 +412,7 @@
         "x": 5.6134975,
         "y": -2.925,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_78",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_78", "cmn_79"],
         "distToCentermostPortOnZ": 0.3000024999999997,
         "connectsToOffBoardNode": false
       },
@@ -521,10 +421,7 @@
         "x": 5.9135,
         "y": -2.925,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_78",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_78", "cmn_79"],
         "distToCentermostPortOnZ": 0,
         "connectsToOffBoardNode": false
       },
@@ -533,10 +430,7 @@
         "x": 6.213502500000001,
         "y": -2.925,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_78",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_78", "cmn_79"],
         "distToCentermostPortOnZ": 0.3000025000000006,
         "connectsToOffBoardNode": false
       },
@@ -545,16 +439,11 @@
         "x": 6.513505,
         "y": -2.925,
         "z": 1,
-        "connectionNodeIds": [
-          "cmn_78",
-          "cmn_79"
-        ],
+        "connectionNodeIds": ["cmn_78", "cmn_79"],
         "distToCentermostPortOnZ": 0.6000050000000003,
         "connectsToOffBoardNode": false
       }
     ],
-    "availableZ": [
-      1
-    ]
+    "availableZ": [1]
   }
 }

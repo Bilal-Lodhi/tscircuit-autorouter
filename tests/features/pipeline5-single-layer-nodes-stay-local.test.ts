@@ -39,14 +39,12 @@ test("pipeline5 keeps single-layer high-density nodes local even when pair count
     node: NodeWithPortPoints
     nodeIndex: number
   }> = []
-
   ;(solver as any).solveNodeLocally = (
     node: NodeWithPortPoints,
     nodeIndex: number,
   ) => {
     localSolveCalls.push({ node, nodeIndex })
   }
-
   ;(solver as any).launchRemoteSolves()
 
   expect(fetchCallCount).toBe(0)
