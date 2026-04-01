@@ -279,6 +279,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
           connMap: cms.connMap,
           viaDiameter: cms.viaDiameter,
           traceWidth: cms.minTraceWidth,
+          obstacleMargin: cms.srj.defaultObstacleMargin ?? 0.15,
         },
       ]
     }),

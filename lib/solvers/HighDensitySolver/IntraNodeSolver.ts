@@ -51,6 +51,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
   minDistBetweenEnteringPoints: number
   viaDiameter: number
   traceWidth: number
+  obstacleMargin: number
 
   activeSubSolver: SingleHighDensityRouteSolver | null = null
   connMap?: ConnectivityMap
@@ -72,6 +73,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
     connMap?: ConnectivityMap
     viaDiameter?: number
     traceWidth?: number
+    obstacleMargin?: number
   }) {
     const { nodeWithPortPoints, colorMap } = params
     super()
@@ -83,6 +85,7 @@ export class IntraNodeRouteSolver extends BaseSolver {
     this.connMap = params.connMap
     this.viaDiameter = params.viaDiameter ?? 0.3
     this.traceWidth = params.traceWidth ?? 0.15
+    this.obstacleMargin = params.obstacleMargin ?? 0.15
     const unsolvedConnectionsMap: Map<string, ConnectionPoint[]> = new Map()
     for (const { connectionName, x, y, z } of nodeWithPortPoints.portPoints) {
       unsolvedConnectionsMap.set(connectionName, [
@@ -191,10 +194,20 @@ export class IntraNodeRouteSolver extends BaseSolver {
         (max, p) => Math.max(max, (p.z ?? 0) + 1),
         2,
       ),
+      availableZ:
+        this.nodeWithPortPoints.availableZ &&
+        this.nodeWithPortPoints.availableZ.length > 0
+          ? this.nodeWithPortPoints.availableZ
+          : [
+              ...new Set(
+                this.nodeWithPortPoints.portPoints.map((point) => point.z ?? 0),
+              ),
+            ].sort((a, b) => a - b),
       hyperParameters: this.hyperParameters,
       connMap: this.connMap,
       viaDiameter: this.viaDiameter,
       traceThickness: this.traceWidth,
+      obstacleMargin: this.obstacleMargin,
     }
   }
 

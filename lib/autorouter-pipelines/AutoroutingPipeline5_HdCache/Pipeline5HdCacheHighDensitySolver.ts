@@ -240,6 +240,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
   readonly connMap?: ConnectivityMap
   readonly viaDiameter: number
   readonly traceWidth: number
+  readonly obstacleMargin: number
   readonly hdCacheBaseUrl: string
   readonly fetchImpl: typeof fetch
   readonly nodePfById: Map<CapacityMeshNodeId, number | null>
@@ -267,6 +268,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
     connMap,
     viaDiameter,
     traceWidth,
+    obstacleMargin,
     nodePfById,
     hdCacheBaseUrl,
     fetchImpl,
@@ -276,6 +278,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
     connMap?: ConnectivityMap
     viaDiameter?: number
     traceWidth?: number
+    obstacleMargin?: number
     nodePfById?:
       | Map<CapacityMeshNodeId, number | null>
       | Record<string, number | null>
@@ -288,6 +291,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
     this.connMap = connMap
     this.viaDiameter = viaDiameter ?? 0.3
     this.traceWidth = traceWidth ?? 0.15
+    this.obstacleMargin = obstacleMargin ?? 0.15
     this.hdCacheBaseUrl = hdCacheBaseUrl ?? DEFAULT_HD_CACHE_BASE_URL
     this.fetchImpl = (fetchImpl ?? globalThis.fetch).bind(
       globalThis,
@@ -335,6 +339,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
       connMap: this.connMap,
       viaDiameter: this.viaDiameter,
       traceWidth: this.traceWidth,
+      obstacleMargin: this.obstacleMargin,
     })
 
     localSolver.solve()
