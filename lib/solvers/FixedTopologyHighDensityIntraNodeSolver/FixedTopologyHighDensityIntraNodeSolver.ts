@@ -6,7 +6,6 @@ import {
   type ViaByNet,
   type ViaTile,
   FixedViaHypergraphSolver,
-  createConvexViaGraphFromXYConnections,
 } from "@tscircuit/fixed-via-hypergraph-solver/lib/index"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { GraphicsObject } from "graphics-debug"
@@ -59,7 +58,6 @@ export class FixedTopologyHighDensityIntraNodeSolver extends BaseSolver {
 
   solvedRoutes: HighDensityIntraNodeRouteWithVias[] = []
   vias: ViaRegion[] = []
-  tiledViasByNet: ViaByNet = {}
 
   constructor(params: FixedTopologyHighDensityIntraNodeSolverParams) {
     super()
@@ -134,17 +132,7 @@ export class FixedTopologyHighDensityIntraNodeSolver extends BaseSolver {
     }
     if (inputConnections.length === 0) return null
 
-    const convexGraph = createConvexViaGraphFromXYConnections(inputConnections)
-    this.tiledViasByNet = convexGraph.viaTile.viasByNet ?? {}
-
-    return new FixedViaHypergraphSolver({
-      inputGraph: {
-        regions: convexGraph.regions,
-        ports: convexGraph.ports,
-      },
-      inputConnections: convexGraph.connections,
-      viaTile: convexGraph.viaTile,
-    })
+    return new FixedViaHypergraphSolver({ inputConnections })
   }
 
   _step() {

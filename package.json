@@ -1,7 +1,7 @@
 {
   "name": "@tscircuit/capacity-autorouter",
   "main": "./dist/index.js",
-  "version": "0.0.378",
+  "version": "0.0.383",
   "type": "module",
   "files": [
     "dist"
@@ -28,7 +28,7 @@
     "@tscircuit/circuit-json-util": "^0.0.90",
     "@tscircuit/core": "^0.0.337",
     "@tscircuit/curvy-trace-solver": "^0.0.10",
-    "@tscircuit/fixed-via-hypergraph-solver": "https://codeload.github.com/tscircuit/fixed-via-hypergraph-solver/tar.gz/1259a777f26dc7cdbdc868251556a78bb8ecaf76",
+    "@tscircuit/fixed-via-hypergraph-solver": "https://codeload.github.com/tscircuit/fixed-via-hypergraph-solver/tar.gz/bed37a6201b5dd07c9cc68b828917ecc20d6d049",
     "@tscircuit/hypergraph": "^0.0.71",
     "@tscircuit/dataset-srj05": "git+https://github.com/tscircuit/dataset-srj05.git#9a49c126a89c083dc4d2b72cd17184735f637762",
     "@tscircuit/jumper-topology-generator": "^0.0.4",
@@ -72,7 +72,7 @@
   "dependencies": {
     "@tscircuit/high-density-a01": "^0.0.25",
     "fast-json-stable-stringify": "^2.1.0",
-    "high-density-repair02": "git+https://github.com/tscircuit/high-density-repair02.git#6ebacc31e987b093e6d16fb35e15af86848f7682",
+    "high-density-repair02": "git+https://github.com/tscircuit/high-density-repair02.git#5509821634433b6a4f74fa76e530004dffc2f907",
     "object-hash": "^3.0.0"
   }
 }
