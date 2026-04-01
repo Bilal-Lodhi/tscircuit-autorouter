@@ -152,7 +152,7 @@ export class SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost extends Sing
         { A: node, B: parent },
         segment,
       )
-      if (centerlineDistance < clearance) {
+      if (centerlineDistance < (clearance/2)) {
         return true
       }
     }
