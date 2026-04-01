@@ -281,7 +281,10 @@ test("cmn_159 still produces DRC overlap with a whole-node curvy chain construct
   expect(curvySolver.solved).toBe(true)
   expect(curvySolver.failed).toBe(false)
 
-  const rootConnectionNameByConnectionName = new Map<string, string | undefined>(
+  const rootConnectionNameByConnectionName = new Map<
+    string,
+    string | undefined
+  >(
     node.portPoints.map((portPoint: (typeof node.portPoints)[number]) => [
       portPoint.connectionName,
       portPoint.rootConnectionName,

@@ -1,7 +1,5 @@
 import { HighDensityInteractiveNodeDebugger } from "lib/testing/HighDensityInteractiveNodeDebugger"
-import cmn159NodeData from "./cmn_159-node-data.json" with {
-  type: "json",
-}
+import cmn159NodeData from "./cmn_159-node-data.json" with { type: "json" }
 
 const outputConnectionCount = new Set(
   cmn159NodeData.nodeWithPortPoints.portPoints.map(

@@ -12,7 +12,9 @@ const getNodeOrThrow = (
   nodes: NodeWithPortPoints[] | undefined,
   nodeId: string,
 ) => {
-  const node = nodes?.find((candidate) => candidate.capacityMeshNodeId === nodeId)
+  const node = nodes?.find(
+    (candidate) => candidate.capacityMeshNodeId === nodeId,
+  )
   expect(node).toBeDefined()
   return node!
 }
@@ -71,7 +73,9 @@ test(
       new Set(effort2Node.portPoints.map((point) => point.connectionName)).size,
     ).toBe(2)
     expect(
-      JSON.stringify(effort2Node.portPoints.map((point) => point.connectionName)),
+      JSON.stringify(
+        effort2Node.portPoints.map((point) => point.connectionName),
+      ),
     ).not.toBe(
       JSON.stringify([
         "source_net_6_mst2",
@@ -84,9 +88,9 @@ test(
         "source_net_2_mst1",
       ]),
     )
-    expect(
-      effort2Metadata?.solverType,
-    ).toBe("SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost")
+    expect(effort2Metadata?.solverType).toBe(
+      "SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost",
+    )
   },
   { timeout: 120_000 },
 )

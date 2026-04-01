@@ -1,4 +1,8 @@
-import { distance, doSegmentsIntersect, pointToSegmentDistance } from "@tscircuit/math-utils"
+import {
+  distance,
+  doSegmentsIntersect,
+  pointToSegmentDistance,
+} from "@tscircuit/math-utils"
 import type { GraphicsObject } from "graphics-debug"
 import type {
   HighDensityIntraNodeRoute,
@@ -48,7 +52,9 @@ const uniqueAvailableZ = (node: NodeWithPortPoints) => {
   if (node.availableZ?.length) {
     return [...new Set(node.availableZ)].sort((a, b) => a - b)
   }
-  return [...new Set(node.portPoints.map((p) => p.z ?? 0))].sort((a, b) => a - b)
+  return [...new Set(node.portPoints.map((p) => p.z ?? 0))].sort(
+    (a, b) => a - b,
+  )
 }
 
 const getBounds = (node: NodeWithPortPoints) => ({
@@ -407,9 +413,7 @@ export class SingleLayerNoDifferentRootIntersectionsIntraNodeSolver extends Base
     if (node.portPoints.length > 10) return false
 
     const bounds = getBounds(node)
-    if (
-      node.portPoints.some((point) => getEdge(point, bounds) === null)
-    ) {
+    if (node.portPoints.some((point) => getEdge(point, bounds) === null)) {
       return false
     }
 
@@ -440,18 +444,14 @@ export class SingleLayerNoDifferentRootIntersectionsIntraNodeSolver extends Base
     const groupCandidates = Array.from(groups.entries()).map(
       ([connectionName, points]) => ({
         connectionName,
-        rootConnectionName:
-          points[0]?.rootConnectionName ?? connectionName,
+        rootConnectionName: points[0]?.rootConnectionName ?? connectionName,
         points,
         pairSets: getCandidatePairSetsForConnection(points, bounds),
       }),
     )
 
     const pairSetSelections: Array<PairTask[]> = []
-    const buildSelections = (
-      index: number,
-      acc: PairTask[],
-    ) => {
+    const buildSelections = (index: number, acc: PairTask[]) => {
       if (index >= groupCandidates.length) {
         pairSetSelections.push(acc.slice())
         return
@@ -535,7 +535,9 @@ export class SingleLayerNoDifferentRootIntersectionsIntraNodeSolver extends Base
     this.stats = {
       routeCount: solvedRoutes.length,
       distinctRoots: new Set(
-        solvedRoutes.map((route) => route.rootConnectionName ?? route.connectionName),
+        solvedRoutes.map(
+          (route) => route.rootConnectionName ?? route.connectionName,
+        ),
       ).size,
     }
     this.solved = true
