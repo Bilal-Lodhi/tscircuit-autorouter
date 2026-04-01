@@ -366,6 +366,20 @@ export class HighDensitySolver extends BaseSolver {
             label,
           })
         } else {
+          graphics.lines!.push({
+            points: [
+              { x: 0, y: 0 },
+              {
+                x: metadata.node.center.x,
+                y: metadata.node.center.y,
+              },
+            ],
+            layer: "hd_failed_node_guides",
+            strokeColor: "red",
+            strokeDash: "8, 6",
+            strokeWidth: 0.05,
+            label,
+          })
           const rectWidth = Math.max(metadata.node.width * 0.1, 0.12)
           const rectHeight = Math.max(metadata.node.height * 0.1, 0.12)
           graphics.rects!.push({

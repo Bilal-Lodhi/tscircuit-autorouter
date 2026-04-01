@@ -817,6 +817,20 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
           label,
         })
       } else {
+        graphics.lines!.push({
+          points: [
+            { x: 0, y: 0 },
+            {
+              x: metadata.node.center.x,
+              y: metadata.node.center.y,
+            },
+          ],
+          layer: "hd_failed_node_guides",
+          strokeColor: markerColor,
+          strokeDash: "8, 6",
+          strokeWidth: 0.05,
+          label,
+        })
         const rectWidth = Math.max(metadata.node.width, 1.2)
         const rectHeight = Math.max(metadata.node.height, 1.2)
         const halfRectWidth = rectWidth / 2

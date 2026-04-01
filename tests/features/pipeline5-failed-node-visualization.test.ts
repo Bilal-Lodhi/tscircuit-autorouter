@@ -59,6 +59,12 @@ test("pipeline5 visualizes failed high-density nodes with a visible red marker",
         line.layer === "hd_node_markers" &&
         line.label?.includes("node: cmn_fail"),
     ) ?? []
+  const failedGuideLines =
+    visualization.lines?.filter(
+      (line) =>
+        line.layer === "hd_failed_node_guides" &&
+        line.label?.includes("node: cmn_fail"),
+    ) ?? []
   const failedCircles =
     visualization.circles?.filter(
       (circle) =>
@@ -83,6 +89,14 @@ test("pipeline5 visualizes failed high-density nodes with a visible red marker",
   expect(failedRects[0]?.height).toBe(1.4)
   expect(failedCircles).toHaveLength(1)
   expect(failedCircles[0]?.stroke).toBe("red")
+  expect(failedGuideLines).toHaveLength(1)
+  expect(failedGuideLines[0]?.strokeColor).toBe("red")
+  expect(failedGuideLines[0]?.strokeDash).toBe("8, 6")
+  expect(failedGuideLines[0]?.strokeWidth).toBe(0.05)
+  expect(failedGuideLines[0]?.points).toEqual([
+    { x: 0, y: 0 },
+    { x: 10, y: 20 },
+  ])
   expect(failedCrossLines).toHaveLength(2)
   expect(failedCrossLines.every((line) => line.strokeColor === "red")).toBe(
     true,
