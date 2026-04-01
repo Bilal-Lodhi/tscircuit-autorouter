@@ -16,6 +16,7 @@ resolve_pipeline_solver_name() {
     2) echo "AutoroutingPipelineSolver2_PortPointPathing" ;;
     3) echo "AutoroutingPipelineSolver3_HgPortPointPathing" ;;
     4) echo "AutoroutingPipelineSolver4" ;;
+    5) echo "AutoroutingPipelineSolver5" ;;
     *)
       echo "Unknown pipeline: $1" >&2
       exit 1
@@ -68,7 +69,7 @@ Usage:
 
 Options:
   --solver NAME        Run only one solver (same as first positional arg)
-  --pipeline N         Run a numbered pipeline alias (1-4)
+  --pipeline N         Run a numbered pipeline alias (1-5)
   --scenario-limit N   Run only first N scenarios (same as second positional arg)
   --concurrency N      Number of Bun workers used per solver, or "auto"
   --effort N           Override scenario effort multiplier
@@ -90,6 +91,7 @@ Examples:
   ./benchmark.sh --solver AutoroutingPipelineSolver4 --scenario-limit 20
   ./benchmark.sh --solver AutoroutingPipelineSolver4 --dataset zdwiel --scenario-limit 20
   ./benchmark.sh --pipeline 4
+  ./benchmark.sh --pipeline 5
   ./benchmark.sh --solver AutoroutingPipelineSolver4 --dataset srj05 --scenario-limit 20
   ./benchmark.sh --include-assignable
 EOF
