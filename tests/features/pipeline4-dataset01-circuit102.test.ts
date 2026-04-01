@@ -20,7 +20,7 @@ const getNodeOrThrow = (
 }
 
 test(
-  "pipeline4 dataset01 circuit102 solves cmn_159 directly with the single-layer no-different-root-intersection solver",
+  "pipeline4 dataset01 circuit102 uses the 16mm default node cap, while an explicit 8mm cap still routes the original cmn_159 shape",
   () => {
     getGlobalInMemoryCache().clearCache()
 
@@ -42,11 +42,42 @@ test(
 
     expect(defaultMetadata?.status).toBe("solved")
     expect(defaultMetadata?.solverType).toBe(
-      "SingleLayerNoDifferentRootIntersectionsIntraNodeSolver",
+      "SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost",
     )
-    expect(defaultNode.portPoints.length).toBe(8)
+    expect(defaultNode.portPoints.length).toBe(4)
     expect(
       new Set(defaultNode.portPoints.map((point) => point.connectionName)).size,
+    ).toBe(2)
+
+    getGlobalInMemoryCache().clearCache()
+
+    const explicit8mmSolver = new AutoroutingPipelineSolver4(
+      structuredClone(getCircuit102()),
+      { maxNodeDimension: 8 },
+    )
+    explicit8mmSolver.solve()
+
+    expect(explicit8mmSolver.solved).toBe(true)
+    expect(explicit8mmSolver.failed).toBe(false)
+
+    const explicit8mmMetadata =
+      explicit8mmSolver.highDensityRouteSolver?.nodeSolveMetadataById.get(
+        "cmn_159",
+      )
+    const explicit8mmNode = getNodeOrThrow(
+      explicit8mmSolver.highDensityNodePortPoints,
+      "cmn_159",
+    )
+
+    expect(explicit8mmMetadata?.status).toBe("solved")
+    expect(explicit8mmMetadata?.solverType).toBe(
+      "SingleLayerNoDifferentRootIntersectionsIntraNodeSolver",
+    )
+    expect(explicit8mmNode.portPoints.length).toBe(8)
+    expect(
+      new Set(
+        explicit8mmNode.portPoints.map((point) => point.connectionName),
+      ).size,
     ).toBe(3)
 
     getGlobalInMemoryCache().clearCache()
@@ -77,16 +108,9 @@ test(
         effort2Node.portPoints.map((point) => point.connectionName),
       ),
     ).not.toBe(
-      JSON.stringify([
-        "source_net_6_mst2",
-        "source_net_6_mst2",
-        "source_net_3_mst1",
-        "source_net_3_mst1",
-        "source_net_3_mst1",
-        "source_net_3_mst1",
-        "source_net_2_mst1",
-        "source_net_2_mst1",
-      ]),
+      JSON.stringify(
+        explicit8mmNode.portPoints.map((point) => point.connectionName),
+      ),
     )
     expect(effort2Metadata?.solverType).toBe(
       "SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost",

@@ -23,7 +23,12 @@ export class AutoroutingPipelineSolver5_HdCache extends AutoroutingPipelineSolve
     >[0],
     opts: AutoroutingPipelineSolver5Options = {},
   ) {
-    super(srj, opts)
+    super(
+      srj,
+      opts.maxNodeDimension === undefined
+        ? { ...opts, maxNodeDimension: 8 }
+        : opts,
+    )
     this.hdCacheBaseUrl =
       opts.hdCacheBaseUrl ?? "https://hd-cache.tscircuit.com"
     this.hdCacheFetch = opts.hdCacheFetch
