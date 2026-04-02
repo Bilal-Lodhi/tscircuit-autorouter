@@ -73,7 +73,9 @@ test("pipeline5 records p50 and p95 remote kOrder stats from hd-cache responses"
   })
 
   solver.step()
-  await Promise.all(solver.pendingEffects?.map((effect) => effect.promise) ?? [])
+  await Promise.all(
+    solver.pendingEffects?.map((effect) => effect.promise) ?? [],
+  )
   solver.step()
 
   expect(fetchCallCount).toBe(kOrders.length)

@@ -357,9 +357,7 @@ export const GenericSolverDebugger = ({
     }
 
     try {
-      const paramsJson = JSON.stringify(
-        prepareParamsForDownload(params),
-      )
+      const paramsJson = JSON.stringify(prepareParamsForDownload(params))
       const blob = new Blob([paramsJson], {
         type: "application/json",
       })
@@ -824,7 +822,9 @@ export const GenericSolverDebugger = ({
                   document.body.removeChild(a)
                   URL.revokeObjectURL(url)
                 } catch (e: any) {
-                  window.alert(`Unable to download solver input: ${e.toString()}`)
+                  window.alert(
+                    `Unable to download solver input: ${e.toString()}`,
+                  )
                 }
               }}
             >

@@ -225,8 +225,10 @@ export const sanitizeParamsForDownload = (
           typeof propertyValue === "object" && propertyValue !== null
             ? (seen.get(propertyValue) ?? childPath)
             : childPath
-        ;(frame.target as Record<string, unknown>)[key] =
-          createReferenceMarker(propertyValue, parentPath)
+        ;(frame.target as Record<string, unknown>)[key] = createReferenceMarker(
+          propertyValue,
+          parentPath,
+        )
         continue
       }
 

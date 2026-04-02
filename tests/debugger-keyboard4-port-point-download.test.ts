@@ -29,5 +29,7 @@ test("keyboard4 pipeline5 portPointPathing input can be prepared and stringified
 
   expect(json.length).toBeGreaterThan(0)
   expect(json.length).toBeLessThan(100_000_000)
-  expect(json).toContain("\"format\":\"serialized-hg-port-point-pathing-solver-params\"")
+  expect(json).toContain(
+    '"format":"serialized-hg-port-point-pathing-solver-params"',
+  )
 })

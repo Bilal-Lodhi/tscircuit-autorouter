@@ -3,13 +3,17 @@ import { sanitizeParamsForDownload } from "./sanitizeParamsForDownload"
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value)
 
-const looksLikeHgPortPointPathingParams = (value: unknown) => {
+const looksLikeHgPortPointPathingParams = (
+  value: unknown,
+): value is Record<string, unknown> => {
   if (!isRecord(value)) return false
   if (!isRecord(value.graph)) return false
   return Array.isArray(value.graph.regions) && Array.isArray(value.connections)
 }
 
-const serializeTinyHypergraphPathingParam = (param: Record<string, unknown>) => {
+const serializeTinyHypergraphPathingParam = (
+  param: Record<string, unknown>,
+) => {
   const graph = param.graph as Record<string, unknown>
   const regions = Array.isArray(graph.regions) ? graph.regions : []
   const ports = Array.isArray(graph.ports) ? graph.ports : []
@@ -56,7 +60,9 @@ const serializeTinyHypergraphPathingParam = (param: Record<string, unknown>) => 
         startRegionId: isRecord(record.startRegion)
           ? record.startRegion.regionId
           : null,
-        endRegionId: isRecord(record.endRegion) ? record.endRegion.regionId : null,
+        endRegionId: isRecord(record.endRegion)
+          ? record.endRegion.regionId
+          : null,
         simpleRouteConnection: sanitizeParamsForDownload(
           record.simpleRouteConnection,
         ),
