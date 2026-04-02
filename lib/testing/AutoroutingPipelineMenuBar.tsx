@@ -217,14 +217,6 @@ export const AutoroutingPipelineMenuBar = ({
             Solve to Breakpoint
           </MenubarItem>
           <MenubarSeparator />
-          <MenubarItem onClick={() => onSetAutoSolve(!autoSolve)}>
-            Auto Solve
-            {autoSolve && <MenubarShortcut>✓</MenubarShortcut>}
-          </MenubarItem>
-          <MenubarItem onClick={() => onSetAutoRunDrc(!autoRunDrc)}>
-            Auto Run DRC
-            {autoRunDrc && <MenubarShortcut>✓</MenubarShortcut>}
-          </MenubarItem>
           <MenubarItem onClick={onRunDrcChecks}>Run DRC Checks</MenubarItem>
           <MenubarItem onClick={onRunRelaxedDrcChecks}>
             Run Relaxed DRC Checks
@@ -237,6 +229,20 @@ export const AutoroutingPipelineMenuBar = ({
             Show PCB SVG
             {pcbSvgEnabled && <MenubarShortcut>✓</MenubarShortcut>}
           </MenubarItem>
+          <MenubarSeparator />
+          <MenubarSub>
+            <MenubarSubTrigger>Automations</MenubarSubTrigger>
+            <MenubarSubContent>
+              <MenubarItem onClick={() => onSetAutoSolve(!autoSolve)}>
+                Auto Solve
+                {autoSolve && <MenubarShortcut>✓</MenubarShortcut>}
+              </MenubarItem>
+              <MenubarItem onClick={() => onSetAutoRunDrc(!autoRunDrc)}>
+                Auto DRC Check
+                {autoRunDrc && <MenubarShortcut>✓</MenubarShortcut>}
+              </MenubarItem>
+            </MenubarSubContent>
+          </MenubarSub>
         </MenubarContent>
       </MenubarMenu>
       <MenubarMenu>
