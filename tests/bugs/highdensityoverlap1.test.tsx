@@ -38,6 +38,23 @@ test("highdensityoverlap1", () => {
   solver.solve()
 
   const solution1 = solver.routes[0]
+  const route = solution1.route
 
-  expect(solution1.route.length).toBe(2)
+  expect(route.length).toBe(4)
+  expect(route[0]).toEqual({
+    x: -10.078125,
+    y: 4.6875,
+    z: 0,
+  })
+  expect(route[3]).toEqual({
+    x: -9.84375,
+    y: 3.75,
+    z: 0,
+  })
+
+  expect(route[1]!.x).toBeCloseTo(route[0]!.x)
+  expect(route[1]!.y).toBeLessThan(route[0]!.y)
+
+  expect(route[2]!.x).toBeCloseTo(route[3]!.x)
+  expect(route[2]!.y).toBeGreaterThan(route[3]!.y)
 })
