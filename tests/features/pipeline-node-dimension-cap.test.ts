@@ -140,7 +140,5 @@ test("pipeline4 subdivides tall circuit002 node new-cmn_9-20 when max rect ratio
   expect(
     matchingNodes.every((node) => node.capacityMeshNodeId.includes("__sub_")),
   ).toBe(true)
-  expect(
-    matchingNodes.every((node) => node.width < node.height),
-  ).toBe(true)
+  expect(matchingNodes.every((node) => node.width < node.height)).toBe(true)
 })

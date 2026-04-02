@@ -11,7 +11,10 @@ const getCircuit102 = () =>
 const getNodesByPrefix = (
   nodes: NodeWithPortPoints[] | undefined,
   prefix: string,
-) => nodes?.filter((candidate) => candidate.capacityMeshNodeId.startsWith(prefix)) ?? []
+) =>
+  nodes?.filter((candidate) =>
+    candidate.capacityMeshNodeId.startsWith(prefix),
+  ) ?? []
 
 test(
   "pipeline4 dataset01 circuit102 still routes when maxRectRatio splits cmn_159",
@@ -39,13 +42,12 @@ test(
 
     expect(defaultNodes).toHaveLength(2)
     expect(defaultNodes.map((node) => node.portPoints.length).sort()).toEqual([
-      2,
-      4,
+      2, 4,
     ])
     expect(defaultMetadata).toHaveLength(2)
-    expect(defaultMetadata.every(([, metadata]) => metadata.status === "solved")).toBe(
-      true,
-    )
+    expect(
+      defaultMetadata.every(([, metadata]) => metadata.status === "solved"),
+    ).toBe(true)
 
     getGlobalInMemoryCache().clearCache()
 
@@ -86,8 +88,7 @@ test(
 
     expect(effort2Nodes).toHaveLength(2)
     expect(effort2Nodes.map((node) => node.portPoints.length).sort()).toEqual([
-      2,
-      4,
+      2, 4,
     ])
   },
   { timeout: 120_000 },

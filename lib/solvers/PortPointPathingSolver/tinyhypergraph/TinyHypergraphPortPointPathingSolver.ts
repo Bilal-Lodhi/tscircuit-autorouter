@@ -362,11 +362,7 @@ class TinyHyperGraphSectionPipelineWithTerminalNetIds extends TinyHyperGraphSect
       applyTinyHyperGraphSectionSolverTuning(solver, this.effort)
     } else if (solver instanceof TinyHyperGraphSolver) {
       applyTerminalRegionNetIds(solver as any)
-      applyTinyHyperGraphSolverTuning(
-        solver,
-        this.effort,
-        this.complexityScale,
-      )
+      applyTinyHyperGraphSolverTuning(solver, this.effort, this.complexityScale)
     }
 
     this.configuredSolvers.add(solver)
