@@ -6,8 +6,8 @@ import type {
 import { BaseSolver } from "../BaseSolver"
 import {
   FORCE_VECTOR_DISPLAY_MULTIPLIER,
-  type ForceVector,
-  runForceDirectedImprovement,
+  ForceDirectedImprovementSession,
+  type ForceImproveResult,
 } from "./force-improve"
 
 type ForceImproveSampleEntry = {
@@ -17,6 +17,10 @@ type ForceImproveSampleEntry = {
 
 const DEFAULT_NODE_MARGIN = 0.2
 const DEFAULT_TOTAL_STEPS = 20
+const MOVED_POINT_EPSILON = 1e-5
+const DIRECTION_ARROW_BASE_LENGTH = 0.18
+const DIRECTION_ARROW_MAX_EXTRA_LENGTH = FORCE_VECTOR_DISPLAY_MULTIPLIER * 0.03
+const DIRECTION_ARROW_RING_RADIUS = 0.04
 
 const getNodeBounds = (node: NodeWithPortPoints, margin = 0) => ({
   minX: node.center.x - node.width / 2 - margin,
@@ -67,8 +71,11 @@ export class Pipeline4ForceImproveSolver extends BaseSolver {
   readonly colorMap: Record<string, string>
 
   improvedRoutesByIndex = new Map<number, HighDensityRoute>()
-  forceVectorsByNodeId = new Map<string, ForceVector[]>()
   activeSampleIndex = 0
+  activeSession: ForceDirectedImprovementSession | null = null
+  visualizedSampleEntry: ForceImproveSampleEntry | null = null
+  initialVisualizationResult: ForceImproveResult | null = null
+  latestVisualizationResult: ForceImproveResult | null = null
 
   constructor(params: {
     nodeWithPortPoints: NodeWithPortPoints[]
@@ -104,7 +111,10 @@ export class Pipeline4ForceImproveSolver extends BaseSolver {
       }),
     )
 
-    this.MAX_ITERATIONS = Math.max(this.sampleEntries.length * 10, 100_000)
+    this.MAX_ITERATIONS = Math.max(
+      this.sampleEntries.length * (this.totalSteps + 2),
+      100_000,
+    )
     this.stats = {
       sampleCount: this.sampleEntries.length,
       improvedNodeCount: 0,
@@ -129,6 +139,20 @@ export class Pipeline4ForceImproveSolver extends BaseSolver {
     ] as const
   }
 
+  computeProgress() {
+    if (this.sampleEntries.length === 0) return 1
+
+    const completedNodes = this.activeSampleIndex
+    const inFlightProgress = this.activeSession
+      ? this.activeSession.stepsCompleted / Math.max(this.totalSteps, 1)
+      : 0
+
+    return Math.min(
+      (completedNodes + inFlightProgress) / this.sampleEntries.length,
+      1,
+    )
+  }
+
   override _step() {
     const sampleEntry = this.sampleEntries[this.activeSampleIndex]
 
@@ -137,20 +161,40 @@ export class Pipeline4ForceImproveSolver extends BaseSolver {
       return
     }
 
-    const sampleRoutes = sampleEntry.routeIndexes.map((routeIndex) =>
-      structuredClone(this.originalHdRoutes[routeIndex]!),
-    )
+    if (!this.activeSession) {
+      const sampleRoutes = sampleEntry.routeIndexes.map((routeIndex) =>
+        structuredClone(this.originalHdRoutes[routeIndex]!),
+      )
+      this.activeSession = new ForceDirectedImprovementSession(
+        {
+          center: sampleEntry.node.center,
+          width: sampleEntry.node.width,
+          height: sampleEntry.node.height,
+        },
+        sampleRoutes,
+        this.totalSteps,
+      )
+      this.visualizedSampleEntry = sampleEntry
+      const initialResult = this.activeSession.getCurrentResult()
+      this.initialVisualizationResult = initialResult
+      this.latestVisualizationResult = initialResult
+    }
 
-    const result = runForceDirectedImprovement(
-      {
-        center: sampleEntry.node.center,
-        width: sampleEntry.node.width,
-        height: sampleEntry.node.height,
-      },
-      sampleRoutes,
-      this.totalSteps,
-      { includeForceVectors: true },
-    )
+    const result = this.activeSession.advance({ includeForceVectors: true })
+    this.latestVisualizationResult = result
+
+    this.stats = {
+      sampleCount: this.sampleEntries.length,
+      improvedNodeCount: this.activeSampleIndex,
+      improvedRouteCount: this.improvedRoutesByIndex.size,
+      totalSteps: this.totalSteps,
+      currentNodeId: sampleEntry.node.capacityMeshNodeId,
+      currentStep: result.stepsCompleted,
+    }
+
+    if (!this.activeSession.finalized) {
+      return
+    }
 
     for (let i = 0; i < sampleEntry.routeIndexes.length; i++) {
       const routeIndex = sampleEntry.routeIndexes[i]
@@ -161,12 +205,8 @@ export class Pipeline4ForceImproveSolver extends BaseSolver {
       )
     }
 
-    this.forceVectorsByNodeId.set(
-      sampleEntry.node.capacityMeshNodeId,
-      result.forceVectors,
-    )
-
     this.activeSampleIndex += 1
+    this.activeSession = null
     this.stats = {
       sampleCount: this.sampleEntries.length,
       improvedNodeCount: this.activeSampleIndex,
@@ -186,10 +226,102 @@ export class Pipeline4ForceImproveSolver extends BaseSolver {
   }
 
   override visualize(): GraphicsObject {
-    const lines: NonNullable<GraphicsObject["lines"]> = []
-    const circles: NonNullable<GraphicsObject["circles"]> = []
+    const sampleEntry = this.visualizedSampleEntry
+    const initialResult = this.initialVisualizationResult
+    const currentResult = this.latestVisualizationResult
 
-    for (const route of this.getOutput()) {
+    if (!sampleEntry || !initialResult || !currentResult) {
+      return {
+        title: "Pipeline4 Force Improve",
+        lines: [],
+        points: [],
+        circles: [],
+      }
+    }
+
+    const lines: NonNullable<GraphicsObject["lines"]> = []
+    const points: NonNullable<GraphicsObject["points"]> = []
+    const circles: NonNullable<GraphicsObject["circles"]> = []
+    const node = sampleEntry.node
+    const left = node.center.x - node.width / 2
+    const right = node.center.x + node.width / 2
+    const top = node.center.y - node.height / 2
+    const bottom = node.center.y + node.height / 2
+
+    lines.push(
+      {
+        points: [
+          { x: left, y: top },
+          { x: right, y: top },
+        ],
+        strokeColor: "rgba(37,99,235,0.9)",
+        strokeDash: "6, 4",
+        strokeWidth: 0.05,
+      },
+      {
+        points: [
+          { x: right, y: top },
+          { x: right, y: bottom },
+        ],
+        strokeColor: "rgba(37,99,235,0.9)",
+        strokeDash: "6, 4",
+        strokeWidth: 0.05,
+      },
+      {
+        points: [
+          { x: right, y: bottom },
+          { x: left, y: bottom },
+        ],
+        strokeColor: "rgba(37,99,235,0.9)",
+        strokeDash: "6, 4",
+        strokeWidth: 0.05,
+      },
+      {
+        points: [
+          { x: left, y: bottom },
+          { x: left, y: top },
+        ],
+        strokeColor: "rgba(37,99,235,0.9)",
+        strokeDash: "6, 4",
+        strokeWidth: 0.05,
+      },
+    )
+
+    for (const portPoint of node.portPoints) {
+      points.push({
+        x: portPoint.x,
+        y: portPoint.y,
+        color: this.colorMap[portPoint.connectionName] ?? "#111827",
+        label: `${portPoint.connectionName} port`,
+      })
+    }
+
+    for (const route of initialResult.routes) {
+      for (let i = 0; i < route.route.length - 1; i++) {
+        const start = route.route[i]
+        const end = route.route[i + 1]
+        lines.push({
+          points: [
+            { x: start!.x, y: start!.y },
+            { x: end!.x, y: end!.y },
+          ],
+          strokeColor: "rgba(107,114,128,0.7)",
+          strokeWidth: Math.max(route.traceThickness * 0.8, 0.03),
+          strokeDash: "4, 4",
+          label: `${route.connectionName} initial route`,
+        })
+      }
+    }
+
+    let movedPointCount = 0
+
+    for (
+      let routeIndex = 0;
+      routeIndex < currentResult.routes.length;
+      routeIndex += 1
+    ) {
+      const route = currentResult.routes[routeIndex]!
+      const initialRoute = initialResult.routes[routeIndex]
       const strokeColor = this.colorMap[route.connectionName] ?? "#22c55e"
       for (let i = 0; i < route.route.length - 1; i++) {
         const start = route.route[i]
@@ -201,6 +333,7 @@ export class Pipeline4ForceImproveSolver extends BaseSolver {
           ],
           strokeColor,
           strokeWidth: route.traceThickness,
+          label: `${route.connectionName} current step`,
         })
       }
       for (const via of route.vias) {
@@ -211,29 +344,65 @@ export class Pipeline4ForceImproveSolver extends BaseSolver {
           fill: "rgba(34,197,94,0.12)",
         })
       }
-    }
 
-    for (const forceVectors of this.forceVectorsByNodeId.values()) {
-      for (const vector of forceVectors) {
-        const magnitude = Math.hypot(vector.dx, vector.dy)
-        if (magnitude === 0) continue
-        lines.push({
-          points: [
-            { x: vector.x, y: vector.y },
-            {
-              x: vector.x + vector.dx * FORCE_VECTOR_DISPLAY_MULTIPLIER,
-              y: vector.y + vector.dy * FORCE_VECTOR_DISPLAY_MULTIPLIER,
-            },
-          ],
-          strokeColor: "rgba(245,158,11,0.7)",
-          strokeWidth: 0.05,
-        })
+      if (!initialRoute) continue
+
+      const sharedPointCount = Math.min(
+        route.route.length,
+        initialRoute.route.length,
+      )
+      for (let pointIndex = 0; pointIndex < sharedPointCount; pointIndex += 1) {
+        const currentPoint = route.route[pointIndex]
+        const initialPoint = initialRoute.route[pointIndex]
+        if (!currentPoint || !initialPoint) continue
+
+        const moveDistance = Math.hypot(
+          currentPoint.x - initialPoint.x,
+          currentPoint.y - initialPoint.y,
+        )
+        if (moveDistance <= MOVED_POINT_EPSILON) continue
+
+        movedPointCount += 1
       }
     }
 
+    for (const vector of currentResult.forceVectors) {
+      const magnitude = Math.hypot(vector.dx, vector.dy)
+      if (magnitude === 0) continue
+      const directionScale = 1 / magnitude
+      const displayLength = Math.min(
+        DIRECTION_ARROW_BASE_LENGTH +
+          magnitude * DIRECTION_ARROW_MAX_EXTRA_LENGTH,
+        DIRECTION_ARROW_BASE_LENGTH * 2,
+      )
+      lines.push({
+        points: [
+          { x: vector.x, y: vector.y },
+          {
+            x: vector.x + vector.dx * directionScale * displayLength,
+            y: vector.y + vector.dy * directionScale * displayLength,
+          },
+        ],
+        strokeColor: "rgba(245,158,11,0.8)",
+        strokeWidth: 0.04,
+        label: `${vector.rootConnectionName} desired direction`,
+      })
+      circles.push({
+        center: { x: vector.x, y: vector.y },
+        radius: DIRECTION_ARROW_RING_RADIUS,
+        stroke: "rgba(245,158,11,0.85)",
+        fill: "rgba(245,158,11,0.02)",
+      })
+    }
+
+    const displayedStep = Math.min(
+      currentResult.stepsCompleted,
+      this.totalSteps,
+    )
     return {
-      title: "Pipeline4 Force Improve",
+      title: `Pipeline4 Force Improve: ${node.capacityMeshNodeId} step ${displayedStep}/${this.totalSteps} offset ${movedPointCount} pts`,
       lines,
+      points,
       circles,
     }
   }

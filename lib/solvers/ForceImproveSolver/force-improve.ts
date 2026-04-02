@@ -862,44 +862,63 @@ const resolveClearanceConstraints = (
   }
 }
 
-export const runForceDirectedImprovement = (
-  sample: DatasetSample,
-  routes: HighDensityIntraNodeRoute[],
-  totalSteps: number,
-  options?: ForceImproveOptions,
-): ForceImproveResult => {
-  const bounds = getSampleBounds(sample)
-  const { mutableRoutes, totalNodeCount } = buildMutableRoutes(routes)
-  const forceElements = buildForceElements(mutableRoutes)
-  const segments = buildSegmentObstacles(mutableRoutes)
-  const nodeForces = new Float64Array(totalNodeCount * 2)
-  const nodeCorrections = new Float64Array(totalNodeCount * 2)
-  const includeForceVectors = options?.includeForceVectors ?? true
-  clampMutableRoutesToBounds(mutableRoutes, bounds)
-  let forceVectors: ForceVector[] = []
+export class ForceDirectedImprovementSession {
+  readonly sample: DatasetSample
+  readonly totalSteps: number
+  private readonly bounds: Bounds
+  private readonly mutableRoutes: MutableRoute[]
+  private readonly forceElements: ForceElement[]
+  private readonly segments: SegmentObstacle[]
+  private readonly nodeForces: Float64Array
+  private readonly nodeCorrections: Float64Array
 
-  for (let stepIndex = 0; stepIndex < totalSteps; stepIndex += 1) {
+  stepsCompleted = 0
+  finalized = false
+  forceVectors: ForceVector[] = []
+
+  constructor(
+    sample: DatasetSample,
+    routes: HighDensityIntraNodeRoute[],
+    totalSteps: number,
+  ) {
+    this.sample = sample
+    this.totalSteps = totalSteps
+    this.bounds = getSampleBounds(sample)
+    const { mutableRoutes, totalNodeCount } = buildMutableRoutes(routes)
+    this.mutableRoutes = mutableRoutes
+    this.forceElements = buildForceElements(this.mutableRoutes)
+    this.segments = buildSegmentObstacles(this.mutableRoutes)
+    this.nodeForces = new Float64Array(totalNodeCount * 2)
+    this.nodeCorrections = new Float64Array(totalNodeCount * 2)
+    clampMutableRoutesToBounds(this.mutableRoutes, this.bounds)
+  }
+
+  private performStep(includeForceVectors: boolean) {
+    const stepIndex = this.stepsCompleted
     const progress =
-      totalSteps <= 1 ? 0 : stepIndex / Math.max(totalSteps - 1, 1)
+      this.totalSteps <= 1 ? 0 : stepIndex / Math.max(this.totalSteps - 1, 1)
     const stepDecay = MIN_STEP_DECAY + (1 - progress) * (1 - MIN_STEP_DECAY)
-    const captureForceVectors =
-      includeForceVectors && stepIndex === totalSteps - 1
-    const elementForces = captureForceVectors
-      ? new Float64Array(forceElements.length * 2)
+    const elementForces = includeForceVectors
+      ? new Float64Array(this.forceElements.length * 2)
       : undefined
-    nodeForces.fill(0)
 
-    for (let leftIndex = 0; leftIndex < forceElements.length; leftIndex += 1) {
-      const leftElement = forceElements[leftIndex]
+    this.nodeForces.fill(0)
+
+    for (
+      let leftIndex = 0;
+      leftIndex < this.forceElements.length;
+      leftIndex += 1
+    ) {
+      const leftElement = this.forceElements[leftIndex]
       if (!leftElement || leftElement.kind !== "via") continue
       const leftNode = leftElement.node
 
       for (
         let rightIndex = leftIndex + 1;
-        rightIndex < forceElements.length;
+        rightIndex < this.forceElements.length;
         rightIndex += 1
       ) {
-        const rightElement = forceElements[rightIndex]
+        const rightElement = this.forceElements[rightIndex]
         if (!rightElement || rightElement.kind !== "via") continue
         if (
           leftElement.rootConnectionName === rightElement.rootConnectionName
@@ -947,7 +966,7 @@ export const runForceDirectedImprovement = (
           leftElement,
           leftForceX,
           leftForceY,
-          nodeForces,
+          this.nodeForces,
           elementForces,
           leftIndex,
         )
@@ -955,7 +974,7 @@ export const runForceDirectedImprovement = (
           rightElement,
           -leftForceX,
           -leftForceY,
-          nodeForces,
+          this.nodeForces,
           elementForces,
           rightIndex,
         )
@@ -964,19 +983,19 @@ export const runForceDirectedImprovement = (
 
     for (
       let elementIndex = 0;
-      elementIndex < forceElements.length;
+      elementIndex < this.forceElements.length;
       elementIndex += 1
     ) {
-      const element = forceElements[elementIndex]
+      const element = this.forceElements[elementIndex]
       if (!element) continue
       const elementNode = element.node
 
       for (
         let segmentIndex = 0;
-        segmentIndex < segments.length;
+        segmentIndex < this.segments.length;
         segmentIndex += 1
       ) {
-        const segment = segments[segmentIndex]
+        const segment = this.segments[segmentIndex]
         if (!segment) continue
         if (element.rootConnectionName === segment.rootConnectionName) {
           continue
@@ -1065,7 +1084,7 @@ export const runForceDirectedImprovement = (
           element,
           pointForceX,
           pointForceY,
-          nodeForces,
+          this.nodeForces,
           elementForces,
           elementIndex,
         )
@@ -1073,27 +1092,27 @@ export const runForceDirectedImprovement = (
           segment,
           -pointForceX,
           -pointForceY,
-          nodeForces,
+          this.nodeForces,
           segmentT,
         )
       }
     }
 
-    if (captureForceVectors) {
-      forceVectors = new Array<ForceVector>(forceElements.length)
+    if (includeForceVectors) {
+      this.forceVectors = new Array<ForceVector>(this.forceElements.length)
     }
 
     for (
       let elementIndex = 0;
-      elementIndex < forceElements.length;
+      elementIndex < this.forceElements.length;
       elementIndex += 1
     ) {
-      const element = forceElements[elementIndex]
+      const element = this.forceElements[elementIndex]
       if (!element) continue
       const elementNode = element.node
 
       const borderForce = getBorderForce(
-        bounds,
+        this.bounds,
         element,
         elementNode.x,
         elementNode.y,
@@ -1103,14 +1122,14 @@ export const runForceDirectedImprovement = (
         element,
         borderForce.x,
         borderForce.y,
-        nodeForces,
+        this.nodeForces,
         elementForces,
         elementIndex,
       )
 
-      if (captureForceVectors && elementForces) {
+      if (includeForceVectors && elementForces) {
         const forceOffset = elementIndex * 2
-        forceVectors[elementIndex] = {
+        this.forceVectors[elementIndex] = {
           kind: element.kind,
           routeIndex: element.routeIndex,
           rootConnectionName: element.rootConnectionName,
@@ -1124,10 +1143,10 @@ export const runForceDirectedImprovement = (
 
     for (
       let routeIndex = 0;
-      routeIndex < mutableRoutes.length;
+      routeIndex < this.mutableRoutes.length;
       routeIndex += 1
     ) {
-      const mutableRoute = mutableRoutes[routeIndex]
+      const mutableRoute = this.mutableRoutes[routeIndex]
       if (!mutableRoute) continue
 
       for (
@@ -1139,10 +1158,10 @@ export const runForceDirectedImprovement = (
         if (!node || node.fixed) continue
         const forceOffset = node.forceIndex * 2
         let nextForceX =
-          (nodeForces[forceOffset] ?? 0) +
+          (this.nodeForces[forceOffset] ?? 0) +
           (node.originalX - node.x) * SHAPE_RESTORE_STRENGTH
         let nextForceY =
-          (nodeForces[forceOffset + 1] ?? 0) +
+          (this.nodeForces[forceOffset + 1] ?? 0) +
           (node.originalY - node.y) * SHAPE_RESTORE_STRENGTH
 
         const previousNode = mutableRoute.nodes[nodeIndex - 1]
@@ -1194,29 +1213,64 @@ export const runForceDirectedImprovement = (
       }
     }
 
-    clampMutableRoutesToBounds(mutableRoutes, bounds)
+    clampMutableRoutesToBounds(this.mutableRoutes, this.bounds)
     resolveClearanceConstraints(
-      bounds,
-      mutableRoutes,
-      forceElements,
-      segments,
-      nodeCorrections,
+      this.bounds,
+      this.mutableRoutes,
+      this.forceElements,
+      this.segments,
+      this.nodeCorrections,
     )
   }
 
-  resolveClearanceConstraints(
-    bounds,
-    mutableRoutes,
-    forceElements,
-    segments,
-    nodeCorrections,
-    FINAL_CLEARANCE_PROJECTION_PASSES,
-    FINAL_MAX_CLEARANCE_CORRECTION,
+  advance(options?: ForceImproveOptions): ForceImproveResult {
+    const includeForceVectors = options?.includeForceVectors ?? true
+
+    if (!this.finalized && this.stepsCompleted < this.totalSteps) {
+      this.performStep(includeForceVectors)
+      this.stepsCompleted += 1
+    }
+
+    if (!this.finalized && this.stepsCompleted >= this.totalSteps) {
+      resolveClearanceConstraints(
+        this.bounds,
+        this.mutableRoutes,
+        this.forceElements,
+        this.segments,
+        this.nodeCorrections,
+        FINAL_CLEARANCE_PROJECTION_PASSES,
+        FINAL_MAX_CLEARANCE_CORRECTION,
+      )
+      this.finalized = true
+    }
+
+    return this.getCurrentResult()
+  }
+
+  getCurrentResult(): ForceImproveResult {
+    return {
+      routes: materializeRoutes(this.mutableRoutes),
+      forceVectors: this.forceVectors,
+      stepsCompleted: this.stepsCompleted,
+    }
+  }
+}
+
+export const runForceDirectedImprovement = (
+  sample: DatasetSample,
+  routes: HighDensityIntraNodeRoute[],
+  totalSteps: number,
+  options?: ForceImproveOptions,
+): ForceImproveResult => {
+  const session = new ForceDirectedImprovementSession(
+    sample,
+    routes,
+    totalSteps,
   )
 
-  return {
-    routes: materializeRoutes(mutableRoutes),
-    forceVectors,
-    stepsCompleted: totalSteps,
+  while (!session.finalized) {
+    session.advance(options)
   }
+
+  return session.getCurrentResult()
 }

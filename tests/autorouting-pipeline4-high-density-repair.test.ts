@@ -163,6 +163,95 @@ test("Pipeline4ForceImproveSolver adjusts close routes inside a node", () => {
   expect(improvedB.route[1]).not.toEqual(routeB.route[1])
 })
 
+test("Pipeline4ForceImproveSolver visualize shows only the active node and advances by step", () => {
+  const nodeA: NodeWithPortPoints = {
+    capacityMeshNodeId: "cmn_a",
+    center: { x: 0, y: 0 },
+    width: 2,
+    height: 2,
+    portPoints: [
+      { connectionName: "conn1", x: -0.8, y: 0, z: 0 },
+      { connectionName: "conn1", x: 0.8, y: 0, z: 0 },
+    ],
+  }
+  const nodeB: NodeWithPortPoints = {
+    capacityMeshNodeId: "cmn_b",
+    center: { x: 10, y: 0 },
+    width: 2,
+    height: 2,
+    portPoints: [
+      { connectionName: "conn2", x: 9.2, y: 0, z: 0 },
+      { connectionName: "conn2", x: 10.8, y: 0, z: 0 },
+    ],
+  }
+  const routeA: HighDensityRoute = {
+    connectionName: "conn1",
+    rootConnectionName: "conn1",
+    traceThickness: 0.15,
+    viaDiameter: 0.3,
+    route: [
+      { x: -0.8, y: 0, z: 0 },
+      { x: 0.95, y: 0, z: 0 },
+      { x: 0.8, y: 0, z: 0 },
+    ],
+    vias: [],
+  }
+  const routeB: HighDensityRoute = {
+    connectionName: "conn2",
+    rootConnectionName: "conn2",
+    traceThickness: 0.15,
+    viaDiameter: 0.3,
+    route: [
+      { x: 9.2, y: 0, z: 0 },
+      { x: 10.95, y: 0, z: 0 },
+      { x: 10.8, y: 0, z: 0 },
+    ],
+    vias: [],
+  }
+
+  const solver = new Pipeline4ForceImproveSolver({
+    nodeWithPortPoints: [nodeA, nodeB],
+    hdRoutes: [routeA, routeB],
+    totalSteps: 2,
+  })
+
+  solver.step()
+  const firstViz = solver.visualize()
+  expect(firstViz.title).toContain("cmn_a")
+  expect(firstViz.title).toContain("1/2")
+  expect(firstViz.title).toContain("offset")
+  expect(
+    (firstViz.lines ?? []).every((line) =>
+      line.points.every((point) => point.x < 5),
+    ),
+  ).toBe(true)
+  expect((firstViz.points ?? []).every((point) => point.x < 5)).toBe(true)
+  expect(
+    (firstViz.lines ?? []).some((line) => line.label === "conn1 initial route"),
+  ).toBe(true)
+  expect(
+    (firstViz.lines ?? []).some(
+      (line) => line.label === "conn1 desired direction",
+    ),
+  ).toBe(true)
+
+  solver.step()
+  const secondViz = solver.visualize()
+  expect(secondViz.title).toContain("cmn_a")
+  expect(secondViz.title).toContain("2/2")
+
+  solver.step()
+  const thirdViz = solver.visualize()
+  expect(thirdViz.title).toContain("cmn_b")
+  expect(thirdViz.title).toContain("1/2")
+  expect(
+    (thirdViz.lines ?? []).every((line) =>
+      line.points.every((point) => point.x > 5),
+    ),
+  ).toBe(true)
+  expect((thirdViz.points ?? []).every((point) => point.x > 5)).toBe(true)
+})
+
 test("pipeline4 stitch stage consumes force-improved high density routes", () => {
   const rawRoute: HighDensityRoute = {
     ...hdRoute,
