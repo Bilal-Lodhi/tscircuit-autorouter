@@ -163,7 +163,7 @@ test("Pipeline4ForceImproveSolver adjusts close routes inside a node", () => {
   expect(improvedB.route[1]).not.toEqual(routeB.route[1])
 })
 
-test("Pipeline4ForceImproveSolver visualize shows only the active node and advances by step", () => {
+test("Pipeline4ForceImproveSolver visualize shows the whole circuit and highlights the active node", () => {
   const nodeA: NodeWithPortPoints = {
     capacityMeshNodeId: "cmn_a",
     center: { x: 0, y: 0 },
@@ -221,11 +221,23 @@ test("Pipeline4ForceImproveSolver visualize shows only the active node and advan
   expect(firstViz.title).toContain("1/2")
   expect(firstViz.title).toContain("offset")
   expect(
-    (firstViz.lines ?? []).every((line) =>
-      line.points.every((point) => point.x < 5),
+    (firstViz.lines ?? []).some((line) =>
+      line.points.some((point) => point.x < 5),
     ),
   ).toBe(true)
-  expect((firstViz.points ?? []).every((point) => point.x < 5)).toBe(true)
+  expect(
+    (firstViz.lines ?? []).some((line) =>
+      line.points.some((point) => point.x > 5),
+    ),
+  ).toBe(true)
+  expect((firstViz.points ?? []).some((point) => point.x < 5)).toBe(true)
+  expect((firstViz.points ?? []).some((point) => point.x > 5)).toBe(true)
+  expect(
+    (firstViz.rects ?? []).some((rect) => rect.label === "cmn_a active node"),
+  ).toBe(true)
+  expect(
+    (firstViz.rects ?? []).some((rect) => rect.label === "cmn_b node"),
+  ).toBe(true)
   expect(
     (firstViz.lines ?? []).some((line) => line.label === "conn1 initial route"),
   ).toBe(true)
@@ -234,6 +246,11 @@ test("Pipeline4ForceImproveSolver visualize shows only the active node and advan
       (line) => line.label === "conn1 desired direction",
     ),
   ).toBe(true)
+  expect(
+    (firstViz.lines ?? []).filter(
+      (line) => line.label === "cmn_a active node border",
+    ),
+  ).toHaveLength(4)
 
   solver.step()
   const secondViz = solver.visualize()
@@ -245,11 +262,22 @@ test("Pipeline4ForceImproveSolver visualize shows only the active node and advan
   expect(thirdViz.title).toContain("cmn_b")
   expect(thirdViz.title).toContain("1/2")
   expect(
-    (thirdViz.lines ?? []).every((line) =>
-      line.points.every((point) => point.x > 5),
+    (thirdViz.lines ?? []).some((line) =>
+      line.points.some((point) => point.x < 5),
     ),
   ).toBe(true)
-  expect((thirdViz.points ?? []).every((point) => point.x > 5)).toBe(true)
+  expect(
+    (thirdViz.lines ?? []).some((line) =>
+      line.points.some((point) => point.x > 5),
+    ),
+  ).toBe(true)
+  expect((thirdViz.points ?? []).some((point) => point.x < 5)).toBe(true)
+  expect((thirdViz.points ?? []).some((point) => point.x > 5)).toBe(true)
+  expect(
+    (thirdViz.lines ?? []).filter(
+      (line) => line.label === "cmn_b active node border",
+    ),
+  ).toHaveLength(4)
 })
 
 test("pipeline4 stitch stage consumes force-improved high density routes", () => {

@@ -242,11 +242,35 @@ export class Pipeline4ForceImproveSolver extends BaseSolver {
     const lines: NonNullable<GraphicsObject["lines"]> = []
     const points: NonNullable<GraphicsObject["points"]> = []
     const circles: NonNullable<GraphicsObject["circles"]> = []
+    const rects: NonNullable<GraphicsObject["rects"]> = []
     const node = sampleEntry.node
     const left = node.center.x - node.width / 2
     const right = node.center.x + node.width / 2
     const top = node.center.y - node.height / 2
     const bottom = node.center.y + node.height / 2
+
+    for (const circuitNode of this.originalNodeWithPortPoints) {
+      const isActiveNode =
+        circuitNode.capacityMeshNodeId === node.capacityMeshNodeId
+
+      rects.push({
+        center: { ...circuitNode.center },
+        width: circuitNode.width,
+        height: circuitNode.height,
+        fill: isActiveNode ? "rgba(37,99,235,0.08)" : "rgba(148,163,184,0.04)",
+        stroke: isActiveNode ? "rgba(37,99,235,0.9)" : "rgba(148,163,184,0.45)",
+        label: `${circuitNode.capacityMeshNodeId}${isActiveNode ? " active node" : " node"}`,
+      })
+
+      for (const portPoint of circuitNode.portPoints) {
+        points.push({
+          x: portPoint.x,
+          y: portPoint.y,
+          color: this.colorMap[portPoint.connectionName] ?? "#111827",
+          label: `${portPoint.connectionName} port`,
+        })
+      }
+    }
 
     lines.push(
       {
@@ -257,6 +281,7 @@ export class Pipeline4ForceImproveSolver extends BaseSolver {
         strokeColor: "rgba(37,99,235,0.9)",
         strokeDash: "6, 4",
         strokeWidth: 0.05,
+        label: `${node.capacityMeshNodeId} active node border`,
       },
       {
         points: [
@@ -266,6 +291,7 @@ export class Pipeline4ForceImproveSolver extends BaseSolver {
         strokeColor: "rgba(37,99,235,0.9)",
         strokeDash: "6, 4",
         strokeWidth: 0.05,
+        label: `${node.capacityMeshNodeId} active node border`,
       },
       {
         points: [
@@ -275,6 +301,7 @@ export class Pipeline4ForceImproveSolver extends BaseSolver {
         strokeColor: "rgba(37,99,235,0.9)",
         strokeDash: "6, 4",
         strokeWidth: 0.05,
+        label: `${node.capacityMeshNodeId} active node border`,
       },
       {
         points: [
@@ -284,17 +311,9 @@ export class Pipeline4ForceImproveSolver extends BaseSolver {
         strokeColor: "rgba(37,99,235,0.9)",
         strokeDash: "6, 4",
         strokeWidth: 0.05,
+        label: `${node.capacityMeshNodeId} active node border`,
       },
     )
-
-    for (const portPoint of node.portPoints) {
-      points.push({
-        x: portPoint.x,
-        y: portPoint.y,
-        color: this.colorMap[portPoint.connectionName] ?? "#111827",
-        label: `${portPoint.connectionName} port`,
-      })
-    }
 
     for (const route of initialResult.routes) {
       for (let i = 0; i < route.route.length - 1; i++) {
@@ -313,16 +332,31 @@ export class Pipeline4ForceImproveSolver extends BaseSolver {
       }
     }
 
+    const displayRoutes = this.getOutput().map((route) =>
+      structuredClone(route),
+    )
+
+    for (let i = 0; i < sampleEntry.routeIndexes.length; i += 1) {
+      const routeIndex = sampleEntry.routeIndexes[i]
+      const activeRoute = currentResult.routes[i]
+      if (!activeRoute) continue
+      displayRoutes[routeIndex] = activeRoute
+    }
+
     let movedPointCount = 0
 
     for (
       let routeIndex = 0;
-      routeIndex < currentResult.routes.length;
+      routeIndex < displayRoutes.length;
       routeIndex += 1
     ) {
-      const route = currentResult.routes[routeIndex]!
-      const initialRoute = initialResult.routes[routeIndex]
+      const route = displayRoutes[routeIndex]!
+      const activeRouteIndex = sampleEntry.routeIndexes.indexOf(routeIndex)
+      const initialRoute =
+        activeRouteIndex === -1 ? null : initialResult.routes[activeRouteIndex]
+      const isActiveRoute = activeRouteIndex !== -1
       const strokeColor = this.colorMap[route.connectionName] ?? "#22c55e"
+
       for (let i = 0; i < route.route.length - 1; i++) {
         const start = route.route[i]
         const end = route.route[i + 1]
@@ -333,7 +367,9 @@ export class Pipeline4ForceImproveSolver extends BaseSolver {
           ],
           strokeColor,
           strokeWidth: route.traceThickness,
-          label: `${route.connectionName} current step`,
+          label: isActiveRoute
+            ? `${route.connectionName} current step`
+            : `${route.connectionName} route`,
         })
       }
       for (const via of route.vias) {
@@ -341,7 +377,7 @@ export class Pipeline4ForceImproveSolver extends BaseSolver {
           center: { x: via.x, y: via.y },
           radius: route.viaDiameter / 2,
           stroke: strokeColor,
-          fill: "rgba(34,197,94,0.12)",
+          fill: isActiveRoute ? "rgba(34,197,94,0.12)" : "rgba(34,197,94,0.08)",
         })
       }
 
@@ -404,6 +440,7 @@ export class Pipeline4ForceImproveSolver extends BaseSolver {
       lines,
       points,
       circles,
+      rects,
     }
   }
 }
