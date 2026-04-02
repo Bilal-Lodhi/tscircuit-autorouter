@@ -8,19 +8,13 @@ import type { SimpleRouteJson } from "lib/types"
 const getCircuit102 = () =>
   (dataset01 as Record<string, unknown>).circuit102 as SimpleRouteJson
 
-const getNodeOrThrow = (
+const getNodesByPrefix = (
   nodes: NodeWithPortPoints[] | undefined,
-  nodeId: string,
-) => {
-  const node = nodes?.find(
-    (candidate) => candidate.capacityMeshNodeId === nodeId,
-  )
-  expect(node).toBeDefined()
-  return node!
-}
+  prefix: string,
+) => nodes?.filter((candidate) => candidate.capacityMeshNodeId.startsWith(prefix)) ?? []
 
 test(
-  "pipeline4 dataset01 circuit102 uses the 16mm default node cap, while an explicit 8mm cap still routes the original cmn_159 shape",
+  "pipeline4 dataset01 circuit102 still routes when maxRectRatio splits cmn_159",
   () => {
     getGlobalInMemoryCache().clearCache()
 
@@ -34,21 +28,24 @@ test(
     expect(defaultSolver.error).toBeNull()
     expect(defaultSolver.maxRectRatio).toBe(2)
 
-    const defaultMetadata =
-      defaultSolver.highDensityRouteSolver?.nodeSolveMetadataById.get("cmn_159")
-    const defaultNode = getNodeOrThrow(
+    const defaultNodes = getNodesByPrefix(
       defaultSolver.highDensityNodePortPoints,
-      "cmn_159",
+      "cmn_159__sub_",
     )
+    const defaultMetadata = Array.from(
+      defaultSolver.highDensityRouteSolver?.nodeSolveMetadataById.entries() ??
+        [],
+    ).filter(([nodeId]) => nodeId.startsWith("cmn_159__sub_"))
 
-    expect(defaultMetadata?.status).toBe("solved")
-    expect(defaultMetadata?.solverType).toBe(
-      "SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost",
+    expect(defaultNodes).toHaveLength(2)
+    expect(defaultNodes.map((node) => node.portPoints.length).sort()).toEqual([
+      2,
+      4,
+    ])
+    expect(defaultMetadata).toHaveLength(2)
+    expect(defaultMetadata.every(([, metadata]) => metadata.status === "solved")).toBe(
+      true,
     )
-    expect(defaultNode.portPoints.length).toBe(4)
-    expect(
-      new Set(defaultNode.portPoints.map((point) => point.connectionName)).size,
-    ).toBe(2)
 
     getGlobalInMemoryCache().clearCache()
 
@@ -61,24 +58,15 @@ test(
     expect(explicit8mmSolver.solved).toBe(true)
     expect(explicit8mmSolver.failed).toBe(false)
 
-    const explicit8mmMetadata =
-      explicit8mmSolver.highDensityRouteSolver?.nodeSolveMetadataById.get(
-        "cmn_159",
-      )
-    const explicit8mmNode = getNodeOrThrow(
+    const explicit8mmNodes = getNodesByPrefix(
       explicit8mmSolver.highDensityNodePortPoints,
-      "cmn_159",
+      "cmn_159__sub_",
     )
 
-    expect(explicit8mmMetadata?.status).toBe("solved")
-    expect(explicit8mmMetadata?.solverType).toBe(
-      "SingleLayerNoDifferentRootIntersectionsIntraNodeSolver",
-    )
-    expect(explicit8mmNode.portPoints.length).toBe(8)
+    expect(explicit8mmNodes).toHaveLength(2)
     expect(
-      new Set(explicit8mmNode.portPoints.map((point) => point.connectionName))
-        .size,
-    ).toBe(3)
+      explicit8mmNodes.map((node) => node.portPoints.length).sort(),
+    ).toEqual([2, 6])
 
     getGlobalInMemoryCache().clearCache()
 
@@ -90,10 +78,17 @@ test(
 
     expect(effort2Solver.solved).toBe(true)
     expect(effort2Solver.failed).toBe(false)
-    expect(
-      effort2Solver.highDensityRouteSolver?.nodeSolveMetadataById.get("cmn_159")
-        ?.status,
-    ).toBe("solved")
+
+    const effort2Nodes = getNodesByPrefix(
+      effort2Solver.highDensityNodePortPoints,
+      "cmn_159__sub_",
+    )
+
+    expect(effort2Nodes).toHaveLength(2)
+    expect(effort2Nodes.map((node) => node.portPoints.length).sort()).toEqual([
+      2,
+      4,
+    ])
   },
   { timeout: 120_000 },
 )

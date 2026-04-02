@@ -19,6 +19,10 @@ export class NodeDimensionSubdivisionSolver extends BaseSolver {
   }
 
   private getSubdivisionGrid(node: CapacityMeshNode) {
+    if (node._containsTarget || node._containsObstacle) {
+      return { cols: 1, rows: 1 }
+    }
+
     let cols = 1
     let rows = 1
 
@@ -33,16 +37,6 @@ export class NodeDimensionSubdivisionSolver extends BaseSolver {
       node.width > 0 &&
       node.height > 0
     ) {
-      const minLongSideForAspectSubdivision =
-        Number.isFinite(this.maxNodeDimension) && this.maxNodeDimension > 0
-          ? this.maxNodeDimension / this.maxRectRatio
-          : 0
-      const longSide = Math.max(node.width, node.height)
-
-      if (longSide <= minLongSideForAspectSubdivision) {
-        return { cols, rows }
-      }
-
       const childWidth = node.width / cols
       const childHeight = node.height / rows
 

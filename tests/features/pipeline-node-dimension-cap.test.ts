@@ -7,6 +7,8 @@ import type { CapacityMeshNode } from "lib/types"
 
 const getCircuit011 = () =>
   (dataset01 as Record<string, unknown>).circuit011 as any
+const getCircuit002 = () =>
+  (dataset01 as Record<string, unknown>).circuit002 as any
 
 test("pipeline4 defaults node subdivision to 16mm", () => {
   const pipeline = new AutoroutingPipelineSolver4(
@@ -86,4 +88,59 @@ test("node subdivision splits elongated rects when max rect ratio is exceeded", 
   expect(solver.stats.subdividedNodeCount).toBe(1)
   expect(solver.outputNodes.every((child) => child.width === 6)).toBe(true)
   expect(solver.outputNodes.every((child) => child.height === 2)).toBe(true)
+})
+
+test("node subdivision does not split target or obstacle nodes", () => {
+  const targetNode: CapacityMeshNode = {
+    capacityMeshNodeId: "cmn_target",
+    center: { x: 6, y: 1 },
+    width: 12,
+    height: 2,
+    layer: "top",
+    availableZ: [0],
+    _containsTarget: true,
+  }
+  const obstacleNode: CapacityMeshNode = {
+    capacityMeshNodeId: "cmn_obstacle",
+    center: { x: 1, y: 6 },
+    width: 2,
+    height: 12,
+    layer: "top",
+    availableZ: [0],
+    _containsObstacle: true,
+  }
+
+  const solver = new NodeDimensionSubdivisionSolver(
+    [targetNode, obstacleNode],
+    8,
+    2,
+  )
+  solver.solve()
+
+  expect(solver.outputNodes).toHaveLength(2)
+  expect(solver.outputNodes.map((node) => node.capacityMeshNodeId)).toEqual([
+    "cmn_target",
+    "cmn_obstacle",
+  ])
+  expect(solver.stats.subdividedNodeCount).toBe(0)
+})
+
+test("pipeline4 subdivides tall circuit002 node new-cmn_9-20 when max rect ratio is exceeded", () => {
+  const pipeline = new AutoroutingPipelineSolver4(
+    structuredClone(getCircuit002()),
+  )
+
+  pipeline.solveUntilPhase("edgeSolver")
+
+  const matchingNodes = (pipeline.capacityNodes ?? []).filter((node) =>
+    node.capacityMeshNodeId.startsWith("new-cmn_9-20"),
+  )
+
+  expect(matchingNodes).toHaveLength(2)
+  expect(
+    matchingNodes.every((node) => node.capacityMeshNodeId.includes("__sub_")),
+  ).toBe(true)
+  expect(
+    matchingNodes.every((node) => node.width < node.height),
+  ).toBe(true)
 })

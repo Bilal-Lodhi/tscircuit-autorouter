@@ -42,7 +42,7 @@ const TINY_SECTION_SOLVER_MAX_ITERATION_MULTIPLIER = 1
 
 const getEffortScale = (effort: number) => Math.max(effort, 1e-2)
 const getTinyHyperGraphComplexityScale = (regionCount: number) =>
-  Math.min(2, Math.max(1, regionCount / 100))
+  Math.min(8, Math.max(1, regionCount / 25))
 const getTinyHyperGraphPipelineMaxIterations = (
   effort: number,
   complexityScale = 1,
