@@ -13,7 +13,11 @@ export class SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost extends Sing
   constructor(
     opts: ConstructorParameters<typeof SingleHighDensityRouteSolver>[0],
   ) {
-    super(opts)
+    super({
+      ...opts,
+      enableNearbySegmentProximityCheck:
+        opts.enableNearbySegmentProximityCheck ?? true,
+    })
     for (const key in opts.hyperParameters) {
       // @ts-ignore
       this[key] = opts.hyperParameters[key]
