@@ -330,8 +330,12 @@ export class SingleHighDensityRouteSolver extends BaseSolver {
       }
       if (
         clearance > 0 &&
-        getSegmentToSegmentCenterlineDistance(node, parent, segment.A, segment.B) <
-          clearance
+        getSegmentToSegmentCenterlineDistance(
+          node,
+          parent,
+          segment.A,
+          segment.B,
+        ) < clearance
       ) {
         return true
       }
