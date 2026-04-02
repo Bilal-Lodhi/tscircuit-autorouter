@@ -41,6 +41,8 @@ jobs:
               "- `/benchmark all 20 --dataset dataset01 --concurrency 8` -> all solvers, 20 scenarios, dataset01, 8 workers",
               "- `/benchmark --pipeline 4` -> same as `./benchmark.sh --pipeline 4`",
               "",
+              "Use `/update-snapshots` (or `/us`) to run `BUN_UPDATE_SNAPSHOTS=1 bun test --timeout 120_000` on the PR branch and auto-commit snapshot updates.",
+              "",
               "Any PR whose title contains `[BENCHMARK TEST]` will automatically run the benchmark workflow on PR updates.",
             ].join("\n")
 
