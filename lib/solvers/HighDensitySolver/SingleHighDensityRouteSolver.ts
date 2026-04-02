@@ -193,7 +193,7 @@ export class SingleHighDensityRouteSolver extends BaseSolver {
     const { A, B } = this
     const route =
       A.z === B.z
-        ? [A, B]
+        ? this.createSimpleSameLayerRoute(A, B)
         : [
             A,
             { ...this.boundsCenter, z: this.A.z },
@@ -210,6 +210,72 @@ export class SingleHighDensityRouteSolver extends BaseSolver {
       viaDiameter: this.viaDiameter,
       vias: this.A.z === this.B.z ? [] : [this.boundsCenter],
     }
+  }
+
+  private createSimpleSameLayerRoute(
+    A: { x: number; y: number; z: number },
+    B: { x: number; y: number; z: number },
+  ) {
+    const startEdge = this.getNodeEdge(A)
+    const endEdge = this.getNodeEdge(B)
+
+    if (!startEdge || !endEdge) {
+      return [A, B]
+    }
+
+    return this.dedupeRoutePoints([
+      A,
+      this.getPerpendicularStubPoint(A, startEdge),
+      this.getPerpendicularStubPoint(B, endEdge),
+      B,
+    ])
+  }
+
+  private getNodeEdge(point: { x: number; y: number }) {
+    if (Math.abs(point.x - this.bounds.minX) < 1e-3) return "left" as const
+    if (Math.abs(point.x - this.bounds.maxX) < 1e-3) return "right" as const
+    if (Math.abs(point.y - this.bounds.minY) < 1e-3) return "top" as const
+    if (Math.abs(point.y - this.bounds.maxY) < 1e-3) return "bottom" as const
+    return null
+  }
+
+  private getPerpendicularStubPoint(
+    point: { x: number; y: number; z: number },
+    edge: "top" | "right" | "bottom" | "left",
+  ) {
+    const maxStubLength =
+      edge === "left" || edge === "right"
+        ? this.boundsSize.width / 2
+        : this.boundsSize.height / 2
+    const stubLength = Math.min(
+      maxStubLength,
+      Math.max(
+        this.cellStep * 2,
+        this.traceThickness + this.obstacleMargin,
+        this.straightLineDistance / 3,
+      ),
+    )
+
+    switch (edge) {
+      case "left":
+        return { x: point.x + stubLength, y: point.y, z: point.z }
+      case "right":
+        return { x: point.x - stubLength, y: point.y, z: point.z }
+      case "top":
+        return { x: point.x, y: point.y + stubLength, z: point.z }
+      case "bottom":
+        return { x: point.x, y: point.y - stubLength, z: point.z }
+    }
+  }
+
+  private dedupeRoutePoints(route: Array<{ x: number; y: number; z: number }>) {
+    return route.filter(
+      (point, index, points) =>
+        index === 0 ||
+        Math.abs(point.x - points[index - 1]!.x) > 1e-6 ||
+        Math.abs(point.y - points[index - 1]!.y) > 1e-6 ||
+        point.z !== points[index - 1]!.z,
+    )
   }
 
   get viaPenaltyDistance() {

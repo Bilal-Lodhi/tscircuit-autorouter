@@ -105,3 +105,29 @@ test("SingleHighDensityRouteSolver respects availableZ when generating via neigh
 
   expect(neighbors.every((neighbor) => neighbor.z === 1)).toBe(true)
 })
+
+test("SingleHighDensityRouteSolver simple same-layer path enters and exits perpendicular to node edges", () => {
+  const solver = new SingleHighDensityRouteSolver({
+    ...baseOpts,
+    A: { x: 0, y: 6, z: 0 },
+    B: { x: 8, y: 0, z: 0 },
+    obstacleRoutes: [],
+  })
+
+  expect(solver.solved).toBe(true)
+  expect(solver.solvedPath).not.toBeNull()
+
+  const route = solver.solvedPath!.route
+  expect(route).toHaveLength(4)
+  expect(route[0]).toEqual({ x: 0, y: 6, z: 0 })
+  expect(route[3]).toEqual({ x: 8, y: 0, z: 0 })
+
+  expect(route[1]!.y).toBeCloseTo(route[0]!.y)
+  expect(route[1]!.x).toBeGreaterThan(route[0]!.x)
+
+  expect(route[2]!.x).toBeCloseTo(route[3]!.x)
+  expect(route[2]!.y).toBeGreaterThan(route[3]!.y)
+
+  expect(route[1]!.x).toBeLessThanOrEqual(5)
+  expect(route[2]!.y).toBeLessThanOrEqual(5)
+})
