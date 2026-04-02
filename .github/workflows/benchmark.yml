@@ -353,19 +353,56 @@ jobs:
                 ),
               ]
             }
-            const renderTests = (report) => {
+            const getOutcomeScore = (test) => {
+              if (!test?.didSolve) return 0
+              if (test.relaxedDrcPassed) return 2
+              return 1
+            }
+            const buildMainIndex = (report) => {
+              if (!Array.isArray(report?.tests)) return new Map()
+              return new Map(
+                report.tests.map((test) => [
+                  `${test.solverName}::${test.scenarioName}`,
+                  test,
+                ]),
+              )
+            }
+            const getDelta = (test, mainIndex) => {
+              if (!mainIndex) return ''
+              const key = `${test.solverName}::${test.scenarioName}`
+              const mainTest = mainIndex.get(key)
+              if (!mainTest) return ''
+              const prScore = getOutcomeScore(test)
+              const mainScore = getOutcomeScore(mainTest)
+              if (prScore > mainScore) return '✅'
+              if (prScore < mainScore) return '❌'
+              return ''
+            }
+            const renderTests = (report, options = {}) => {
+              const includeDelta = Boolean(options.includeDelta)
+              const mainIndex = options.mainIndex
               if (!Array.isArray(report?.tests) || report.tests.length === 0) {
                 return ['Per-test results unavailable.']
               }
+              const header = includeDelta
+                ? [
+                    '| Solver | Scenario | Status | Time | Relaxed DRC | Delta |',
+                    '| --- | --- | --- | --- | --- | --- |',
+                  ]
+                : [
+                    '| Solver | Scenario | Status | Time | Relaxed DRC |',
+                    '| --- | --- | --- | --- | --- |',
+                  ]
               return [
-                '| Solver | Scenario | Status | Time | Relaxed DRC |',
-                '| --- | --- | --- | --- | --- |',
+                ...header,
                 ...report.tests.map((test) =>
-                  `| ${test.solverName} | ${test.scenarioName} | ${getStatus(test)} | ${formatTime(test.elapsedTimeMs)} | ${getDrc(test)} |`,
+                  includeDelta
+                    ? `| ${test.solverName} | ${test.scenarioName} | ${getStatus(test)} | ${formatTime(test.elapsedTimeMs)} | ${getDrc(test)} | ${getDelta(test, mainIndex)} |`
+                    : `| ${test.solverName} | ${test.scenarioName} | ${getStatus(test)} | ${formatTime(test.elapsedTimeMs)} | ${getDrc(test)} |`,
                 ),
               ]
             }
-            const renderReport = (report, fallbackText) => {
+            const renderReport = (report, fallbackText, options = {}) => {
               if (!report) {
                 return ['```', truncate(fallbackText, maxLength), '```']
               }
@@ -376,7 +413,7 @@ jobs:
                 '<details>',
                 '<summary>Details</summary>',
                 '',
-                ...renderTests(report),
+                ...renderTests(report, options),
                 '</details>',
               ]
             }
@@ -399,6 +436,7 @@ jobs:
               : '(not available)'
             const prReport = readJson('benchmark-result-pr.json') ?? readJson('benchmark-result.json')
             const mainReport = readJson('benchmark-result-main.json')
+            const mainIndex = buildMainIndex(mainReport)
 
             const body = [
               '## 🏃 Autorouting Benchmark Results',
@@ -412,7 +450,7 @@ jobs:
               '<details open>',
               '<summary>📊 PR Results</summary>',
               '',
-              ...renderReport(prReport, prText),
+              ...renderReport(prReport, prText, { includeDelta: true, mainIndex }),
               '</details>',
               '',
               `📦 Artifact: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`,

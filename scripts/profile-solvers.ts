@@ -135,7 +135,7 @@ const getPercentile = (values: number[], p: number): number | null => {
 
 const formatTime = (ms: number | null): string => {
   if (ms === null) return "n/a"
-  if (ms < 1000) return `${ms.toFixed(0)}ms`
+  if (ms < 1000) return `${ms.toFixed(2)}ms`
   return `${(ms / 1000).toFixed(2)}s`
 }
 
@@ -205,82 +205,85 @@ const main = () => {
   // --- Aggregate by solver name + success/fail ---
   // Skip the top-level pipeline solver itself
   const records = allRecords.filter(
-    (r) => r.name !== "AutoroutingPipelineSolver2_PortPointPathing",
+    (r) => !r.name.startsWith("AutoroutingPipelineSolver"),
   )
 
-  const groups = new Map<string, SolverRecord[]>()
+  const groupsByName = new Map<string, SolverRecord[]>()
   for (const record of records) {
-    const key = `${record.name}|${record.success ? "success" : "fail"}`
-    if (!groups.has(key)) groups.set(key, [])
-    groups.get(key)!.push(record)
+    if (!groupsByName.has(record.name)) groupsByName.set(record.name, [])
+    groupsByName.get(record.name)!.push(record)
   }
 
   type Row = {
     name: string
-    status: string
-    count: number
+    attemptCount: number
+    scenarioCount: number
+    scenarioSuccessRate: number
     maxIter: number
+    totalTimeMs: number
     p50Time: number | null
     p95Time: number | null
-    p99Time: number | null
     p50Iter: number | null
     p95Iter: number | null
-    p99Iter: number | null
   }
 
   const rows: Row[] = []
-  for (const [key, recs] of groups) {
-    const [name, status] = key.split("|")
+  for (const [name, recs] of groupsByName) {
+    const scenariosTouched = new Set(recs.map((r) => r.scenarioName))
+    const scenariosWithSuccess = new Set(
+      recs.filter((r) => r.success).map((r) => r.scenarioName),
+    )
     const times = recs.map((r) => r.timeMs)
     const iters = recs.map((r) => r.iterations)
     const maxIter = Math.round(Math.max(...recs.map((r) => r.maxIterations)))
+    const totalTimeMs = recs.reduce((sum, r) => sum + r.timeMs, 0)
     rows.push({
-      name: name!,
-      status: status!,
-      count: recs.length,
+      name,
+      attemptCount: recs.length,
+      scenarioCount: scenariosTouched.size,
+      scenarioSuccessRate:
+        scenariosTouched.size === 0
+          ? 0
+          : (scenariosWithSuccess.size / scenariosTouched.size) * 100,
       maxIter,
+      totalTimeMs,
       p50Time: getPercentile(times, 0.5),
       p95Time: getPercentile(times, 0.95),
-      p99Time: getPercentile(times, 0.99),
       p50Iter: getPercentile(iters, 0.5),
       p95Iter: getPercentile(iters, 0.95),
-      p99Iter: getPercentile(iters, 0.99),
     })
   }
 
-  // Sort by P95 time (slowest first), then solver name, then success before fail
+  // Sort by total accumulated time (slowest first), then solver name
   rows.sort((a, b) => {
-    const aP95 = a.p95Time ?? Number.NEGATIVE_INFINITY
-    const bP95 = b.p95Time ?? Number.NEGATIVE_INFINITY
-    if (aP95 !== bP95) return bP95 - aP95
-    if (a.name !== b.name) return a.name.localeCompare(b.name)
-    return a.status === "success" ? -1 : 1
+    if (a.totalTimeMs !== b.totalTimeMs) return b.totalTimeMs - a.totalTimeMs
+    return a.name.localeCompare(b.name)
   })
 
   const headers = [
     "Solver",
-    "Status",
-    "N",
+    "Attempts",
+    "Scenarios",
+    "Success %",
     "MAX_ITER",
+    "Total Time",
     "P50 Time",
-    "P50 Iters",
     "P95 Time",
+    "P50 Iters",
     "P95 Iters",
-    "P99 Time",
-    "P99 Iters",
   ]
 
   const body = rows.map((r) => [
     r.name,
-    r.status,
-    String(r.count),
+    String(r.attemptCount),
+    String(r.scenarioCount),
+    `${r.scenarioSuccessRate.toFixed(0)}%`,
     String(r.maxIter),
+    formatTime(r.totalTimeMs),
     formatTime(r.p50Time),
-    formatIter(r.p50Iter),
     formatTime(r.p95Time),
+    formatIter(r.p50Iter),
     formatIter(r.p95Iter),
-    formatTime(r.p99Time),
-    formatIter(r.p99Iter),
   ])
 
   const table = formatTable(headers, body)

@@ -10,6 +10,7 @@ import type {
   HighDensityRoute,
   NodeWithPortPoints,
 } from "lib/types/high-density-types"
+import { safeTransparentize } from "../colors"
 import { BaseSolver } from "../BaseSolver"
 
 type RepairSampleEntry = {
@@ -317,13 +318,17 @@ export class Pipeline4HighDensityRepairSolver extends BaseSolver {
       for (let i = 0; i < route.route.length - 1; i++) {
         const start = route.route[i]
         const end = route.route[i + 1]
+        if (start.z !== end.z) continue
         lines.push({
           points: [
             { x: start.x, y: start.y },
             { x: end.x, y: end.y },
           ],
-          strokeColor,
+          strokeColor:
+            start.z === 0 ? strokeColor : safeTransparentize(strokeColor, 0.5),
           strokeWidth: route.traceThickness,
+          layer: `z${start.z}`,
+          strokeDash: start.z !== 0 ? [0.1, 0.3] : undefined,
         })
       }
       for (const via of route.vias) {
