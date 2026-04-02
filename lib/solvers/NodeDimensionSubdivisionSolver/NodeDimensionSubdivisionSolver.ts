@@ -8,6 +8,7 @@ export class NodeDimensionSubdivisionSolver extends BaseSolver {
   constructor(
     private readonly nodes: CapacityMeshNode[],
     private readonly maxNodeDimension: number,
+    private readonly maxRectRatio = 2,
   ) {
     super()
     this.outputNodes = []
@@ -17,18 +18,51 @@ export class NodeDimensionSubdivisionSolver extends BaseSolver {
     return "NodeDimensionSubdivisionSolver"
   }
 
-  private subdivideNode(node: CapacityMeshNode): CapacityMeshNode[] {
+  private getSubdivisionGrid(node: CapacityMeshNode) {
+    let cols = 1
+    let rows = 1
+
+    if (Number.isFinite(this.maxNodeDimension) && this.maxNodeDimension > 0) {
+      cols = Math.max(1, Math.ceil(node.width / this.maxNodeDimension))
+      rows = Math.max(1, Math.ceil(node.height / this.maxNodeDimension))
+    }
+
     if (
-      !Number.isFinite(this.maxNodeDimension) ||
-      this.maxNodeDimension <= 0 ||
-      (node.width <= this.maxNodeDimension &&
-        node.height <= this.maxNodeDimension)
+      Number.isFinite(this.maxRectRatio) &&
+      this.maxRectRatio > 0 &&
+      node.width > 0 &&
+      node.height > 0
     ) {
+      const minLongSideForAspectSubdivision =
+        Number.isFinite(this.maxNodeDimension) && this.maxNodeDimension > 0
+          ? this.maxNodeDimension / this.maxRectRatio
+          : 0
+      const longSide = Math.max(node.width, node.height)
+
+      if (longSide <= minLongSideForAspectSubdivision) {
+        return { cols, rows }
+      }
+
+      const childWidth = node.width / cols
+      const childHeight = node.height / rows
+
+      if (childWidth > childHeight * this.maxRectRatio) {
+        cols *= 2
+      } else if (childHeight > childWidth * this.maxRectRatio) {
+        rows *= 2
+      }
+    }
+
+    return { cols, rows }
+  }
+
+  private subdivideNode(node: CapacityMeshNode): CapacityMeshNode[] {
+    const { cols, rows } = this.getSubdivisionGrid(node)
+
+    if (cols === 1 && rows === 1) {
       return [node]
     }
 
-    const cols = Math.ceil(node.width / this.maxNodeDimension)
-    const rows = Math.ceil(node.height / this.maxNodeDimension)
     const childWidth = node.width / cols
     const childHeight = node.height / rows
     const minX = node.center.x - node.width / 2
@@ -72,6 +106,7 @@ export class NodeDimensionSubdivisionSolver extends BaseSolver {
       outputNodeCount: this.outputNodes.length,
       subdividedNodeCount,
       maxNodeDimension: this.maxNodeDimension,
+      maxRectRatio: this.maxRectRatio,
     }
     this.solved = true
   }

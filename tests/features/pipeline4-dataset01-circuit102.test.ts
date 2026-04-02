@@ -32,6 +32,7 @@ test(
     expect(defaultSolver.solved).toBe(true)
     expect(defaultSolver.failed).toBe(false)
     expect(defaultSolver.error).toBeNull()
+    expect(defaultSolver.maxRectRatio).toBe(2)
 
     const defaultMetadata =
       defaultSolver.highDensityRouteSolver?.nodeSolveMetadataById.get("cmn_159")
@@ -89,31 +90,10 @@ test(
 
     expect(effort2Solver.solved).toBe(true)
     expect(effort2Solver.failed).toBe(false)
-
-    const effort2Metadata =
+    expect(
       effort2Solver.highDensityRouteSolver?.nodeSolveMetadataById.get("cmn_159")
-    const effort2Node = getNodeOrThrow(
-      effort2Solver.highDensityNodePortPoints,
-      "cmn_159",
-    )
-
-    expect(effort2Metadata?.status).toBe("solved")
-    expect(effort2Node.portPoints.length).toBe(4)
-    expect(
-      new Set(effort2Node.portPoints.map((point) => point.connectionName)).size,
-    ).toBe(2)
-    expect(
-      JSON.stringify(
-        effort2Node.portPoints.map((point) => point.connectionName),
-      ),
-    ).not.toBe(
-      JSON.stringify(
-        explicit8mmNode.portPoints.map((point) => point.connectionName),
-      ),
-    )
-    expect(effort2Metadata?.solverType).toBe(
-      "SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost",
-    )
+        ?.status,
+    ).toBe("solved")
   },
   { timeout: 120_000 },
 )

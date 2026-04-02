@@ -41,11 +41,16 @@ const TINY_SECTION_SOLVER_RIP_THRESHOLD_RAMP_MULTIPLIER = 1
 const TINY_SECTION_SOLVER_MAX_ITERATION_MULTIPLIER = 1
 
 const getEffortScale = (effort: number) => Math.max(effort, 1e-2)
-const getTinyHyperGraphPipelineMaxIterations = (effort: number) =>
+const getTinyHyperGraphComplexityScale = (regionCount: number) =>
+  Math.min(2, Math.max(1, regionCount / 100))
+const getTinyHyperGraphPipelineMaxIterations = (
+  effort: number,
+  complexityScale = 1,
+) =>
   Math.ceil(
     1e6 *
       getEffortScale(effort) *
-      (TINY_SOLVER_MAX_ITERATION_MULTIPLIER +
+      (TINY_SOLVER_MAX_ITERATION_MULTIPLIER * complexityScale +
         TINY_SECTION_SOLVER_MAX_ITERATION_MULTIPLIER +
         1),
   )
@@ -273,11 +278,13 @@ const applyTerminalRegionNetIds = (loaded: {
 const applyTinyHyperGraphSolverTuning = (
   solver: TinyHyperGraphSolver,
   effort: number,
+  complexityScale: number,
 ) => {
   const effortScale = getEffortScale(effort)
   solver.RIP_THRESHOLD_RAMP_ATTEMPTS *=
     TINY_SOLVER_RIP_THRESHOLD_RAMP_MULTIPLIER * effortScale
-  solver.MAX_ITERATIONS *= TINY_SOLVER_MAX_ITERATION_MULTIPLIER * effortScale
+  solver.MAX_ITERATIONS *=
+    TINY_SOLVER_MAX_ITERATION_MULTIPLIER * effortScale * complexityScale
 }
 
 const applyTinyHyperGraphSectionSolverTuning = (
@@ -297,9 +304,13 @@ class TinyHyperGraphSectionPipelineWithTerminalNetIds extends TinyHyperGraphSect
   constructor(
     inputProblem: TinyHyperGraphSectionPipelineInput,
     private effort: number,
+    private complexityScale: number,
   ) {
     super(inputProblem)
-    this.MAX_ITERATIONS = getTinyHyperGraphPipelineMaxIterations(effort)
+    this.MAX_ITERATIONS = getTinyHyperGraphPipelineMaxIterations(
+      effort,
+      complexityScale,
+    )
   }
 
   override _step() {
@@ -351,7 +362,11 @@ class TinyHyperGraphSectionPipelineWithTerminalNetIds extends TinyHyperGraphSect
       applyTinyHyperGraphSectionSolverTuning(solver, this.effort)
     } else if (solver instanceof TinyHyperGraphSolver) {
       applyTerminalRegionNetIds(solver as any)
-      applyTinyHyperGraphSolverTuning(solver, this.effort)
+      applyTinyHyperGraphSolverTuning(
+        solver,
+        this.effort,
+        this.complexityScale,
+      )
     }
 
     this.configuredSolvers.add(solver)
@@ -422,14 +437,21 @@ export class TinyHypergraphPortPointPathingSolver extends BaseSolver {
   constructor(private params: HgPortPointPathingSolverParams) {
     super()
     const serializedGraph = buildSerializedTinyGraph(params)
+    const complexityScale = getTinyHyperGraphComplexityScale(
+      params.graph.regions.length,
+    )
     this.tinyPipelineSolver =
       new TinyHyperGraphSectionPipelineWithTerminalNetIds(
         {
           serializedHyperGraph: serializedGraph,
         },
         params.effort,
+        complexityScale,
       )
-    this.MAX_ITERATIONS = getTinyHyperGraphPipelineMaxIterations(params.effort)
+    this.MAX_ITERATIONS = getTinyHyperGraphPipelineMaxIterations(
+      params.effort,
+      complexityScale,
+    )
 
     this.originalRegionById = new Map(
       params.graph.regions.map((region) => [region.regionId, region]),
