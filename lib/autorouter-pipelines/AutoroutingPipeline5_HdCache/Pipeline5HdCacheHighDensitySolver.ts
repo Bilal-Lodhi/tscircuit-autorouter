@@ -18,6 +18,7 @@ type HdCacheSolveResponseBody = {
   pairCount: number
   bucketKey: string
   bucketSize: number
+  kOrder?: number | null
   routes: HighDensityIntraNodeRoute[] | null
   drc: {
     ok: boolean
@@ -148,6 +149,28 @@ const normalizeRemoteRoutes = (
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : String(error)
 
+const isFiniteNumber = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value)
+
+const getPercentile = (sortedValues: number[], percentile: number) => {
+  if (sortedValues.length === 0) {
+    return null
+  }
+
+  const boundedPercentile = Math.min(Math.max(percentile, 0), 1)
+  const index = (sortedValues.length - 1) * boundedPercentile
+  const lowerIndex = Math.floor(index)
+  const upperIndex = Math.ceil(index)
+  const lowerValue = sortedValues[lowerIndex]
+  const upperValue = sortedValues[upperIndex]
+
+  if (lowerIndex === upperIndex) {
+    return lowerValue
+  }
+
+  return lowerValue + (upperValue - lowerValue) * (index - lowerIndex)
+}
+
 const getNodePairCount = (node: NodeWithPortPoints) =>
   new Set(node.portPoints.map((point) => point.connectionName)).size
 
@@ -260,6 +283,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
   private readonly remoteResponseMeasurements: Array<{
     nodeId: CapacityMeshNodeId
     durationMs: number
+    kOrder: number | null
   }> = []
 
   constructor({
@@ -309,9 +333,12 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
       remoteRequestsStarted: 0,
       remoteRequestsCompleted: 0,
       remoteResponseSampleCount: 0,
+      remoteKOrderSampleCount: 0,
       slowestRemoteResponseMs: null as number | null,
       slowestRemoteResponseNodeId: null as CapacityMeshNodeId | null,
       p50RemoteResponseMs: null as number | null,
+      p50RemoteKOrder: null as number | null,
+      p95RemoteKOrder: null as number | null,
       remoteSources: {} as Record<string, number>,
     }
   }
@@ -522,9 +549,10 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
         remoteDurationMs,
       })
     } finally {
-      this.recordRemoteResponseTime(
+      this.recordRemoteResponseMetrics(
         node.capacityMeshNodeId,
         remoteDurationMs ?? Date.now() - requestStartedAt,
+        isFiniteNumber(responseBody?.kOrder) ? responseBody.kOrder : null,
       )
       this.stats.remoteRequestsCompleted += 1
     }
@@ -566,13 +594,17 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
       (this.stats.remoteSources[source] ?? 0) + 1
   }
 
-  private recordRemoteResponseTime(
+  private recordRemoteResponseMetrics(
     nodeId: CapacityMeshNodeId,
     durationMs: number,
+    kOrder: number | null,
   ) {
-    this.remoteResponseMeasurements.push({ nodeId, durationMs })
+    this.remoteResponseMeasurements.push({ nodeId, durationMs, kOrder })
     this.stats.remoteResponseSampleCount =
       this.remoteResponseMeasurements.length
+    this.stats.remoteKOrderSampleCount = this.remoteResponseMeasurements.filter(
+      (measurement) => measurement.kOrder !== null,
+    ).length
 
     let slowest: { nodeId: CapacityMeshNodeId; durationMs: number } | null =
       null
@@ -589,16 +621,15 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
       .map((measurement) => measurement.durationMs)
       .sort((a, b) => a - b)
 
-    if (sortedDurations.length === 0) {
-      this.stats.p50RemoteResponseMs = null
-      return
-    }
+    this.stats.p50RemoteResponseMs = getPercentile(sortedDurations, 0.5)
 
-    const middleIndex = Math.floor(sortedDurations.length / 2)
-    this.stats.p50RemoteResponseMs =
-      sortedDurations.length % 2 === 1
-        ? sortedDurations[middleIndex]
-        : (sortedDurations[middleIndex - 1] + sortedDurations[middleIndex]) / 2
+    const sortedKOrders = this.remoteResponseMeasurements
+      .map((measurement) => measurement.kOrder)
+      .filter((measurement): measurement is number => measurement !== null)
+      .sort((a, b) => a - b)
+
+    this.stats.p50RemoteKOrder = getPercentile(sortedKOrders, 0.5)
+    this.stats.p95RemoteKOrder = getPercentile(sortedKOrders, 0.95)
   }
 
   private recordFailedHdCacheRequest(
