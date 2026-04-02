@@ -91,7 +91,7 @@ test("pipeline4 inserts force-improve after high density and before stitching", 
   )
 })
 
-test("Pipeline4ForceImproveSolver preserves simple no-op routes", () => {
+test("Pipeline4ForceImproveSolver segments straight routes while preserving endpoints", () => {
   const solver = new Pipeline4ForceImproveSolver({
     nodeWithPortPoints: [nodeWithPortPoints],
     hdRoutes: [hdRoute],
@@ -102,7 +102,17 @@ test("Pipeline4ForceImproveSolver preserves simple no-op routes", () => {
 
   expect(solver.solved).toBe(true)
   expect(solver.failed).toBe(false)
-  expect(solver.getOutput()).toEqual([hdRoute])
+  const [improvedRoute] = solver.getOutput()
+  expect(improvedRoute.route[0]).toEqual(hdRoute.route[0])
+  expect(improvedRoute.route[improvedRoute.route.length - 1]).toEqual(
+    hdRoute.route[hdRoute.route.length - 1],
+  )
+  expect(improvedRoute.route.length).toBeGreaterThan(hdRoute.route.length)
+  expect(
+    improvedRoute.route.every(
+      (point) => point.x >= -1 && point.x <= 1 && point.y >= -1 && point.y <= 1,
+    ),
+  ).toBe(true)
 })
 
 test("Pipeline4ForceImproveSolver adjusts close routes inside a node", () => {

@@ -9,6 +9,7 @@ import {
   ForceDirectedImprovementSession,
   type ForceImproveResult,
 } from "./force-improve"
+import { simplifyRoutes } from "./simplify"
 
 type ForceImproveSampleEntry = {
   node: NodeWithPortPoints
@@ -16,11 +17,17 @@ type ForceImproveSampleEntry = {
 }
 
 const DEFAULT_NODE_MARGIN = 0.2
-const DEFAULT_TOTAL_STEPS = 20
+const DEFAULT_TOTAL_STEPS = 100
+const DEFAULT_TARGET_SEGMENTS = 10
 const MOVED_POINT_EPSILON = 1e-5
 const DIRECTION_ARROW_BASE_LENGTH = 0.18
 const DIRECTION_ARROW_MAX_EXTRA_LENGTH = FORCE_VECTOR_DISPLAY_MULTIPLIER * 0.03
 const DIRECTION_ARROW_RING_RADIUS = 0.04
+
+const roundToTwoDecimals = (value: number) => Number(value.toFixed(2))
+
+const clampValue = (value: number, minValue: number, maxValue: number) =>
+  Math.max(minValue, Math.min(maxValue, value))
 
 const getNodeBounds = (node: NodeWithPortPoints, margin = 0) => ({
   minX: node.center.x - node.width / 2 - margin,
@@ -62,9 +69,179 @@ const findNodeIndexForRoute = (
   return -1
 }
 
+const cloneRoute = (route: HighDensityRoute): HighDensityRoute => ({
+  ...route,
+  route: route.route.map((point) => ({ ...point })),
+  vias: route.vias.map((via) => ({ ...via })),
+  jumpers: route.jumpers?.map((jumper) => ({
+    ...jumper,
+    start: { ...jumper.start },
+    end: { ...jumper.end },
+  })),
+})
+
+const reverseRoute = (route: HighDensityRoute): HighDensityRoute => ({
+  ...route,
+  route: route.route.toReversed(),
+  vias: route.vias.toReversed(),
+  jumpers: route.jumpers?.toReversed().map((jumper) => ({
+    ...jumper,
+    start: { ...jumper.end },
+    end: { ...jumper.start },
+  })),
+})
+
+const getPointDistance = (
+  left: { x: number; y: number },
+  right: { x: number; y: number },
+) => Math.hypot(left.x - right.x, left.y - right.y)
+
+const getPortPointsByConnectionName = (
+  nodeWithPortPoints: NodeWithPortPoints,
+) => {
+  const portPointsByConnection = new Map<
+    string,
+    typeof nodeWithPortPoints.portPoints
+  >()
+
+  for (const portPoint of nodeWithPortPoints.portPoints) {
+    const existingPortPoints =
+      portPointsByConnection.get(portPoint.connectionName) ?? []
+    existingPortPoints.push(portPoint)
+    portPointsByConnection.set(portPoint.connectionName, existingPortPoints)
+  }
+
+  return portPointsByConnection
+}
+
+const reattachRouteToResolvedPortPoints = (
+  route: HighDensityRoute,
+  connectionPortPoints:
+    | [
+        NodeWithPortPoints["portPoints"][number],
+        NodeWithPortPoints["portPoints"][number],
+      ]
+    | undefined,
+): HighDensityRoute | null => {
+  if (!connectionPortPoints || route.route.length === 0) {
+    return null
+  }
+
+  const firstPoint = route.route[0]
+  const lastPoint = route.route.at(-1)
+  if (!firstPoint || !lastPoint) {
+    return null
+  }
+
+  const [startPortPoint, endPortPoint] = connectionPortPoints
+  const forwardDistance =
+    getPointDistance(firstPoint, startPortPoint) +
+    getPointDistance(lastPoint, endPortPoint)
+  const reverseDistance =
+    getPointDistance(firstPoint, endPortPoint) +
+    getPointDistance(lastPoint, startPortPoint)
+
+  const normalizedRoute =
+    reverseDistance < forwardDistance ? reverseRoute(route) : cloneRoute(route)
+  const normalizedFirstPoint = normalizedRoute.route[0]
+  const normalizedLastPoint = normalizedRoute.route.at(-1)
+
+  if (!normalizedFirstPoint || !normalizedLastPoint) {
+    return null
+  }
+
+  normalizedRoute.route[0] = {
+    ...normalizedFirstPoint,
+    x: startPortPoint.x,
+    y: startPortPoint.y,
+    z: startPortPoint.z,
+  }
+  normalizedRoute.route[normalizedRoute.route.length - 1] = {
+    ...normalizedLastPoint,
+    x: endPortPoint.x,
+    y: endPortPoint.y,
+    z: endPortPoint.z,
+  }
+
+  return normalizedRoute
+}
+
+const reattachRoutesToNode = (
+  routes: HighDensityRoute[],
+  nodeWithPortPoints: NodeWithPortPoints,
+): HighDensityRoute[] | null => {
+  const portPointsByConnection =
+    getPortPointsByConnectionName(nodeWithPortPoints)
+  const reattachedRoutes = new Array<HighDensityRoute>(routes.length)
+
+  for (let routeIndex = 0; routeIndex < routes.length; routeIndex += 1) {
+    const route = routes[routeIndex]
+    if (!route) {
+      return null
+    }
+
+    const connectionPortPoints = portPointsByConnection.get(
+      route.connectionName,
+    )
+    if (!connectionPortPoints || connectionPortPoints.length !== 2) {
+      return null
+    }
+
+    const reattachedRoute = reattachRouteToResolvedPortPoints(route, [
+      connectionPortPoints[0]!,
+      connectionPortPoints[1]!,
+    ])
+    if (!reattachedRoute) {
+      return null
+    }
+
+    reattachedRoutes[routeIndex] = reattachedRoute
+  }
+
+  return reattachedRoutes
+}
+
+const getDrcCompatibleNodeBounds = (nodeWithPortPoints: NodeWithPortPoints) => {
+  const rawMinX = nodeWithPortPoints.center.x - nodeWithPortPoints.width / 2
+  const rawMaxX = nodeWithPortPoints.center.x + nodeWithPortPoints.width / 2
+  const rawMinY = nodeWithPortPoints.center.y - nodeWithPortPoints.height / 2
+  const rawMaxY = nodeWithPortPoints.center.y + nodeWithPortPoints.height / 2
+
+  return {
+    minX: Math.min(rawMinX, roundToTwoDecimals(rawMinX)),
+    maxX: Math.max(rawMaxX, roundToTwoDecimals(rawMaxX)),
+    minY: Math.min(rawMinY, roundToTwoDecimals(rawMinY)),
+    maxY: Math.max(rawMaxY, roundToTwoDecimals(rawMaxY)),
+  }
+}
+
+const clampRoutesToNodeBounds = (
+  nodeWithPortPoints: NodeWithPortPoints,
+  routes: HighDensityRoute[],
+) => {
+  const bounds = getDrcCompatibleNodeBounds(nodeWithPortPoints)
+
+  return routes.map((route) => {
+    const clampedRoute = cloneRoute(route)
+
+    clampedRoute.route = clampedRoute.route.map((point) => ({
+      ...point,
+      x: clampValue(point.x, bounds.minX, bounds.maxX),
+      y: clampValue(point.y, bounds.minY, bounds.maxY),
+    }))
+    clampedRoute.vias = clampedRoute.vias.map((via) => ({
+      x: clampValue(via.x, bounds.minX, bounds.maxX),
+      y: clampValue(via.y, bounds.minY, bounds.maxY),
+    }))
+
+    return clampedRoute
+  })
+}
+
 export class Pipeline4ForceImproveSolver extends BaseSolver {
   readonly totalSteps: number
   readonly nodeMargin: number
+  readonly targetSegmentCount: number
   readonly sampleEntries: ForceImproveSampleEntry[]
   readonly originalHdRoutes: HighDensityRoute[]
   readonly originalNodeWithPortPoints: NodeWithPortPoints[]
@@ -82,11 +259,14 @@ export class Pipeline4ForceImproveSolver extends BaseSolver {
     hdRoutes: HighDensityRoute[]
     totalSteps?: number
     nodeMargin?: number
+    targetSegmentCount?: number
     colorMap?: Record<string, string>
   }) {
     super()
     this.totalSteps = params.totalSteps ?? DEFAULT_TOTAL_STEPS
     this.nodeMargin = params.nodeMargin ?? DEFAULT_NODE_MARGIN
+    this.targetSegmentCount =
+      params.targetSegmentCount ?? DEFAULT_TARGET_SEGMENTS
     this.originalHdRoutes = params.hdRoutes
     this.originalNodeWithPortPoints = params.nodeWithPortPoints
     this.colorMap = params.colorMap ?? {}
@@ -134,6 +314,7 @@ export class Pipeline4ForceImproveSolver extends BaseSolver {
         hdRoutes: this.originalHdRoutes,
         totalSteps: this.totalSteps,
         nodeMargin: this.nodeMargin,
+        targetSegmentCount: this.targetSegmentCount,
         colorMap: this.colorMap,
       },
     ] as const
@@ -163,15 +344,22 @@ export class Pipeline4ForceImproveSolver extends BaseSolver {
 
     if (!this.activeSession) {
       const sampleRoutes = sampleEntry.routeIndexes.map((routeIndex) =>
-        structuredClone(this.originalHdRoutes[routeIndex]!),
+        cloneRoute(this.originalHdRoutes[routeIndex]!),
       )
+      const reattachedSampleRoutes =
+        reattachRoutesToNode(sampleRoutes, sampleEntry.node) ?? sampleRoutes
+      const preprocessedSampleRoutes = simplifyRoutes(
+        clampRoutesToNodeBounds(sampleEntry.node, reattachedSampleRoutes),
+        this.targetSegmentCount,
+      )
+
       this.activeSession = new ForceDirectedImprovementSession(
         {
           center: sampleEntry.node.center,
           width: sampleEntry.node.width,
           height: sampleEntry.node.height,
         },
-        sampleRoutes,
+        preprocessedSampleRoutes,
         this.totalSteps,
       )
       this.visualizedSampleEntry = sampleEntry
