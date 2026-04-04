@@ -82,15 +82,13 @@ test("pipeline4 inserts repair stage after high density and before stitching", (
   const phaseNames = solver.pipelineDef.map((step) => step.solverName)
 
   expect(phaseNames.indexOf("highDensityRouteSolver")).toBeGreaterThanOrEqual(0)
-  expect(phaseNames.indexOf("highDensityRepairSolver")).toBe(
-    phaseNames.indexOf("highDensityRouteSolver") + 1,
-  )
+  expect(phaseNames.indexOf("highDensityRepairSolver")).toBe(-1)
   expect(phaseNames.indexOf("highDensityStitchSolver")).toBe(
-    phaseNames.indexOf("highDensityRepairSolver") + 1,
+    phaseNames.indexOf("highDensityRouteSolver") + 1,
   )
 })
 
-test("pipeline4 stitch stage consumes repaired high density routes", () => {
+test("pipeline4 stitch stage consumes raw high density routes", () => {
   const rawRoute: HighDensityRoute = {
     ...hdRoute,
     route: [
@@ -99,66 +97,20 @@ test("pipeline4 stitch stage consumes repaired high density routes", () => {
       { x: 0.5, y: 0, z: 0 },
     ],
   }
-  const repairedRoute: HighDensityRoute = {
-    ...hdRoute,
-    route: [
-      { x: -0.5, y: 0, z: 0 },
-      { x: 0, y: 0.25, z: 0 },
-      { x: 0.5, y: 0, z: 0 },
-    ],
-  }
-
   const solver = new AutoroutingPipelineSolver4(srj)
   solver.srjWithPointPairs = srj
   solver.highDensityRouteSolver = { routes: [rawRoute] } as any
-  solver.highDensityRepairSolver = {
-    getOutput: () => [repairedRoute],
-  } as any
 
   const stitchStep = solver.pipelineDef.find(
     (step) => step.solverName === "highDensityStitchSolver",
   )
   const [stitchParams] = stitchStep!.getConstructorParams(solver) as any
 
-  expect(stitchParams.hdRoutes).toEqual([repairedRoute])
+  expect(stitchParams.hdRoutes).toEqual([rawRoute])
 })
 
 test(
-  "pipeline4 real case repair changes output routes",
-  () => {
-    const circuit003 = (dataset01 as Record<string, unknown>)
-      .circuit003 as SimpleRouteJson
-    const solver = new AutoroutingPipelineSolver4(circuit003)
-
-    solver.solve()
-
-    expect(solver.solved).toBe(true)
-    expect(solver.failed).toBe(false)
-    expect(solver.highDensityNodePortPoints?.length ?? 0).toBeGreaterThan(0)
-    expect(
-      solver.highDensityRepairSolver?.sampleEntries.length ?? 0,
-    ).toBeGreaterThan(0)
-
-    const inputRoutes = solver.highDensityRouteSolver?.routes ?? []
-    const repairedRoutes = solver.highDensityRepairSolver?.getOutput() ?? []
-
-    expect(repairedRoutes.length).toBe(inputRoutes.length)
-
-    const changedRouteCount = repairedRoutes.filter((route, index) => {
-      const inputRoute = inputRoutes[index]
-      return (
-        JSON.stringify(route.route) !== JSON.stringify(inputRoute?.route) ||
-        JSON.stringify(route.vias) !== JSON.stringify(inputRoute?.vias)
-      )
-    }).length
-
-    expect(changedRouteCount).toBeGreaterThan(0)
-  },
-  { timeout: 60000 },
-)
-
-test(
-  "pipeline4 real case stitch step input equals repaired output",
+  "pipeline4 real case stitch step input equals high density output",
   () => {
     const circuit003 = (dataset01 as Record<string, unknown>)
       .circuit003 as SimpleRouteJson
@@ -170,20 +122,10 @@ test(
       (step) => step.solverName === "highDensityStitchSolver",
     )
     const [stitchParams] = stitchStep!.getConstructorParams(solver) as any
-    const repairedRoutes = solver.highDensityRepairSolver?.getOutput() ?? []
     const rawRoutes = solver.highDensityRouteSolver?.routes ?? []
 
-    expect(stitchParams.hdRoutes).toEqual(repairedRoutes)
+    expect(stitchParams.hdRoutes).toEqual(rawRoutes)
     expect(stitchParams.hdRoutes.length).toBe(rawRoutes.length)
-
-    const changedRouteCount = stitchParams.hdRoutes.filter(
-      (route: HighDensityRoute, index: number) =>
-        JSON.stringify(route.route) !==
-          JSON.stringify(rawRoutes[index]?.route) ||
-        JSON.stringify(route.vias) !== JSON.stringify(rawRoutes[index]?.vias),
-    ).length
-
-    expect(changedRouteCount).toBeGreaterThan(0)
   },
   { timeout: 60000 },
 )
