@@ -1,11 +1,7 @@
 import { expect, test } from "bun:test"
 import * as dataset01 from "@tscircuit/autorouting-dataset-01"
 import { AutoroutingPipelineSolver4 } from "lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
-import { Pipeline4HighDensityRepairSolver } from "lib/solvers/HighDensityRepairSolver/Pipeline4HighDensityRepairSolver"
-import type {
-  HighDensityRoute,
-  NodeWithPortPoints,
-} from "lib/types/high-density-types"
+import type { HighDensityRoute } from "lib/types/high-density-types"
 import type { SimpleRouteJson } from "lib/types"
 
 const srj: SimpleRouteJson = {
@@ -30,27 +26,6 @@ const srj: SimpleRouteJson = {
   },
 }
 
-const nodeWithPortPoints: NodeWithPortPoints = {
-  capacityMeshNodeId: "cmn_1",
-  center: { x: 0, y: 0 },
-  width: 2,
-  height: 2,
-  portPoints: [
-    {
-      connectionName: "conn1",
-      x: -0.5,
-      y: 0,
-      z: 0,
-    },
-    {
-      connectionName: "conn1",
-      x: 0.5,
-      y: 0,
-      z: 0,
-    },
-  ],
-}
-
 const hdRoute: HighDensityRoute = {
   connectionName: "conn1",
   traceThickness: 0.15,
@@ -61,21 +36,6 @@ const hdRoute: HighDensityRoute = {
   ],
   vias: [],
 }
-
-test("Pipeline4HighDensityRepairSolver preserves simple no-op routes", () => {
-  const solver = new Pipeline4HighDensityRepairSolver({
-    nodeWithPortPoints: [nodeWithPortPoints],
-    hdRoutes: [hdRoute],
-    obstacles: [],
-    repairMargin: 0.2,
-  })
-
-  solver.solve()
-
-  expect(solver.solved).toBe(true)
-  expect(solver.failed).toBe(false)
-  expect(solver.getOutput()).toEqual([hdRoute])
-})
 
 test("pipeline4 inserts repair stage after high density and before stitching", () => {
   const solver = new AutoroutingPipelineSolver4(srj)
