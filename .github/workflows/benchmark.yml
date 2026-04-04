@@ -314,7 +314,7 @@ jobs:
           overwrite: true
 
       - name: Post benchmark result comment
-        if: github.event_name == 'issue_comment'
+        if: always() && github.event_name == 'issue_comment' && steps.parse.outputs.status_comment_id != ''
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.TSCIRCUIT_BOT_GITHUB_TOKEN }}
@@ -428,19 +428,31 @@ jobs:
               }
             }
 
-            const prText = fs.existsSync('benchmark-result-pr.txt')
-              ? fs.readFileSync('benchmark-result-pr.txt', 'utf8').trim()
-              : fs.readFileSync('benchmark-result.txt', 'utf8').trim()
-            const mainText = fs.existsSync('benchmark-result-main.txt')
-              ? fs.readFileSync('benchmark-result-main.txt', 'utf8').trim()
-              : '(not available)'
+            const readText = (path) => {
+              if (!fs.existsSync(path)) return null
+              return fs.readFileSync(path, 'utf8').trim()
+            }
+
+            const prText = readText('benchmark-result-pr.txt') ?? readText('benchmark-result.txt')
+            const mainText = readText('benchmark-result-main.txt') ?? '(not available)'
             const prReport = readJson('benchmark-result-pr.json') ?? readJson('benchmark-result.json')
             const mainReport = readJson('benchmark-result-main.json')
             const mainIndex = buildMainIndex(mainReport)
+            const runUrl = `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
+            const jobStatus = '${{ job.status }}'
+            const benchmarkFailed = jobStatus !== 'success'
 
             const body = [
-              '## 🏃 Autorouting Benchmark Results',
+              benchmarkFailed ? '## 🏃 Autorouting Benchmark Failed' : '## 🏃 Autorouting Benchmark Results',
               '',
+              ...(benchmarkFailed
+                ? [
+                    `❌ Benchmark workflow ended with **${jobStatus}** before completion.`,
+                    '',
+                    'This can happen during setup, dependency installation, or benchmark execution.',
+                    '',
+                  ]
+                : []),
               '<details>',
               '<summary>📊 Main Branch Results</summary>',
               '',
@@ -450,10 +462,11 @@ jobs:
               '<details open>',
               '<summary>📊 PR Results</summary>',
               '',
-              ...renderReport(prReport, prText, { includeDelta: true, mainIndex }),
+              ...renderReport(prReport, prText ?? '(benchmark results were not produced)', { includeDelta: true, mainIndex }),
               '</details>',
               '',
-              `📦 Artifact: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`,
+              `🔗 Workflow: [View run](${runUrl})`,
+              `📦 Artifact: ${runUrl}`,
             ].join('\n')
 
             const finalBody = body.length > maxLength ? truncate(body, maxLength) : body
