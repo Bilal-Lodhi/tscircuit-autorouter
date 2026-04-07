@@ -41,45 +41,46 @@ test(
     )
 
     expect(defaultMetadata?.status).toBe("solved")
-    expect(defaultNode.portPoints.length).toBe(4)
+    expect(defaultMetadata?.solverType).toBe(
+      "SingleLayerNoDifferentRootIntersectionsIntraNodeSolver",
+    )
+    expect(defaultNode.portPoints.length).toBe(6)
     expect(
       new Set(defaultNode.portPoints.map((point) => point.connectionName)).size,
     ).toBe(2)
 
     getGlobalInMemoryCache().clearCache()
 
-    const explicit8mmSolver = new AutoroutingPipelineSolver4(
+    const explicit16mmSolver = new AutoroutingPipelineSolver4(
       structuredClone(getCircuit102()),
-      { maxNodeDimension: 8 },
+      { maxNodeDimension: 16 },
     )
-    explicit8mmSolver.solve()
+    explicit16mmSolver.solve()
 
-    expect(explicit8mmSolver.solved).toBe(true)
-    expect(explicit8mmSolver.failed).toBe(false)
+    expect(explicit16mmSolver.solved).toBe(true)
+    expect(explicit16mmSolver.failed).toBe(false)
 
-    const explicit8mmMetadata =
-      explicit8mmSolver.highDensityRouteSolver?.nodeSolveMetadataById.get(
+    const explicit16mmMetadata =
+      explicit16mmSolver.highDensityRouteSolver?.nodeSolveMetadataById.get(
         "cmn_159",
       )
-    const explicit8mmNode = getNodeOrThrow(
-      explicit8mmSolver.highDensityNodePortPoints,
+    const explicit16mmNode = getNodeOrThrow(
+      explicit16mmSolver.highDensityNodePortPoints,
       "cmn_159",
     )
 
-    expect(explicit8mmMetadata?.status).toBe("solved")
-    expect(explicit8mmMetadata?.solverType).toBe(
-      "SingleLayerNoDifferentRootIntersectionsIntraNodeSolver",
-    )
-    expect(explicit8mmNode.portPoints.length).toBeGreaterThan(
-      defaultNode.portPoints.length,
+    expect(explicit16mmMetadata?.status).toBe("solved")
+    expect(explicit16mmMetadata?.solverType).toBe("HighDensitySolverA03")
+    expect(defaultNode.portPoints.length).toBeGreaterThan(
+      explicit16mmNode.portPoints.length,
     )
     expect(
-      new Set(explicit8mmNode.portPoints.map((point) => point.connectionName))
+      new Set(explicit16mmNode.portPoints.map((point) => point.connectionName))
         .size,
     ).toBeGreaterThanOrEqual(2)
     expect(
       JSON.stringify(
-        explicit8mmNode.portPoints.map((point) => point.connectionName),
+        explicit16mmNode.portPoints.map((point) => point.connectionName),
       ),
     ).not.toBe(
       JSON.stringify(
@@ -106,24 +107,31 @@ test(
     )
 
     expect(effort2Metadata?.status).toBe("solved")
-    expect(effort2Node.portPoints.length).toBeLessThan(
-      defaultNode.portPoints.length,
-    )
-    expect(
-      new Set(effort2Node.portPoints.map((point) => point.connectionName)).size,
-    ).toBe(1)
+    expect(effort2Node.portPoints.length).toBe(defaultNode.portPoints.length)
     expect(
       JSON.stringify(
         effort2Node.portPoints.map((point) => point.connectionName),
       ),
     ).not.toBe(
       JSON.stringify(
-        explicit8mmNode.portPoints.map((point) => point.connectionName),
+        defaultNode.portPoints.map((point) => point.connectionName),
+      ),
+    )
+    expect(
+      JSON.stringify(
+        effort2Node.portPoints.map((point) => point.connectionName),
+      ),
+    ).not.toBe(
+      JSON.stringify(
+        explicit16mmNode.portPoints.map((point) => point.connectionName),
       ),
     )
     expect(effort2Metadata?.solverType).toBe(
       "SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost",
     )
+    expect(
+      new Set(effort2Node.portPoints.map((point) => point.connectionName)).size,
+    ).toBe(3)
   },
   { timeout: 120_000 },
 )
