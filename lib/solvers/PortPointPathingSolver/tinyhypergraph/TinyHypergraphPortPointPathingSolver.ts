@@ -60,8 +60,8 @@ const getTinyHyperGraphSolveGraphOptions = (
   const effortScale = getEffortScale(effort)
   return {
     ...TINY_SOLVE_GRAPH_BASE_OPTIONS,
-    RIP_THRESHOLD_RAMP_ATTEMPTS: Math.ceil(10 * effortScale),
-    MAX_ITERATIONS: Math.ceil(10_000_000 * effortScale),
+    RIP_THRESHOLD_RAMP_ATTEMPTS: Math.ceil(12 * effortScale),
+    MAX_ITERATIONS: Math.ceil(11_000_000 * effortScale),
   }
 }
 
