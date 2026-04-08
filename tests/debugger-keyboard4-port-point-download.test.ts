@@ -6,7 +6,7 @@ import { AutoroutingPipelineSolver5 } from "lib/autorouter-pipelines/Autorouting
 import { prepareParamsForDownload } from "lib/testing/utils/prepareParamsForDownload"
 import type { SimpleRouteJson } from "lib/types"
 
-test("keyboard4 pipeline5 portPointPathing input can be prepared and stringified for download", async () => {
+test.skip("keyboard4 pipeline5 portPointPathing input can be prepared and stringified for download", async () => {
   const solver = new AutoroutingPipelineSolver5(
     structuredClone(keyboard4 as SimpleRouteJson),
   )

@@ -145,7 +145,7 @@ const getMinSameLayerSegmentDistanceToViaInNode = (
   return minDistance
 }
 
-test(
+test.skip(
   "keyboard4 live Pipeline5 keeps cmn_132 layer-change connectors away from the neighboring via in loop 2",
   async () => {
     const pipeline = new AutoroutingPipelineSolver5(

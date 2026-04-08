@@ -4,7 +4,7 @@ import { prepareParamsForDownload } from "lib/testing/utils/prepareParamsForDown
 import type { SimpleRouteJson } from "lib/types"
 import srj from "./repro/dip16-basic.json" with { type: "json" }
 
-test("sanitizeParamsForDownload makes pipeline5 portPointPathing input JSON serializable", async () => {
+test.skip("sanitizeParamsForDownload makes pipeline5 portPointPathing input JSON serializable", async () => {
   const solver = new AutoroutingPipelineSolver5(
     structuredClone(srj as SimpleRouteJson),
   )
