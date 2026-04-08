@@ -275,7 +275,7 @@ export const AutoroutingPipelineDebugger = ({
   const [selectedPipelineId, setSelectedPipelineIdState] = useState<PipelineId>(
     () =>
       (localStorage.getItem(PIPELINE_STORAGE_KEY) as PipelineId) ||
-      "AutoroutingPipelineSolver2_PortPointPathing",
+      "AutoroutingPipelineSolver4",
   )
 
   const setSelectedPipelineId = (newPipelineId: PipelineId) => {
@@ -379,7 +379,7 @@ export const AutoroutingPipelineDebugger = ({
     // Read directly from localStorage for initial render to avoid closure issues
     const initialPipelineId =
       (localStorage.getItem(PIPELINE_STORAGE_KEY) as PipelineId) ||
-      "AutoroutingPipelineSolver2_PortPointPathing"
+      "AutoroutingPipelineSolver4"
     const initialCacheName =
       (localStorage.getItem("cacheProviderName") as CacheProviderName) ?? "None"
     const initialCacheProvider =
@@ -396,8 +396,7 @@ export const AutoroutingPipelineDebugger = ({
 
     if (!SolverClass) {
       // Fallback to default pipeline if stored ID is invalid
-      const fallbackClass =
-        PIPELINE_SOLVERS.AutoroutingPipelineSolver2_PortPointPathing
+      const fallbackClass = PIPELINE_SOLVERS.AutoroutingPipelineSolver4
       return createSolverProp
         ? createSolverProp(initialSrj, {
             cacheProvider: initialCacheProvider,
