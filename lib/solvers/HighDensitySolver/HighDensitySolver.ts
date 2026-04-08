@@ -7,12 +7,79 @@ import { mergeRouteSegments } from "lib/utils/mergeRouteSegments"
 import type {
   HighDensityIntraNodeRoute,
   NodeWithPortPoints,
+  PortPoint,
 } from "../../types/high-density-types"
 import { BaseSolver } from "../BaseSolver"
 import { HyperSingleIntraNodeSolver } from "../HyperHighDensitySolver/HyperSingleIntraNodeSolver"
 import { safeTransparentize } from "../colors"
 import { CachedIntraNodeRouteSolver } from "./CachedIntraNodeRouteSolver"
 import { IntraNodeRouteSolver } from "./IntraNodeSolver"
+
+const ENDPOINT_MATCH_TOLERANCE = 1e-6
+
+const pointsMatch = (
+  a: { x: number; y: number; z: number },
+  b: { x: number; y: number; z: number },
+) =>
+  Math.abs(a.x - b.x) <= ENDPOINT_MATCH_TOLERANCE &&
+  Math.abs(a.y - b.y) <= ENDPOINT_MATCH_TOLERANCE &&
+  Math.abs(a.z - b.z) <= ENDPOINT_MATCH_TOLERANCE
+
+const getMatchingEndpointPortPointId = (
+  route: HighDensityIntraNodeRoute,
+  endpoint: { x: number; y: number; z: number },
+  portPoints: PortPoint[],
+) => {
+  const matches = portPoints.filter((portPoint) => {
+    if (portPoint.connectionName !== route.connectionName) {
+      return false
+    }
+    if (
+      route.rootConnectionName !== undefined &&
+      portPoint.rootConnectionName !== route.rootConnectionName
+    ) {
+      return false
+    }
+    return pointsMatch(endpoint, portPoint)
+  })
+
+  if (matches.length === 0) return undefined
+
+  const matchesWithIds = matches.filter((portPoint) => portPoint.portPointId)
+  if (matchesWithIds.length > 0) {
+    return matchesWithIds[0]!.portPointId
+  }
+
+  return matches[0]!.portPointId
+}
+
+const annotateRouteWithEndpointPortPointIds = (
+  route: HighDensityIntraNodeRoute,
+  nodeWithPortPoints: NodeWithPortPoints,
+): HighDensityIntraNodeRoute => {
+  if (route.route.length === 0) return route
+
+  const startPortPointId = getMatchingEndpointPortPointId(
+    route,
+    route.route[0]!,
+    nodeWithPortPoints.portPoints,
+  )
+  const endPortPointId = getMatchingEndpointPortPointId(
+    route,
+    route.route[route.route.length - 1]!,
+    nodeWithPortPoints.portPoints,
+  )
+
+  if (!startPortPointId && !endPortPointId) {
+    return route
+  }
+
+  return {
+    ...route,
+    ...(startPortPointId ? { startPortPointId } : {}),
+    ...(endPortPointId ? { endPortPointId } : {}),
+  }
+}
 
 export class HighDensitySolver extends BaseSolver {
   override getSolverName(): string {
@@ -221,7 +288,14 @@ export class HighDensitySolver extends BaseSolver {
     if (this.activeSubSolver) {
       this.activeSubSolver.step()
       if (this.activeSubSolver.solved) {
-        this.routes.push(...this.activeSubSolver.solvedRoutes)
+        this.routes.push(
+          ...this.activeSubSolver.solvedRoutes.map((route) =>
+            annotateRouteWithEndpointPortPointIds(
+              route,
+              this.activeSubSolver!.nodeWithPortPoints,
+            ),
+          ),
+        )
         this.recordNodeSolveMetadata(this.activeSubSolver, "solved")
         this.recordSolvedNodeStats(
           this.activeSubSolver,

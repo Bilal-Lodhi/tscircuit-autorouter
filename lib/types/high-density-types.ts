@@ -33,6 +33,10 @@ export type NodeWithPortPoints = {
 export type HighDensityIntraNodeRoute = {
   connectionName: string
   rootConnectionName?: string
+  /** Port point id for the first route endpoint, when known. */
+  startPortPointId?: string
+  /** Port point id for the last route endpoint, when known. */
+  endPortPointId?: string
   traceThickness: number
   viaDiameter: number
   route: Array<{ x: number; y: number; z: number; insideJumperPad?: boolean }>

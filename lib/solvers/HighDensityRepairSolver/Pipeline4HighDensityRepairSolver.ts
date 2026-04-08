@@ -96,6 +96,7 @@ const fromRepairRoute = (
   route: RepairHdRoute,
   fallbackRoute: HighDensityRoute,
 ): HighDensityRoute => ({
+  ...fallbackRoute,
   connectionName: route.connectionName ?? fallbackRoute.connectionName,
   rootConnectionName:
     route.rootConnectionName ?? fallbackRoute.rootConnectionName,

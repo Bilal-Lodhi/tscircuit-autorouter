@@ -1,5 +1,3 @@
-import { distance } from "@tscircuit/math-utils"
-import { ConnectivityMap } from "connectivity-map"
 import { GraphicsObject } from "graphics-debug"
 import { SimpleRouteConnection } from "lib/types"
 import { HighDensityIntraNodeRoute } from "lib/types/high-density-types"
@@ -8,22 +6,60 @@ import { getJumpersGraphics } from "lib/utils/getJumperGraphics"
 import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
 import { BaseSolver } from "../BaseSolver"
 import { safeTransparentize } from "../colors"
-import { SingleHighDensityRouteStitchSolver } from "./SingleHighDensityRouteStitchSolver"
+
+type RoutePoint = { x: number; y: number; z: number }
+
+type RouteSegmentDescriptor = {
+  route: HighDensityIntraNodeRoute
+  startKey: string
+  endKey: string
+  startPoint: RoutePoint
+  endPoint: RoutePoint
+}
+
+type OrderedRouteSegment = {
+  route: HighDensityIntraNodeRoute
+  reverse: boolean
+}
 
 export type UnsolvedRoute = {
   connectionName: string
   hdRoutes: HighDensityIntraNodeRoute[]
-  start: { x: number; y: number; z: number }
-  end: { x: number; y: number; z: number }
+  start?: RoutePoint
+  end?: RoutePoint
 }
 
-const roundedPointHash = (p: { x: number; y: number; z: number }) =>
-  `${Math.round(p.x * 100)},${Math.round(p.y * 100)},${Math.round(p.z * 100)}`
+const POINT_MATCH_TOLERANCE = 1e-3
 
-const getEndpointHashes = (route: HighDensityIntraNodeRoute) => ({
-  startHash: roundedPointHash(route.route[0]!),
-  endHash: roundedPointHash(route.route[route.route.length - 1]!),
-})
+const roundedPointHash = (p: RoutePoint) =>
+  `${Math.round(p.x * 1000)},${Math.round(p.y * 1000)},${Math.round(p.z * 1000)}`
+
+const pointsMatch = (a: RoutePoint, b: RoutePoint) =>
+  Math.abs(a.x - b.x) <= POINT_MATCH_TOLERANCE &&
+  Math.abs(a.y - b.y) <= POINT_MATCH_TOLERANCE &&
+  Math.abs(a.z - b.z) <= POINT_MATCH_TOLERANCE
+
+const pointsMatchXY = (
+  a: Pick<RoutePoint, "x" | "y">,
+  b: Pick<RoutePoint, "x" | "y">,
+) =>
+  Math.abs(a.x - b.x) <= POINT_MATCH_TOLERANCE &&
+  Math.abs(a.y - b.y) <= POINT_MATCH_TOLERANCE
+
+const getEndpointKey = (
+  route: HighDensityIntraNodeRoute,
+  side: "start" | "end",
+) => {
+  const portPointId =
+    side === "start" ? route.startPortPointId : route.endPortPointId
+  if (portPointId) {
+    return `port:${portPointId}`
+  }
+
+  const endpoint =
+    side === "start" ? route.route[0]! : route.route[route.route.length - 1]!
+  return `point:${roundedPointHash(endpoint)}`
+}
 
 export class MultipleHighDensityRouteStitchSolver extends BaseSolver {
   override getSolverName(): string {
@@ -31,104 +67,10 @@ export class MultipleHighDensityRouteStitchSolver extends BaseSolver {
   }
 
   unsolvedRoutes: UnsolvedRoute[]
-  activeSolver: SingleHighDensityRouteStitchSolver | null = null
   mergedHdRoutes: HighDensityIntraNodeRoute[] = []
   colorMap: Record<string, string> = {}
   defaultTraceThickness: number
   defaultViaDiameter: number
-
-  private getClosestEndpointHash(
-    routes: HighDensityIntraNodeRoute[],
-    point: { x: number; y: number; z: number },
-  ) {
-    let bestHash: string | null = null
-    let bestDist = Infinity
-
-    for (const route of routes) {
-      const endpoints = [route.route[0]!, route.route[route.route.length - 1]!]
-      for (const endpoint of endpoints) {
-        const dist = distance(point, endpoint)
-        if (dist < bestDist) {
-          bestDist = dist
-          bestHash = roundedPointHash(endpoint)
-        }
-      }
-    }
-
-    return bestHash
-  }
-
-  private selectRoutesAlongEndpointPath(
-    hdRoutes: HighDensityIntraNodeRoute[],
-    start: { x: number; y: number; z: number },
-    end: { x: number; y: number; z: number },
-  ) {
-    if (hdRoutes.length <= 2) return hdRoutes
-
-    const startHash = this.getClosestEndpointHash(hdRoutes, start)
-    const endHash = this.getClosestEndpointHash(hdRoutes, end)
-
-    if (!startHash || !endHash || startHash === endHash) return hdRoutes
-
-    const adjacency = new Map<
-      string,
-      Array<{ nextHash: string; routeIndex: number }>
-    >()
-
-    for (let i = 0; i < hdRoutes.length; i++) {
-      const { startHash: routeStartHash, endHash: routeEndHash } =
-        getEndpointHashes(hdRoutes[i]!)
-
-      const startEntries = adjacency.get(routeStartHash) ?? []
-      startEntries.push({ nextHash: routeEndHash, routeIndex: i })
-      adjacency.set(routeStartHash, startEntries)
-
-      const endEntries = adjacency.get(routeEndHash) ?? []
-      endEntries.push({ nextHash: routeStartHash, routeIndex: i })
-      adjacency.set(routeEndHash, endEntries)
-    }
-
-    const queue = [startHash]
-    const visitedHashes = new Set<string>([startHash])
-    const prevByHash = new Map<
-      string,
-      { prevHash: string; routeIndex: number }
-    >()
-
-    while (queue.length > 0) {
-      const currentHash = queue.shift()!
-      if (currentHash === endHash) break
-
-      for (const edge of adjacency.get(currentHash) ?? []) {
-        if (visitedHashes.has(edge.nextHash)) continue
-        visitedHashes.add(edge.nextHash)
-        prevByHash.set(edge.nextHash, {
-          prevHash: currentHash,
-          routeIndex: edge.routeIndex,
-        })
-        queue.push(edge.nextHash)
-      }
-    }
-
-    if (!visitedHashes.has(endHash)) return hdRoutes
-
-    const selectedRouteIndexes = new Set<number>()
-    let cursorHash = endHash
-    while (cursorHash !== startHash) {
-      const prev = prevByHash.get(cursorHash)
-      if (!prev) return hdRoutes
-      selectedRouteIndexes.add(prev.routeIndex)
-      cursorHash = prev.prevHash
-    }
-
-    if (selectedRouteIndexes.size === 0) return hdRoutes
-
-    const selectedRoutes = hdRoutes.filter((_, index) =>
-      selectedRouteIndexes.has(index),
-    )
-
-    return selectedRoutes
-  }
 
   constructor(params: {
     connections: SimpleRouteConnection[]
@@ -145,191 +87,399 @@ export class MultipleHighDensityRouteStitchSolver extends BaseSolver {
     this.defaultViaDiameter =
       firstRoute?.viaDiameter ?? params.defaultViaDiameter ?? 0.3
 
-    const routeIslandConnectivityMap = new ConnectivityMap({})
-    const routeIslandConnections: Array<string[]> = []
-    const routeIslands = []
-
-    const pointHashCounts = new Map<string, number>()
-
-    for (let i = 0; i < params.hdRoutes.length; i++) {
-      const hdRoute = params.hdRoutes[i]
-      const start = hdRoute.route[0]
-      const end = hdRoute.route[hdRoute.route.length - 1]
-      routeIslandConnections.push([
-        `route_island_${i}`,
-        `${hdRoute.connectionName}:${roundedPointHash(start)}`,
-        `${hdRoute.connectionName}:${roundedPointHash(end)}`,
-      ])
+    const routesByConnection = new Map<string, HighDensityIntraNodeRoute[]>()
+    for (const hdRoute of params.hdRoutes) {
+      const routes = routesByConnection.get(hdRoute.connectionName) ?? []
+      routes.push(hdRoute)
+      routesByConnection.set(hdRoute.connectionName, routes)
     }
-    routeIslandConnectivityMap.addConnections(routeIslandConnections)
-    for (const routeIslandConnection of routeIslandConnections) {
-      for (const pointHash of routeIslandConnection.slice(1)) {
-        pointHashCounts.set(
-          pointHash,
-          (pointHashCounts.get(pointHash) ?? 0) + 1,
+
+    this.unsolvedRoutes = Array.from(routesByConnection.entries()).map(
+      ([connectionName, hdRoutes]) => {
+        const connection = params.connections.find(
+          (candidate) => candidate.name === connectionName,
         )
-      }
-    }
 
-    this.unsolvedRoutes = []
-
-    const uniqueNets = Array.from(
-      new Set(Object.values(routeIslandConnectivityMap.idToNetMap)),
-    )
-
-    for (const netName of uniqueNets) {
-      const netMembers =
-        routeIslandConnectivityMap.getIdsConnectedToNet(netName)
-
-      const hdRoutes = params.hdRoutes.filter((r, i) =>
-        netMembers.includes(`route_island_${i}`),
-      )
-      if (hdRoutes.length === 0) continue
-
-      const connection = params.connections.find(
-        (c) => c.name === hdRoutes[0].connectionName,
-      )!
-
-      const possibleEndpoints1 = hdRoutes.flatMap((r) => [
-        r.route[0],
-        r.route[r.route.length - 1],
-      ])
-
-      const possibleEndpoints2 = []
-      for (const possibleEndpoint1 of possibleEndpoints1) {
-        const pointHash = `${hdRoutes[0].connectionName}:${roundedPointHash(possibleEndpoint1)}`
-        if (pointHashCounts.get(pointHash) === 1) {
-          possibleEndpoints2.push(possibleEndpoint1)
-        }
-      }
-      // Not sure why this happens
-      // If removing, make sure off-board-assignable2 doesn't break
-      if (possibleEndpoints2.length === 0) {
-        console.log("no possible endpoints, can't stitch")
-        continue
-      }
-
-      let start: { x: number; y: number; z: number }
-      let end: { x: number; y: number; z: number }
-
-      if (possibleEndpoints2.length !== 2) {
-        start = {
-          ...connection.pointsToConnect[0],
-          z: mapLayerNameToZ(
-            getConnectionPointLayer(connection.pointsToConnect[0]),
-            params.layerCount,
-          ),
-        }
-        end = {
-          ...connection.pointsToConnect[1],
-          z: mapLayerNameToZ(
-            getConnectionPointLayer(connection.pointsToConnect[1]),
-            params.layerCount,
-          ),
-        }
-      } else {
-        start = possibleEndpoints2[0]
-        end = possibleEndpoints2[1]
-
-        if (
-          distance(start, connection.pointsToConnect[1]) <
-          distance(end, connection.pointsToConnect[0])
-        ) {
-          ;[start, end] = [end, start]
-        }
-      }
-
-      const selectedHdRoutes = this.selectRoutesAlongEndpointPath(
-        hdRoutes,
-        start,
-        end,
-      )
-
-      this.unsolvedRoutes.push({
-        connectionName: hdRoutes[0].connectionName,
-        hdRoutes: selectedHdRoutes,
-        start,
-        end,
-      })
-    }
-
-    const unsolvedRoutesByConnection = new Map<string, UnsolvedRoute[]>()
-    for (const unsolvedRoute of this.unsolvedRoutes) {
-      const routes = unsolvedRoutesByConnection.get(
-        unsolvedRoute.connectionName,
-      )
-      if (routes) {
-        routes.push(unsolvedRoute)
-      } else {
-        unsolvedRoutesByConnection.set(unsolvedRoute.connectionName, [
-          unsolvedRoute,
-        ])
-      }
-    }
-
-    this.unsolvedRoutes = Array.from(
-      unsolvedRoutesByConnection.entries(),
-    ).flatMap(([connectionName, unsolvedRoutes]) => {
-      const hasDegenerateRoute = unsolvedRoutes.some((unsolvedRoute) =>
-        unsolvedRoute.hdRoutes.some((hdRoute) => hdRoute.route.length < 2),
-      )
-
-      if (!hasDegenerateRoute) {
-        return unsolvedRoutes
-      }
-
-      const connection = params.connections.find(
-        (c) => c.name === connectionName,
-      )
-      if (!connection) return unsolvedRoutes
-
-      const start = {
-        ...connection.pointsToConnect[0],
-        z: mapLayerNameToZ(
-          getConnectionPointLayer(connection.pointsToConnect[0]),
-          params.layerCount,
-        ),
-      }
-      const end = {
-        ...connection.pointsToConnect[1],
-        z: mapLayerNameToZ(
-          getConnectionPointLayer(connection.pointsToConnect[1]),
-          params.layerCount,
-        ),
-      }
-
-      const hdRoutes = unsolvedRoutes.flatMap(
-        (unsolvedRoute) => unsolvedRoute.hdRoutes,
-      )
-
-      return [
-        {
+        return {
           connectionName,
-          hdRoutes: this.selectRoutesAlongEndpointPath(hdRoutes, start, end),
-          start,
-          end,
-        },
-      ]
-    })
+          hdRoutes,
+          ...(connection
+            ? {
+                start: {
+                  ...connection.pointsToConnect[0],
+                  z: mapLayerNameToZ(
+                    getConnectionPointLayer(connection.pointsToConnect[0]),
+                    params.layerCount,
+                  ),
+                },
+                end: {
+                  ...connection.pointsToConnect[1],
+                  z: mapLayerNameToZ(
+                    getConnectionPointLayer(connection.pointsToConnect[1]),
+                    params.layerCount,
+                  ),
+                },
+              }
+            : {}),
+        }
+      },
+    )
 
     this.MAX_ITERATIONS = 100e3
   }
 
-  _step() {
-    if (this.activeSolver) {
-      this.activeSolver.step()
-      if (this.activeSolver.solved) {
-        if (this.activeSolver instanceof SingleHighDensityRouteStitchSolver) {
-          this.mergedHdRoutes.push(this.activeSolver.mergedHdRoute)
-        }
-        this.activeSolver = null
-      } else if (this.activeSolver.failed) {
-        this.failed = true
-        this.error = this.activeSolver.error
-      }
-      return
+  private createDirectRoute(
+    unsolvedRoute: UnsolvedRoute,
+  ): HighDensityIntraNodeRoute | null {
+    if (!unsolvedRoute.start || !unsolvedRoute.end) {
+      return null
     }
 
+    const route: RoutePoint[] = [
+      { ...unsolvedRoute.start },
+      ...(unsolvedRoute.start.z !== unsolvedRoute.end.z
+        ? [{ x: unsolvedRoute.start.x, y: unsolvedRoute.start.y, z: unsolvedRoute.end.z }]
+        : []),
+      { ...unsolvedRoute.end },
+    ].filter(
+      (point, index, points) => index === 0 || !pointsMatch(point, points[index - 1]!),
+    )
+
+    return {
+      connectionName: unsolvedRoute.connectionName,
+      traceThickness: this.defaultTraceThickness,
+      viaDiameter: this.defaultViaDiameter,
+      route,
+      vias:
+        unsolvedRoute.start.z !== unsolvedRoute.end.z
+          ? [{ x: unsolvedRoute.start.x, y: unsolvedRoute.start.y }]
+          : [],
+      jumpers: [],
+    }
+  }
+
+  private createSegmentDescriptors(
+    hdRoutes: HighDensityIntraNodeRoute[],
+  ): RouteSegmentDescriptor[] {
+    return hdRoutes
+      .filter((route) => route.route.length > 0)
+      .map((route) => ({
+        route,
+        startKey: getEndpointKey(route, "start"),
+        endKey: getEndpointKey(route, "end"),
+        startPoint: route.route[0]!,
+        endPoint: route.route[route.route.length - 1]!,
+      }))
+  }
+
+  private buildEndpointAdjacency(
+    segments: RouteSegmentDescriptor[],
+  ): Map<string, number[]> {
+    const adjacency = new Map<string, number[]>()
+
+    const addAdjacency = (key: string, segmentIndex: number) => {
+      const indexes = adjacency.get(key) ?? []
+      indexes.push(segmentIndex)
+      adjacency.set(key, indexes)
+    }
+
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i]!
+      addAdjacency(segment.startKey, i)
+      if (segment.endKey !== segment.startKey) {
+        addAdjacency(segment.endKey, i)
+      }
+    }
+
+    return adjacency
+  }
+
+  private getConnectedComponents(
+    segments: RouteSegmentDescriptor[],
+  ): RouteSegmentDescriptor[][] {
+    const adjacency = this.buildEndpointAdjacency(segments)
+    const unvisited = new Set(segments.map((_, index) => index))
+    const components: RouteSegmentDescriptor[][] = []
+
+    while (unvisited.size > 0) {
+      const seedIndex = unvisited.values().next().value as number
+      const queue = [seedIndex]
+      const componentIndexes: number[] = []
+      unvisited.delete(seedIndex)
+
+      while (queue.length > 0) {
+        const currentIndex = queue.pop()!
+        componentIndexes.push(currentIndex)
+
+        const segment = segments[currentIndex]!
+        for (const key of [segment.startKey, segment.endKey]) {
+          for (const neighborIndex of adjacency.get(key) ?? []) {
+            if (!unvisited.has(neighborIndex)) continue
+            unvisited.delete(neighborIndex)
+            queue.push(neighborIndex)
+          }
+        }
+      }
+
+      components.push(componentIndexes.map((index) => segments[index]!))
+    }
+
+    return components
+  }
+
+  private componentHasEndpointMatching(
+    component: RouteSegmentDescriptor[],
+    key: string,
+    point: RoutePoint,
+  ) {
+    return component.some(
+      (segment) =>
+        (segment.startKey === key && pointsMatchXY(segment.startPoint, point)) ||
+        (segment.endKey === key && pointsMatchXY(segment.endPoint, point)),
+    )
+  }
+
+  private getPreferredStartKey(
+    component: RouteSegmentDescriptor[],
+    preferredStart?: RoutePoint,
+  ) {
+    const degreeByKey = new Map<string, number>()
+    for (const segment of component) {
+      if (segment.startKey === segment.endKey) {
+        degreeByKey.set(
+          segment.startKey,
+          (degreeByKey.get(segment.startKey) ?? 0) + 2,
+        )
+        continue
+      }
+
+      degreeByKey.set(
+        segment.startKey,
+        (degreeByKey.get(segment.startKey) ?? 0) + 1,
+      )
+      degreeByKey.set(segment.endKey, (degreeByKey.get(segment.endKey) ?? 0) + 1)
+    }
+
+    const endpointKeys = Array.from(degreeByKey.entries())
+      .filter(([, degree]) => degree === 1)
+      .map(([key]) => key)
+
+    if (preferredStart) {
+      const matchingEndpointKey = endpointKeys.find((key) =>
+        this.componentHasEndpointMatching(component, key, preferredStart),
+      )
+      if (matchingEndpointKey) {
+        return matchingEndpointKey
+      }
+    }
+
+    return endpointKeys[0] ?? component[0]?.startKey
+  }
+
+  private selectNextSegmentIndex(
+    candidateIndexes: number[],
+    component: RouteSegmentDescriptor[],
+    adjacency: Map<string, number[]>,
+    unusedIndexes: Set<number>,
+    currentKey: string,
+  ) {
+    if (candidateIndexes.length === 1) {
+      return candidateIndexes[0]!
+    }
+
+    const terminalCandidate = candidateIndexes.find((segmentIndex) => {
+      const segment = component[segmentIndex]!
+      const otherKey =
+        segment.startKey === currentKey ? segment.endKey : segment.startKey
+      const remainingNeighborCount = (adjacency.get(otherKey) ?? []).filter(
+        (neighborIndex) => unusedIndexes.has(neighborIndex) && neighborIndex !== segmentIndex,
+      ).length
+      return remainingNeighborCount === 0
+    })
+
+    return terminalCandidate ?? candidateIndexes[0]!
+  }
+
+  private orderComponentRoutes(
+    component: RouteSegmentDescriptor[],
+    preferredStart?: RoutePoint,
+  ): OrderedRouteSegment[] {
+    const adjacency = this.buildEndpointAdjacency(component)
+    const unusedIndexes = new Set(component.map((_, index) => index))
+    const orderedSegments: OrderedRouteSegment[] = []
+    let currentKey = this.getPreferredStartKey(component, preferredStart)
+
+    const flushSelfLoopsAtCurrentKey = () => {
+      if (!currentKey) return
+
+      for (const segmentIndex of adjacency.get(currentKey) ?? []) {
+        if (!unusedIndexes.has(segmentIndex)) continue
+        const segment = component[segmentIndex]!
+        if (segment.startKey !== segment.endKey) continue
+        unusedIndexes.delete(segmentIndex)
+        orderedSegments.push({
+          route: segment.route,
+          reverse: false,
+        })
+      }
+    }
+
+    flushSelfLoopsAtCurrentKey()
+
+    while (unusedIndexes.size > 0) {
+      if (!currentKey) {
+        const nextIndex = unusedIndexes.values().next().value as number
+        currentKey = component[nextIndex]!.startKey
+        flushSelfLoopsAtCurrentKey()
+      }
+
+      const candidateIndexes = (adjacency.get(currentKey) ?? []).filter(
+        (segmentIndex) =>
+          unusedIndexes.has(segmentIndex) &&
+          component[segmentIndex]!.startKey !== component[segmentIndex]!.endKey,
+      )
+
+      if (candidateIndexes.length === 0) {
+        const nextUnusedIndex = Array.from(unusedIndexes).find(
+          (segmentIndex) =>
+            component[segmentIndex]!.startKey !== component[segmentIndex]!.endKey,
+        )
+
+        if (nextUnusedIndex === undefined) {
+          flushSelfLoopsAtCurrentKey()
+          break
+        }
+
+        currentKey = component[nextUnusedIndex]!.startKey
+        flushSelfLoopsAtCurrentKey()
+        continue
+      }
+
+      const nextSegmentIndex = this.selectNextSegmentIndex(
+        candidateIndexes,
+        component,
+        adjacency,
+        unusedIndexes,
+        currentKey,
+      )
+      const nextSegment = component[nextSegmentIndex]!
+      unusedIndexes.delete(nextSegmentIndex)
+
+      const reverse = nextSegment.endKey === currentKey
+      orderedSegments.push({
+        route: nextSegment.route,
+        reverse,
+      })
+
+      currentKey = reverse ? nextSegment.startKey : nextSegment.endKey
+      flushSelfLoopsAtCurrentKey()
+    }
+
+    return orderedSegments
+  }
+
+  private orientMergedRouteToConnection(
+    route: HighDensityIntraNodeRoute,
+    start?: RoutePoint,
+    end?: RoutePoint,
+  ) {
+    if (!start || !end || route.route.length === 0) {
+      return route
+    }
+
+    const firstPoint = route.route[0]!
+    const lastPoint = route.route[route.route.length - 1]!
+    const shouldReverse =
+      (pointsMatchXY(lastPoint, start) && !pointsMatchXY(firstPoint, start)) ||
+      (pointsMatchXY(firstPoint, end) && !pointsMatchXY(lastPoint, end))
+
+    if (!shouldReverse) {
+      return route
+    }
+
+    return {
+      ...route,
+      route: [...route.route].reverse(),
+    }
+  }
+
+  private stitchComponent(
+    unsolvedRoute: UnsolvedRoute,
+    component: RouteSegmentDescriptor[],
+  ): HighDensityIntraNodeRoute | null {
+    const orderedSegments = this.orderComponentRoutes(component, unsolvedRoute.start)
+
+    if (orderedSegments.length === 0) {
+      return null
+    }
+
+    const mergedRoutePoints: RoutePoint[] = []
+    const mergedVias: Array<{ x: number; y: number }> = []
+    const mergedJumpers: NonNullable<HighDensityIntraNodeRoute["jumpers"]> = []
+
+    for (const orderedSegment of orderedSegments) {
+      const segmentPoints = orderedSegment.reverse
+        ? [...orderedSegment.route.route].reverse()
+        : orderedSegment.route.route
+
+      if (segmentPoints.length === 0) continue
+
+      if (mergedRoutePoints.length === 0) {
+        mergedRoutePoints.push(...segmentPoints)
+      } else {
+        const lastMergedPoint = mergedRoutePoints[mergedRoutePoints.length - 1]!
+        const [firstSegmentPoint, ...remainingSegmentPoints] = segmentPoints
+        mergedRoutePoints.push(
+          ...(pointsMatch(lastMergedPoint, firstSegmentPoint)
+            ? remainingSegmentPoints
+            : segmentPoints),
+        )
+      }
+
+      mergedVias.push(...orderedSegment.route.vias)
+      if (orderedSegment.route.jumpers) {
+        mergedJumpers.push(...orderedSegment.route.jumpers)
+      }
+    }
+
+    return this.orientMergedRouteToConnection(
+      {
+        connectionName: unsolvedRoute.connectionName,
+        rootConnectionName:
+          orderedSegments[0]?.route.rootConnectionName ??
+          component[0]?.route.rootConnectionName,
+        traceThickness:
+          orderedSegments[0]?.route.traceThickness ?? this.defaultTraceThickness,
+        viaDiameter:
+          orderedSegments[0]?.route.viaDiameter ?? this.defaultViaDiameter,
+        route: mergedRoutePoints,
+        vias: mergedVias,
+        jumpers: mergedJumpers,
+      },
+      unsolvedRoute.start,
+      unsolvedRoute.end,
+    )
+  }
+
+  private stitchRouteGroup(
+    unsolvedRoute: UnsolvedRoute,
+  ): HighDensityIntraNodeRoute[] {
+    if (unsolvedRoute.hdRoutes.length === 0) {
+      const directRoute = this.createDirectRoute(unsolvedRoute)
+      return directRoute ? [directRoute] : []
+    }
+
+    const segments = this.createSegmentDescriptors(unsolvedRoute.hdRoutes)
+    if (segments.length === 0) {
+      return []
+    }
+
+    return this.getConnectedComponents(segments)
+      .map((component) => this.stitchComponent(unsolvedRoute, component))
+      .filter((route): route is HighDensityIntraNodeRoute => Boolean(route))
+  }
+
+  _step() {
     const unsolvedRoute = this.unsolvedRoutes.pop()
 
     if (!unsolvedRoute) {
@@ -337,15 +487,7 @@ export class MultipleHighDensityRouteStitchSolver extends BaseSolver {
       return
     }
 
-    this.activeSolver = new SingleHighDensityRouteStitchSolver({
-      connectionName: unsolvedRoute.connectionName,
-      hdRoutes: unsolvedRoute.hdRoutes,
-      start: unsolvedRoute.start,
-      end: unsolvedRoute.end,
-      colorMap: this.colorMap,
-      defaultTraceThickness: this.defaultTraceThickness,
-      defaultViaDiameter: this.defaultViaDiameter,
-    })
+    this.mergedHdRoutes.push(...this.stitchRouteGroup(unsolvedRoute))
   }
 
   visualize(): GraphicsObject {
@@ -357,43 +499,14 @@ export class MultipleHighDensityRouteStitchSolver extends BaseSolver {
       title: "Multiple High Density Route Stitch Solver",
     }
 
-    // Visualize the active solver if one exists
-    if (this.activeSolver) {
-      // Combine visualizations from the active solver
-      const activeSolverGraphics = this.activeSolver.visualize()
-
-      // Merge points
-      if (activeSolverGraphics.points?.length) {
-        graphics.points?.push(...activeSolverGraphics.points)
-      }
-
-      // Merge lines
-      if (activeSolverGraphics.lines?.length) {
-        graphics.lines?.push(...activeSolverGraphics.lines)
-      }
-
-      // Merge circles
-      if (activeSolverGraphics.circles?.length) {
-        graphics.circles?.push(...activeSolverGraphics.circles)
-      }
-
-      // Merge rects if they exist
-      if (activeSolverGraphics.rects?.length) {
-        if (!graphics.rects) graphics.rects = []
-        graphics.rects.push(...activeSolverGraphics.rects)
-      }
-    }
-
-    // Visualize all merged HD routes that have been solved
     for (const [i, mergedRoute] of this.mergedHdRoutes.entries()) {
       const solvedColor =
         this.colorMap[mergedRoute.connectionName] ??
-        `hsl(120, 100%, ${40 + ((i * 10) % 40)}%)` // Different shades of green
+        `hsl(120, 100%, ${40 + ((i * 10) % 40)}%)`
 
-      // Visualize the route path segment by segment
       for (let j = 0; j < mergedRoute.route.length - 1; j++) {
-        const p1 = mergedRoute.route[j]
-        const p2 = mergedRoute.route[j + 1]
+        const p1 = mergedRoute.route[j]!
+        const p2 = mergedRoute.route[j + 1]!
         const segmentColor =
           p1.z !== 0 ? safeTransparentize(solvedColor, 0.5) : solvedColor
 
@@ -407,7 +520,6 @@ export class MultipleHighDensityRouteStitchSolver extends BaseSolver {
         })
       }
 
-      // Visualize route points (apply transparency based on Z)
       for (const point of mergedRoute.route) {
         const pointColor =
           point.z !== 0 ? safeTransparentize(solvedColor, 0.5) : solvedColor
@@ -418,17 +530,14 @@ export class MultipleHighDensityRouteStitchSolver extends BaseSolver {
         })
       }
 
-      // Visualize vias in the merged route (Vias inherently connect layers, keep solid for now)
-      // TODO: Consider if via transparency should depend on connected layers
       for (const via of mergedRoute.vias) {
         graphics.circles?.push({
           center: { x: via.x, y: via.y },
           radius: mergedRoute.viaDiameter / 2,
-          fill: solvedColor, // Keep vias solid color for visibility
+          fill: solvedColor,
         })
       }
 
-      // Visualize jumpers in the merged route
       if (mergedRoute.jumpers && mergedRoute.jumpers.length > 0) {
         const jumperGraphics = getJumpersGraphics(mergedRoute.jumpers, {
           color: solvedColor,
@@ -439,56 +548,54 @@ export class MultipleHighDensityRouteStitchSolver extends BaseSolver {
       }
     }
 
-    // Visualize all remaining unsolved routes - start/end points only
     for (const unsolvedRoute of this.unsolvedRoutes) {
-      const routeColor = this.colorMap[unsolvedRoute.connectionName] ?? "gray" // Use colorMap, default to gray
+      const routeColor = this.colorMap[unsolvedRoute.connectionName] ?? "gray"
 
-      // Add start and end points for unsolved connections
-      graphics.points?.push(
-        {
+      if (unsolvedRoute.start) {
+        graphics.points?.push({
           x: unsolvedRoute.start.x,
           y: unsolvedRoute.start.y,
           color: routeColor,
           label: `${unsolvedRoute.connectionName} Start (z=${unsolvedRoute.start.z})`,
-        },
-        {
+        })
+      }
+      if (unsolvedRoute.end) {
+        graphics.points?.push({
           x: unsolvedRoute.end.x,
           y: unsolvedRoute.end.y,
           color: routeColor,
           label: `${unsolvedRoute.connectionName} End (z=${unsolvedRoute.end.z})`,
-        },
-      )
+        })
+      }
 
-      // Add a light dashed line between start and end to show pending connections
-      graphics.lines?.push({
-        points: [
-          { x: unsolvedRoute.start.x, y: unsolvedRoute.start.y },
-          { x: unsolvedRoute.end.x, y: unsolvedRoute.end.y },
-        ],
-        strokeColor: routeColor,
-        strokeDash: "2 2",
-      })
+      if (unsolvedRoute.start && unsolvedRoute.end) {
+        graphics.lines?.push({
+          points: [
+            { x: unsolvedRoute.start.x, y: unsolvedRoute.start.y },
+            { x: unsolvedRoute.end.x, y: unsolvedRoute.end.y },
+          ],
+          strokeColor: routeColor,
+          strokeDash: "2 2",
+        })
+      }
 
-      // Visualize HD routes associated with unsolved routes (faded)
       for (const hdRoute of unsolvedRoute.hdRoutes) {
         if (hdRoute.route.length > 1) {
           graphics.lines?.push({
             points: hdRoute.route.map((point) => ({ x: point.x, y: point.y })),
-            strokeColor: safeTransparentize(routeColor, 0.5), // Use routeColor
+            strokeColor: safeTransparentize(routeColor, 0.5),
             strokeDash: "10 5",
           })
         }
 
-        // Visualize vias
         for (const via of hdRoute.vias) {
           graphics.circles?.push({
             center: { x: via.x, y: via.y },
             radius: hdRoute.viaDiameter / 2,
-            fill: routeColor, // Use routeColor
+            fill: routeColor,
           })
         }
 
-        // Visualize jumpers
         if (hdRoute.jumpers && hdRoute.jumpers.length > 0) {
           const jumperGraphics = getJumpersGraphics(hdRoute.jumpers, {
             color: routeColor,
