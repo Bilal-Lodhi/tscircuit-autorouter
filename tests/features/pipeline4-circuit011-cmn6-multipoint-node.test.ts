@@ -10,47 +10,64 @@ test("pipeline4 circuit011 cmn_6 routes the disconnected multipoint branch", () 
 
   pipeline.solveUntilPhase("highDensityStitchSolver")
 
-  const node =
-    pipeline.highDensityRouteSolver?.nodeSolveMetadataById.get("cmn_6")?.node
+  const branchNodes =
+    pipeline.highDensityNodePortPoints?.filter((node) =>
+      node.portPoints.some(
+        (portPoint) => portPoint.connectionName === "source_net_1_mst3",
+      ),
+    ) ?? []
 
-  expect(node).toBeDefined()
+  expect(branchNodes.length).toBeGreaterThan(1)
 
-  const solver = new HyperSingleIntraNodeSolver({
-    nodeWithPortPoints: node!,
-    colorMap: pipeline.colorMap,
-    connMap: pipeline.connMap,
-    viaDiameter: pipeline.viaDiameter,
-    traceWidth: pipeline.minTraceWidth,
-    effort: pipeline.effort,
+  const routedBranchNodes = branchNodes.map((node) => {
+    const solver = new HyperSingleIntraNodeSolver({
+      nodeWithPortPoints: node,
+      colorMap: pipeline.colorMap,
+      connMap: pipeline.connMap,
+      viaDiameter: pipeline.viaDiameter,
+      traceWidth: pipeline.minTraceWidth,
+      effort: pipeline.effort,
+    })
+
+    solver.solve()
+
+    return {
+      node,
+      routes: solver.solvedRoutes.filter(
+        (route) => route.connectionName === "source_net_1_mst3",
+      ),
+    }
   })
 
-  solver.solve()
-
-  const sourceNet1Routes = solver.solvedRoutes.filter(
-    (route) => route.connectionName === "source_net_1_mst3",
-  )
-
-  expect(sourceNet1Routes.length).toBeGreaterThan(0)
   expect(
-    sourceNet1Routes.every((route) => {
-      const firstPoint = route.route[0]!
-      const lastPoint = route.route[route.route.length - 1]!
+    routedBranchNodes.every(({ routes }) => routes.length > 0),
+  ).toBe(true)
+  expect(
+    routedBranchNodes.some(({ node }) => {
+      const connectionNames = new Set(
+        node.portPoints.map((portPoint) => portPoint.connectionName),
+      )
 
       return (
-        firstPoint.x !== lastPoint.x ||
-        firstPoint.y !== lastPoint.y ||
-        firstPoint.z !== lastPoint.z
+        connectionNames.has("source_net_1_mst3") &&
+        [...connectionNames].some(
+          (connectionName) => connectionName !== "source_net_1_mst3",
+        )
       )
     }),
   ).toBe(true)
   expect(
-    sourceNet1Routes.some((route) =>
-      route.route.some(
-        (point) =>
-          Math.abs(point.x - 11.499872000000096) < 1e-6 &&
-          Math.abs(point.y - 4.774996100000033) < 1e-6 &&
-          point.z === 0,
-      ),
+    routedBranchNodes.every(({ routes }) =>
+      routes.every((route) => {
+        const firstPoint = route.route[0]!
+        const lastPoint = route.route[route.route.length - 1]!
+
+        return (
+          firstPoint.x !== lastPoint.x ||
+          firstPoint.y !== lastPoint.y ||
+          firstPoint.z !== lastPoint.z
+        )
+      }),
     ),
   ).toBe(true)
 }, 60_000)

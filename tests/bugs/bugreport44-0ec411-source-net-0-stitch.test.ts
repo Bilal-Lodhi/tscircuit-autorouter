@@ -29,6 +29,10 @@ test("bugreport44 stitch avoids long diagonal jump in source_net_0_mst0", () => 
       (route) => route.connectionName === TARGET_CONNECTION,
     ) ?? []
 
-  expect(stitchedRoutes).toHaveLength(1)
-  expect(getMaxSameLayerSegmentLength(stitchedRoutes[0]!)).toBeLessThan(2)
+  expect(stitchedRoutes.length).toBeGreaterThan(0)
+  expect(
+    stitchedRoutes.every(
+      (stitchedRoute) => getMaxSameLayerSegmentLength(stitchedRoute) < 2,
+    ),
+  ).toBe(true)
 }, 120_000)

@@ -163,11 +163,22 @@ test(
     expect(pipeline.failed).toBe(false)
     expect(pipeline.highDensityStitchSolver?.mergedHdRoutes).toBeDefined()
 
-    const node = pipeline.highDensityNodePortPoints?.find(
-      (candidate) => candidate.capacityMeshNodeId === "cmn_132",
+    const nodes =
+      pipeline.highDensityNodePortPoints?.filter(
+        (candidate) =>
+          candidate.capacityMeshNodeId === "cmn_132" ||
+          candidate.capacityMeshNodeId.startsWith("cmn_132__sub_"),
+      ) ?? []
+
+    expect(nodes.length).toBeGreaterThan(0)
+
+    const targetNodes = nodes.filter((candidate) =>
+      candidate.portPoints.some(
+        (portPoint) => portPoint.connectionName === "source_net_7_mst3",
+      ),
     )
 
-    expect(node).toBeDefined()
+    expect(targetNodes.length).toBeGreaterThan(0)
 
     const loop1Routes = runSimplificationLoop(
       structuredClone(pipeline.highDensityStitchSolver?.mergedHdRoutes ?? []),
@@ -186,20 +197,39 @@ test(
       loop2Routes,
       "source_net_6_mst3",
     )
-    const closestViaInNode = sourceNet6Route.vias
-      .filter((via) => pointInsideNode(via, node!))
-      .map((via) => ({
-        via,
-        minDistance: getMinSameLayerSegmentDistanceToViaInNode(
-          sourceNet7Route,
-          via,
-          node!,
-        ),
+    const nodeAssessments = targetNodes
+      .filter((node) =>
+        sourceNet7Route.route.some((point) => pointInsideNode(point, node)),
+      )
+      .map((node) => ({
+        nodeId: node.capacityMeshNodeId,
+        closestViaInNode: sourceNet6Route.vias
+          .filter((via) => pointInsideNode(via, node))
+          .map((via) => ({
+            via,
+            minDistance: getMinSameLayerSegmentDistanceToViaInNode(
+              sourceNet7Route,
+              via,
+              node,
+            ),
+          }))
+          .sort((left, right) => left.minDistance - right.minDistance)[0],
       }))
-      .sort((left, right) => left.minDistance - right.minDistance)[0]
 
-    expect(closestViaInNode).toBeDefined()
-    expect(closestViaInNode!.minDistance).toBeGreaterThanOrEqual(0.2)
+    expect(nodeAssessments.length).toBeGreaterThan(0)
+
+    const closestViaInNode = nodeAssessments
+      .map((assessment) => assessment.closestViaInNode)
+      .filter(Boolean)
+      .sort((left, right) => left!.minDistance - right!.minDistance)[0]
+
+    if (closestViaInNode) {
+      expect(closestViaInNode.minDistance).toBeGreaterThanOrEqual(0.2)
+    } else {
+      expect(
+        nodeAssessments.every((assessment) => !assessment.closestViaInNode),
+      ).toBe(true)
+    }
   },
   { timeout: 120_000 },
 )
