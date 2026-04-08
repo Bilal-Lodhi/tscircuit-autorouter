@@ -227,7 +227,7 @@ export class MultipleHighDensityRouteStitchSolver2 extends BaseSolver {
     // Add end point if not already there and within reasonable distance
     const lastMergedPoint = mergedRoute[mergedRoute.length - 1]
     const TOLERANCE = 0.001
-    const MAX_END_JUMP_DISTANCE = 5 // Don't add end point if it would create a wild jump
+    const MAX_END_JUMP_DISTANCE = MAX_SEGMENT_GAP
     const distToEnd = distance(lastMergedPoint, end)
     if (distToEnd > TOLERANCE && distToEnd < MAX_END_JUMP_DISTANCE) {
       mergedRoute.push({ x: end.x, y: end.y, z: end.z })

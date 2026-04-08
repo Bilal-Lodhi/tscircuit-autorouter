@@ -7,6 +7,7 @@ import { BaseSolver } from "../BaseSolver"
 const VIA_PENALTY = 1000
 const GAP_PENALTY = 100000
 const GEOMETRIC_TOLERANCE = 1e-3
+export const MAX_STITCH_GAP_DISTANCE = 1
 
 export class SingleHighDensityRouteStitchSolver extends BaseSolver {
   override getSolverName(): string {
@@ -174,16 +175,22 @@ export class SingleHighDensityRouteStitchSolver extends BaseSolver {
 
   _step() {
     if (this.remainingHdRoutes.length === 0) {
-      // Add the end point to the merged route
-      // Use the z-value of the last merged point to handle multi-layer connection
-      // points where the route is on a specific layer
       const lastMergedPoint =
         this.mergedHdRoute.route[this.mergedHdRoute.route.length - 1]
-      this.mergedHdRoute.route.push({
-        x: this.end.x,
-        y: this.end.y,
-        z: lastMergedPoint.z,
-      })
+
+      if (
+        distance(lastMergedPoint, this.end) > GEOMETRIC_TOLERANCE &&
+        distance(lastMergedPoint, this.end) <= MAX_STITCH_GAP_DISTANCE
+      ) {
+        // Use the z-value of the last merged point to handle multi-layer
+        // connection points where the route is on a specific layer.
+        this.mergedHdRoute.route.push({
+          x: this.end.x,
+          y: this.end.y,
+          z: lastMergedPoint.z,
+        })
+      }
+
       this.solved = true
       return
     }
@@ -218,15 +225,13 @@ export class SingleHighDensityRouteStitchSolver extends BaseSolver {
       if (lastMergedPoint.z === firstPointInCandidate.z) {
         if (distToFirst < GEOMETRIC_TOLERANCE) {
           scoreFirst = distToFirst // Connected on same layer
-        } else {
+        } else if (distToFirst <= MAX_STITCH_GAP_DISTANCE) {
           scoreFirst = GAP_PENALTY + distToFirst // Gap on same layer
         }
       } else {
         // Different Z
         if (distToFirst < GEOMETRIC_TOLERANCE) {
           scoreFirst = VIA_PENALTY + distToFirst // Via transition
-        } else {
-          scoreFirst = GAP_PENALTY + distToFirst // Gap on different layer
         }
       }
 
@@ -241,15 +246,13 @@ export class SingleHighDensityRouteStitchSolver extends BaseSolver {
       if (lastMergedPoint.z === lastPointInCandidate.z) {
         if (distToLast < GEOMETRIC_TOLERANCE) {
           scoreLast = distToLast // Connected on same layer
-        } else {
+        } else if (distToLast <= MAX_STITCH_GAP_DISTANCE) {
           scoreLast = GAP_PENALTY + distToLast // Gap on same layer
         }
       } else {
         // Different Z
         if (distToLast < GEOMETRIC_TOLERANCE) {
           scoreLast = VIA_PENALTY + distToLast // Via transition
-        } else {
-          scoreLast = GAP_PENALTY + distToLast // Gap on different layer
         }
       }
 

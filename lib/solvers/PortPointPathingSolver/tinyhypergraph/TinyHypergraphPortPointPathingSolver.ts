@@ -18,6 +18,8 @@ import {
   TinyHyperGraphSectionSolver,
   TinyHyperGraphSolver,
   type TinyHyperGraphSectionPipelineInput,
+  type TinyHyperGraphSectionSolverOptions,
+  type TinyHyperGraphSolverOptions,
 } from "tiny-hypergraph/lib/index"
 import type { HgPortPointPathingSolverParams } from "../hgportpointpathingsolver/types"
 
@@ -35,20 +37,60 @@ type SerializedTinySolvedRoute = NonNullable<
 >[number]
 
 const TINY_TERMINAL_REGION_SIZE = 1e-6
-const TINY_SOLVER_RIP_THRESHOLD_RAMP_MULTIPLIER = 2
-const TINY_SOLVER_MAX_ITERATION_MULTIPLIER = 10
-const TINY_SECTION_SOLVER_RIP_THRESHOLD_RAMP_MULTIPLIER = 1
-const TINY_SECTION_SOLVER_MAX_ITERATION_MULTIPLIER = 1
+const TINY_SOLVE_GRAPH_BASE_OPTIONS: TinyHyperGraphSolverOptions = {
+  DISTANCE_TO_COST: 0.05,
+  RIP_THRESHOLD_START: 0.05,
+  RIP_THRESHOLD_END: 0.8,
+  RIP_CONGESTION_REGION_COST_FACTOR: 0.1,
+}
+const TINY_SECTION_SOLVER_BASE_OPTIONS: TinyHyperGraphSectionSolverOptions = {
+  DISTANCE_TO_COST: 0.05,
+  RIP_THRESHOLD_START: 0.05,
+  RIP_THRESHOLD_END: 0.8,
+  RIP_CONGESTION_REGION_COST_FACTOR: 0.1,
+  MAX_RIPS_WITHOUT_MAX_REGION_COST_IMPROVEMENT: 6,
+  EXTRA_RIPS_AFTER_BEATING_BASELINE_MAX_REGION_COST: Number.POSITIVE_INFINITY,
+}
 
 const getEffortScale = (effort: number) => Math.max(effort, 1e-2)
-const getTinyHyperGraphPipelineMaxIterations = (effort: number) =>
-  Math.ceil(
-    1e6 *
-      getEffortScale(effort) *
-      (TINY_SOLVER_MAX_ITERATION_MULTIPLIER +
-        TINY_SECTION_SOLVER_MAX_ITERATION_MULTIPLIER +
-        1),
-  )
+
+const getTinyHyperGraphSolveGraphOptions = (
+  effort: number,
+): TinyHyperGraphSolverOptions => {
+  const effortScale = getEffortScale(effort)
+  return {
+    ...TINY_SOLVE_GRAPH_BASE_OPTIONS,
+    RIP_THRESHOLD_RAMP_ATTEMPTS: Math.ceil(10 * effortScale),
+    MAX_ITERATIONS: Math.ceil(10_000_000 * effortScale),
+  }
+}
+
+const getTinyHyperGraphSectionSolverOptions = (
+  effort: number,
+): TinyHyperGraphSectionSolverOptions => {
+  const effortScale = getEffortScale(effort)
+  return {
+    ...TINY_SECTION_SOLVER_BASE_OPTIONS,
+    RIP_THRESHOLD_RAMP_ATTEMPTS: Math.ceil(16 * effortScale),
+    MAX_ITERATIONS: Math.ceil(1_000_000 * effortScale),
+  }
+}
+
+const getTinyHyperGraphPipelineInput = (
+  serializedHyperGraph: SerializedHyperGraph,
+  effort: number,
+): TinyHyperGraphSectionPipelineInput => ({
+  serializedHyperGraph,
+  solveGraphOptions: getTinyHyperGraphSolveGraphOptions(effort),
+  sectionSolverOptions: getTinyHyperGraphSectionSolverOptions(effort),
+})
+
+const getTinyHyperGraphPipelineMaxIterations = (
+  inputProblem: TinyHyperGraphSectionPipelineInput,
+) =>
+  (inputProblem.solveGraphOptions?.MAX_ITERATIONS ?? 1_000_000) +
+  (inputProblem.sectionSolverOptions?.MAX_ITERATIONS ?? 1_000_000) +
+  1_000_000
 
 const getRouteConnectionName = (routeMetadata: RouteMetadata) =>
   routeMetadata.simpleRouteConnection?.name ?? routeMetadata.connectionId
@@ -270,36 +312,12 @@ const applyTerminalRegionNetIds = (loaded: {
   }
 }
 
-const applyTinyHyperGraphSolverTuning = (
-  solver: TinyHyperGraphSolver,
-  effort: number,
-) => {
-  const effortScale = getEffortScale(effort)
-  solver.RIP_THRESHOLD_RAMP_ATTEMPTS *=
-    TINY_SOLVER_RIP_THRESHOLD_RAMP_MULTIPLIER * effortScale
-  solver.MAX_ITERATIONS *= TINY_SOLVER_MAX_ITERATION_MULTIPLIER * effortScale
-}
-
-const applyTinyHyperGraphSectionSolverTuning = (
-  solver: TinyHyperGraphSectionSolver,
-  effort: number,
-) => {
-  const effortScale = getEffortScale(effort)
-  solver.RIP_THRESHOLD_RAMP_ATTEMPTS *=
-    TINY_SECTION_SOLVER_RIP_THRESHOLD_RAMP_MULTIPLIER * effortScale
-  solver.MAX_ITERATIONS *=
-    TINY_SECTION_SOLVER_MAX_ITERATION_MULTIPLIER * effortScale
-}
-
 class TinyHyperGraphSectionPipelineWithTerminalNetIds extends TinyHyperGraphSectionPipelineSolver {
   private configuredSolvers = new WeakSet<BaseSolver>()
 
-  constructor(
-    inputProblem: TinyHyperGraphSectionPipelineInput,
-    private effort: number,
-  ) {
+  constructor(inputProblem: TinyHyperGraphSectionPipelineInput) {
     super(inputProblem)
-    this.MAX_ITERATIONS = getTinyHyperGraphPipelineMaxIterations(effort)
+    this.MAX_ITERATIONS = getTinyHyperGraphPipelineMaxIterations(inputProblem)
   }
 
   override _step() {
@@ -346,12 +364,11 @@ class TinyHyperGraphSectionPipelineWithTerminalNetIds extends TinyHyperGraphSect
       return
     }
 
-    if (solver instanceof TinyHyperGraphSectionSolver) {
+    if (
+      solver instanceof TinyHyperGraphSectionSolver ||
+      solver instanceof TinyHyperGraphSolver
+    ) {
       applyTerminalRegionNetIds(solver as any)
-      applyTinyHyperGraphSectionSolverTuning(solver, this.effort)
-    } else if (solver instanceof TinyHyperGraphSolver) {
-      applyTerminalRegionNetIds(solver as any)
-      applyTinyHyperGraphSolverTuning(solver, this.effort)
     }
 
     this.configuredSolvers.add(solver)
@@ -422,14 +439,14 @@ export class TinyHypergraphPortPointPathingSolver extends BaseSolver {
   constructor(private params: HgPortPointPathingSolverParams) {
     super()
     const serializedGraph = buildSerializedTinyGraph(params)
+    const tinyPipelineInput = getTinyHyperGraphPipelineInput(
+      serializedGraph,
+      params.effort,
+    )
     this.tinyPipelineSolver =
-      new TinyHyperGraphSectionPipelineWithTerminalNetIds(
-        {
-          serializedHyperGraph: serializedGraph,
-        },
-        params.effort,
-      )
-    this.MAX_ITERATIONS = getTinyHyperGraphPipelineMaxIterations(params.effort)
+      new TinyHyperGraphSectionPipelineWithTerminalNetIds(tinyPipelineInput)
+    this.MAX_ITERATIONS =
+      getTinyHyperGraphPipelineMaxIterations(tinyPipelineInput)
 
     this.originalRegionById = new Map(
       params.graph.regions.map((region) => [region.regionId, region]),
