@@ -17,6 +17,28 @@ type SolverInstance = {
   getOutputSimplifiedPcbTraces?: () => SimplifiedPcbTrace[]
 }
 
+type SolverOptions = {
+  effort?: number
+}
+
+export const getBenchmarkSolverOptions = (
+  scenario: SimpleRouteJson,
+): SolverOptions | undefined => {
+  const rawEffort = (scenario as SimpleRouteJson & { effort?: number }).effort
+  const effort =
+    rawEffort !== undefined && Number.isFinite(rawEffort) && rawEffort >= 1
+      ? rawEffort
+      : undefined
+
+  if (effort === undefined) {
+    return undefined
+  }
+
+  return {
+    effort,
+  }
+}
+
 const getSolverConstructor = (solverName: string) => {
   const ctor = (autorouterModule as Record<string, unknown>)[solverName]
   if (typeof ctor !== "function") {
@@ -24,12 +46,20 @@ const getSolverConstructor = (solverName: string) => {
   }
   return ctor as new (
     srj: SimpleRouteJson,
+    opts?: SolverOptions,
   ) => SolverInstance
 }
 
-export const runTask = async (task: BenchmarkTask): Promise<WorkerResult> => {
+export const createSolverForTask = (task: BenchmarkTask): SolverInstance => {
   const SolverConstructor = getSolverConstructor(task.solverName)
-  const solver = new SolverConstructor(task.scenario)
+  return new SolverConstructor(
+    task.scenario,
+    getBenchmarkSolverOptions(task.scenario),
+  )
+}
+
+export const runTask = async (task: BenchmarkTask): Promise<WorkerResult> => {
+  const solver = createSolverForTask(task)
   const start = performance.now()
   let solveError: string | undefined
 
