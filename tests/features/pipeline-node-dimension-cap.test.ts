@@ -18,7 +18,7 @@ const getMaxNodeRatio = (
   )
 }
 
-test("pipeline4 defaults node subdivision to 16mm with max node ratio 4", () => {
+test("pipeline4 defaults node subdivision to 16mm with max node ratio 6", () => {
   const pipeline = new AutoroutingPipelineSolver4(
     structuredClone(getCircuit011()),
   )
@@ -26,7 +26,7 @@ test("pipeline4 defaults node subdivision to 16mm with max node ratio 4", () => 
   pipeline.solveUntilPhase("edgeSolver")
 
   expect(pipeline.maxNodeDimension).toBe(16)
-  expect(pipeline.maxNodeRatio).toBe(4)
+  expect(pipeline.maxNodeRatio).toBe(6)
   expect(pipeline.capacityNodes).toBeDefined()
   expect(
     Math.max(
@@ -42,7 +42,7 @@ test("pipeline4 defaults node subdivision to 16mm with max node ratio 4", () => 
       ),
     ),
   ).toBeGreaterThan(8)
-  expect(getMaxNodeRatio(pipeline.capacityNodes ?? [])).toBeLessThanOrEqual(4)
+  expect(getMaxNodeRatio(pipeline.capacityNodes ?? [])).toBeLessThanOrEqual(6)
   expect(
     (pipeline.capacityNodes ?? []).filter((node) =>
       node.capacityMeshNodeId.includes("__sub_"),
@@ -51,7 +51,7 @@ test("pipeline4 defaults node subdivision to 16mm with max node ratio 4", () => 
   expect(pipeline.nodeDimensionSubdivisionSolver?.stats.maxNodeDimension).toBe(
     16,
   )
-  expect(pipeline.nodeDimensionSubdivisionSolver?.stats.maxNodeRatio).toBe(4)
+  expect(pipeline.nodeDimensionSubdivisionSolver?.stats.maxNodeRatio).toBe(6)
 })
 
 test("pipeline5 defaults node subdivision to 7mm with max node ratio 4", () => {
