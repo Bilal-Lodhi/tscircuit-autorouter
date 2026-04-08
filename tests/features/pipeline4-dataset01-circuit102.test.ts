@@ -119,9 +119,7 @@ test(
         explicit8mmNode.portPoints.map((point) => point.connectionName),
       ),
     )
-    expect(effort2Metadata?.solverType).toBe(
-      "HighDensitySolverA01",
-    )
+    expect(effort2Metadata?.solverType).toBe("HighDensitySolverA01")
   },
   { timeout: 120_000 },
 )

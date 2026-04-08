@@ -32,9 +32,7 @@ test("NodeDimensionSubdivisionSolver subdivides long thin nodes to satisfy maxNo
   solver.solve()
 
   expect(solver.outputNodes).toHaveLength(2)
-  expect(
-    solver.outputNodes.every((node) => getNodeRatio(node) <= 4),
-  ).toBe(true)
+  expect(solver.outputNodes.every((node) => getNodeRatio(node) <= 4)).toBe(true)
   expect(solver.stats.maxNodeDimension).toBe(100)
   expect(solver.stats.maxNodeRatio).toBe(4)
 })
