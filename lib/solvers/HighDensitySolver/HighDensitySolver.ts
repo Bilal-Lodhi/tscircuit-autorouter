@@ -130,9 +130,6 @@ export class HighDensitySolver extends BaseSolver {
       error?: string
     },
   ): string {
-    const connectionNames = Array.from(
-      new Set(metadata.node.portPoints.map((p) => p.connectionName)),
-    )
     return [
       `hd_node_marker`,
       `node: ${capacityMeshNodeId}`,
@@ -142,7 +139,6 @@ export class HighDensitySolver extends BaseSolver {
       `routes: ${metadata.routeCount}`,
       `nodePf: ${metadata.nodePf ?? "n/a"}`,
       `portPoints: ${metadata.node.portPoints.length}`,
-      `connections: ${connectionNames.join(", ")}`,
       ...(metadata.error ? [`error: ${metadata.error}`] : []),
     ].join("\n")
   }

@@ -51,6 +51,9 @@ test("HighDensitySolver draws an origin guide to failed nodes", () => {
   expect(guideLines[0]?.strokeColor).toBe("red")
   expect(guideLines[0]?.strokeDash).toBe("8, 6")
   expect(guideLines[0]?.strokeWidth).toBe(0.05)
+  const failedNodeLabel = guideLines[0]?.label ?? ""
+  expect(failedNodeLabel).toContain("portPoints: 2")
+  expect(failedNodeLabel).not.toContain("connections:")
   expect(guideLines[0]?.points).toEqual([
     { x: 0, y: 0 },
     { x: 12, y: -7 },
