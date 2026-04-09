@@ -266,7 +266,10 @@ const addStatsText = (
 const createProblemGraphic = (srj: SimpleRouteJson) =>
   convertSrjToGraphicsObject({ ...srj, traces: [] })
 
-const toViewbox = (center: { x: number; y: number }, size: number): Viewbox => ({
+const toViewbox = (
+  center: { x: number; y: number },
+  size: number,
+): Viewbox => ({
   minX: center.x - size / 2,
   maxX: center.x + size / 2,
   minY: center.y - size / 2,
@@ -383,7 +386,8 @@ const buildStageTraces = (
   hdRoutes: HighDensityRoute[],
 ) => {
   const traces = []
-  for (const connection of pipeline.netToPointPairsSolver?.newConnections ?? []) {
+  for (const connection of pipeline.netToPointPairsSolver?.newConnections ??
+    []) {
     const netConnectionName =
       connection.netConnectionName ??
       pipeline.srj.connections.find((c) => c.name === connection.name)
@@ -399,10 +403,11 @@ const buildStageTraces = (
         type: "pcb_trace" as const,
         pcb_trace_id: `${connection.name}_${i}`,
         connection_name:
-          netConnectionName ??
-          connection.rootConnectionName ??
-          connection.name,
-        route: convertHdRouteToSimplifiedRoute(hdRoute, pipeline.srj.layerCount),
+          netConnectionName ?? connection.rootConnectionName ?? connection.name,
+        route: convertHdRouteToSimplifiedRoute(
+          hdRoute,
+          pipeline.srj.layerCount,
+        ),
       })
     }
   }
@@ -444,10 +449,7 @@ const createNodeOverlay = (params: {
     center: node.center,
     width: node.width + NODE_HIGHLIGHT_MARGIN * 2,
     height: node.height + NODE_HIGHLIGHT_MARGIN * 2,
-    fill:
-      index === 0
-        ? "rgba(245, 158, 11, 0.08)"
-        : "rgba(59, 130, 246, 0.06)",
+    fill: index === 0 ? "rgba(245, 158, 11, 0.08)" : "rgba(59, 130, 246, 0.06)",
     stroke: index === 0 ? "#f59e0b" : "#2563eb",
     layer: "candidate-node",
     label: `${node.nodeId}\n${node.selectedStage}\nchanged=${node.localChangedRouteCount}/${node.localRouteCount}`,
@@ -593,10 +595,7 @@ const renderScenario = async (
     titles: ["Repair02", "Final + Relaxed DRC"],
   })
   const pageGraphic = stackGraphicsVertically([topRow, bottomRow], {
-    titles: [
-      `${scenarioName} top`,
-      `${scenarioName} bottom`,
-    ],
+    titles: [`${scenarioName} top`, `${scenarioName} bottom`],
   })
 
   const png = await getPngBufferFromGraphicsObject(pageGraphic, {
@@ -608,17 +607,23 @@ const renderScenario = async (
   })
 
   ensureDir(outDir)
-  const outputPngPath = path.join(outDir, `${scenarioName}-pipeline4-stages.png`)
+  const outputPngPath = path.join(
+    outDir,
+    `${scenarioName}-pipeline4-stages.png`,
+  )
   fs.writeFileSync(outputPngPath, png)
 
   const errorSummaries: ErrorWindowSummary[] = []
   const errorOutDir = path.join(outDir, scenarioName)
   ensureDir(errorOutDir)
 
-  for (const [errorIndex, error] of stageData.final.drc.locationAwareErrors.entries()) {
+  for (const [
+    errorIndex,
+    error,
+  ] of stageData.final.drc.locationAwareErrors.entries()) {
     const closeupWindow = toViewbox(error.center, CLOSEUP_WINDOW_SIZE)
     const forceSolver = pipeline.highDensityNodeForceImprovementSolver
-    const candidateNodes = (
+    const candidateNodes =
       forceSolver?.sampleEntries
         .map((sampleEntry) => {
           const nodeViewbox = expandViewbox(
@@ -635,9 +640,13 @@ const renderScenario = async (
             error.center.x <= nodeViewbox.maxX &&
             error.center.y >= nodeViewbox.minY &&
             error.center.y <= nodeViewbox.maxY
-          const intersectsWindow = doesViewboxOverlap(nodeViewbox, closeupWindow)
-          const localRouteIndexes = sampleEntry.routeIndexes.filter((routeIndex) =>
-            hdRouteIntersectsViewbox(rawHdRoutes[routeIndex]!, closeupWindow),
+          const intersectsWindow = doesViewboxOverlap(
+            nodeViewbox,
+            closeupWindow,
+          )
+          const localRouteIndexes = sampleEntry.routeIndexes.filter(
+            (routeIndex) =>
+              hdRouteIntersectsViewbox(rawHdRoutes[routeIndex]!, closeupWindow),
           )
           const repairResult = forceSolver.repairResultsByNodeId.get(
             sampleEntry.node.capacityMeshNodeId,
@@ -666,8 +675,7 @@ const renderScenario = async (
             repaired: repairResult?.repaired ?? false,
             improved: repairResult?.improved ?? false,
             issueCountDelta: repairResult?.issueCountDelta ?? 0,
-            originalIssueCount:
-              repairResult?.originalDrc.issues.length ?? 0,
+            originalIssueCount: repairResult?.originalDrc.issues.length ?? 0,
             finalIssueCount: repairResult?.finalDrc.issues.length ?? 0,
           } satisfies CandidateNodeSummary
         })
@@ -683,7 +691,6 @@ const renderScenario = async (
             right.localRouteCount
           return rightScore - leftScore
         }) ?? []
-    )
 
     const stageWindowErrorCounts = Object.fromEntries(
       (Object.keys(stageData) as StageKey[]).map((stageKey) => [
@@ -698,34 +705,33 @@ const renderScenario = async (
       ]),
     ) as Record<StageKey, number>
 
-    const stagePanels = (Object.keys(stageData) as StageKey[]).map((stageKey) => {
-      const stage = stageData[stageKey]
-      return mergeGraphics(
-        cropGraphicsToViewbox(
-          mergeGraphics(
-            stage.graphics,
-            createDrcOverlay(stage.drc.locationAwareErrors, "orange"),
-            createPinnedErrorOverlay(error.center, error.message),
-            createNodeOverlay({
-              candidateNodes,
-            }),
+    const stagePanels = (Object.keys(stageData) as StageKey[]).map(
+      (stageKey) => {
+        const stage = stageData[stageKey]
+        return mergeGraphics(
+          cropGraphicsToViewbox(
+            mergeGraphics(
+              stage.graphics,
+              createDrcOverlay(stage.drc.locationAwareErrors, "orange"),
+              createPinnedErrorOverlay(error.center, error.message),
+              createNodeOverlay({
+                candidateNodes,
+              }),
+            ),
+            closeupWindow,
           ),
-          closeupWindow,
-        ),
-        createHeaderGraphic(
-          [
-            `${stage.title} localDrc=${stageWindowErrorCounts[stageKey]} totalDrc=${stage.drc.errors.length}`,
-          ],
-          closeupWindow,
-        ),
-      )
-    })
+          createHeaderGraphic(
+            [
+              `${stage.title} localDrc=${stageWindowErrorCounts[stageKey]} totalDrc=${stage.drc.errors.length}`,
+            ],
+            closeupWindow,
+          ),
+        )
+      },
+    )
 
     const grid = createGraphicsGrid(
-      [
-        stagePanels.slice(2, 4),
-        stagePanels.slice(0, 2),
-      ],
+      [stagePanels.slice(2, 4), stagePanels.slice(0, 2)],
       {
         gap: 1.5,
       },

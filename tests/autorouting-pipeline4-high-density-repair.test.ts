@@ -164,7 +164,9 @@ test("IssueCorrectionSolver can correct a simple local pad overlap", () => {
       },
       {
         name: "blocker",
-        pointsToConnect: [{ x: 0, y: 0, layer: "top", pcb_port_id: "pcb_port_block" }],
+        pointsToConnect: [
+          { x: 0, y: 0, layer: "top", pcb_port_id: "pcb_port_block" },
+        ],
       },
     ],
   }
@@ -222,7 +224,9 @@ test("IssueCorrectionSolver can correct a simple local pad overlap", () => {
 
   expect(solver.solved).toBe(true)
   expect(solver.failed).toBe(false)
-  expect(afterRoutes[0]?.route.length).toBeGreaterThan(overlappingRoute.route.length)
+  expect(afterRoutes[0]?.route.length).toBeGreaterThan(
+    overlappingRoute.route.length,
+  )
   expect(afterDrc.errors.length).toBe(0)
 })
 

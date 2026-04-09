@@ -63,9 +63,7 @@ const isPointInsideNode = (
   )
 }
 
-const getPortPointSampleSignature = (
-  portPoint: SamplePortPoint,
-) =>
+const getPortPointSampleSignature = (portPoint: SamplePortPoint) =>
   [
     portPoint.connectionName,
     portPoint.rootConnectionName ?? "",
@@ -338,8 +336,7 @@ const createRepairSample = (params: {
     obstacleSHI,
     connMap,
     repairMargin,
-  } =
-    params
+  } = params
   const routeGroup = routeIndexes.map((routeIndex) => hdRoutes[routeIndex])
 
   if (!isRepair01Compatible(node, routeGroup)) {
@@ -356,23 +353,19 @@ const createRepairSample = (params: {
         center: { ...node.center },
         width: node.width,
         height: node.height,
-        availableZ: getSupportedAvailableZ(
-          node,
-          routeGroup,
-          params.layerCount,
-        ),
+        availableZ: getSupportedAvailableZ(node, routeGroup, params.layerCount),
         portPoints: getSamplePortPoints(node, allNodes, repairMargin).map(
           (portPoint, index) => ({
-          x: portPoint.x,
-          y: portPoint.y,
-          z: portPoint.z as 0 | 1,
-          connectionName: portPoint.connectionName,
-          rootConnectionName:
-            portPoint.rootConnectionName ?? portPoint.connectionName,
-          keepoutRadius: portPoint.keepoutRadius,
-          portPointId:
-            portPoint.portPointId ??
-            `${node.capacityMeshNodeId}-port-point-${index}`,
+            x: portPoint.x,
+            y: portPoint.y,
+            z: portPoint.z as 0 | 1,
+            connectionName: portPoint.connectionName,
+            rootConnectionName:
+              portPoint.rootConnectionName ?? portPoint.connectionName,
+            keepoutRadius: portPoint.keepoutRadius,
+            portPointId:
+              portPoint.portPointId ??
+              `${node.capacityMeshNodeId}-port-point-${index}`,
           }),
         ),
       },

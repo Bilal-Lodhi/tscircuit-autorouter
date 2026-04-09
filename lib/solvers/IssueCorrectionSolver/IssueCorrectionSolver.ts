@@ -10,6 +10,7 @@ import {
   evaluateIssueCorrectionRoutes,
   getIssueCenter,
   getIssueKey,
+  getIssueTraceId,
   parseRouteIndexFromTraceId,
   type IssueCorrectionError,
   type IssueCorrectionEvaluation,
@@ -53,7 +54,10 @@ const getRouteDistanceToPoint = (
   for (let i = 0; i < route.route.length - 1; i += 1) {
     const start = route.route[i]
     const end = route.route[i + 1]
-    bestDistance = Math.min(bestDistance, pointToSegmentDistance(point, start, end))
+    bestDistance = Math.min(
+      bestDistance,
+      pointToSegmentDistance(point, start, end),
+    )
   }
 
   for (const via of route.vias) {
@@ -82,11 +86,8 @@ const createIssueScore = (
       localErrorCount += 1
     }
 
-    const routeIndex = parseRouteIndexFromTraceId(error.pcb_trace_id)
-    if (
-      routeIndex !== null &&
-      candidateRouteIndexes.includes(routeIndex)
-    ) {
+    const routeIndex = parseRouteIndexFromTraceId(getIssueTraceId(error))
+    if (routeIndex !== null && candidateRouteIndexes.includes(routeIndex)) {
       routeErrorCount += 1
     }
   }
@@ -98,10 +99,7 @@ const createIssueScore = (
   }
 }
 
-const isBetterScore = (
-  candidate: CandidateScore,
-  baseline: CandidateScore,
-) => {
+const isBetterScore = (candidate: CandidateScore, baseline: CandidateScore) => {
   if (candidate.globalErrorCount > baseline.globalErrorCount) {
     return false
   }
@@ -156,7 +154,9 @@ export class IssueCorrectionSolver extends BaseSolver {
     super()
     this.srj = params.simpleRouteJson
     this.nodeWithPortPoints = params.nodeWithPortPoints
-    this.currentHdRoutes = params.hdRoutes.map((route) => structuredClone(route))
+    this.currentHdRoutes = params.hdRoutes.map((route) =>
+      structuredClone(route),
+    )
     this.colorMap = params.colorMap ?? {}
     this.repairMargin = params.repairMargin ?? DEFAULT_REPAIR_MARGIN
     this.routeNodeAssignment = buildRouteNodeAssignment(
@@ -164,10 +164,7 @@ export class IssueCorrectionSolver extends BaseSolver {
       this.nodeWithPortPoints,
       this.repairMargin,
     )
-    this.MAX_ITERATIONS = Math.max(
-      this.currentHdRoutes.length * 200,
-      10_000,
-    )
+    this.MAX_ITERATIONS = Math.max(this.currentHdRoutes.length * 200, 10_000)
     this.stats = {
       initialErrorCount: 0,
       finalErrorCount: 0,
@@ -194,7 +191,7 @@ export class IssueCorrectionSolver extends BaseSolver {
   private getCandidateRouteIndexes(issue: IssueCorrectionError) {
     const candidateIndexes = new Set<number>()
     const center = getIssueCenter(issue)
-    const directRouteIndex = parseRouteIndexFromTraceId(issue.pcb_trace_id)
+    const directRouteIndex = parseRouteIndexFromTraceId(getIssueTraceId(issue))
 
     if (directRouteIndex !== null) {
       candidateIndexes.add(directRouteIndex)
@@ -250,7 +247,9 @@ export class IssueCorrectionSolver extends BaseSolver {
 
     const nodeIndex = this.routeNodeAssignment.nodeIndexByRoute.get(routeIndex)
     const node =
-      nodeIndex === undefined ? null : this.nodeWithPortPoints[nodeIndex] ?? null
+      nodeIndex === undefined
+        ? null
+        : (this.nodeWithPortPoints[nodeIndex] ?? null)
     const routeSegmentEntries = route.route
       .slice(0, -1)
       .map((start, segmentIndex) => {

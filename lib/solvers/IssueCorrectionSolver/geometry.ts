@@ -81,8 +81,4 @@ export const getSegmentNormal = (start: Point2D, end: Point2D) => {
   }
 }
 
-export {
-  distance,
-  pointToSegmentClosestPoint,
-  pointToSegmentDistance,
-}
+export { distance, pointToSegmentClosestPoint, pointToSegmentDistance }

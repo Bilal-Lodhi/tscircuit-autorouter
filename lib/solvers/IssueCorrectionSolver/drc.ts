@@ -7,7 +7,8 @@ import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
 export type IssueCorrectionEvaluation = ReturnType<
   typeof evaluateIssueCorrectionRoutes
 >
-export type IssueCorrectionError = IssueCorrectionEvaluation["errorsWithCenters"][number]
+export type IssueCorrectionError =
+  IssueCorrectionEvaluation["errorsWithCenters"][number]
 
 export const evaluateIssueCorrectionRoutes = (
   srj: SimpleRouteJson,
@@ -38,12 +39,17 @@ export const getIssueCenter = (error: IssueCorrectionError) =>
 export const getIssueKey = (error: IssueCorrectionError) => {
   const center = getIssueCenter(error)
   return [
-    error.pcb_trace_id ?? "",
-    error.pcb_placement_error_id ?? "",
+    getIssueTraceId(error) ?? "",
+    "pcb_placement_error_id" in error
+      ? (error.pcb_placement_error_id ?? "")
+      : "",
     center ? `${center.x.toFixed(3)},${center.y.toFixed(3)}` : "no-center",
     error.message ?? "",
   ].join("|")
 }
+
+export const getIssueTraceId = (error: IssueCorrectionError) =>
+  "pcb_trace_id" in error ? error.pcb_trace_id : undefined
 
 export const parseRouteIndexFromTraceId = (
   pcbTraceId: string | undefined,
