@@ -38,19 +38,68 @@ type WorkerSlot = {
   activeTask: QueuedTask | null
 }
 
+const DEFAULT_PARALLEL_HIGH_DENSITY_WORKER_COUNT = 4
+type ParallelHighDensityWorkerConstructor = new (
+  options?: WorkerOptions,
+) => Worker
+
+export const getDefaultParallelHighDensityWorkerCount = () => {
+  const hardwareConcurrency = globalThis.navigator?.hardwareConcurrency
+
+  if (
+    typeof hardwareConcurrency === "number" &&
+    Number.isFinite(hardwareConcurrency) &&
+    hardwareConcurrency > 0
+  ) {
+    return Math.max(1, Math.floor(hardwareConcurrency))
+  }
+
+  return DEFAULT_PARALLEL_HIGH_DENSITY_WORKER_COUNT
+}
+
+let parallelHighDensityWorkerConstructorPromise:
+  | Promise<ParallelHighDensityWorkerConstructor>
+  | undefined
+
+const getParallelHighDensityWorkerConstructor = () => {
+  if (!parallelHighDensityWorkerConstructorPromise) {
+    parallelHighDensityWorkerConstructorPromise = import(
+      "./ParallelHighDensitySolver.worker?worker"
+    ).then(
+      (module) =>
+        module.default as unknown as ParallelHighDensityWorkerConstructor,
+    )
+  }
+
+  return parallelHighDensityWorkerConstructorPromise
+}
+
+const createParallelHighDensityWorker = async (id: number) => {
+  if (typeof window === "undefined") {
+    return new Worker(
+      new URL("./ParallelHighDensitySolver.worker.ts", import.meta.url),
+      {
+        type: "module",
+        name: `parallel-high-density-${id}`,
+      },
+    )
+  }
+
+  const ParallelHighDensityWorker =
+    await getParallelHighDensityWorkerConstructor()
+  return new ParallelHighDensityWorker({
+    name: `parallel-high-density-${id}`,
+  })
+}
+
 class ParallelHighDensityWorkerPool {
-  private readonly workerUrl = new URL(
-    "./ParallelHighDensitySolver.worker.ts",
-    import.meta.url,
-  )
-  private readonly workers: WorkerSlot[]
+  private readonly workers: WorkerSlot[] = []
   private readonly queuedTasks: QueuedTask[] = []
   private closed = false
+  private readonly initializationPromise: Promise<void>
 
   constructor(workerCount: number) {
-    this.workers = Array.from({ length: workerCount }, (_, index) =>
-      this.createWorkerSlot(index),
-    )
+    this.initializationPromise = this.initializeWorkers(workerCount)
   }
 
   runTask(task: ParallelHighDensityWorkerTask) {
@@ -68,15 +117,45 @@ class ParallelHighDensityWorkerPool {
       .forEach((queuedTask) =>
         queuedTask.reject(new Error("ParallelHighDensityWorkerPool closed")),
       )
+    await this.initializationPromise
     await Promise.all(
       this.workers.map((slot) => Promise.resolve(slot.worker.terminate())),
     )
   }
 
-  private createWorkerSlot(id: number): WorkerSlot {
+  private async initializeWorkers(workerCount: number) {
+    let workerSlots: WorkerSlot[]
+    try {
+      workerSlots = await Promise.all(
+        Array.from({ length: workerCount }, (_, index) =>
+          this.createWorkerSlot(index),
+        ),
+      )
+    } catch (error) {
+      this.closed = true
+      const initializationError =
+        error instanceof Error ? error : new Error(String(error))
+      this.queuedTasks
+        .splice(0)
+        .forEach((queuedTask) => queuedTask.reject(initializationError))
+      throw initializationError
+    }
+
+    if (this.closed) {
+      await Promise.all(
+        workerSlots.map((slot) => Promise.resolve(slot.worker.terminate())),
+      )
+      return
+    }
+
+    this.workers.push(...workerSlots)
+    this.dispatch()
+  }
+
+  private async createWorkerSlot(id: number): Promise<WorkerSlot> {
     const slot: WorkerSlot = {
       id,
-      worker: this.createWorker(id),
+      worker: await this.createWorker(id),
       activeTask: null,
     }
 
@@ -85,10 +164,7 @@ class ParallelHighDensityWorkerPool {
   }
 
   private createWorker(id: number) {
-    return new Worker(this.workerUrl, {
-      type: "module",
-      name: `parallel-high-density-${id}`,
-    })
+    return createParallelHighDensityWorker(id)
   }
 
   private attachWorkerListeners(slot: WorkerSlot) {
@@ -120,11 +196,15 @@ class ParallelHighDensityWorkerPool {
 
       if (!this.closed) {
         slot.worker.terminate()
-        slot.worker = this.createWorker(slot.id)
-        this.attachWorkerListeners(slot)
-        this.dispatch()
+        void this.replaceWorker(slot)
       }
     })
+  }
+
+  private async replaceWorker(slot: WorkerSlot) {
+    slot.worker = await this.createWorker(slot.id)
+    this.attachWorkerListeners(slot)
+    this.dispatch()
   }
 
   private dispatch() {
@@ -209,7 +289,7 @@ export class ParallelHighDensitySolver extends BaseSolver {
     this.traceWidth = traceWidth ?? 0.15
     this.obstacleMargin = obstacleMargin ?? 0.15
     this.effort = effort ?? 1
-    this.workerCount = workerCount ?? 4
+    this.workerCount = workerCount ?? getDefaultParallelHighDensityWorkerCount()
     this.useWorkerPool =
       useWorkerPool !== false && typeof Worker !== "undefined"
     this.nodePfById =

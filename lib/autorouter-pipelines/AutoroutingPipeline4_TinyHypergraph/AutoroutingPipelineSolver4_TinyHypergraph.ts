@@ -292,7 +292,6 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
             traceWidth: cms.minTraceWidth,
             obstacleMargin: cms.srj.defaultObstacleMargin ?? 0.15,
             effort: cms.effort,
-            workerCount: 4,
             useWorkerPool: cms.highDensityExecutionMode === "parallel",
           },
         ]
