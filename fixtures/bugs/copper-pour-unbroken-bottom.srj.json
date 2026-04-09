@@ -1,0 +1,71 @@
+{
+  "layerCount": 2,
+  "minTraceWidth": 0.15,
+  "bounds": {
+    "minX": -18,
+    "maxX": 18,
+    "minY": -12,
+    "maxY": 12
+  },
+  "connections": [
+    {
+      "name": "source_trace_non_gnd_1",
+      "pointsToConnect": [
+        {
+          "x": -8.45,
+          "y": -1.905,
+          "layer": "top"
+        },
+        {
+          "x": 9.45,
+          "y": 1.905,
+          "layer": "top"
+        }
+      ]
+    },
+    {
+      "name": "source_trace_non_gnd_2",
+      "pointsToConnect": [
+        {
+          "x": -8.45,
+          "y": -0.635,
+          "layer": "top"
+        },
+        {
+          "x": 9.45,
+          "y": 0.635,
+          "layer": "top"
+        }
+      ]
+    },
+    {
+      "name": "source_net_gnd",
+      "pointsToConnect": [
+        {
+          "x": -8.45,
+          "y": 1.905,
+          "layers": ["top", "bottom"]
+        },
+        {
+          "x": 9.45,
+          "y": -1.905,
+          "layers": ["top", "bottom"]
+        }
+      ]
+    }
+  ],
+  "obstacles": [
+    {
+      "type": "rect",
+      "layers": ["bottom"],
+      "center": {
+        "x": 0,
+        "y": 0
+      },
+      "width": 35,
+      "height": 23,
+      "connectedTo": ["source_net_gnd"],
+      "isCopperPour": true
+    }
+  ]
+}

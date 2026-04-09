@@ -34,6 +34,7 @@
     "@tscircuit/hypergraph": "^0.0.71",
     "@tscircuit/jumper-topology-generator": "^0.0.4",
     "@tscircuit/math-utils": "^0.0.27",
+    "@tscircuit/props": "^0.0.503",
     "@tscircuit/rectdiff": "0.0.25",
     "@tscircuit/solver-utils": "^0.0.16",
     "@types/bun": "^1.2.23",
