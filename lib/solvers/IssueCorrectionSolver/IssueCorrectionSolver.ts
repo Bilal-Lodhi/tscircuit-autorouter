@@ -1,4 +1,7 @@
 import type { GraphicsObject } from "graphics-debug"
+import type { ConnectivityMap } from "circuit-json-to-connectivity-map"
+import { HighDensityRouteSpatialIndex } from "lib/data-structures/HighDensityRouteSpatialIndex"
+import { ObstacleSpatialHashIndex } from "lib/data-structures/ObstacleTree"
 import type {
   HighDensityRoute,
   NodeWithPortPoints,
@@ -27,6 +30,11 @@ import {
   type Point3D,
 } from "./geometry"
 import {
+  createLocalIssueCandidateScore,
+  isBetterLocalIssueCandidateScore,
+  type LocalIssueCandidateScore,
+} from "./localScore"
+import {
   buildRouteNodeAssignment,
   findNodeIndexContainingPoint,
 } from "./routeNodeAssignment"
@@ -41,31 +49,9 @@ const DEFAULT_LOCAL_CORRECTION_RADIUS = 0.75
 const DEFAULT_REPAIR_MARGIN = 0.2
 const DETOUR_CLEARANCE_FACTORS = [1, 1.4, 1.8]
 const DETOUR_SPAN_FACTORS = [0.2, 0.35, 0.48]
-const MAX_ROUTE_CANDIDATES_PER_ISSUE = 4
-const MAX_SEGMENTS_PER_ROUTE = 2
-const MAX_CORRECTION_PASSES = 10
-
-const getRouteDistanceToPoint = (
-  route: HighDensityRoute,
-  point: { x: number; y: number },
-) => {
-  let bestDistance = Number.POSITIVE_INFINITY
-
-  for (let i = 0; i < route.route.length - 1; i += 1) {
-    const start = route.route[i]
-    const end = route.route[i + 1]
-    bestDistance = Math.min(
-      bestDistance,
-      pointToSegmentDistance(point, start, end),
-    )
-  }
-
-  for (const via of route.vias) {
-    bestDistance = Math.min(bestDistance, distance(point, via))
-  }
-
-  return bestDistance
-}
+const MAX_ROUTE_CANDIDATES_PER_ISSUE = 2
+const MAX_SEGMENTS_PER_ROUTE = 1
+const MAX_CORRECTION_PASSES = 4
 
 const createIssueScore = (
   evaluation: IssueCorrectionEvaluation,
@@ -137,9 +123,12 @@ export class IssueCorrectionSolver extends BaseSolver {
   readonly nodeWithPortPoints: NodeWithPortPoints[]
   readonly colorMap: Record<string, string>
   readonly repairMargin: number
+  readonly connMap: ConnectivityMap | null
+  readonly obstacleSHI: ObstacleSpatialHashIndex
 
   currentHdRoutes: HighDensityRoute[]
   currentEvaluation: IssueCorrectionEvaluation | null = null
+  currentRouteSpatialIndex: HighDensityRouteSpatialIndex
   readonly routeNodeAssignment: ReturnType<typeof buildRouteNodeAssignment>
   readonly skippedIssueKeys = new Set<string>()
   correctionsApplied = 0
@@ -149,6 +138,7 @@ export class IssueCorrectionSolver extends BaseSolver {
     nodeWithPortPoints: NodeWithPortPoints[]
     hdRoutes: HighDensityRoute[]
     colorMap?: Record<string, string>
+    connMap?: ConnectivityMap | null
     repairMargin?: number
   }) {
     super()
@@ -158,7 +148,15 @@ export class IssueCorrectionSolver extends BaseSolver {
       structuredClone(route),
     )
     this.colorMap = params.colorMap ?? {}
+    this.connMap = params.connMap ?? null
     this.repairMargin = params.repairMargin ?? DEFAULT_REPAIR_MARGIN
+    this.obstacleSHI = new ObstacleSpatialHashIndex(
+      "flatbush",
+      this.srj.obstacles,
+    )
+    this.currentRouteSpatialIndex = new HighDensityRouteSpatialIndex(
+      this.currentHdRoutes,
+    )
     this.routeNodeAssignment = buildRouteNodeAssignment(
       this.currentHdRoutes,
       this.nodeWithPortPoints,
@@ -183,6 +181,7 @@ export class IssueCorrectionSolver extends BaseSolver {
         nodeWithPortPoints: this.nodeWithPortPoints,
         hdRoutes: this.currentHdRoutes,
         colorMap: this.colorMap,
+        connMap: this.connMap,
         repairMargin: this.repairMargin,
       },
     ] as const
@@ -219,22 +218,9 @@ export class IssueCorrectionSolver extends BaseSolver {
           candidateIndexes.add(routeIndex)
         }
       }
-
-      const nearbyRouteIndexes = this.currentHdRoutes
-        .map((route, routeIndex) => ({
-          routeIndex,
-          distance: getRouteDistanceToPoint(route, center),
-        }))
-        .filter((entry) => entry.distance <= DEFAULT_LOCAL_CORRECTION_RADIUS)
-        .sort((a, b) => a.distance - b.distance)
-        .slice(0, MAX_ROUTE_CANDIDATES_PER_ISSUE)
-
-      for (const entry of nearbyRouteIndexes) {
-        candidateIndexes.add(entry.routeIndex)
-      }
     }
 
-    return Array.from(candidateIndexes)
+    return Array.from(candidateIndexes).slice(0, MAX_ROUTE_CANDIDATES_PER_ISSUE)
   }
 
   private generateLocalizedDetourCandidates(
@@ -373,6 +359,10 @@ export class IssueCorrectionSolver extends BaseSolver {
       issue,
       candidateRouteIndexes,
     )
+    const issueCenter = getIssueCenter(issue)
+    if (!issueCenter) {
+      return null
+    }
     let bestRoutes: HighDensityRoute[] | null = null
     let bestEvaluation: IssueCorrectionEvaluation | null = null
     let bestScore = baselineScore
@@ -381,6 +371,17 @@ export class IssueCorrectionSolver extends BaseSolver {
       const route = this.currentHdRoutes[routeIndex]
       if (!route) continue
 
+      const baselineLocalScore: LocalIssueCandidateScore =
+        createLocalIssueCandidateScore({
+          issueCenter,
+          candidateRoute: route,
+          originalRoute: route,
+          currentRouteSpatialIndex: this.currentRouteSpatialIndex,
+          obstacleSHI: this.obstacleSHI,
+          simpleRouteJson: this.srj,
+          connMap: this.connMap,
+        })
+
       const candidates = this.generateLocalizedDetourCandidates(
         route,
         routeIndex,
@@ -388,13 +389,29 @@ export class IssueCorrectionSolver extends BaseSolver {
       )
 
       for (const candidateRoute of candidates) {
+        const candidateLocalScore = createLocalIssueCandidateScore({
+          issueCenter,
+          candidateRoute,
+          originalRoute: route,
+          currentRouteSpatialIndex: this.currentRouteSpatialIndex,
+          obstacleSHI: this.obstacleSHI,
+          simpleRouteJson: this.srj,
+          connMap: this.connMap,
+        })
+
+        if (
+          !isBetterLocalIssueCandidateScore(
+            candidateLocalScore,
+            baselineLocalScore,
+          )
+        ) {
+          continue
+        }
+
         const nextRoutes = this.currentHdRoutes.map((currentRoute, index) =>
           index === routeIndex ? candidateRoute : currentRoute,
         )
-        const nextEvaluation = evaluateIssueCorrectionRoutes(
-          this.srj,
-          nextRoutes,
-        )
+        const nextEvaluation = evaluateIssueCorrectionRoutes(this.srj, nextRoutes)
         const nextScore = createIssueScore(
           nextEvaluation,
           issue,
@@ -467,6 +484,9 @@ export class IssueCorrectionSolver extends BaseSolver {
 
     this.currentHdRoutes = correction.routes
     this.currentEvaluation = correction.evaluation
+    this.currentRouteSpatialIndex = new HighDensityRouteSpatialIndex(
+      this.currentHdRoutes,
+    )
     this.skippedIssueKeys.clear()
     this.correctionsApplied += 1
     this.stats.correctionsApplied = this.correctionsApplied

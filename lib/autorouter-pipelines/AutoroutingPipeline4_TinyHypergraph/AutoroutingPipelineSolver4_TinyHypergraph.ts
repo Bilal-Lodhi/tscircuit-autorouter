@@ -335,6 +335,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
             cms.highDensityNodeForceImprovementSolver?.getOutput() ??
             cms.highDensityRouteSolver!.routes,
           colorMap: cms.colorMap,
+          connMap: cms.connMap,
           repairMargin: cms.srj.defaultObstacleMargin ?? 0.2,
         },
       ],
