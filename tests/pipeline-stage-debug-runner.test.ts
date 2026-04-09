@@ -87,12 +87,13 @@ test(
     )
     expect(outputFiles).toContain("logs.txt")
     expect(outputFiles).toContain("stage01-netToPointPairsSolver.png")
-    expect(outputFiles).toContain("stage10-highDensityRepairSolver.png")
-    expect(outputFiles).toContain("stage13-traceWidthSolver.png")
+    expect(outputFiles).toContain("stage11-highDensityRepairSolver.png")
+    expect(outputFiles).toContain("stage12-issueCorrectionSolver.png")
+    expect(outputFiles).toContain("stage15-traceWidthSolver.png")
     expect(logs).toContain("enter stage=1 name=netToPointPairsSolver")
-    expect(logs).toContain("captured stage=10 name=highDensityRepairSolver")
+    expect(logs).toContain("captured stage=11 name=highDensityRepairSolver")
     expect(
-      statSync(path.join(outputDir, "stage13-traceWidthSolver.png")).size,
+      statSync(path.join(outputDir, "stage15-traceWidthSolver.png")).size,
     ).toBeGreaterThan(0)
   },
   { timeout: 120_000 },
@@ -138,7 +139,7 @@ test(
     expect(stderr).toBe("")
     expect(stdout).toContain("startedAt=")
     expect(stdout).toContain("enter stage=1 name=netToPointPairsSolver")
-    expect(stdout).toContain("captured stage=13 name=traceWidthSolver")
+    expect(stdout).toContain("captured stage=15 name=traceWidthSolver")
     expect(stdout).toContain("postrun")
     expect(stdout).toContain("drc.relaxedPassed=true")
     expect(stdout).toContain("drc.errorCount=0")
