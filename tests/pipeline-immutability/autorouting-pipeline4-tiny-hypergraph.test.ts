@@ -22,3 +22,25 @@ test(
   },
   { timeout: 180_000 },
 )
+
+test(
+  "AutoroutingPipelineSolver4 solveAsync uses the parallel high-density worker pool",
+  async () => {
+    const srj = structuredClone(e2e3Fixture as SimpleRouteJson)
+
+    const solver = new AutoroutingPipelineSolver4(srj)
+    await solver.solveAsync()
+
+    expect(solver.solved).toBe(true)
+    expect(solver.failed).toBe(false)
+    expect(solver.highDensityRouteSolver?.getSolverName()).toBe(
+      "ParallelHighDensitySolver",
+    )
+    expect(solver.highDensityRouteSolver?.stats.workerCount).toBe(4)
+    expect(solver.highDensityRouteSolver?.stats.executionMode).toBe(
+      "worker-pool",
+    )
+    expect(solver.highDensityRouteSolver?.pendingEffects).toEqual([])
+  },
+  { timeout: 180_000 },
+)

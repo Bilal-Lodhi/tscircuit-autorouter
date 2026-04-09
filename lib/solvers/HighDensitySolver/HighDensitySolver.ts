@@ -1,6 +1,5 @@
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { GraphicsObject } from "graphics-debug"
-import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
 import type { CapacityMeshNodeId } from "lib/types/capacity-mesh-types"
 import { combineVisualizations } from "lib/utils/combineVisualizations"
 import { mergeRouteSegments } from "lib/utils/mergeRouteSegments"
@@ -11,8 +10,8 @@ import type {
 import { BaseSolver } from "../BaseSolver"
 import { HyperSingleIntraNodeSolver } from "../HyperHighDensitySolver/HyperSingleIntraNodeSolver"
 import { safeTransparentize } from "../colors"
-import { CachedIntraNodeRouteSolver } from "./CachedIntraNodeRouteSolver"
 import { IntraNodeRouteSolver } from "./IntraNodeSolver"
+import { getConcreteIntraNodeSolverTypeName } from "./getIntraNodeSolverTypeName"
 
 export class HighDensitySolver extends BaseSolver {
   override getSolverName(): string {
@@ -96,9 +95,9 @@ export class HighDensitySolver extends BaseSolver {
     solver: IntraNodeRouteSolver | HyperSingleIntraNodeSolver,
   ): string {
     if (solver instanceof HyperSingleIntraNodeSolver && solver.winningSolver) {
-      return this.getConcreteSolverTypeName(solver.winningSolver as BaseSolver)
+      return getConcreteIntraNodeSolverTypeName(solver.winningSolver)
     }
-    return this.getConcreteSolverTypeName(solver)
+    return getConcreteIntraNodeSolverTypeName(solver)
   }
 
   private recordNodeSolveMetadata(
@@ -147,49 +146,6 @@ export class HighDensitySolver extends BaseSolver {
     ].join("\n")
   }
 
-  private getConcreteSolverTypeName(solver: BaseSolver): string {
-    if (solver instanceof CachedIntraNodeRouteSolver) {
-      const concreteName = this.getIntraNodeStrategyName(solver.hyperParameters)
-      return solver.cacheHit ? `${concreteName} [cached]` : concreteName
-    }
-
-    if (solver instanceof IntraNodeRouteSolver) {
-      return this.getIntraNodeStrategyName(solver.hyperParameters)
-    }
-
-    return solver.getSolverName()
-  }
-
-  private getIntraNodeStrategyName(
-    hyperParameters: Record<string, any> | undefined,
-  ): string {
-    if (hyperParameters?.MULTI_HEAD_POLYLINE_SOLVER) {
-      return "MultiHeadPolyLineIntraNodeSolver3"
-    }
-    if (hyperParameters?.SINGLE_LAYER_NO_DIFFERENT_ROOT_INTERSECTIONS) {
-      return "SingleLayerNoDifferentRootIntersectionsIntraNodeSolver"
-    }
-    if (hyperParameters?.CLOSED_FORM_SINGLE_TRANSITION) {
-      return "SingleTransitionIntraNodeSolver"
-    }
-    if (hyperParameters?.CLOSED_FORM_TWO_TRACE_SAME_LAYER) {
-      return "TwoCrossingRoutesHighDensitySolver"
-    }
-    if (hyperParameters?.CLOSED_FORM_TWO_TRACE_TRANSITION_CROSSING) {
-      return "SingleTransitionCrossingRouteSolver"
-    }
-    if (hyperParameters?.FIXED_TOPOLOGY_HIGH_DENSITY_INTRA_NODE_SOLVER) {
-      return "FixedTopologyHighDensityIntraNodeSolver"
-    }
-    if (hyperParameters?.HIGH_DENSITY_A01) {
-      return "HighDensitySolverA01"
-    }
-    if (hyperParameters?.HIGH_DENSITY_A03) {
-      return "HighDensitySolverA03"
-    }
-    return "SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost"
-  }
-
   private recordSolvedNodeStats(
     solver: IntraNodeRouteSolver | HyperSingleIntraNodeSolver,
     node: NodeWithPortPoints,
@@ -217,7 +173,6 @@ export class HighDensitySolver extends BaseSolver {
    * of it.
    */
   _step() {
-    this.updateCacheStats()
     if (this.activeSubSolver) {
       this.activeSubSolver.step()
       if (this.activeSubSolver.solved) {
@@ -233,7 +188,6 @@ export class HighDensitySolver extends BaseSolver {
         this.failedSolvers.push(this.activeSubSolver)
         this.activeSubSolver = null
       }
-      this.updateCacheStats()
       return
     }
     if (this.unsolvedNodePortPoints.length === 0) {
@@ -242,12 +196,10 @@ export class HighDensitySolver extends BaseSolver {
         this.failed = true
         // debugger
         this.error = `Failed to solve ${this.failedSolvers.length} nodes, ${this.failedSolvers.slice(0, 5).map((fs) => fs.nodeWithPortPoints.capacityMeshNodeId)}. err0: ${this.failedSolvers[0].error}.`
-        this.updateCacheStats()
         return
       }
 
       this.solved = true
-      this.updateCacheStats()
       return
     }
     const node = this.unsolvedNodePortPoints.pop()!
@@ -261,13 +213,6 @@ export class HighDensitySolver extends BaseSolver {
       obstacleMargin: this.obstacleMargin,
       effort: this.effort,
     })
-    this.updateCacheStats()
-  }
-
-  private updateCacheStats() {
-    const cacheProvider = getGlobalInMemoryCache()
-    this.stats.intraNodeCacheHits = cacheProvider.cacheHits
-    this.stats.intraNodeCacheMisses = cacheProvider.cacheMisses
   }
 
   visualize(): GraphicsObject {

@@ -3,6 +3,7 @@ import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { GraphicsObject, Line } from "graphics-debug"
 import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
 import { CacheProvider } from "lib/cache/types"
+import { getPendingEffectsFromSolverTree } from "lib/solvers/getPendingEffectsFromSolverTree"
 import { MultiTargetNecessaryCrampedPortPointSolver } from "lib/solvers/NecessaryCrampedPortPointSolver/MultiTargetNecessaryCrampedPortPointSolver"
 import { NodeDimensionSubdivisionSolver } from "lib/solvers/NodeDimensionSubdivisionSolver/NodeDimensionSubdivisionSolver"
 import { buildHyperGraph } from "lib/solvers/PortPointPathingSolver/hgportpointpathingsolver"
@@ -32,7 +33,7 @@ import { CapacityMeshEdgeSolver2_NodeTreeOptimization } from "../../solvers/Capa
 import { CapacityNodeTargetMerger } from "../../solvers/CapacityNodeTargetMerger/CapacityNodeTargetMerger"
 import { DeadEndSolver } from "../../solvers/DeadEndSolver/DeadEndSolver"
 import { Pipeline4HighDensityRepairSolver } from "../../solvers/HighDensityRepairSolver/Pipeline4HighDensityRepairSolver"
-import { HighDensitySolver } from "../../solvers/HighDensitySolver/HighDensitySolver"
+import { ParallelHighDensitySolver } from "../../solvers/HighDensitySolver/ParallelHighDensitySolver"
 import { MultiSectionPortPointOptimizer } from "../../solvers/MultiSectionPortPointOptimizer"
 import { NetToPointPairsSolver } from "../../solvers/NetToPointPairsSolver/NetToPointPairsSolver"
 import { NetToPointPairsSolver2_OffBoardConnection } from "../../solvers/NetToPointPairsSolver2_OffBoardConnection/NetToPointPairsSolver2_OffBoardConnection"
@@ -91,7 +92,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
   nodeTargetMerger?: CapacityNodeTargetMerger
   edgeSolver?: CapacityMeshEdgeSolver
   colorMap: Record<string, string>
-  highDensityRouteSolver?: HighDensitySolver
+  highDensityRouteSolver?: ParallelHighDensitySolver
   highDensityRepairSolver?: Pipeline4HighDensityRepairSolver
   highDensityStitchSolver?: MultipleHighDensityRouteStitchSolver3
   singleLayerNodeMerger?: SingleLayerNodeMergerSolver
@@ -122,6 +123,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
   highDensityNodePortPoints?: NodeWithPortPoints[]
 
   cacheProvider: CacheProvider | null = null
+  highDensityExecutionMode: "parallel" | "sync" = "parallel"
   pipelineDef = [
     definePipelineStep(
       "netToPointPairsSolver",
@@ -259,35 +261,43 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
         },
       ],
     ),
-    definePipelineStep("highDensityRouteSolver", HighDensitySolver, (cms) => {
-      const uniformNodes = cms.uniformPortDistributionSolver?.getOutput() ?? []
-      const fallbackNodes =
-        cms.portPointPathingSolver?.getOutput().nodesWithPortPoints ?? []
-      const nodePortPointsSource =
-        uniformNodes.length > 0 ? uniformNodes : fallbackNodes
+    definePipelineStep(
+      "highDensityRouteSolver",
+      ParallelHighDensitySolver,
+      (cms) => {
+        const uniformNodes =
+          cms.uniformPortDistributionSolver?.getOutput() ?? []
+        const fallbackNodes =
+          cms.portPointPathingSolver?.getOutput().nodesWithPortPoints ?? []
+        const nodePortPointsSource =
+          uniformNodes.length > 0 ? uniformNodes : fallbackNodes
 
-      cms.highDensityNodePortPoints = structuredClone(nodePortPointsSource)
+        cms.highDensityNodePortPoints = structuredClone(nodePortPointsSource)
 
-      return [
-        {
-          nodePortPoints: nodePortPointsSource,
-          nodePfById: new Map(
-            (
-              cms.portPointPathingSolver?.getOutput().inputNodeWithPortPoints ??
-              []
-            ).map((node) => [
-              node.capacityMeshNodeId,
-              cms.portPointPathingSolver?.computeNodePf(node) ?? null,
-            ]),
-          ),
-          colorMap: cms.colorMap,
-          connMap: cms.connMap,
-          viaDiameter: cms.viaDiameter,
-          traceWidth: cms.minTraceWidth,
-          obstacleMargin: cms.srj.defaultObstacleMargin ?? 0.15,
-        },
-      ]
-    }),
+        return [
+          {
+            nodePortPoints: nodePortPointsSource,
+            nodePfById: new Map(
+              (
+                cms.portPointPathingSolver?.getOutput()
+                  .inputNodeWithPortPoints ?? []
+              ).map((node) => [
+                node.capacityMeshNodeId,
+                cms.portPointPathingSolver?.computeNodePf(node) ?? null,
+              ]),
+            ),
+            colorMap: cms.colorMap,
+            connMap: cms.connMap,
+            viaDiameter: cms.viaDiameter,
+            traceWidth: cms.minTraceWidth,
+            obstacleMargin: cms.srj.defaultObstacleMargin ?? 0.15,
+            effort: cms.effort,
+            workerCount: 4,
+            useWorkerPool: cms.highDensityExecutionMode === "parallel",
+          },
+        ]
+      },
+    ),
     definePipelineStep(
       "highDensityRepairSolver",
       Pipeline4HighDensityRepairSolver,
@@ -426,6 +436,47 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
     while (this.getCurrentPhase() !== phase) {
       this.step()
     }
+  }
+
+  async stepAsync() {
+    if (this.solved || this.failed) return
+
+    this.highDensityExecutionMode = "parallel"
+    this.step()
+
+    const pendingEffects = getPendingEffectsFromSolverTree(this)
+    if (pendingEffects.length === 0) {
+      return
+    }
+
+    await Promise.race(
+      pendingEffects.map((effect) =>
+        effect.promise.then(
+          () => effect.name,
+          () => effect.name,
+        ),
+      ),
+    )
+
+    if (!this.solved && !this.failed) {
+      this.step()
+    }
+  }
+
+  async solveAsync() {
+    const startTime = Date.now()
+
+    this.highDensityExecutionMode = "parallel"
+    while (!this.solved && !this.failed) {
+      await this.stepAsync()
+    }
+
+    this.timeToSolve = Date.now() - startTime
+  }
+
+  override solve() {
+    this.highDensityExecutionMode = "sync"
+    super.solve()
   }
 
   getCurrentPhase(): string {

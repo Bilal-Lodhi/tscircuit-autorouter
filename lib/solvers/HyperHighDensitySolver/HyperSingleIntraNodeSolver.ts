@@ -2,7 +2,6 @@ import {
   HighDensityIntraNodeRoute,
   NodeWithPortPoints,
 } from "lib/types/high-density-types"
-import { CachedIntraNodeRouteSolver } from "../HighDensitySolver/CachedIntraNodeRouteSolver"
 import { IntraNodeRouteSolver } from "../HighDensitySolver/IntraNodeSolver"
 import {
   HyperParameterSupervisorSolver,
@@ -34,14 +33,17 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
     return "HyperSingleIntraNodeSolver"
   }
 
-  constructorParams: ConstructorParameters<typeof CachedIntraNodeRouteSolver>[0]
+  constructorParams: ConstructorParameters<typeof IntraNodeRouteSolver>[0] & {
+    cacheProvider?: unknown
+  }
   solvedRoutes: HighDensityIntraNodeRoute[] = []
   nodeWithPortPoints: NodeWithPortPoints
   connMap?: ConnectivityMap
   effort: number
 
   constructor(
-    opts: ConstructorParameters<typeof CachedIntraNodeRouteSolver>[0] & {
+    opts: ConstructorParameters<typeof IntraNodeRouteSolver>[0] & {
+      cacheProvider?: unknown
       effort?: number
     },
   ) {
@@ -345,8 +347,11 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
         effort: this.effort,
       }) as any
     }
-    return new CachedIntraNodeRouteSolver({
-      ...this.constructorParams,
+    const { cacheProvider: _unusedCacheProvider, ...constructorParams } =
+      this.constructorParams
+
+    return new IntraNodeRouteSolver({
+      ...constructorParams,
       hyperParameters,
     })
   }

@@ -8,8 +8,7 @@ import type {
 } from "../../types/high-density-types"
 import { BaseSolver, type PendingEffect } from "../../solvers/BaseSolver"
 import { HyperSingleIntraNodeSolver } from "../../solvers/HyperHighDensitySolver/HyperSingleIntraNodeSolver"
-import { CachedIntraNodeRouteSolver } from "../../solvers/HighDensitySolver/CachedIntraNodeRouteSolver"
-import { IntraNodeRouteSolver } from "../../solvers/HighDensitySolver/IntraNodeSolver"
+import { getConcreteIntraNodeSolverTypeName } from "../../solvers/HighDensitySolver/getIntraNodeSolverTypeName"
 import { safeTransparentize } from "../../solvers/colors"
 
 type HdCacheSolveResponseBody = {
@@ -186,64 +185,8 @@ const shouldSolveNodeViaHdCache = (node: NodeWithPortPoints) => {
   return true
 }
 
-const getIntraNodeStrategyName = (
-  hyperParameters: Record<string, any> | undefined,
-) => {
-  if (hyperParameters?.MULTI_HEAD_POLYLINE_SOLVER) {
-    return "MultiHeadPolyLineIntraNodeSolver3"
-  }
-  if (hyperParameters?.CLOSED_FORM_SINGLE_TRANSITION) {
-    return "SingleTransitionIntraNodeSolver"
-  }
-  if (hyperParameters?.CLOSED_FORM_TWO_TRACE_SAME_LAYER) {
-    return "TwoCrossingRoutesHighDensitySolver"
-  }
-  if (hyperParameters?.CLOSED_FORM_TWO_TRACE_TRANSITION_CROSSING) {
-    return "SingleTransitionCrossingRouteSolver"
-  }
-  if (hyperParameters?.FIXED_TOPOLOGY_HIGH_DENSITY_INTRA_NODE_SOLVER) {
-    return "FixedTopologyHighDensityIntraNodeSolver"
-  }
-  if (hyperParameters?.HIGH_DENSITY_A01) {
-    return "HighDensitySolverA01"
-  }
-  if (hyperParameters?.HIGH_DENSITY_A03) {
-    return "HighDensitySolverA03"
-  }
-  return "SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost"
-}
-
 const getConcreteSolverTypeName = (solver: unknown): string => {
-  if (solver instanceof CachedIntraNodeRouteSolver) {
-    const concreteName = getIntraNodeStrategyName(solver.hyperParameters)
-    return solver.cacheHit ? `${concreteName} [cached]` : concreteName
-  }
-
-  if (solver instanceof IntraNodeRouteSolver) {
-    return getIntraNodeStrategyName(solver.hyperParameters)
-  }
-
-  if (
-    solver &&
-    typeof solver === "object" &&
-    "getSolverName" in solver &&
-    typeof solver.getSolverName === "function"
-  ) {
-    return solver.getSolverName()
-  }
-
-  const solverConstructor = (
-    solver as {
-      constructor?: {
-        name?: string
-      }
-    } | null
-  )?.constructor
-  if (typeof solverConstructor?.name === "string") {
-    return solverConstructor.name
-  }
-
-  return "unknown"
+  return getConcreteIntraNodeSolverTypeName(solver)
 }
 
 const getSolvedNodeSolverType = (solver: HyperSingleIntraNodeSolver) => {
