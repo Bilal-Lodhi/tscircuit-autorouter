@@ -183,6 +183,9 @@ export class HighDensitySolver extends BaseSolver {
     if (hyperParameters?.HIGH_DENSITY_A03) {
       return "HighDensitySolverA03"
     }
+    if (hyperParameters?.HIGH_DENSITY_A05) {
+      return "HighDensitySolverA05"
+    }
     return "SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost"
   }
 
