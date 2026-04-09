@@ -441,7 +441,7 @@ export class ParallelHighDensitySolver extends BaseSolver {
     }
 
     const visibleRoutes: HighDensityIntraNodeRoute[] = []
-    for (let i = 0; i < this.unsolvedNodePortPoints.length; i++) {
+    for (let i = this.unsolvedNodePortPoints.length - 1; i >= 0; i--) {
       visibleRoutes.push(...(this.solvedRoutesByNodeIndex.get(i) ?? []))
     }
     return visibleRoutes
@@ -472,7 +472,7 @@ export class ParallelHighDensitySolver extends BaseSolver {
     }
 
     this.routes = []
-    for (let i = 0; i < this.unsolvedNodePortPoints.length; i++) {
+    for (let i = this.unsolvedNodePortPoints.length - 1; i >= 0; i--) {
       this.routes.push(...(this.solvedRoutesByNodeIndex.get(i) ?? []))
     }
     this.solved = true
