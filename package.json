@@ -48,7 +48,7 @@
     "circuit-to-svg": "^0.0.220",
     "clsx": "^2.1.1",
     "flatbush": "^4.4.0",
-    "graphics-debug": "^0.0.88",
+    "graphics-debug": "^0.0.90",
     "high-density-dataset-z04": "git+https://github.com/tscircuit/high-density-dataset-z04.git#b9128ed52f5a50102b6526319be1d4ec33dca2c2",
     "kleur": "^4.1.5",
     "looks-same": "9",
@@ -72,6 +72,7 @@
   "dependencies": {
     "@tscircuit/high-density-a01": "^0.0.25",
     "fast-json-stable-stringify": "^2.1.0",
+    "high-density-repair01": "https://codeload.github.com/tscircuit/high-density-repair01/tar.gz/631845f30e0c0a145cde06bcc1faa823beb2778c",
     "high-density-repair02": "https://codeload.github.com/tscircuit/high-density-repair02/tar.gz/6319503e55acec103ee7439891a71b7c81fcd90c",
     "object-hash": "^3.0.0"
   }
