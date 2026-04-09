@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test"
 import type { SimpleRouteJson, SimplifiedPcbTrace } from "lib/types"
 import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
+import type { HighDensityRoute } from "lib/types/high-density-types"
 
 const createSrj = (minViaDiameter?: number): SimpleRouteJson => ({
   layerCount: 2,
@@ -67,4 +68,54 @@ test("falls back to 0.3 when neither actual nor srj min via diameter is availabl
   const vias = circuitJson.filter((e) => e.type === "pcb_via")
   expect(vias).toHaveLength(1)
   expect(vias[0].outer_diameter).toBe(0.3)
+})
+
+test("converts high-density routes using the SRJ layer count", () => {
+  const multilayerSrj: SimpleRouteJson = {
+    layerCount: 4,
+    minTraceWidth: 0.1,
+    minViaDiameter: 0.24,
+    obstacles: [],
+    connections: [
+      {
+        name: "conn_ml",
+        pointsToConnect: [
+          { x: 0, y: 0, layer: "top", pcb_port_id: "pcb_port_a" },
+          { x: 2, y: 0, layer: "bottom", pcb_port_id: "pcb_port_b" },
+        ],
+      },
+    ],
+    bounds: { minX: -2, maxX: 4, minY: -2, maxY: 2 },
+  }
+
+  const hdRoutes: HighDensityRoute[] = [
+    {
+      connectionName: "conn_ml",
+      traceThickness: 0.1,
+      viaDiameter: 0.24,
+      route: [
+        { x: 0, y: 0, z: 0 },
+        { x: 0.5, y: 0, z: 0 },
+        { x: 0.5, y: 0, z: 2 },
+        { x: 1.5, y: 0, z: 2 },
+        { x: 1.5, y: 0, z: 3 },
+        { x: 2, y: 0, z: 3 },
+      ],
+      vias: [
+        { x: 0.5, y: 0 },
+        { x: 1.5, y: 0 },
+      ],
+    },
+  ]
+
+  const circuitJson = convertToCircuitJson(multilayerSrj, hdRoutes)
+  const vias = circuitJson.filter((e) => e.type === "pcb_via")
+  const traces = circuitJson.filter((e) => e.type === "pcb_trace")
+
+  expect(traces).toHaveLength(1)
+  expect(vias).toHaveLength(2)
+  expect(vias.map((via) => via.layers)).toEqual([
+    ["top", "inner2"],
+    ["inner2", "bottom"],
+  ])
 })
