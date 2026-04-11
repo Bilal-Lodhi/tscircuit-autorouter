@@ -69,7 +69,11 @@ const attachTerminalViasToSimplifiedRoute = ({
   connectionPoints?: ReadonlyArray<ConnectionPoint>
   tolerance?: number
 }): SimplifiedPcbTraces[number]["route"] => {
-  if (route.length === 0 || hdRoute.route.length === 0 || !connectionPoints.length) {
+  if (
+    route.length === 0 ||
+    hdRoute.route.length === 0 ||
+    !connectionPoints.length
+  ) {
     return route
   }
 
