@@ -75,8 +75,6 @@ test("NodeDimensionSubdivisionSolver allows overriding minNodeArea for tiny node
   solver.solve()
 
   expect(solver.outputNodes).toHaveLength(3)
-  expect(solver.outputNodes.every((node) => getNodeRatio(node) <= 2)).toBe(
-    true,
-  )
+  expect(solver.outputNodes.every((node) => getNodeRatio(node) <= 2)).toBe(true)
   expect(solver.stats.minNodeArea).toBe(0.001)
 })
