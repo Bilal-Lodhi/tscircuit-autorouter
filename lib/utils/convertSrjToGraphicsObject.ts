@@ -191,6 +191,7 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
 
   // Add obstacle rects
   for (const o of srj.obstacles) {
+    if (o.isCopperPour) continue
     rects.push({
       center: o.center,
       width: o.width,
