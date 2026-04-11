@@ -111,11 +111,17 @@ test(
     expect(pipelineOutputErrors).toHaveLength(0)
 
     const oneLoopRoutes = runSimplificationLoops(pipeline, 1)
-    const oneLoopErrors = getTraceOverlapErrors(srjWithPointPairs, oneLoopRoutes)
+    const oneLoopErrors = getTraceOverlapErrors(
+      srjWithPointPairs,
+      oneLoopRoutes,
+    )
     expect(oneLoopErrors).toHaveLength(0)
 
     const twoLoopRoutes = runSimplificationLoops(pipeline, 2)
-    const twoLoopErrors = getTraceOverlapErrors(srjWithPointPairs, twoLoopRoutes)
+    const twoLoopErrors = getTraceOverlapErrors(
+      srjWithPointPairs,
+      twoLoopRoutes,
+    )
     expect(twoLoopErrors).toHaveLength(0)
   },
   { timeout: 120_000 },
