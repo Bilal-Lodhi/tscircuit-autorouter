@@ -77,9 +77,9 @@ test("bugreport49 adds escape via points for copper pour nets", () => {
   const allEscapePoints = [...vccEscapePoints, ...gndEscapePoints]
   for (let i = 0; i < allEscapePoints.length; i++) {
     for (let j = i + 1; j < allEscapePoints.length; j++) {
-      expect(distance(allEscapePoints[i]!, allEscapePoints[j]!)).toBeGreaterThan(
-        requiredViaSpacing - 1e-3,
-      )
+      expect(
+        distance(allEscapePoints[i]!, allEscapePoints[j]!),
+      ).toBeGreaterThan(requiredViaSpacing - 1e-3)
     }
   }
 })
@@ -170,18 +170,18 @@ test("escape via placement keeps same-obstacle vias separated using obstacle siz
     (syntheticSrj.minViaDiameter ?? 0.3) +
     (syntheticSrj.defaultObstacleMargin ?? 0.15)
 
-  expect(escapePoints.every((point) => Math.abs(point.x - expectedLeftX) < 1e-3)).toBe(
-    true,
-  )
+  expect(
+    escapePoints.every((point) => Math.abs(point.x - expectedLeftX) < 1e-3),
+  ).toBe(true)
   expect(distance(escapePoints[0]!, escapePoints[1]!)).toBeGreaterThan(
     requiredViaSpacing - 1e-3,
   )
 
   for (const point of escapePoints) {
     expect(isPointInRect(point, sourceObstacle)).toBe(false)
-    expect(pointToBoxDistance(point, sourceObstacle) - viaRadius).toBeGreaterThan(
-      (syntheticSrj.defaultObstacleMargin ?? 0.15) - 1e-3,
-    )
+    expect(
+      pointToBoxDistance(point, sourceObstacle) - viaRadius,
+    ).toBeGreaterThan((syntheticSrj.defaultObstacleMargin ?? 0.15) - 1e-3)
   }
 })
 

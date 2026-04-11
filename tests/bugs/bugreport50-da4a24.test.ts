@@ -46,15 +46,11 @@ test(
     const pcbPort2 = { x: -2.15, y: -0.635 }
     const pcbPort14 = { x: 8.45, y: 0.5259644383800433 }
 
+    expect(inner2Vias.some((segment) => distance(segment, pcbPort2) <= 1)).toBe(
+      true,
+    )
     expect(
-      inner2Vias.some(
-        (segment) => distance(segment, pcbPort2) <= 1,
-      ),
-    ).toBe(true)
-    expect(
-      inner2Vias.some(
-        (segment) => distance(segment, pcbPort14) <= 1,
-      ),
+      inner2Vias.some((segment) => distance(segment, pcbPort14) <= 1),
     ).toBe(true)
 
     expect(getLastStepSvg(solver.visualize())).toMatchSvgSnapshot(

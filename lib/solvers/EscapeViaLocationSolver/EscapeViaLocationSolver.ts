@@ -200,10 +200,8 @@ export class EscapeViaLocationSolver extends BaseSolver {
     const maxX = sourceObstacle.center.x + sourceObstacle.width / 2
     const minY = sourceObstacle.center.y - sourceObstacle.height / 2
     const maxY = sourceObstacle.center.y + sourceObstacle.height / 2
-    const leftX =
-      minX - this.escapeOffset
-    const rightX =
-      maxX + this.escapeOffset
+    const leftX = minX - this.escapeOffset
+    const rightX = maxX + this.escapeOffset
     const bottomY = minY - this.escapeOffset
     const topY = maxY + this.escapeOffset
     const ySamples = this.getEdgeSamples(minY, maxY, point.y)
@@ -249,7 +247,11 @@ export class EscapeViaLocationSolver extends BaseSolver {
     samples.push(clampedValue)
   }
 
-  private getEdgeSamples(min: number, max: number, preferred: number): number[] {
+  private getEdgeSamples(
+    min: number,
+    max: number,
+    preferred: number,
+  ): number[] {
     const samples: number[] = []
     const span = max - min
     this.pushEdgeSample(samples, preferred, min, max)
@@ -354,7 +356,8 @@ export class EscapeViaLocationSolver extends BaseSolver {
   private getMinPlacedEscapeViaClearance(candidate: Point2D): number {
     let minClearance = Number.POSITIVE_INFINITY
     for (const existingEscapeVia of this.createdEscapeVias) {
-      const clearance = distance(candidate, existingEscapeVia) - this.viaDiameter
+      const clearance =
+        distance(candidate, existingEscapeVia) - this.viaDiameter
       minClearance = Math.min(minClearance, clearance)
       if (minClearance + GEOMETRIC_TOLERANCE < this.obstacleMargin) {
         return minClearance
@@ -561,8 +564,10 @@ export class EscapeViaLocationSolver extends BaseSolver {
         return a.candidateCount - b.candidateCount
       }
 
-      const aArea = (a.sourceObstacle?.width ?? 0) * (a.sourceObstacle?.height ?? 0)
-      const bArea = (b.sourceObstacle?.width ?? 0) * (b.sourceObstacle?.height ?? 0)
+      const aArea =
+        (a.sourceObstacle?.width ?? 0) * (a.sourceObstacle?.height ?? 0)
+      const bArea =
+        (b.sourceObstacle?.width ?? 0) * (b.sourceObstacle?.height ?? 0)
       if (aArea !== bArea) {
         return aArea - bArea
       }
@@ -625,12 +630,7 @@ export class EscapeViaLocationSolver extends BaseSolver {
         connectionNetIds,
       })
 
-      for (const {
-        point,
-        pointOwner,
-        sourceObstacle,
-      } of pointPlacementPlans) {
-
+      for (const { point, pointOwner, sourceObstacle } of pointPlacementPlans) {
         const escapeViaCandidate = this.findBestEscapeViaCandidate({
           connection: pointOwner.connection,
           point,

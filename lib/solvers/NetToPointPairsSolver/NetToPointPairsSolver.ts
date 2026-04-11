@@ -1,4 +1,8 @@
-import { ConnectionPoint, SimpleRouteConnection, SimpleRouteJson } from "lib/types"
+import {
+  ConnectionPoint,
+  SimpleRouteConnection,
+  SimpleRouteJson,
+} from "lib/types"
 import { BaseSolver } from "../BaseSolver"
 import { buildMinimumSpanningTree } from "./buildMinimumSpanningTree"
 import { GraphicsObject } from "graphics-debug"
