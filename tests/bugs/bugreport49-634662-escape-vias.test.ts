@@ -49,6 +49,9 @@ test("bugreport49 adds escape via points for copper pour nets", () => {
 
   for (const point of [...vccEscapePoints, ...gndEscapePoints]) {
     expect("layer" in point ? point.layer : null).toBe("top")
+    expect("terminalVia" in point ? point.terminalVia?.toLayer : null).toBe(
+      point.pointId ? metadataByPointId.get(point.pointId)?.targetLayer : null,
+    )
 
     const metadata = point.pointId
       ? metadataByPointId.get(point.pointId)
