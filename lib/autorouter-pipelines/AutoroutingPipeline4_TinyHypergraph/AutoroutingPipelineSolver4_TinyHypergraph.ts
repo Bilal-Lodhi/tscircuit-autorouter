@@ -1,3 +1,4 @@
+import { distance } from "@tscircuit/math-utils"
 import { RectDiffPipeline } from "@tscircuit/rectdiff"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { GraphicsObject, Line } from "graphics-debug"
@@ -12,6 +13,7 @@ import { getColorMap } from "lib/solvers/colors"
 import {
   CapacityMeshEdge,
   CapacityMeshNode,
+  SimpleRouteConnection,
   SimpleRouteJson,
   SimplifiedPcbTrace,
   SimplifiedPcbTraces,
@@ -31,6 +33,10 @@ import { CapacityMeshEdgeSolver } from "../../solvers/CapacityMeshSolver/Capacit
 import { CapacityMeshEdgeSolver2_NodeTreeOptimization } from "../../solvers/CapacityMeshSolver/CapacityMeshEdgeSolver2_NodeTreeOptimization"
 import { CapacityNodeTargetMerger } from "../../solvers/CapacityNodeTargetMerger/CapacityNodeTargetMerger"
 import { DeadEndSolver } from "../../solvers/DeadEndSolver/DeadEndSolver"
+import {
+  EscapeViaLocationSolver,
+  type EscapeViaMetadata,
+} from "../../solvers/EscapeViaLocationSolver/EscapeViaLocationSolver"
 import { Pipeline4HighDensityRepairSolver } from "../../solvers/HighDensityRepairSolver/Pipeline4HighDensityRepairSolver"
 import { HighDensitySolver } from "../../solvers/HighDensitySolver/HighDensitySolver"
 import { MultiSectionPortPointOptimizer } from "../../solvers/MultiSectionPortPointOptimizer"
@@ -51,6 +57,7 @@ interface CapacityMeshSolverOptions {
   maxNodeRatio?: number
 }
 export type AutoroutingPipelineSolverOptions = CapacityMeshSolverOptions
+const ESCAPE_VIA_ENDPOINT_ATTACH_TOLERANCE = 0.25
 
 type PipelineStep<T extends new (...args: any[]) => BaseSolver> = {
   solverName: string
@@ -85,6 +92,7 @@ function definePipelineStep<
 }
 
 export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
+  escapeViaLocationSolver?: EscapeViaLocationSolver
   netToPointPairsSolver?: NetToPointPairsSolver
   nodeSolver?: RectDiffPipeline
   nodeDimensionSubdivisionSolver?: NodeDimensionSubdivisionSolver
@@ -116,17 +124,40 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
 
   activeSubSolver?: BaseSolver | null = null
   connMap: ConnectivityMap
+  srjWithEscapeViaLocations?: SimpleRouteJson
   srjWithPointPairs?: SimpleRouteJson
   capacityNodes: CapacityMeshNode[] | null = null
   capacityEdges: CapacityMeshEdge[] | null = null
   highDensityNodePortPoints?: NodeWithPortPoints[]
+  escapeViaMetadataByPointId: Map<string, EscapeViaMetadata> = new Map()
 
   cacheProvider: CacheProvider | null = null
   pipelineDef = [
     definePipelineStep(
+      "escapeViaLocationSolver",
+      EscapeViaLocationSolver,
+      (cms) => [
+        cms.srj,
+        {
+          viaDiameter: cms.viaDiameter,
+          minTraceWidth: cms.minTraceWidth,
+          obstacleMargin: cms.srj.defaultObstacleMargin ?? 0.15,
+        },
+      ],
+      {
+        onSolved: (cms) => {
+          cms.srjWithEscapeViaLocations =
+            cms.escapeViaLocationSolver?.getOutputSimpleRouteJson()
+          cms.escapeViaMetadataByPointId =
+            cms.escapeViaLocationSolver?.getEscapeViaMetadataByPointId() ??
+            new Map()
+        },
+      },
+    ),
+    definePipelineStep(
       "netToPointPairsSolver",
       NetToPointPairsSolver2_OffBoardConnection,
-      (cms) => [cms.srj, cms.colorMap],
+      (cms) => [cms.srjWithEscapeViaLocations ?? cms.srj, cms.colorMap],
       {
         onSolved: (cms) => {
           cms.srjWithPointPairs =
@@ -436,6 +467,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
     if (!this.solved && this.activeSubSolver) {
       return this.activeSubSolver.visualize()
     }
+    const escapeViaLocationViz = this.escapeViaLocationSolver?.visualize()
     const netToPPSolver = this.netToPointPairsSolver?.visualize()
     const nodeViz = this.nodeSolver?.visualize()
     const nodeSubdivisionViz = this.nodeDimensionSubdivisionSolver?.visualize()
@@ -511,6 +543,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
     } as GraphicsObject
     const visualizations = [
       problemViz,
+      escapeViaLocationViz,
       netToPPSolver,
       nodeViz,
       nodeSubdivisionViz,
@@ -557,6 +590,9 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
     if (this.netToPointPairsSolver) {
       return this.netToPointPairsSolver.visualize()
     }
+    if (this.escapeViaLocationSolver) {
+      return this.escapeViaLocationSolver.visualize()
+    }
 
     return {}
   }
@@ -596,7 +632,11 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
             netConnectionName ??
             connection.rootConnectionName ??
             connection.name,
-          route: convertHdRouteToSimplifiedRoute(hdRoute, this.srj.layerCount),
+          route: this.attachEscapeViaSegments(
+            convertHdRouteToSimplifiedRoute(hdRoute, this.srj.layerCount),
+            hdRoute,
+            connection,
+          ),
         }
 
         traces.push(simplifiedPcbTrace)
@@ -611,6 +651,110 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
       ...this.srj,
       traces: this.getOutputSimplifiedPcbTraces(),
     }
+  }
+
+  private attachEscapeViaSegments(
+    route: SimplifiedPcbTraces[number]["route"],
+    hdRoute: HighDensityRoute,
+    connection: SimpleRouteConnection,
+  ): SimplifiedPcbTraces[number]["route"] {
+    if (route.length === 0 || hdRoute.route.length === 0) {
+      return route
+    }
+
+    const startPoint = hdRoute.route[0]!
+    const endPoint = hdRoute.route[hdRoute.route.length - 1]!
+    const prependSegments: SimplifiedPcbTraces[number]["route"] = []
+    const appendSegments: SimplifiedPcbTraces[number]["route"] = []
+    let nearestStartEscapeVia:
+      | { escapeVia: EscapeViaMetadata; distance: number }
+      | undefined
+    let nearestEndEscapeVia:
+      | { escapeVia: EscapeViaMetadata; distance: number }
+      | undefined
+
+    for (const point of connection.pointsToConnect) {
+      if (!point.pointId) continue
+      const escapeVia = this.escapeViaMetadataByPointId.get(point.pointId)
+      if (!escapeVia) continue
+      const startDistance = distance(escapeVia, startPoint)
+      const endDistance = distance(escapeVia, endPoint)
+
+      if (
+        startDistance <= ESCAPE_VIA_ENDPOINT_ATTACH_TOLERANCE &&
+        startDistance <= endDistance &&
+        (!nearestStartEscapeVia ||
+          startDistance < nearestStartEscapeVia.distance)
+      ) {
+        nearestStartEscapeVia = { escapeVia, distance: startDistance }
+      }
+      if (
+        endDistance <= ESCAPE_VIA_ENDPOINT_ATTACH_TOLERANCE &&
+        endDistance <= startDistance &&
+        (!nearestEndEscapeVia || endDistance < nearestEndEscapeVia.distance)
+      ) {
+        nearestEndEscapeVia = { escapeVia, distance: endDistance }
+      }
+    }
+
+    const startEscapeVia = nearestStartEscapeVia?.escapeVia
+    const endEscapeVia = nearestEndEscapeVia?.escapeVia
+
+    if (startEscapeVia) {
+      prependSegments.push({
+        route_type: "via",
+        x: startEscapeVia.x,
+        y: startEscapeVia.y,
+        from_layer: startEscapeVia.sourceLayer,
+        to_layer: startEscapeVia.targetLayer,
+        via_diameter: hdRoute.viaDiameter,
+      })
+      const firstRouteSegment = route[0]
+      if (
+        !(
+          firstRouteSegment?.route_type === "wire" &&
+          firstRouteSegment.layer === startEscapeVia.sourceLayer &&
+          distance(firstRouteSegment, startEscapeVia) <= 1e-3
+        )
+      ) {
+        prependSegments.push({
+          route_type: "wire",
+          x: startEscapeVia.x,
+          y: startEscapeVia.y,
+          width: hdRoute.traceThickness,
+          layer: startEscapeVia.sourceLayer,
+        })
+      }
+    }
+
+    if (endEscapeVia) {
+      const lastRouteSegment = route[route.length - 1]
+      if (
+        !(
+          lastRouteSegment?.route_type === "wire" &&
+          lastRouteSegment.layer === endEscapeVia.sourceLayer &&
+          distance(lastRouteSegment, endEscapeVia) <= 1e-3
+        )
+      ) {
+        appendSegments.push({
+          route_type: "wire",
+          x: endEscapeVia.x,
+          y: endEscapeVia.y,
+          width: hdRoute.traceThickness,
+          layer: endEscapeVia.sourceLayer,
+        })
+      }
+      appendSegments.push({
+        route_type: "via",
+        x: endEscapeVia.x,
+        y: endEscapeVia.y,
+        from_layer: endEscapeVia.sourceLayer,
+        to_layer: endEscapeVia.targetLayer,
+        via_diameter: hdRoute.viaDiameter,
+      })
+    }
+
+    return [...prependSegments, ...route, ...appendSegments]
   }
 }
 
