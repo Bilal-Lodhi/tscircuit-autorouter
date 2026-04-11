@@ -94,7 +94,9 @@ test(
     const result = await runner.run()
     const outputFiles = readdirSync(outputDir).sort()
     const logs = readFileSync(path.join(outputDir, "logs.txt"), "utf8")
-    const netToPointPairsStage = getPipeline4StageNumber("netToPointPairsSolver")
+    const netToPointPairsStage = getPipeline4StageNumber(
+      "netToPointPairsSolver",
+    )
     const highDensityRepairStage = getPipeline4StageNumber(
       "highDensityRepairSolver",
     )
@@ -171,7 +173,9 @@ test(
     const stdout = proc.stdout.toString()
     const stderr = proc.stderr.toString()
     const logs = readFileSync(path.join(outputDir, "logs.txt"), "utf8")
-    const netToPointPairsStage = getPipeline4StageNumber("netToPointPairsSolver")
+    const netToPointPairsStage = getPipeline4StageNumber(
+      "netToPointPairsSolver",
+    )
     const traceWidthStage = getPipeline4StageNumber("traceWidthSolver")
 
     expect(proc.exitCode).toBe(0)
