@@ -5,7 +5,8 @@ import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
 export const getGraphicsLayerFromLayerNames = (
   layerNames: readonly string[],
   layerCount: number,
-) => `z${layerNames.map((layerName) => mapLayerNameToZ(layerName, layerCount)).join(",")}`
+) =>
+  `z${layerNames.map((layerName) => mapLayerNameToZ(layerName, layerCount)).join(",")}`
 
 export const getGraphicsLayerForConnectionPoint = (
   point: ConnectionPoint,

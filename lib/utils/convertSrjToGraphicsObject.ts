@@ -131,7 +131,10 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
             height: padHeight,
             fill: safeTransparentize(color, 0.5),
             stroke: "rgba(0, 0, 0, 0.5)",
-            layer: getGraphicsLayerFromLayerNames([routePoint.layer], layerCount),
+            layer: getGraphicsLayerFromLayerNames(
+              [routePoint.layer],
+              layerCount,
+            ),
           })
 
           // Draw end pad
@@ -141,7 +144,10 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
             height: padHeight,
             fill: safeTransparentize(color, 0.5),
             stroke: "rgba(0, 0, 0, 0.5)",
-            layer: getGraphicsLayerFromLayerNames([routePoint.layer], layerCount),
+            layer: getGraphicsLayerFromLayerNames(
+              [routePoint.layer],
+              layerCount,
+            ),
           })
 
           // Draw jumper body line
@@ -149,7 +155,10 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
             points: [routePoint.start, routePoint.end],
             strokeColor: "rgba(100, 100, 100, 0.8)",
             strokeWidth: dims.padWidth * 0.3,
-            layer: getGraphicsLayerFromLayerNames([routePoint.layer], layerCount),
+            layer: getGraphicsLayerFromLayerNames(
+              [routePoint.layer],
+              layerCount,
+            ),
           })
         } else if (
           routePoint.route_type === "wire" &&
