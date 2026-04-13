@@ -30,6 +30,7 @@ import { AvailableSegmentPointSolver } from "../../solvers/AvailableSegmentPoint
 import { BaseSolver } from "../../solvers/BaseSolver"
 import { CapacityMeshEdgeSolver } from "../../solvers/CapacityMeshSolver/CapacityMeshEdgeSolver"
 import { CapacityMeshEdgeSolver2_NodeTreeOptimization } from "../../solvers/CapacityMeshSolver/CapacityMeshEdgeSolver2_NodeTreeOptimization"
+import { ConsolidateConnectedObstaclesSolver } from "../../solvers/ConsolidateConnectedObstaclesSolver/ConsolidateConnectedObstaclesSolver"
 import { CapacityNodeTargetMerger } from "../../solvers/CapacityNodeTargetMerger/CapacityNodeTargetMerger"
 import { DeadEndSolver } from "../../solvers/DeadEndSolver/DeadEndSolver"
 import { HighDensityForceImproveSolver } from "high-density-repair01/lib/HighDensityForceImproveSolver"
@@ -125,9 +126,11 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
   connMap: ConnectivityMap
   srjWithEscapeViaLocations?: SimpleRouteJson
   srjWithPointPairs?: SimpleRouteJson
+  srjWithConsolidatedObstacles?: SimpleRouteJson
   capacityNodes: CapacityMeshNode[] | null = null
   capacityEdges: CapacityMeshEdge[] | null = null
   highDensityNodePortPoints?: NodeWithPortPoints[]
+  consolidateConnectedObstaclesSolver?: ConsolidateConnectedObstaclesSolver
 
   cacheProvider: CacheProvider | null = null
   pipelineDef = [
@@ -157,9 +160,27 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
         onSolved: (cms) => {
           cms.srjWithPointPairs =
             cms.netToPointPairsSolver?.getNewSimpleRouteJson()
-          cms.colorMap = getColorMap(cms.srjWithPointPairs!, this.connMap)
           cms.connMap = getConnectivityMapFromSimpleRouteJson(
             cms.srjWithPointPairs!,
+          )
+          cms.colorMap = getColorMap(cms.srjWithPointPairs!, cms.connMap)
+        },
+      },
+    ),
+    definePipelineStep(
+      "consolidateConnectedObstaclesSolver",
+      ConsolidateConnectedObstaclesSolver,
+      (cms) => [cms.srjWithPointPairs!],
+      {
+        onSolved: (cms) => {
+          cms.srjWithConsolidatedObstacles =
+            cms.consolidateConnectedObstaclesSolver?.getOutputSimpleRouteJson()
+          cms.connMap = getConnectivityMapFromSimpleRouteJson(
+            cms.srjWithConsolidatedObstacles!,
+          )
+          cms.colorMap = getColorMap(
+            cms.srjWithConsolidatedObstacles!,
+            cms.connMap,
           )
         },
       },
@@ -167,7 +188,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
     definePipelineStep(
       "nodeSolver",
       RectDiffPipeline,
-      (cms) => [{ simpleRouteJson: cms.srjWithPointPairs! as any }],
+      (cms) => [{ simpleRouteJson: cms.getWorkingSrj() as any }],
       {
         onSolved: (cms) => {
           cms.capacityNodes = cms.nodeSolver?.getOutput().meshNodes ?? []
@@ -220,7 +241,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
         {
           capacityMeshNodes: cms.capacityNodes!,
           sharedEdgeSegments: cms.availableSegmentPointSolver!.getOutput(),
-          simpleRouteJson: cms.srjWithPointPairs!,
+          simpleRouteJson: cms.getWorkingSrj(),
         },
       ],
     ),
@@ -237,7 +258,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
           segmentPortPoints: sharedEdgeSegments.flatMap(
             (seg) => seg.portPoints,
           ),
-          simpleRouteJsonConnections: cms.srjWithPointPairs!.connections,
+          simpleRouteJsonConnections: cms.getWorkingSrj().connections,
         })
 
         return [
@@ -285,8 +306,8 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
             cms.portPointPathingSolver?.getOutput().inputNodeWithPortPoints ??
             [],
           minTraceWidth: cms.minTraceWidth,
-          obstacles: cms.srj.obstacles,
-          layerCount: cms.srj.layerCount,
+          obstacles: cms.getWorkingSrj().obstacles,
+          layerCount: cms.getWorkingSrj().layerCount,
         },
       ],
     ),
@@ -315,7 +336,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
           connMap: cms.connMap,
           viaDiameter: cms.viaDiameter,
           traceWidth: cms.minTraceWidth,
-          obstacleMargin: cms.srj.defaultObstacleMargin ?? 0.15,
+          obstacleMargin: cms.getWorkingSrj().defaultObstacleMargin ?? 0.15,
         },
       ]
     }),
@@ -328,7 +349,8 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
           hdRoutes: cms.highDensityRouteSolver!.routes,
           colorMap: cms.colorMap,
           totalStepsPerNode: Math.max(20, Math.round(60 * cms.effort)),
-          nodeAssignmentMargin: cms.srj.defaultObstacleMargin ?? 0.2,
+          nodeAssignmentMargin:
+            cms.getWorkingSrj().defaultObstacleMargin ?? 0.2,
         },
       ],
     ),
@@ -341,9 +363,9 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
           hdRoutes:
             cms.highDensityForceImproveSolver?.getOutput() ??
             cms.highDensityRouteSolver!.routes,
-          obstacles: cms.srj.obstacles,
+          obstacles: cms.getWorkingSrj().obstacles,
           colorMap: cms.colorMap,
-          repairMargin: cms.srj.defaultObstacleMargin ?? 0.2,
+          repairMargin: cms.getWorkingSrj().defaultObstacleMargin ?? 0.2,
         },
       ],
     ),
@@ -352,7 +374,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
       MultipleHighDensityRouteStitchSolver3,
       (cms) => [
         {
-          connections: cms.srjWithPointPairs!.connections,
+          connections: cms.getWorkingSrj().connections,
           hdRoutes:
             cms.highDensityRepairSolver?.getOutput() ??
             cms.highDensityForceImproveSolver?.getOutput() ??
@@ -369,12 +391,12 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
       (cms) => [
         {
           hdRoutes: cms.highDensityStitchSolver!.mergedHdRoutes,
-          obstacles: cms.srj.obstacles,
+          obstacles: cms.getWorkingSrj().obstacles,
           connMap: cms.connMap,
           colorMap: cms.colorMap,
-          outline: cms.srj.outline,
+          outline: cms.getWorkingSrj().outline,
           defaultViaDiameter: cms.viaDiameter,
-          layerCount: cms.srj.layerCount,
+          layerCount: cms.getWorkingSrj().layerCount,
           iterations: 2,
         },
       ],
@@ -382,12 +404,12 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
     definePipelineStep("traceWidthSolver", TraceWidthSolver, (cms) => [
       {
         hdRoutes: cms.traceSimplificationSolver!.simplifiedHdRoutes,
-        obstacles: cms.srj.obstacles,
+        obstacles: cms.getWorkingSrj().obstacles,
         connMap: cms.connMap,
         colorMap: cms.colorMap,
         minTraceWidth: cms.minTraceWidth,
-        connection: cms.srj.connections,
-        layerCount: cms.srj.layerCount,
+        connection: cms.getWorkingSrj().connections,
+        layerCount: cms.getWorkingSrj().layerCount,
       },
     ]),
   ]
@@ -430,6 +452,15 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
     this.startTimeOfPhase = {}
     this.endTimeOfPhase = {}
     this.timeSpentOnPhase = {}
+  }
+
+  getWorkingSrj(): SimpleRouteJson {
+    return (
+      this.srjWithConsolidatedObstacles ??
+      this.srjWithPointPairs ??
+      this.srjWithEscapeViaLocations ??
+      this.srj
+    )
   }
 
   getConstructorParams() {
@@ -508,16 +539,32 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
     const necessaryCrampedPortPointSolverViz =
       this.necessaryCrampedPortPointSolver?.visualize()
     const highDensityRouteSolverViz = this.highDensityRouteSolver?.visualize()
-    const problemOutline = this.srj.outline
+    const problemSrj = this.getWorkingSrj()
+    const problemOutline = problemSrj.outline
     const problemLines: Line[] = []
 
     problemLines.push({
       points: [
-        { x: this.srj.bounds?.minX ?? -50, y: this.srj.bounds?.minY ?? -50 },
-        { x: this.srj.bounds?.maxX ?? 50, y: this.srj.bounds?.minY ?? -50 },
-        { x: this.srj.bounds?.maxX ?? 50, y: this.srj.bounds?.maxY ?? 50 },
-        { x: this.srj.bounds?.minX ?? -50, y: this.srj.bounds?.maxY ?? 50 },
-        { x: this.srj.bounds?.minX ?? -50, y: this.srj.bounds?.minY ?? -50 },
+        {
+          x: problemSrj.bounds?.minX ?? -50,
+          y: problemSrj.bounds?.minY ?? -50,
+        },
+        {
+          x: problemSrj.bounds?.maxX ?? 50,
+          y: problemSrj.bounds?.minY ?? -50,
+        },
+        {
+          x: problemSrj.bounds?.maxX ?? 50,
+          y: problemSrj.bounds?.maxY ?? 50,
+        },
+        {
+          x: problemSrj.bounds?.minX ?? -50,
+          y: problemSrj.bounds?.maxY ?? 50,
+        },
+        {
+          x: problemSrj.bounds?.minX ?? -50,
+          y: problemSrj.bounds?.minY ?? -50,
+        },
       ],
       strokeColor: "rgba(255,0,0,0.25)",
     })
@@ -540,7 +587,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
 
     const problemViz = {
       points: [
-        ...this.srj.connections.flatMap((c) =>
+        ...problemSrj.connections.flatMap((c) =>
           c.pointsToConnect.map((p) => ({
             ...p,
             label: `${c.name} ${p.pcb_port_id ?? ""}`,
@@ -548,7 +595,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
         ),
       ],
       rects: [
-        ...(this.srj.obstacles ?? [])
+        ...(problemSrj.obstacles ?? [])
           .filter((o) => !o.isCopperPour)
           .map((o) => ({
             ...o,
@@ -668,7 +715,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
 
   getOutputSimpleRouteJson(): SimpleRouteJson {
     return {
-      ...this.srj,
+      ...this.getWorkingSrj(),
       traces: this.getOutputSimplifiedPcbTraces(),
     }
   }
