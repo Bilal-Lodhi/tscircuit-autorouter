@@ -1,13 +1,15 @@
 import { Circle, Line, Point, Rect } from "graphics-debug"
 import { getColorMap, safeTransparentize } from "lib/solvers/colors"
 import { SimpleRouteJson } from "lib/types"
+import { getConnectionPointLayers } from "lib/types/srj-types"
+import { createObstacleLabelFormatter } from "lib/utils/formatObstacleLabel"
 import {
-  getConnectionPointLayer,
-  getConnectionPointLayers,
-} from "lib/types/srj-types"
+  getGraphicsLayerForConnectionPoint,
+  getGraphicsLayerForObstacle,
+  getGraphicsLayerFromLayerNames,
+} from "lib/utils/getGraphicsObjectLayer"
 import { JUMPER_DIMENSIONS } from "lib/utils/jumperSizes"
 import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
-import { mapZToLayerName } from "lib/utils/mapZToLayerName"
 
 export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
   const lines: Line[] = []
@@ -18,6 +20,7 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
   const colorMap: Record<string, string> = getColorMap(srj)
   const layerCount = srj.layerCount
   const viaRadius = (srj.minViaDiameter ?? 0.3) / 2
+  const formatObstacleLabel = createObstacleLabelFormatter(srj)
 
   // Add points for each connection's pointsToConnect
   if (srj.connections) {
@@ -30,11 +33,7 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
           x: point.x,
           y: point.y,
           color: colorMap[connection.name]!,
-          layer:
-            pointLayers[0] ??
-            ("z" in point
-              ? mapZToLayerName(point.z as number, layerCount)
-              : "top"),
+          layer: getGraphicsLayerForConnectionPoint(point, layerCount),
           label: [
             connection.name,
             rootConnectionName,
@@ -132,7 +131,10 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
             height: padHeight,
             fill: safeTransparentize(color, 0.5),
             stroke: "rgba(0, 0, 0, 0.5)",
-            layer: "jumper",
+            layer: getGraphicsLayerFromLayerNames(
+              [routePoint.layer],
+              layerCount,
+            ),
           })
 
           // Draw end pad
@@ -142,7 +144,10 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
             height: padHeight,
             fill: safeTransparentize(color, 0.5),
             stroke: "rgba(0, 0, 0, 0.5)",
-            layer: "jumper",
+            layer: getGraphicsLayerFromLayerNames(
+              [routePoint.layer],
+              layerCount,
+            ),
           })
 
           // Draw jumper body line
@@ -150,7 +155,10 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
             points: [routePoint.start, routePoint.end],
             strokeColor: "rgba(100, 100, 100, 0.8)",
             strokeWidth: dims.padWidth * 0.3,
-            layer: "jumper-body",
+            layer: getGraphicsLayerFromLayerNames(
+              [routePoint.layer],
+              layerCount,
+            ),
           })
         } else if (
           routePoint.route_type === "wire" &&
@@ -207,7 +215,8 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
       width: o.width,
       height: o.height,
       fill: "rgba(255,0,0,0.5)",
-      layer: `z${o.layers.map((l) => mapLayerNameToZ(l, layerCount)).join(",")}`,
+      layer: getGraphicsLayerForObstacle(o, layerCount),
+      label: formatObstacleLabel(o),
     })
   }
 
@@ -221,7 +230,7 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
           height: pad.height,
           fill: "rgba(255, 165, 0, 0.3)",
           stroke: "rgba(255, 165, 0, 0.8)",
-          layer: "jumper",
+          layer: getGraphicsLayerForObstacle(pad, layerCount),
         })
       }
     }

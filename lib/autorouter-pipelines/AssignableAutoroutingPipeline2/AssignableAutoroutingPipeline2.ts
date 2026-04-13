@@ -13,6 +13,11 @@ import {
 } from "lib/types/high-density-types"
 import { convertHdRouteToSimplifiedRoute } from "lib/utils/convertHdRouteToSimplifiedRoute"
 import { convertSrjToGraphicsObject } from "lib/utils/convertSrjToGraphicsObject"
+import { createObstacleLabelFormatter } from "lib/utils/formatObstacleLabel"
+import {
+  getGraphicsLayerForConnectionPoint,
+  getGraphicsLayerForObstacle,
+} from "lib/utils/getGraphicsObjectLayer"
 import { getConnectivityMapFromSimpleRouteJson } from "lib/utils/getConnectivityMapFromSimpleRouteJson"
 import { AvailableSegmentPointSolver } from "../../solvers/AvailableSegmentPointSolver/AvailableSegmentPointSolver"
 import { BaseSolver } from "../../solvers/BaseSolver"
@@ -541,11 +546,14 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
       })
     }
 
+    const formatObstacleLabel = createObstacleLabelFormatter(this.srj)
+
     const problemViz = {
       points: [
         ...this.srj.connections.flatMap((c) =>
           c.pointsToConnect.map((p) => ({
             ...p,
+            layer: getGraphicsLayerForConnectionPoint(p, this.srj.layerCount),
             label: `${c.name} ${p.pcb_port_id ?? ""}`,
           })),
         ),
@@ -560,15 +568,8 @@ export class AssignableAutoroutingPipeline2 extends BaseSolver {
               : o.layers?.includes("bottom")
                 ? "rgba(0,0,255,0.25)"
                 : "rgba(255,0,0,0.25)",
-            label: [
-              "obstacle",
-              o.offBoardConnectsTo
-                ? `offboardConnections: ${o.offBoardConnectsTo?.join(", ")}`
-                : "",
-              o.layers?.join(", "),
-            ]
-              .filter(Boolean)
-              .join("\n"),
+            layer: getGraphicsLayerForObstacle(o, this.srj.layerCount),
+            label: formatObstacleLabel(o),
           })),
       ],
       lines: problemLines,
