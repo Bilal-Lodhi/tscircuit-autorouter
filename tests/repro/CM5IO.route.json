@@ -43815,7 +43815,6 @@
         "connectivity_net1933",
         "pcb_smtpad_434",
         "pcb_smtpad_228",
-        "source_trace_171",
         "pcb_component_41_port_43",
         "pcb_component_71_port_118",
         "pcb_port_325",
@@ -69677,7 +69676,6 @@
         "connectivity_net2104",
         "pcb_plated_hole_83",
         "pcb_smtpad_336",
-        "source_trace_119",
         "pcb_component_34_port_4",
         "pcb_component_71_port_20",
         "pcb_port_240",
@@ -86078,7 +86076,6 @@
         "connectivity_net1933",
         "pcb_smtpad_434",
         "pcb_smtpad_228",
-        "source_trace_171",
         "pcb_component_41_port_43",
         "pcb_component_71_port_118",
         "pcb_port_325",
@@ -127102,7 +127099,6 @@
         "connectivity_net2104",
         "pcb_plated_hole_83",
         "pcb_smtpad_336",
-        "source_trace_119",
         "pcb_component_34_port_4",
         "pcb_component_71_port_20",
         "pcb_port_240",
@@ -142729,26 +142725,6 @@
       ]
     },
     {
-      "name": "source_trace_119",
-      "source_trace_id": "source_trace_119",
-      "pointsToConnect": [
-        {
-          "x": -17.46000000000035,
-          "y": 43.039999999999964,
-          "layer": "top",
-          "pointId": "pcb_port_240",
-          "pcb_port_id": "pcb_port_240"
-        },
-        {
-          "x": 35.45999999999967,
-          "y": 13.799999999999955,
-          "layer": "top",
-          "pointId": "pcb_port_461",
-          "pcb_port_id": "pcb_port_461"
-        }
-      ]
-    },
-    {
       "name": "source_trace_120",
       "source_trace_id": "source_trace_120",
       "pointsToConnect": [
@@ -143145,26 +143121,6 @@
           "layer": "top",
           "pointId": "pcb_port_557",
           "pcb_port_id": "pcb_port_557"
-        }
-      ]
-    },
-    {
-      "name": "source_trace_171",
-      "source_trace_id": "source_trace_171",
-      "pointsToConnect": [
-        {
-          "x": 66.24999999999966,
-          "y": -42.77500000000005,
-          "layer": "top",
-          "pointId": "pcb_port_325",
-          "pcb_port_id": "pcb_port_325"
-        },
-        {
-          "x": 1.459999999999667,
-          "y": 13.399999999999963,
-          "layer": "top",
-          "pointId": "pcb_port_559",
-          "pcb_port_id": "pcb_port_559"
         }
       ]
     },
