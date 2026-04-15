@@ -81,7 +81,6 @@ jobs:
       - name: Update snapshots
         if: steps.parse.outputs.can_push == 'true'
         id: update_snapshots
-        continue-on-error: true
         env:
           BUN_UPDATE_SNAPSHOTS: "1"
         run: |
@@ -89,7 +88,10 @@ jobs:
           bun test --timeout 120_000
           exit_code=$?
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
-          exit "$exit_code"
+          if [ "$exit_code" -ne 0 ]; then
+            echo "bun test exited with code $exit_code; continuing so snapshot updates can still be committed."
+          fi
+          exit 0
 
       - name: Commit and push snapshot updates
         if: steps.parse.outputs.can_push == 'true' && always()
