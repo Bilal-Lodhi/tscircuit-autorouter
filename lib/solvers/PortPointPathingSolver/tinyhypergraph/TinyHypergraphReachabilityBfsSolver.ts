@@ -150,22 +150,85 @@ export class TinyHypergraphReachabilityBfsSolver extends BaseSolver {
         label: getRegionLabel(region!),
       }))
 
+    const usedPortIndices = new Set<number>()
+    const usedPathPortPoints: Array<{
+      x: number
+      y: number
+      label: string
+      layer?: string
+    }> = []
+    if (this.params.existingPath) {
+      const { portX, portY } = this.params.existingPath
+      for (const segments of this.params.existingPath.regionSegments) {
+        for (const [, fromPortId, toPortId] of segments) {
+          usedPortIndices.add(fromPortId)
+          usedPortIndices.add(toPortId)
+        }
+      }
+      for (const portIndex of usedPortIndices) {
+        const x = portX[portIndex]
+        const y = portY[portIndex]
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+          const port = this.params.graph.ports[portIndex]
+          const label = port
+            ? [
+                `portId: ${port.portId}`,
+                `index: ${portIndex}`,
+                `z: ${port.d.z}`,
+                `regions: ${port.d.regions
+                  .map((region) => region.regionId)
+                  .join(", ")}`,
+              ].join("\n")
+            : `pathPortIndex: ${portIndex}`
+          usedPathPortPoints.push({
+            x,
+            y,
+            label,
+            layer: port ? `z${port.d.z}` : undefined,
+          })
+        }
+      }
+    } else {
+      console.warn(
+        "[TinyHypergraphReachabilityBfsSolver] existingPath missing for used-path highlighting",
+      )
+    }
+
+    let usedVisiblePoints = 0
     const visitedPortPoints = this.params.graph.ports
       .filter((port) =>
         port.d.regions.some((region) => visitedRegionIds.has(region.regionId)),
       )
-      .map((port) => ({
-        label: [
-          `portId: ${port.portId}`,
-          `z: ${port.d.z}`,
-          `regions: ${port.d.regions
-            .map((region) => region.regionId)
-            .join(", ")}`,
-        ].join("\n"),
-        x: port.d.x,
-        y: port.d.y,
-        color: "rgba(0, 140, 255, 0.9)",
-      }))
+      .map((port, index) => {
+        const isUsedByExistingPath = usedPortIndices.has(index)
+        if (isUsedByExistingPath) {
+          usedVisiblePoints += 1
+        }
+        return {
+          label: [
+            `portId: ${port.portId}`,
+            `index: ${index}`,
+            `z: ${port.d.z}`,
+            `regions: ${port.d.regions
+              .map((region) => region.regionId)
+              .join(", ")}`,
+          ].join("\n"),
+          x: port.d.x,
+          y: port.d.y,
+          layer: `z${port.d.z}`,
+          color: isUsedByExistingPath ? "#00ff2a" : "#008cff",
+        }
+      })
+    if (visitedPortPoints.length === 0) {
+      console.warn(
+        `[TinyHypergraphReachabilityBfsSolver] no reachable port points to draw (visitedRegions=${visitedRegionIds.size}, ports=${this.params.graph.ports.length})`,
+      )
+    }
+    if (usedPortIndices.size > 0 && usedVisiblePoints === 0) {
+      console.warn(
+        `[TinyHypergraphReachabilityBfsSolver] used path port indices present but none are reachable (used=${usedPortIndices.size})`,
+      )
+    }
 
     const connectionLines: Line[] = this.results.map((result) => {
       const connection = this.params.connections[result.connectionIndex]
@@ -221,7 +284,13 @@ export class TinyHypergraphReachabilityBfsSolver extends BaseSolver {
 
     return {
       rects: [...obstacleRects, ...visitedRects, ...unreachableRects],
-      points: visitedPortPoints,
+      points: [
+        ...visitedPortPoints,
+        ...usedPathPortPoints.map((point) => ({
+          ...point,
+          color: "#00ff2a",
+        })),
+      ],
       lines: [...connectionLines, ...existingPathLines],
     }
   }
