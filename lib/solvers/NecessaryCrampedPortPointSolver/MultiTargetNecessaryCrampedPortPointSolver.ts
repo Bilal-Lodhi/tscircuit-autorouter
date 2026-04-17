@@ -184,6 +184,11 @@ export class MultiTargetNecessaryCrampedPortPointSolver extends BaseSolver {
         this.error = `No candidates found for capacity mesh node ${this.currentTarget.capacityMeshNodeId} even after including cramped port points`
       } else {
         this.crampedPortPointsToKeep.add(bestCandidate.port)
+        let parent = bestCandidate.parent
+        while (parent) {
+          this.crampedPortPointsToKeep.add(parent.port)
+          parent = parent.parent
+        }
       }
 
       this.isRunningCrampedPass = false
