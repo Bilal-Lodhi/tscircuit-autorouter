@@ -276,6 +276,10 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
               MIN_ALLOWED_BOARD_SCORE: -10000,
             },
           },
+          {
+            getGlobalIteration: () => cms.iterations,
+            runReachabilityOnConnectionStart: true,
+          },
         ]
       },
     ),

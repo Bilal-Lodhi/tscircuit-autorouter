@@ -1,6 +1,7 @@
 import type { SerializedHyperGraph } from "@tscircuit/hypergraph"
 import type { GraphicsObject } from "graphics-debug"
 import { BaseSolver } from "lib/solvers/BaseSolver"
+import { combineVisualizations } from "lib/utils/combineVisualizations"
 import type {
   InputNodeWithPortPoints,
   InputPortPoint,
@@ -22,6 +23,10 @@ import {
   type TinyHyperGraphSolverOptions,
 } from "tiny-hypergraph/lib/index"
 import type { HgPortPointPathingSolverParams } from "../hgportpointpathingsolver/types"
+import {
+  TinyHypergraphReachabilityBfsSolver,
+  type TinyHypergraphReachabilityBfsParams,
+} from "./TinyHypergraphReachabilityBfsSolver"
 
 type RouteMetadata = {
   connectionId: string
@@ -435,8 +440,22 @@ export class TinyHypergraphPortPointPathingSolver extends BaseSolver {
     HgPortPointPathingSolverParams["graph"]["regions"][number]
   >
   private originalRegionIds: Set<CapacityMeshNodeId>
+  private reachabilityBfsSolver?: TinyHypergraphReachabilityBfsSolver
+  private reachabilityCheckIteration: number
+  private getGlobalIteration?: () => number
+  private lastGlobalIteration: number | null = null
+  private lastReachabilityRunIteration: number | null = null
+  private runReachabilityOnConnectionStart: boolean
+  private lastRouteId: number | null = null
 
-  constructor(private params: HgPortPointPathingSolverParams) {
+  constructor(
+    private params: HgPortPointPathingSolverParams,
+    opts: {
+      reachabilityCheckIteration?: number
+      getGlobalIteration?: () => number
+      runReachabilityOnConnectionStart?: boolean
+    } = {},
+  ) {
     super()
     const serializedGraph = buildSerializedTinyGraph(params)
     const tinyPipelineInput = getTinyHyperGraphPipelineInput(
@@ -447,6 +466,11 @@ export class TinyHypergraphPortPointPathingSolver extends BaseSolver {
       new TinyHyperGraphSectionPipelineWithTerminalNetIds(tinyPipelineInput)
     this.MAX_ITERATIONS =
       getTinyHyperGraphPipelineMaxIterations(tinyPipelineInput)
+    this.reachabilityCheckIteration =
+      opts.reachabilityCheckIteration ?? Number.POSITIVE_INFINITY
+    this.getGlobalIteration = opts.getGlobalIteration
+    this.runReachabilityOnConnectionStart =
+      opts.runReachabilityOnConnectionStart ?? false
 
     this.originalRegionById = new Map(
       params.graph.regions.map((region) => [region.regionId, region]),
@@ -514,6 +538,68 @@ export class TinyHypergraphPortPointPathingSolver extends BaseSolver {
       stageStats: this.tinyPipelineSolver.getStageStats(),
     }
     this.activeSubSolver = this.tinyPipelineSolver.activeSubSolver ?? null
+
+    const globalIteration = this.getGlobalIteration
+      ? this.getGlobalIteration()
+      : this.iterations
+    this.lastGlobalIteration = globalIteration
+    const currentRouteId =
+      typeof currentTinySolver?.state?.currentRouteId === "number"
+        ? currentTinySolver.state.currentRouteId
+        : null
+    const shouldRunOnIteration =
+      globalIteration === this.reachabilityCheckIteration
+    const shouldRunOnConnectionStart =
+      this.runReachabilityOnConnectionStart &&
+      currentRouteId !== null &&
+      currentRouteId !== this.lastRouteId
+
+    if (shouldRunOnConnectionStart && this.lastRouteId !== null) {
+      const previousRouteSolved = this.isRouteSolved(
+        this.lastRouteId,
+        currentTinySolver?.state.regionSegments ?? [],
+      )
+      const previousRouteName =
+        this.params.connections[this.lastRouteId]?.simpleRouteConnection?.name ??
+        this.params.connections[this.lastRouteId]?.connectionId ??
+        String(this.lastRouteId)
+      console.log(
+        `[TinyHypergraphPortPointPathingSolver] ${previousRouteName} solved=${previousRouteSolved} iter=${globalIteration}`,
+      )
+    }
+
+    if (shouldRunOnIteration || shouldRunOnConnectionStart) {
+      const reachabilityParams: TinyHypergraphReachabilityBfsParams = {
+        graph: this.params.graph,
+        connections: this.params.connections,
+        currentRouteId: currentRouteId ?? undefined,
+        globalIteration,
+        existingPath: currentTinySolver
+          ? {
+              regionSegments: currentTinySolver.state.regionSegments,
+              portX: currentTinySolver.topology.portX,
+              portY: currentTinySolver.topology.portY,
+            }
+          : undefined,
+      }
+      this.reachabilityBfsSolver = new TinyHypergraphReachabilityBfsSolver(
+        reachabilityParams,
+      )
+      this.reachabilityBfsSolver.solve()
+      this.lastReachabilityRunIteration = globalIteration
+      this.stats.reachabilityBfs = this.reachabilityBfsSolver.getResults().map(
+        (result) => ({
+          connectionId: result.connectionId,
+          reachable: result.reachable,
+          visitedRegionCount: result.visitedRegionIds.size,
+          unreachableRegionCount: result.unreachableRegionIds.size,
+        }),
+      )
+    }
+
+    if (currentRouteId !== null) {
+      this.lastRouteId = currentRouteId
+    }
   }
 
   preview(): GraphicsObject {
@@ -650,6 +736,22 @@ export class TinyHypergraphPortPointPathingSolver extends BaseSolver {
   }
 
   visualize(): GraphicsObject {
-    return this.tinyPipelineSolver.visualize()
+    const baseViz = this.tinyPipelineSolver.visualize()
+    if (
+      !this.reachabilityBfsSolver ||
+      this.lastReachabilityRunIteration !== this.lastGlobalIteration
+    ) {
+      return baseViz
+    }
+    return combineVisualizations(baseViz, this.reachabilityBfsSolver.visualize())
+  }
+
+  private isRouteSolved(
+    routeId: number,
+    regionSegments: Array<Array<[number, number, number]>>,
+  ): boolean {
+    return regionSegments.some((segments) =>
+      segments.some(([segmentRouteId]) => segmentRouteId === routeId),
+    )
   }
 }
