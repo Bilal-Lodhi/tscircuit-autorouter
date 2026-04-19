@@ -17,9 +17,22 @@ import { MultiHeadPolyLineIntraNodeSolver3 } from "../HighDensitySolver/MultiHea
 import {
   HighDensitySolverA01,
   HighDensitySolverA03 as HighDensityA03Solver,
+  HighDensitySolverA08 as HighDensityA08Solver,
 } from "@tscircuit/high-density-a01"
 import { FixedTopologyHighDensityIntraNodeSolver } from "../FixedTopologyHighDensityIntraNodeSolver"
 import { SingleLayerNoDifferentRootIntersectionsIntraNodeSolver } from "../HighDensitySolver/SingleLayerNoDifferentRootIntersectionsIntraNodeSolver"
+
+const HIGH_DENSITY_A01_MAX_CELL_COUNT = 200_000
+
+const isSharedHighDensitySolver = (
+  solver: unknown,
+): solver is
+  | InstanceType<typeof HighDensitySolverA01>
+  | InstanceType<typeof HighDensityA03Solver>
+  | InstanceType<typeof HighDensityA08Solver> =>
+  solver instanceof HighDensitySolverA01 ||
+  solver instanceof HighDensityA03Solver ||
+  solver instanceof HighDensityA08Solver
 
 export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
   | IntraNodeRouteSolver
@@ -29,6 +42,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
   | FixedTopologyHighDensityIntraNodeSolver
   | SingleLayerNoDifferentRootIntersectionsIntraNodeSolver
   | HighDensityA03Solver
+  | HighDensityA08Solver
 > {
   override getSolverName(): string {
     return "HyperSingleIntraNodeSolver"
@@ -66,6 +80,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
       ["closedFormSingleTrace"],
       // ["closedFormTwoTrace"],
       ["highDensityA01"],
+      ["highDensityA08"],
       ["highDensityA03"],
       ["fixedTopologyHighDensityIntraNodeSolver"],
     ]
@@ -207,6 +222,14 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
         ],
       },
       {
+        name: "highDensityA08",
+        possibleValues: [
+          {
+            HIGH_DENSITY_A08: true,
+          },
+        ],
+      },
+      {
         name: "fixedTopologyHighDensityIntraNodeSolver",
         possibleValues: [
           {
@@ -226,10 +249,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
   }
 
   computeG(solver: IntraNodeRouteSolver) {
-    if (
-      (solver as any) instanceof HighDensitySolverA01 ||
-      (solver as any) instanceof HighDensityA03Solver
-    ) {
+    if (isSharedHighDensitySolver(solver)) {
       return (solver as any).iterations / 1_000_000
     }
     if (solver?.hyperParameters?.MULTI_HEAD_POLYLINE_SOLVER) {
@@ -247,6 +267,22 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
 
   computeH(solver: IntraNodeRouteSolver) {
     return 1 - (solver.progress || 0)
+  }
+
+  private createHighDensityA01StyleProps(hyperParameters: any) {
+    return {
+      nodeWithPortPoints: this.nodeWithPortPoints,
+      cellSizeMm: 0.1,
+      viaDiameter: this.constructorParams.viaDiameter ?? 0.3,
+      maxCellCount: HIGH_DENSITY_A01_MAX_CELL_COUNT,
+      viaMinDistFromBorder: 0.15,
+      traceMargin: 0.1,
+      traceThickness: this.constructorParams.traceWidth ?? 0.15,
+      effort: this.effort,
+      hyperParameters: {
+        shuffleSeed: hyperParameters.SHUFFLE_SEED ?? 0,
+      },
+    }
   }
 
   generateSolver(hyperParameters: any): IntraNodeRouteSolver {
@@ -277,18 +313,18 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
     }
 
     if (hyperParameters.HIGH_DENSITY_A01) {
-      const solver = new HighDensitySolverA01({
-        nodeWithPortPoints: this.nodeWithPortPoints,
-        cellSizeMm: 0.1,
-        viaDiameter: this.constructorParams.viaDiameter ?? 0.3,
-        viaMinDistFromBorder: 0.15,
-        traceMargin: 0.1,
-        traceThickness: this.constructorParams.traceWidth ?? 0.15,
-        effort: this.effort,
-        hyperParameters: {
-          shuffleSeed: hyperParameters.SHUFFLE_SEED ?? 0,
+      const solver = new HighDensitySolverA01(
+        this.createHighDensityA01StyleProps(hyperParameters),
+      )
+      return solver as any
+    }
+    if (hyperParameters.HIGH_DENSITY_A08) {
+      const solver = new HighDensityA08Solver(
+        {
+          ...this.createHighDensityA01StyleProps(hyperParameters),
+          initialRectMarginMm: 0,
         },
-      })
+      )
       return solver as any
     }
     if (hyperParameters.HIGH_DENSITY_A03) {
@@ -353,10 +389,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
 
   onSolve(solver: SupervisedSolver<IntraNodeRouteSolver>) {
     let routes: HighDensityIntraNodeRoute[]
-    if (
-      (solver.solver as any) instanceof HighDensitySolverA01 ||
-      (solver.solver as any) instanceof HighDensityA03Solver
-    ) {
+    if (isSharedHighDensitySolver(solver.solver)) {
       routes = (solver.solver as any).getOutput()
     } else {
       routes = solver.solver.solvedRoutes

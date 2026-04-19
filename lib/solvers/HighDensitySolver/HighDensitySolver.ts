@@ -180,6 +180,9 @@ export class HighDensitySolver extends BaseSolver {
     if (hyperParameters?.HIGH_DENSITY_A01) {
       return "HighDensitySolverA01"
     }
+    if (hyperParameters?.HIGH_DENSITY_A08) {
+      return "HighDensitySolverA08"
+    }
     if (hyperParameters?.HIGH_DENSITY_A03) {
       return "HighDensitySolverA03"
     }

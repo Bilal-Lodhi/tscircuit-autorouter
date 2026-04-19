@@ -179,6 +179,12 @@ const solvingCases = [
     },
   },
   {
+    name: "HighDensitySolverA08",
+    hyperParameters: {
+      HIGH_DENSITY_A08: true,
+    },
+  },
+  {
     name: "HighDensitySolverA03",
     hyperParameters: {
       HIGH_DENSITY_A03: true,
