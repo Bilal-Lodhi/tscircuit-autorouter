@@ -100,5 +100,5 @@ test("cn11081 single transition solver routes without DRC errors", () => {
   const { errors } = getDrcErrors(circuitJson, RELAXED_DRC_OPTIONS)
 
   expect(errors.length).toBe(0)
-  expect(solverName).toMatchInlineSnapshot(`"CachedIntraNodeRouteSolver"`)
+  expect(solverName).toMatchInlineSnapshot(`"MultiHeadPolyLineIntraNodeSolver3"`)
 })

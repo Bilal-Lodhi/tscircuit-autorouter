@@ -43,6 +43,8 @@ const isExternalHighDensitySolver = (
   solver instanceof HighDensityA03Solver ||
   solver instanceof HighDensityA08Solver
 
+const A01_A08_MIN_DIMENSION_THRESHOLD_MM = 3
+
 export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<HyperSingleIntraNodeCandidateSolver> {
   override getSolverName(): string {
     return "HyperSingleIntraNodeSolver"
@@ -70,7 +72,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<H
   }
 
   getCombinationDefs() {
-    return [
+    const combinationDefs = [
       ["singleLayerNoDifferentRootIntersections"],
       ["multiHeadPolyLine"],
       ["majorCombinations", "orderings6", "cellSizeFactor"],
@@ -79,11 +81,19 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<H
       ["flipTraceAlignmentDirection", "orderings6"],
       ["closedFormSingleTrace"],
       // ["closedFormTwoTrace"],
-      ["highDensityA01"],
       ["highDensityA03"],
-      ["highDensityA08"],
       ["fixedTopologyHighDensityIntraNodeSolver"],
     ]
+
+    if (this.shouldEnableHighDensityA01()) {
+      combinationDefs.splice(7, 0, ["highDensityA01"])
+    }
+
+    if (this.shouldEnableHighDensityA08()) {
+      combinationDefs.splice(8, 0, ["highDensityA08"])
+    }
+
+    return combinationDefs
   }
 
   getHyperParameterDefs() {
@@ -272,6 +282,32 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<H
     return 1 - (solver.progress || 0)
   }
 
+  private getNodeMinDimensionMm() {
+    return Math.min(this.nodeWithPortPoints.width, this.nodeWithPortPoints.height)
+  }
+
+  private shouldEnableHighDensityA01() {
+    return this.getNodeMinDimensionMm() <= A01_A08_MIN_DIMENSION_THRESHOLD_MM
+  }
+
+  private shouldEnableHighDensityA08() {
+    return this.getNodeMinDimensionMm() > A01_A08_MIN_DIMENSION_THRESHOLD_MM
+  }
+
+  private createIneligibleSolver(error: string): IntraNodeRouteSolver {
+    const ineligibleSolver = new IntraNodeRouteSolver({
+      nodeWithPortPoints: this.nodeWithPortPoints,
+      connMap: this.connMap,
+      traceWidth: this.constructorParams.traceWidth,
+      viaDiameter: this.constructorParams.viaDiameter,
+      obstacleMargin: this.constructorParams.obstacleMargin,
+      maxCellCount: this.constructorParams.maxCellCount,
+    })
+    ineligibleSolver.failed = true
+    ineligibleSolver.error = error
+    return ineligibleSolver
+  }
+
   generateSolver(hyperParameters: any): HyperSingleIntraNodeCandidateSolver {
     if (hyperParameters.SINGLE_LAYER_NO_DIFFERENT_ROOT_INTERSECTIONS) {
       if (
@@ -279,17 +315,9 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<H
           this.nodeWithPortPoints,
         )
       ) {
-        const ineligibleSolver = new IntraNodeRouteSolver({
-          nodeWithPortPoints: this.nodeWithPortPoints,
-          connMap: this.connMap,
-          traceWidth: this.constructorParams.traceWidth,
-          viaDiameter: this.constructorParams.viaDiameter,
-          obstacleMargin: this.constructorParams.obstacleMargin,
-        })
-        ineligibleSolver.failed = true
-        ineligibleSolver.error =
-          "Single-layer no-different-root-intersection solver not applicable"
-        return ineligibleSolver as any
+        return this.createIneligibleSolver(
+          "Single-layer no-different-root-intersection solver not applicable",
+        )
       }
 
       return new SingleLayerNoDifferentRootIntersectionsIntraNodeSolver({
@@ -300,6 +328,12 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<H
     }
 
     if (hyperParameters.HIGH_DENSITY_A01) {
+      if (!this.shouldEnableHighDensityA01()) {
+        return this.createIneligibleSolver(
+          `HighDensitySolverA01 disabled for nodes with min dimension > ${A01_A08_MIN_DIMENSION_THRESHOLD_MM}mm`,
+        )
+      }
+
       const solver = new HighDensitySolverA01({
         nodeWithPortPoints: this.nodeWithPortPoints,
         cellSizeMm: 0.1,
@@ -316,6 +350,12 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<H
       return solver as any
     }
     if (hyperParameters.HIGH_DENSITY_A08) {
+      if (!this.shouldEnableHighDensityA08()) {
+        return this.createIneligibleSolver(
+          `HighDensitySolverA08 disabled for nodes with min dimension <= ${A01_A08_MIN_DIMENSION_THRESHOLD_MM}mm`,
+        )
+      }
+
       const solver = new HighDensityA08Solver({
         nodeWithPortPoints: this.nodeWithPortPoints,
         cellSizeMm: 0.1,

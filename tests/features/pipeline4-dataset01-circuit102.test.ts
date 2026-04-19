@@ -67,7 +67,9 @@ test(
     )
 
     expect(explicit8mmMetadata?.status).toBe("solved")
-    expect(explicit8mmMetadata?.solverType).toBe("HighDensitySolverA03")
+    expect(explicit8mmMetadata?.solverType).toBe(
+      "MultiHeadPolyLineIntraNodeSolver3",
+    )
     expect(explicit8mmNode.portPoints.length).toBeGreaterThan(
       defaultNode.portPoints.length,
     )
@@ -119,7 +121,9 @@ test(
         explicit8mmNode.portPoints.map((point) => point.connectionName),
       ),
     )
-    expect(effort2Metadata?.solverType).toBe("HighDensitySolverA01")
+    expect(effort2Metadata?.solverType).toBe(
+      "MultiHeadPolyLineIntraNodeSolver3",
+    )
   },
   { timeout: 120_000 },
 )

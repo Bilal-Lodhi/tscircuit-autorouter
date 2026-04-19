@@ -22,7 +22,21 @@ const createCrossingNode = (): NodeWithPortPoints => ({
   ],
 })
 
-const createBoundaryCrossingNode = (): NodeWithPortPoints => ({
+const createSmallBoundaryCrossingNode = (): NodeWithPortPoints => ({
+  capacityMeshNodeId: "x-crossing-available-z-a01",
+  center: { x: 0, y: 0 },
+  width: 3,
+  height: 3,
+  availableZ: [0, 3],
+  portPoints: [
+    { connectionName: "connA", x: -1.5, y: -1.5, z: 0 },
+    { connectionName: "connA", x: 1.5, y: 1.5, z: 0 },
+    { connectionName: "connB", x: -1.5, y: 1.5, z: 0 },
+    { connectionName: "connB", x: 1.5, y: -1.5, z: 0 },
+  ],
+})
+
+const createLargeBoundaryCrossingNode = (): NodeWithPortPoints => ({
   capacityMeshNodeId: "x-crossing-available-z-a08",
   center: { x: 0, y: 0 },
   width: 5,
@@ -192,6 +206,7 @@ const solvingCases: Array<{
   },
   {
     name: "HighDensitySolverA01",
+    nodeWithPortPoints: createSmallBoundaryCrossingNode(),
     hyperParameters: {
       HIGH_DENSITY_A01: true,
     },
@@ -204,7 +219,7 @@ const solvingCases: Array<{
   },
   {
     name: "HighDensitySolverA08",
-    nodeWithPortPoints: createBoundaryCrossingNode(),
+    nodeWithPortPoints: createLargeBoundaryCrossingNode(),
     hyperParameters: {
       HIGH_DENSITY_A08: true,
     },
@@ -256,4 +271,63 @@ test("HyperSingleIntraNodeSolver does not apply the single-layer candidate to a 
   expect(solver.solved).toBe(false)
   expect(solver.failed).toBe(true)
   expect(String(solver.error)).toContain("not applicable")
+})
+
+test("HyperSingleIntraNodeSolver only enables A01 for nodes with min dimension <= 3mm", () => {
+  const hyperSolver = createHyperSolver(createSmallBoundaryCrossingNode())
+
+  expect(hyperSolver.getCombinationDefs()).toContainEqual(["highDensityA01"])
+  expect(hyperSolver.getCombinationDefs()).not.toContainEqual(["highDensityA08"])
+
+  const disabledA08 = hyperSolver.generateSolver({
+    HIGH_DENSITY_A08: true,
+  } as any)
+
+  expect(disabledA08.solved).toBe(false)
+  expect(disabledA08.failed).toBe(true)
+  expect(String(disabledA08.error)).toContain("HighDensitySolverA08 disabled")
+})
+
+test("HyperSingleIntraNodeSolver only enables A08 for nodes with min dimension > 3mm", () => {
+  const hyperSolver = createHyperSolver(createLargeBoundaryCrossingNode())
+
+  expect(hyperSolver.getCombinationDefs()).not.toContainEqual(["highDensityA01"])
+  expect(hyperSolver.getCombinationDefs()).toContainEqual(["highDensityA08"])
+
+  const disabledA01 = hyperSolver.generateSolver({
+    HIGH_DENSITY_A01: true,
+  } as any)
+
+  expect(disabledA01.solved).toBe(false)
+  expect(disabledA01.failed).toBe(true)
+  expect(String(disabledA01.error)).toContain("HighDensitySolverA01 disabled")
+})
+
+test("HyperSingleIntraNodeSolver forwards maxCellCount to size-eligible external high-density solvers", () => {
+  const smallHyperSolver = new HyperSingleIntraNodeSolver({
+    nodeWithPortPoints: createSmallBoundaryCrossingNode(),
+    traceWidth: 0.15,
+    viaDiameter: 0.3,
+    maxCellCount: 1234,
+  })
+  const largeHyperSolver = new HyperSingleIntraNodeSolver({
+    nodeWithPortPoints: createLargeBoundaryCrossingNode(),
+    traceWidth: 0.15,
+    viaDiameter: 0.3,
+    maxCellCount: 1234,
+  })
+
+  const a01Solver = smallHyperSolver.generateSolver({
+    HIGH_DENSITY_A01: true,
+  } as any)
+  const a03Solver = smallHyperSolver.generateSolver({
+    HIGH_DENSITY_A03: true,
+  } as any)
+  const a08Solver = largeHyperSolver.generateSolver({
+    HIGH_DENSITY_A08: true,
+  } as any)
+
+  expect((a01Solver as any).maxCellCount).toBe(1234)
+  expect((a03Solver as any).maxCellCount).toBe(1234)
+  expect((a08Solver as any).getConstructorParams()[0].maxCellCount).toBe(1234)
 })
