@@ -43,9 +43,7 @@ const isExternalHighDensitySolver = (
   solver instanceof HighDensityA03Solver ||
   solver instanceof HighDensityA08Solver
 
-export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
-  HyperSingleIntraNodeCandidateSolver
-> {
+export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<HyperSingleIntraNodeCandidateSolver> {
   override getSolverName(): string {
     return "HyperSingleIntraNodeSolver"
   }
