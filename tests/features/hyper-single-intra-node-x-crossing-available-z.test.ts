@@ -22,9 +22,23 @@ const createCrossingNode = (): NodeWithPortPoints => ({
   ],
 })
 
-const createHyperSolver = () =>
+const createBoundaryCrossingNode = (): NodeWithPortPoints => ({
+  capacityMeshNodeId: "x-crossing-available-z-a08",
+  center: { x: 0, y: 0 },
+  width: 5,
+  height: 5,
+  availableZ: [0, 3],
+  portPoints: [
+    { connectionName: "connA", x: -2.5, y: -2.5, z: 0 },
+    { connectionName: "connA", x: 2.5, y: 2.5, z: 0 },
+    { connectionName: "connB", x: -2.5, y: 2.5, z: 0 },
+    { connectionName: "connB", x: 2.5, y: -2.5, z: 0 },
+  ],
+})
+
+const createHyperSolver = (nodeWithPortPoints = createCrossingNode()) =>
   new HyperSingleIntraNodeSolver({
-    nodeWithPortPoints: createCrossingNode(),
+    nodeWithPortPoints,
     traceWidth: 0.15,
     viaDiameter: 0.3,
     effort: 1,
@@ -153,7 +167,11 @@ const expectMultilayerCrossingSolution = (
   expect(renderedLineLayers).not.toContain("z1")
 }
 
-const solvingCases = [
+const solvingCases: Array<{
+  name: string
+  hyperParameters: Record<string, unknown>
+  nodeWithPortPoints?: NodeWithPortPoints
+}> = [
   {
     name: "CachedIntraNodeRouteSolver",
     hyperParameters: {},
@@ -184,11 +202,18 @@ const solvingCases = [
       HIGH_DENSITY_A03: true,
     },
   },
+  {
+    name: "HighDensitySolverA08",
+    nodeWithPortPoints: createBoundaryCrossingNode(),
+    hyperParameters: {
+      HIGH_DENSITY_A08: true,
+    },
+  },
 ] as const
 
-for (const { name, hyperParameters } of solvingCases) {
+for (const { name, hyperParameters, nodeWithPortPoints } of solvingCases) {
   test(`${name} solves X-crossing node using only z=0 and z=3`, () => {
-    const hyperSolver = createHyperSolver()
+    const hyperSolver = createHyperSolver(nodeWithPortPoints)
     const solver = hyperSolver.generateSolver(hyperParameters as any)
 
     solver.solve()
