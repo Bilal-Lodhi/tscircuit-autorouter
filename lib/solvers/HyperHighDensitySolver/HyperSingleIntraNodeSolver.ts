@@ -283,46 +283,6 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<H
     return 1 - (solver.progress || 0)
   }
 
-  override getSupervisedSolverWithBestFitness():
-    | SupervisedSolver<HyperSingleIntraNodeCandidateSolver>
-    | null {
-    let bestSolvedSolver: SupervisedSolver<HyperSingleIntraNodeCandidateSolver> | null =
-      null
-    let bestUnsolvedSolver: SupervisedSolver<HyperSingleIntraNodeCandidateSolver> | null =
-      null
-    let bestUnsolvedFitness = Infinity
-
-    for (const supervisedSolver of this.supervisedSolvers ?? []) {
-      if (supervisedSolver.solver.failed) continue
-
-      if (supervisedSolver.solver.solved) {
-        if (
-          !bestSolvedSolver ||
-          supervisedSolver.g < bestSolvedSolver.g ||
-          (supervisedSolver.g === bestSolvedSolver.g &&
-            supervisedSolver.h < bestSolvedSolver.h)
-        ) {
-          bestSolvedSolver = supervisedSolver
-        }
-        continue
-      }
-
-      if (supervisedSolver.f < bestUnsolvedFitness) {
-        bestUnsolvedFitness = supervisedSolver.f
-        bestUnsolvedSolver = supervisedSolver
-      }
-    }
-
-    if (
-      bestSolvedSolver &&
-      (!bestUnsolvedSolver || bestSolvedSolver.g <= bestUnsolvedSolver.f)
-    ) {
-      return bestSolvedSolver
-    }
-
-    return bestUnsolvedSolver ?? bestSolvedSolver
-  }
-
   private getNodeMinDimensionMm() {
     return Math.min(this.nodeWithPortPoints.width, this.nodeWithPortPoints.height)
   }
