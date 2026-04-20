@@ -177,6 +177,9 @@ export class HighDensitySolver extends BaseSolver {
     if (hyperParameters?.FIXED_TOPOLOGY_HIGH_DENSITY_INTRA_NODE_SOLVER) {
       return "FixedTopologyHighDensityIntraNodeSolver"
     }
+    if (hyperParameters?.HIGH_DENSITY_A08) {
+      return "HighDensitySolverA08"
+    }
     if (hyperParameters?.HIGH_DENSITY_A01) {
       return "HighDensitySolverA01"
     }
