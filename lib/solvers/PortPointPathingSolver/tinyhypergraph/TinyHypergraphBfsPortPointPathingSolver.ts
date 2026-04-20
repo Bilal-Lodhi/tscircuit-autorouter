@@ -457,12 +457,16 @@ export class TinyHypergraphBfsPortPointPathingSolver extends BaseSolver {
       goalRegionIds,
       queue: startingStates,
       seen: new Set(
-        startingStates.map((state) => `${state.portId}:${state.nextRegionId}`),
+        startingStates.map(
+          (state: TinyRouteBfsState) => `${state.portId}:${state.nextRegionId}`,
+        ),
       ),
       lastExpandedPortIds: [startingPortId],
       approved:
         startingPortId === goalPortId ||
-        startingStates.some((state) => goalRegionIds.has(state.nextRegionId)),
+        startingStates.some((state: TinyRouteBfsState) =>
+          goalRegionIds.has(state.nextRegionId),
+        ),
     }
 
     if (this.activeRouteBfs.approved) {
@@ -772,7 +776,7 @@ export class TinyHypergraphBfsPortPointPathingSolver extends BaseSolver {
           { x: start.x + dx * t0, y: start.y + dy * t0 },
           { x: start.x + dx * t1, y: start.y + dy * t1 },
         ],
-        stroke: color,
+        strokeColor: color,
       })
     }
 
