@@ -44,7 +44,6 @@ const isExternalHighDensitySolver = (
   solver instanceof HighDensityA08Solver
 
 const A01_A08_MIN_DIMENSION_THRESHOLD_MM = 3
-
 export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<HyperSingleIntraNodeCandidateSolver> {
   override getSolverName(): string {
     return "HyperSingleIntraNodeSolver"
@@ -78,7 +77,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<H
       ["majorCombinations", "orderings6", "cellSizeFactor"],
       ["noVias"],
       ["orderings50"],
-      ["flipTraceAlignmentDirection", "orderings6"],
+      ["flipTraceAlignmentDirection", "flipOrderings"],
       ["closedFormSingleTrace"],
       // ["closedFormTwoTrace"],
       ["highDensityA03"],
@@ -173,6 +172,10 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<H
         ],
       },
       {
+        name: "flipOrderings",
+        possibleValues: this.getFlipOrderingPossibleValues(),
+      },
+      {
         name: "noVias",
         possibleValues: [
           {
@@ -183,9 +186,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<H
       },
       {
         name: "orderings50",
-        possibleValues: Array.from({ length: 20 }, (_, i) => ({
-          SHUFFLE_SEED: 100 + i,
-        })),
+        possibleValues: this.getOrdering50PossibleValues(),
       },
       // {
       //   name: "closedFormTwoTrace",
@@ -282,6 +283,46 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<H
     return 1 - (solver.progress || 0)
   }
 
+  override getSupervisedSolverWithBestFitness():
+    | SupervisedSolver<HyperSingleIntraNodeCandidateSolver>
+    | null {
+    let bestSolvedSolver: SupervisedSolver<HyperSingleIntraNodeCandidateSolver> | null =
+      null
+    let bestUnsolvedSolver: SupervisedSolver<HyperSingleIntraNodeCandidateSolver> | null =
+      null
+    let bestUnsolvedFitness = Infinity
+
+    for (const supervisedSolver of this.supervisedSolvers ?? []) {
+      if (supervisedSolver.solver.failed) continue
+
+      if (supervisedSolver.solver.solved) {
+        if (
+          !bestSolvedSolver ||
+          supervisedSolver.g < bestSolvedSolver.g ||
+          (supervisedSolver.g === bestSolvedSolver.g &&
+            supervisedSolver.h < bestSolvedSolver.h)
+        ) {
+          bestSolvedSolver = supervisedSolver
+        }
+        continue
+      }
+
+      if (supervisedSolver.f < bestUnsolvedFitness) {
+        bestUnsolvedFitness = supervisedSolver.f
+        bestUnsolvedSolver = supervisedSolver
+      }
+    }
+
+    if (
+      bestSolvedSolver &&
+      (!bestUnsolvedSolver || bestSolvedSolver.g <= bestUnsolvedSolver.f)
+    ) {
+      return bestSolvedSolver
+    }
+
+    return bestUnsolvedSolver ?? bestSolvedSolver
+  }
+
   private getNodeMinDimensionMm() {
     return Math.min(this.nodeWithPortPoints.width, this.nodeWithPortPoints.height)
   }
@@ -292,6 +333,24 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<H
 
   private shouldEnableHighDensityA08() {
     return this.getNodeMinDimensionMm() > A01_A08_MIN_DIMENSION_THRESHOLD_MM
+  }
+
+  private shouldUseExpandedInternalOrderingSearch() {
+    return this.nodeWithPortPoints.portPoints.length >= 20
+  }
+
+  private getFlipOrderingPossibleValues() {
+    const count = this.shouldUseExpandedInternalOrderingSearch() ? 12 : 6
+    return Array.from({ length: count }, (_, i) => ({
+      SHUFFLE_SEED: i,
+    }))
+  }
+
+  private getOrdering50PossibleValues() {
+    const count = this.shouldUseExpandedInternalOrderingSearch() ? 40 : 20
+    return Array.from({ length: count }, (_, i) => ({
+      SHUFFLE_SEED: 100 + i,
+    }))
   }
 
   private createIneligibleSolver(error: string): IntraNodeRouteSolver {
