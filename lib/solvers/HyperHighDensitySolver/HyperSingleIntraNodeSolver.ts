@@ -69,8 +69,8 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
       ["closedFormSingleTrace"],
       // ["closedFormTwoTrace"],
       ["highDensityA01"],
-      ["highDensityA08"],
-      ["highDensityA03"],
+      ["highDensityA08", "orderings6"],
+      ["highDensityA03", "orderings6"],
       ["fixedTopologyHighDensityIntraNodeSolver"],
     ]
   }
@@ -337,7 +337,9 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
         // has a good reproduction
         traceThickness: highDensityTraceThickness,
         effort: this.effort,
-        hyperParameters,
+        hyperParameters: {
+          shuffleSeed: hyperParameters.SHUFFLE_SEED ?? 0,
+        },
       })
       return solver as any
     }
