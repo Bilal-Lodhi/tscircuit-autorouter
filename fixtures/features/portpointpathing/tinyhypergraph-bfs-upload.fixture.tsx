@@ -1,4 +1,4 @@
-import { GenericSolverDebugger } from "@tscircuit/solver-utils/react"
+import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"
 import { TinyHypergraphBfsPortPointPathingSolver } from "lib/solvers/PortPointPathingSolver/tinyhypergraph/TinyHypergraphBfsPortPointPathingSolver"
 import { useMemo, useState } from "react"
 
@@ -13,27 +13,45 @@ const GOOGLE_COLORS = [
 
 const title = "BFS & tiny hypergraph"
 
+const createSolverAtIteration = (
+  loadedInput: any,
+  targetIterationCount: number,
+) => {
+  const solver = new TinyHypergraphBfsPortPointPathingSolver(
+    (Array.isArray(loadedInput) ? loadedInput[0] : loadedInput) as any,
+  )
+
+  while (
+    solver.iterations < targetIterationCount &&
+    !solver.solved &&
+    !solver.failed
+  ) {
+    solver.step()
+  }
+
+  return solver
+}
+
 export default () => {
   const [rawJson, setRawJson] = useState("")
   const [loadedInput, setLoadedInput] = useState<any | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [targetIterationInput, setTargetIterationInput] = useState("0")
 
-  const { solver, solverError } = useMemo(() => {
-    if (!loadedInput) return { solver: null, solverError: null }
+  const targetIterationCount = Math.max(
+    0,
+    Number.parseInt(targetIterationInput, 10) || 0,
+  )
+
+  const solverError = useMemo(() => {
+    if (!loadedInput) return null
     try {
-      return {
-        solver: new TinyHypergraphBfsPortPointPathingSolver(
-          (Array.isArray(loadedInput) ? loadedInput[0] : loadedInput) as any,
-        ),
-        solverError: null,
-      }
+      createSolverAtIteration(loadedInput, targetIterationCount)
+      return null
     } catch (error) {
-      return {
-        solver: null,
-        solverError: error instanceof Error ? error.message : String(error),
-      }
+      return error instanceof Error ? error.message : String(error)
     }
-  }, [loadedInput])
+  }, [loadedInput, targetIterationCount])
 
   const submitJson = () => {
     try {
@@ -63,27 +81,68 @@ export default () => {
     reader.readAsText(file)
   }
 
-  if (solver) {
+  if (loadedInput && !solverError) {
     return (
       <div style={{ padding: 24 }}>
-        <button
-          onClick={() => {
-            setLoadedInput(null)
-            setLoadError(null)
-          }}
+        <div
           style={{
+            display: "flex",
+            gap: 12,
+            flexWrap: "wrap",
+            alignItems: "center",
             marginBottom: 16,
-            border: "none",
-            background: "#f1f3f4",
-            borderRadius: 999,
-            padding: "10px 16px",
-            cursor: "pointer",
-            fontSize: 14,
           }}
         >
-          Load another JSON
-        </button>
-        <GenericSolverDebugger solver={solver as any} />
+          <button
+            onClick={() => {
+              setLoadedInput(null)
+              setLoadError(null)
+            }}
+            style={{
+              border: "none",
+              background: "#f1f3f4",
+              borderRadius: 999,
+              padding: "10px 16px",
+              cursor: "pointer",
+              fontSize: 14,
+            }}
+          >
+            Load another JSON
+          </button>
+
+          <label
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              fontSize: 14,
+              color: "#202124",
+            }}
+          >
+            Start at iteration
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={targetIterationInput}
+              onChange={(e) => setTargetIterationInput(e.target.value)}
+              style={{
+                width: 120,
+                borderRadius: 999,
+                border: "1px solid #dadce0",
+                padding: "10px 14px",
+                fontSize: 14,
+              }}
+            />
+          </label>
+        </div>
+
+        <GenericSolverDebugger
+          key={`debugger-${targetIterationCount}`}
+          createSolver={() =>
+            createSolverAtIteration(loadedInput, targetIterationCount)
+          }
+        />
       </div>
     )
   }
@@ -135,7 +194,8 @@ export default () => {
           </div>
           <div style={{ fontSize: 14, color: "#5f6368", marginBottom: 16 }}>
             Paste any serialized `portPointPathingSolver_input.json` payload,
-            then open the step debugger.
+            then open the step debugger. You can also pre-run the solver to a
+            target iteration before the debugger mounts.
           </div>
 
           <textarea
@@ -185,6 +245,36 @@ export default () => {
             </div>
 
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <label
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  border: "1px solid #dadce0",
+                  background: "#fff",
+                  color: "#202124",
+                  borderRadius: 999,
+                  padding: "12px 18px",
+                  fontSize: 14,
+                }}
+              >
+                Stop at iteration
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={targetIterationInput}
+                  onChange={(e) => setTargetIterationInput(e.target.value)}
+                  style={{
+                    width: 96,
+                    borderRadius: 999,
+                    border: "1px solid #dadce0",
+                    padding: "8px 12px",
+                    fontSize: 14,
+                  }}
+                />
+              </label>
+
               <label
                 style={{
                   display: "inline-flex",
