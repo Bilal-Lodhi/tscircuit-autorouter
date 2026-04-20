@@ -542,7 +542,8 @@ const UploadScreen = (props: {
   )
 }
 
-export default () => {
+
+const Portpointpathing03Fixture = () => {
   const [loadedInput, setLoadedInput] = useState<LoadedFixtureInput | null>(
     null,
   )
@@ -576,3 +577,6 @@ export default () => {
     <GenericSolverDebugger solver={createFixtureSolver(loadedInput) as any} />
   )
 }
+
+export default Portpointpathing03Fixture
+
