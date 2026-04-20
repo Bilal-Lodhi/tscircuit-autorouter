@@ -418,7 +418,9 @@ const createFixtureSolver = (loadedInput: LoadedFixtureInput): BaseSolver => {
 
   fixtureSolver.solve()
 
-  const cornerPortPoints = getCornerPortPointMatches(loadedInput.serializedInput)
+  const cornerPortPoints = getCornerPortPointMatches(
+    loadedInput.serializedInput,
+  )
   const usedPortPointIds = getUsedPortPointIds(fixtureSolver.getOutput())
   const usedCornerPortPoints = cornerPortPoints.filter((portPoint) =>
     usedPortPointIds.has(portPoint.portId),
@@ -436,7 +438,9 @@ const createFixtureSolver = (loadedInput: LoadedFixtureInput): BaseSolver => {
   return fixtureSolver
 }
 
-const readFixtureInputFile = async (file: File): Promise<LoadedFixtureInput> => {
+const readFixtureInputFile = async (
+  file: File,
+): Promise<LoadedFixtureInput> => {
   const parsedJson = JSON.parse(await file.text())
   const serializedInput =
     getSerializedHgPortPointPathingSolverParamsFromUnknown(parsedJson)
@@ -539,7 +543,9 @@ const UploadScreen = (props: {
 }
 
 export default () => {
-  const [loadedInput, setLoadedInput] = useState<LoadedFixtureInput | null>(null)
+  const [loadedInput, setLoadedInput] = useState<LoadedFixtureInput | null>(
+    null,
+  )
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const handleFileSelected = (file: File) => {
@@ -567,8 +573,6 @@ export default () => {
   }
 
   return (
-    <GenericSolverDebugger
-      solver={createFixtureSolver(loadedInput) as any}
-    />
+    <GenericSolverDebugger solver={createFixtureSolver(loadedInput) as any} />
   )
 }
