@@ -263,7 +263,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
   }
 
   generateSolver(hyperParameters: any): IntraNodeRouteSolver {
-    const highDensityTraceThickness = this.constructorParams.traceWidth ?? 0.1
+    const highDensityTraceThickness = 0.1
 
     if (hyperParameters.SINGLE_LAYER_NO_DIFFERENT_ROOT_INTERSECTIONS) {
       if (
