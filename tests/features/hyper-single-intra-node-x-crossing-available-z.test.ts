@@ -209,6 +209,20 @@ test("HyperSingleIntraNodeSolver solves the X-crossing node without z=1 segments
   expectMultilayerCrossingSolution(solver.solvedRoutes)
 })
 
+test("HighDensitySolverA08 uses the same maxCellCount as HighDensitySolverA01", () => {
+  const hyperSolver = createHyperSolver()
+  const a01Solver = hyperSolver.generateSolver({
+    HIGH_DENSITY_A01: true,
+  } as any) as any
+  const a08Solver = hyperSolver.generateSolver({
+    HIGH_DENSITY_A08: true,
+  } as any) as any
+
+  expect(a08Solver.constructor.name).toBe("HighDensitySolverA08")
+  expect(a01Solver.getConstructorParams()[0].maxCellCount).toBe(7200)
+  expect(a08Solver.getConstructorParams()[0].maxCellCount).toBe(7200)
+})
+
 test("SingleTransitionIntraNodeSolver candidate rejects the X-crossing node", () => {
   const hyperSolver = createHyperSolver()
   const solver = hyperSolver.generateSolver({
