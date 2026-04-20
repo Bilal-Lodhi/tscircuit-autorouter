@@ -289,9 +289,7 @@ export class TinyHypergraphBfsPortPointPathingSolver extends BaseSolver {
       const { activeRouteBfs, isNewConnectionStart } =
         this.getOrCreateActiveRouteBfs(activeTinySolver)
       if (activeRouteBfs && isNewConnectionStart) {
-        if (!activeRouteBfs.approved) {
-          this.runRouteBfsToCompletion(activeRouteBfs)
-        }
+        this.runRouteBfsToCompletion(activeRouteBfs)
         this.displayedRouteBfs = activeRouteBfs
         this.activeSubSolver = activeTinySolver
         this.progress = this.wrappedSolver.progress
@@ -505,11 +503,7 @@ export class TinyHypergraphBfsPortPointPathingSolver extends BaseSolver {
   }
 
   private runRouteBfsToCompletion(activeRouteBfs: ActiveTinyRouteBfs) {
-    while (
-      !this.failed &&
-      !activeRouteBfs.approved &&
-      activeRouteBfs.queue.length > 0
-    ) {
+    while (!this.failed && activeRouteBfs.queue.length > 0) {
       this.advanceRouteBfs(activeRouteBfs)
     }
   }
@@ -526,12 +520,13 @@ export class TinyHypergraphBfsPortPointPathingSolver extends BaseSolver {
     activeRouteBfs.lastExpandedPortIds = this.reconstructPortPath(current)
 
     if (activeRouteBfs.goalRegionIds.has(current.nextRegionId)) {
-      activeRouteBfs.lastExpandedPortIds = [
-        ...this.reconstructPortPath(current),
-        activeRouteBfs.goalPortId,
-      ]
-      activeRouteBfs.approved = true
-      return
+      if (!activeRouteBfs.approved) {
+        activeRouteBfs.lastExpandedPortIds = [
+          ...this.reconstructPortPath(current),
+          activeRouteBfs.goalPortId,
+        ]
+        activeRouteBfs.approved = true
+      }
     }
 
     const { solver } = activeRouteBfs
@@ -553,12 +548,13 @@ export class TinyHypergraphBfsPortPointPathingSolver extends BaseSolver {
       if (activeRouteBfs.blockedPortIds.has(neighborPortId)) continue
 
       if (neighborPortId === activeRouteBfs.goalPortId) {
-        activeRouteBfs.lastExpandedPortIds = [
-          ...this.reconstructPortPath(current),
-          neighborPortId,
-        ]
-        activeRouteBfs.approved = true
-        return
+        if (!activeRouteBfs.approved) {
+          activeRouteBfs.lastExpandedPortIds = [
+            ...this.reconstructPortPath(current),
+            neighborPortId,
+          ]
+          activeRouteBfs.approved = true
+        }
       }
 
       if (
