@@ -414,8 +414,10 @@ export class TinyHypergraphBfsPortPointPathingSolver extends BaseSolver {
     const startingPortId = solver.problem.routeStartPort[nextRouteId]
     const routeNetId = solver.problem.routeNet[nextRouteId]
     const routeMetadata = solver.problem.routeMetadata?.[nextRouteId]
-    const routeRootConnectionName =
-      this.getRouteRootConnectionName(routeMetadata, nextRouteId)
+    const routeRootConnectionName = this.getRouteRootConnectionName(
+      routeMetadata,
+      nextRouteId,
+    )
     const blockedPortIds = this.getBlockedPortIdsForRoute(
       solver,
       routeRootConnectionName,
