@@ -15,17 +15,19 @@ type SerializedRegion = {
   d: any
 }
 
+type PortData = {
+  portId: string
+  x: number
+  y: number
+  z: number
+  distToCentermostPortOnZ: number
+}
+
 type SerializedPort = {
   portId: string
   region1Id: string
   region2Id: string
-  d: {
-    portId: string
-    x: number
-    y: number
-    z: number
-    distToCentermostPortOnZ: number
-  }
+  d: PortData
 }
 
 type SerializedConnection = {
@@ -73,7 +75,6 @@ type ActiveTinyRouteBfs = {
   solver: any
   routeId: number
   routeLabel: string
-  routeRootConnectionName: string | null
   startPortId: number
   goalPortId: number
   goalRegionIds: Set<number>
@@ -84,11 +85,13 @@ type ActiveTinyRouteBfs = {
   blockedPortIds: Set<number>
 }
 
-const getConnectionNames = (connection: {
+type ConnectionNameSource = {
   connectionId: string
   mutuallyConnectedNetworkId?: string
   simpleRouteConnection?: { rootConnectionName?: string; name?: string }
-}) => ({
+}
+
+const getConnectionNames = (connection: ConnectionNameSource) => ({
   rootConnectionName:
     connection.simpleRouteConnection?.rootConnectionName ??
     connection.mutuallyConnectedNetworkId ??
@@ -97,17 +100,13 @@ const getConnectionNames = (connection: {
     connection.simpleRouteConnection?.name ?? connection.connectionId,
 })
 
-const serializePort = (port: {
-  d: {
-    portId: string
-    x: number
-    y: number
-    z: number
-    distToCentermostPortOnZ: number
-  }
+type RuntimePortInput = {
+  d: PortData
   region1: { regionId: string }
   region2: { regionId: string }
-}): SerializedPort => ({
+}
+
+const serializePort = (port: RuntimePortInput): SerializedPort => ({
   portId: port.d.portId,
   region1Id: port.region1.regionId,
   region2Id: port.region2.regionId,
@@ -470,7 +469,6 @@ export class TinyHypergraphBfsPortPointPathingSolver extends BaseSolver {
         routeMetadata?.simpleRouteConnection?.name ??
         routeMetadata?.connectionId ??
         `route-${nextRouteId}`,
-      routeRootConnectionName,
       startPortId: startingPortId,
       goalPortId,
       goalRegionIds,
@@ -517,12 +515,13 @@ export class TinyHypergraphBfsPortPointPathingSolver extends BaseSolver {
       return
     }
 
-    activeRouteBfs.lastExpandedPortIds = this.reconstructPortPath(current)
+    const currentPath = this.reconstructPortPath(current)
+    activeRouteBfs.lastExpandedPortIds = currentPath
 
     if (activeRouteBfs.goalRegionIds.has(current.nextRegionId)) {
       if (!activeRouteBfs.approved) {
         activeRouteBfs.lastExpandedPortIds = [
-          ...this.reconstructPortPath(current),
+          ...currentPath,
           activeRouteBfs.goalPortId,
         ]
         activeRouteBfs.approved = true
@@ -807,6 +806,28 @@ export class TinyHypergraphBfsPortPointPathingSolver extends BaseSolver {
     return blockedPortIds
   }
 
+  private getPortLabel(solver: any, portId: number, reachable: boolean) {
+    const incidentRegions = solver.topology.incidentPortRegion?.[portId] ?? []
+    const uniqueIncidentRegions = [
+      ...new Set(
+        incidentRegions.map((regionId: number) => {
+          const metadata = solver.topology.regionMetadata?.[regionId]
+          return metadata?.capacityMeshNodeId ?? regionId
+        }),
+      ),
+    ]
+
+    return [
+      `port ${portId}`,
+      `reachable=${reachable}`,
+      `regions=${
+        uniqueIncidentRegions.length > 0
+          ? uniqueIncidentRegions.join(",")
+          : "none"
+      }`,
+    ].join("\n")
+  }
+
   private createDottedLine(
     start: { x: number; y: number },
     end: { x: number; y: number },
@@ -881,17 +902,18 @@ export class TinyHypergraphBfsPortPointPathingSolver extends BaseSolver {
       points.push({
         ...point,
         color: reachable ? "#0066ff" : "#ff3b30",
-        label: `${reachable ? "reachable" : "unreachable"} port ${portId}`,
+        label: this.getPortLabel(solver, portId, reachable),
       })
     }
 
     for (const portId of blockedPortIds) {
       const point = this.getPortPoint(solver, portId)
       if (!point) continue
+      const reachable = reachablePortIds.has(portId)
       points.push({
         ...point,
         color: "#ff2d96",
-        label: `blocked port ${portId}`,
+        label: this.getPortLabel(solver, portId, reachable),
       })
     }
 
