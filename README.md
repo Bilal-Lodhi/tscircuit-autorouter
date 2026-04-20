@@ -60,6 +60,7 @@ interface SimpleRouteJson {
   obstacles: Obstacle[]
   connections: Array<SimpleRouteConnection>
   bounds: { minX: number; maxX: number; minY: number; maxY: number }
+  ccwRotationDegrees?: number
   traces?: SimplifiedPcbTraces // Optional for input
 }
 

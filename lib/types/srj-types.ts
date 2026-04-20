@@ -51,6 +51,7 @@ export interface SimpleRouteJson {
   connections: Array<SimpleRouteConnection>
   bounds: { minX: number; maxX: number; minY: number; maxY: number }
   outline?: Array<{ x: number; y: number }>
+  ccwRotationDegrees?: number
   traces?: SimplifiedPcbTraces
   jumpers?: Jumper[]
   allowJumpers?: boolean
