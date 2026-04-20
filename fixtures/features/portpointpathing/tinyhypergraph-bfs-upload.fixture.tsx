@@ -1,4 +1,4 @@
-import { GenericSolverDebugger } from "lib/testing/GenericSolverDebugger"
+import { GenericSolverDebugger } from "@tscircuit/solver-utils/react"
 import { TinyHypergraphBfsPortPointPathingSolver } from "lib/solvers/PortPointPathingSolver/tinyhypergraph/TinyHypergraphBfsPortPointPathingSolver"
 import { useMemo, useState } from "react"
 
@@ -11,7 +11,7 @@ const GOOGLE_COLORS = [
   "#EA4335",
 ]
 
-const title = "BFS & tiny hypergraph"
+const title = "BFS & Tiny Hypergraph"
 
 const createSolverAtIteration = (
   loadedInput: any,
@@ -43,13 +43,21 @@ export default () => {
     Number.parseInt(targetIterationInput, 10) || 0,
   )
 
-  const solverError = useMemo(() => {
-    if (!loadedInput) return null
+  const { solver, solverError } = useMemo(() => {
+    if (!loadedInput) {
+      return { solver: null, solverError: null }
+    }
+
     try {
-      createSolverAtIteration(loadedInput, targetIterationCount)
-      return null
+      return {
+        solver: createSolverAtIteration(loadedInput, targetIterationCount),
+        solverError: null,
+      }
     } catch (error) {
-      return error instanceof Error ? error.message : String(error)
+      return {
+        solver: null,
+        solverError: error instanceof Error ? error.message : String(error),
+      }
     }
   }, [loadedInput, targetIterationCount])
 
@@ -81,7 +89,7 @@ export default () => {
     reader.readAsText(file)
   }
 
-  if (loadedInput && !solverError) {
+  if (loadedInput && solver && !solverError) {
     return (
       <div style={{ padding: 24 }}>
         <div
@@ -139,9 +147,7 @@ export default () => {
 
         <GenericSolverDebugger
           key={`debugger-${targetIterationCount}`}
-          createSolver={() =>
-            createSolverAtIteration(loadedInput, targetIterationCount)
-          }
+          solver={solver as any}
         />
       </div>
     )
@@ -258,7 +264,7 @@ export default () => {
                   fontSize: 14,
                 }}
               >
-                Stop at iteration
+                Start at iteration
                 <input
                   type="number"
                   min={0}
