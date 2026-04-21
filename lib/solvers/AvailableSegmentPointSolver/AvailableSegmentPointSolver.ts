@@ -263,8 +263,8 @@ export class AvailableSegmentPointSolver extends BaseSolver {
       // Create a separate port point for each available layer
       for (const z of availableZ) {
         const isCornerPortPoint =
-          this.isCornerPortPointForNode(x, y, node1) ||
-          this.isCornerPortPointForNode(x, y, node2)
+          this.isCornerPortPoint(x, y, node1) ||
+          this.isCornerPortPoint(x, y, node2)
         const portPoint: SegmentPortPoint = {
           segmentPortPointId: `${edge.capacityMeshEdgeId}_pp${i}_z${z}`,
           x,
@@ -290,7 +290,7 @@ export class AvailableSegmentPointSolver extends BaseSolver {
     }
   }
 
-  private isCornerPortPointForNode(
+  private isCornerPortPoint(
     x: number,
     y: number,
     node: CapacityMeshNode,

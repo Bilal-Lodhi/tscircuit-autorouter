@@ -478,7 +478,13 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
 
   solveUntilPhase(phase: string) {
     while (this.getCurrentPhase() !== phase) {
+      if (this.failed) {
+        return
+      }
       this.step()
+      if (this.failed) {
+        return
+      }
     }
   }
 
