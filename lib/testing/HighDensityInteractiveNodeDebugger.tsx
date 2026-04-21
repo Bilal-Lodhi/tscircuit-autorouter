@@ -1,7 +1,12 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { NodeWithPortPoints } from "lib/types/high-density-types"
 import { HyperHighDensityDebugger } from "lib/testing/HyperHighDensityDebugger"
 import CapacityNodeEditor from "lib/testing/CapacityNodeEditor"
+import {
+  cloneNodeWithPortPoints,
+  getInteractiveHighDensitySolveNode,
+  type InteractiveHighDensitySolveNodeSource,
+} from "lib/testing/utils/interactiveHighDensityNode"
 
 export interface HighDensityInteractiveNodeDebuggerProps {
   nodeWithPortPoints: NodeWithPortPoints
@@ -10,15 +15,31 @@ export interface HighDensityInteractiveNodeDebuggerProps {
 export const HighDensityInteractiveNodeDebugger = ({
   nodeWithPortPoints,
 }: HighDensityInteractiveNodeDebuggerProps) => {
-  const [editableNode, setEditableNode] = useState<NodeWithPortPoints>(() => ({
-    ...nodeWithPortPoints,
-    portPoints: nodeWithPortPoints.portPoints.map((p) => ({ ...p })),
-  }))
+  const [editableNode, setEditableNode] = useState<NodeWithPortPoints>(() =>
+    cloneNodeWithPortPoints(nodeWithPortPoints),
+  )
   const [mode, setMode] = useState<"build" | "solve">("build")
   const [animationSpeed, setAnimationSpeed] = useState<number>(10)
+  const [solveNodeSource, setSolveNodeSource] =
+    useState<InteractiveHighDensitySolveNodeSource>("uploaded")
   const [solverAction, setSolverAction] = useState<
     "reset" | "step" | "animate" | "solve" | null
   >(null)
+
+  useEffect(() => {
+    setEditableNode(cloneNodeWithPortPoints(nodeWithPortPoints))
+    setMode("build")
+    setSolverAction(null)
+    setSolveNodeSource("uploaded")
+  }, [nodeWithPortPoints])
+
+  const solveNode = getInteractiveHighDensitySolveNode({
+    source: solveNodeSource,
+    uploadedNode: nodeWithPortPoints,
+    editedNode: editableNode,
+  })
+
+  const solveNodeSummary = `${solveNode.capacityMeshNodeId} • ${solveNode.portPoints.length} ports`
 
   return (
     <div className="flex flex-col h-screen">
@@ -85,6 +106,30 @@ export const HighDensityInteractiveNodeDebugger = ({
             <option value={10}>10ms (10x)</option>
           </select>
         </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs">Solve Input:</span>
+          <button
+            className={`px-2 py-1 text-xs rounded ${
+              solveNodeSource === "uploaded"
+                ? "bg-blue-600 text-white"
+                : "bg-gray-200 hover:bg-gray-300"
+            }`}
+            onClick={() => setSolveNodeSource("uploaded")}
+          >
+            Uploaded ({nodeWithPortPoints.portPoints.length} ports)
+          </button>
+          <button
+            className={`px-2 py-1 text-xs rounded ${
+              solveNodeSource === "edited"
+                ? "bg-blue-600 text-white"
+                : "bg-gray-200 hover:bg-gray-300"
+            }`}
+            onClick={() => setSolveNodeSource("edited")}
+          >
+            Edited ({editableNode.portPoints.length} ports)
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-hidden relative">
@@ -95,8 +140,17 @@ export const HighDensityInteractiveNodeDebugger = ({
           />
         ) : (
           <div className="h-full overflow-auto p-4">
+            <div className="mb-3 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+              Solving{" "}
+              <b>
+                {solveNodeSource === "uploaded"
+                  ? "uploaded raw node"
+                  : "edited node"}
+              </b>
+              : {solveNodeSummary}
+            </div>
             <HyperHighDensityDebugger
-              nodeWithPortPoints={editableNode}
+              nodeWithPortPoints={solveNode}
               solverAction={solverAction}
               animationSpeed={animationSpeed}
               onActionComplete={() => setSolverAction(null)}
