@@ -24,6 +24,31 @@ import { SingleLayerNoDifferentRootIntersectionsIntraNodeSolver } from "../HighD
 
 const HIGH_DENSITY_A01_CELL_SIZE_MM = 0.1
 
+const HIGH_DENSITY_A08_DEFAULT_PROPS = {
+  cellSizeMm: 0.1,
+  traceMargin: 0.15,
+  traceThickness: 0.1,
+  viaDiameter: 0.3,
+  viaMinDistFromBorder: 0.15,
+  stepMultiplier: 1,
+  showPenaltyMap: false,
+  showUsedCellMap: false,
+  effort: 1,
+  initialRectMarginMm: 0.2,
+  rectShrinkStepMm: 0.1,
+  breakoutTraceMarginMm: 0.1,
+  breakoutSegmentCount: 2,
+  breakoutMaxIterationsPerRect: 60,
+  breakoutForceStepSize: 0.2,
+  breakoutRepulsionStrength: 1.8,
+  breakoutSmoothingStrength: 0.16,
+  breakoutAttractionStrength: 0.06,
+  innerPortSpreadFactor: 1,
+} satisfies Omit<
+  ConstructorParameters<typeof HighDensityA08Solver>[0],
+  "nodeWithPortPoints" | "maxCellCount"
+>
+
 type HyperSingleIntraNodeCandidateSolver =
   | IntraNodeRouteSolver
   | TwoCrossingRoutesHighDensitySolver
@@ -93,11 +118,20 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<H
       maxCellCount: getEquivalentA01MaxCellCount(this.nodeWithPortPoints),
       viaMinDistFromBorder: 0.15,
       traceMargin: 0.1,
-      traceThickness: this.constructorParams.traceWidth ?? 0.15,
+      traceThickness: this.constructorParams.traceWidth ?? 0.1,
       effort: this.effort,
       hyperParameters: {
         shuffleSeed: hyperParameters.SHUFFLE_SEED ?? 0,
       },
+    }
+  }
+
+  private getHighDensityA08SolverProps() {
+    return {
+      ...HIGH_DENSITY_A08_DEFAULT_PROPS,
+      nodeWithPortPoints: this.nodeWithPortPoints,
+      maxCellCount: getEquivalentA01MaxCellCount(this.nodeWithPortPoints),
+      effort: this.effort,
     }
   }
 
@@ -339,7 +373,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<H
     }
     if (hyperParameters.HIGH_DENSITY_A08) {
       const solver = new HighDensityA08Solver(
-        this.getHighDensityA01LikeSolverProps(hyperParameters),
+        this.getHighDensityA08SolverProps(),
       )
       return solver as any
     }
