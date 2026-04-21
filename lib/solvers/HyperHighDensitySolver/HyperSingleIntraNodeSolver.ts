@@ -20,6 +20,7 @@ import {
   HighDensitySolverA08 as HighDensityA08Solver,
 } from "@tscircuit/high-density-a01"
 import { FixedTopologyHighDensityIntraNodeSolver } from "../FixedTopologyHighDensityIntraNodeSolver"
+import { SingleLayerStraightSegmentIntraNodeSolver } from "../HighDensitySolver/SingleLayerStraightSegmentIntraNodeSolver"
 import { SingleLayerNoDifferentRootIntersectionsIntraNodeSolver } from "../HighDensitySolver/SingleLayerNoDifferentRootIntersectionsIntraNodeSolver"
 
 const HIGH_DENSITY_A01_CELL_SIZE_MM = 0.1
@@ -55,6 +56,7 @@ type HyperSingleIntraNodeCandidateSolver =
   | SingleTransitionCrossingRouteSolver
   | SingleTransitionIntraNodeSolver
   | FixedTopologyHighDensityIntraNodeSolver
+  | SingleLayerStraightSegmentIntraNodeSolver
   | SingleLayerNoDifferentRootIntersectionsIntraNodeSolver
   | HighDensitySolverA01
   | HighDensityA03Solver
@@ -135,8 +137,22 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<H
     }
   }
 
+  private createIneligibleCandidateSolver(error: string) {
+    const ineligibleSolver = new IntraNodeRouteSolver({
+      nodeWithPortPoints: this.nodeWithPortPoints,
+      connMap: this.connMap,
+      traceWidth: this.constructorParams.traceWidth,
+      viaDiameter: this.constructorParams.viaDiameter,
+      obstacleMargin: this.constructorParams.obstacleMargin,
+    })
+    ineligibleSolver.failed = true
+    ineligibleSolver.error = error
+    return ineligibleSolver as any
+  }
+
   getCombinationDefs() {
     return [
+      ["singleLayerStraightSegments"],
       ["singleLayerNoDifferentRootIntersections"],
       ["multiHeadPolyLine"],
       ["majorCombinations", "orderings6", "cellSizeFactor"],
@@ -154,6 +170,14 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<H
 
   getHyperParameterDefs() {
     return [
+      {
+        name: "singleLayerStraightSegments",
+        possibleValues: [
+          {
+            SINGLE_LAYER_STRAIGHT_SEGMENTS: true,
+          },
+        ],
+      },
       {
         name: "singleLayerNoDifferentRootIntersections",
         possibleValues: [
@@ -339,23 +363,33 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<H
   }
 
   generateSolver(hyperParameters: any): HyperSingleIntraNodeCandidateSolver {
+    if (hyperParameters.SINGLE_LAYER_STRAIGHT_SEGMENTS) {
+      if (
+        !SingleLayerStraightSegmentIntraNodeSolver.isApplicable(
+          this.nodeWithPortPoints,
+        )
+      ) {
+        return this.createIneligibleCandidateSolver(
+          "Single-layer straight-segment solver not applicable",
+        )
+      }
+
+      return new SingleLayerStraightSegmentIntraNodeSolver({
+        nodeWithPortPoints: this.nodeWithPortPoints,
+        traceWidth: this.constructorParams.traceWidth,
+        viaDiameter: this.constructorParams.viaDiameter,
+      }) as any
+    }
+
     if (hyperParameters.SINGLE_LAYER_NO_DIFFERENT_ROOT_INTERSECTIONS) {
       if (
         !SingleLayerNoDifferentRootIntersectionsIntraNodeSolver.isApplicable(
           this.nodeWithPortPoints,
         )
       ) {
-        const ineligibleSolver = new IntraNodeRouteSolver({
-          nodeWithPortPoints: this.nodeWithPortPoints,
-          connMap: this.connMap,
-          traceWidth: this.constructorParams.traceWidth,
-          viaDiameter: this.constructorParams.viaDiameter,
-          obstacleMargin: this.constructorParams.obstacleMargin,
-        })
-        ineligibleSolver.failed = true
-        ineligibleSolver.error =
-          "Single-layer no-different-root-intersection solver not applicable"
-        return ineligibleSolver as any
+        return this.createIneligibleCandidateSolver(
+          "Single-layer no-different-root-intersection solver not applicable",
+        )
       }
 
       return new SingleLayerNoDifferentRootIntersectionsIntraNodeSolver({

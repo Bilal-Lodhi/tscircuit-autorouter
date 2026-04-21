@@ -44,7 +44,7 @@ const getPerimeterPosition = (point: { x: number; y: number }) => {
   )
 }
 
-test("cmn_159 is solved directly by the single-layer no-different-root-intersection fallback", () => {
+test("cmn_159 is solved directly by the single-layer straight-segment fallback", () => {
   const node = structuredClone(cmn159Data.nodeWithPortPoints)
 
   const perimeterOrder = [...node.portPoints]
@@ -76,9 +76,9 @@ test("cmn_159 is solved directly by the single-layer no-different-root-intersect
   expect(hyperSolver.failed).toBe(false)
   expect(hyperSolver.error).toBeNull()
   expect(hyperSolver.winningSolver?.getSolverName()).toBe(
-    "SingleLayerNoDifferentRootIntersectionsIntraNodeSolver",
+    "SingleLayerStraightSegmentIntraNodeSolver",
   )
-  expect(hyperSolver.solvedRoutes).toHaveLength(5)
+  expect(hyperSolver.solvedRoutes).toHaveLength(4)
 }, 60_000)
 
 test("cmn_159 net6 route is sensitive to the current obstacle margin", () => {
