@@ -262,6 +262,9 @@ export class AvailableSegmentPointSolver extends BaseSolver {
 
       // Create a separate port point for each available layer
       for (const z of availableZ) {
+        const isCornerPortPoint =
+          this.isCornerPortPointForNode(x, y, node1) ||
+          this.isCornerPortPointForNode(x, y, node2)
         const portPoint: SegmentPortPoint = {
           segmentPortPointId: `${edge.capacityMeshEdgeId}_pp${i}_z${z}`,
           x,
@@ -271,7 +274,7 @@ export class AvailableSegmentPointSolver extends BaseSolver {
           edgeId: edge.capacityMeshEdgeId,
           connectionName: null,
           distToCentermostPortOnZ,
-          cramped: false,
+          cramped: isCornerPortPoint,
         }
         portPoints.push(portPoint)
       }
@@ -285,6 +288,30 @@ export class AvailableSegmentPointSolver extends BaseSolver {
       availableZ,
       portPoints,
     }
+  }
+
+  private isCornerPortPointForNode(
+    x: number,
+    y: number,
+    node: CapacityMeshNode,
+  ): boolean {
+    const halfWidth = node.width / 2
+    const halfHeight = node.height / 2
+    const corners = [
+      { x: node.center.x - halfWidth, y: node.center.y + halfHeight },
+      { x: node.center.x + halfWidth, y: node.center.y + halfHeight },
+      { x: node.center.x + halfWidth, y: node.center.y - halfHeight },
+      { x: node.center.x - halfWidth, y: node.center.y - halfHeight },
+    ]
+
+    for (const corner of corners) {
+      const distance = Math.hypot(x - corner.x, y - corner.y)
+      if (distance < this.minPortSpacing) {
+        return true
+      }
+    }
+
+    return false
   }
 
   /**
