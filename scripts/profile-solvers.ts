@@ -1,9 +1,13 @@
 #!/usr/bin/env bun
 
-import * as dataset from "@tscircuit/autorouting-dataset-01"
 import { AutoroutingPipelineSolver } from "../lib"
 import { BaseSolver } from "../lib/solvers/BaseSolver"
-import type { SimpleRouteJson } from "../lib/types/srj-types"
+import {
+  DATASET_NAMES,
+  type DatasetName,
+  isDatasetName,
+  loadScenarios as loadBenchmarkScenarios,
+} from "./benchmark/scenarios"
 
 // --- Types ---
 type SolverRecord = {
@@ -18,6 +22,22 @@ type SolverRecord = {
 type ProfileOptions = {
   scenarioName?: string
   scenarioLimit?: number
+  datasetName: DatasetName
+  effort?: number
+}
+
+type ProfileSolverRow = {
+  solverName: string
+  attemptCount: number
+  scenarioCount: number
+  scenarioSuccessRate: number
+  maxIterations: number
+  totalIterations: number
+  totalTimeMs: number
+  p50TimeMs: number | null
+  p95TimeMs: number | null
+  p50Iterations: number | null
+  p95Iterations: number | null
 }
 
 // --- Global profiling state ---
@@ -63,7 +83,9 @@ BaseSolver.prototype.step = function (
 // --- Helpers ---
 const parseArgs = (): ProfileOptions => {
   const args = process.argv.slice(2)
-  const options: ProfileOptions = {}
+  const options: ProfileOptions = {
+    datasetName: "dataset01",
+  }
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]
@@ -81,14 +103,37 @@ const parseArgs = (): ProfileOptions => {
       }
       options.scenarioLimit = Number.parseInt(rawScenarioLimit, 10)
       i += 1
+    } else if (arg === "--dataset") {
+      const rawDatasetName = args[i + 1]
+      if (!rawDatasetName || rawDatasetName.startsWith("-")) {
+        throw new Error(
+          `--dataset requires a value (${DATASET_NAMES.join(", ")})`,
+        )
+      }
+      if (!isDatasetName(rawDatasetName)) {
+        throw new Error(
+          `Unknown dataset "${rawDatasetName}". Available: ${DATASET_NAMES.join(", ")}`,
+        )
+      }
+      options.datasetName = rawDatasetName
+      i += 1
+    } else if (arg === "--effort") {
+      const rawEffort = args[i + 1]
+      if (!rawEffort || rawEffort.startsWith("-")) {
+        throw new Error("--effort requires a value")
+      }
+      options.effort = Number.parseInt(rawEffort, 10)
+      i += 1
     } else if (arg === "-h" || arg === "--help") {
       console.log(
         [
-          "Usage: bun scripts/profile-solvers.ts [--scenario NAME] [--scenario-limit N]",
+          "Usage: bun scripts/profile-solvers.ts [--scenario NAME] [--scenario-limit N] [--dataset NAME] [--effort N]",
           "",
           "Options:",
           "  --scenario NAME      Run only the named scenario",
           "  --scenario-limit N   Run only first N scenarios",
+          `  --dataset NAME       Dataset to profile: ${DATASET_NAMES.join(", ")}`,
+          "  --effort N           Override scenario effort multiplier",
           "  -h, --help           Show this help",
         ].join("\n"),
       )
@@ -105,21 +150,25 @@ const parseArgs = (): ProfileOptions => {
     throw new Error("--scenario-limit must be a positive integer")
   }
 
+  if (
+    options.effort !== undefined &&
+    (!Number.isFinite(options.effort) || options.effort < 1)
+  ) {
+    throw new Error("--effort must be a positive integer")
+  }
+
   return options
 }
 
-const loadScenarios = (scenarioName?: string, scenarioLimit?: number) => {
-  const allScenarios = Object.entries(dataset)
-    .filter(([, value]) => Boolean(value) && typeof value === "object")
-    .sort(([a], [b]) => a.localeCompare(b)) as Array<[string, SimpleRouteJson]>
+const loadScenarios = async (options: ProfileOptions) => {
+  const allScenarios = await loadBenchmarkScenarios(options.datasetName, {
+    scenarioLimit: options.scenarioLimit,
+    effort: options.effort,
+  })
 
-  const filteredScenarios = scenarioName
-    ? allScenarios.filter(([name]) => name === scenarioName)
+  return options.scenarioName
+    ? allScenarios.filter(([name]) => name === options.scenarioName)
     : allScenarios
-
-  return scenarioLimit
-    ? filteredScenarios.slice(0, scenarioLimit)
-    : filteredScenarios
 }
 
 const getPercentile = (values: number[], p: number): number | null => {
@@ -160,9 +209,9 @@ const formatTable = (headers: string[], body: string[][]): string => {
 }
 
 // --- Main ---
-const main = () => {
+const main = async () => {
   const opts = parseArgs()
-  const scenarios = loadScenarios(opts.scenarioName, opts.scenarioLimit)
+  const scenarios = await loadScenarios(opts)
 
   if (scenarios.length === 0) {
     if (opts.scenarioName) {
@@ -172,7 +221,7 @@ const main = () => {
   }
 
   console.log(
-    `Profiling ${scenarios.length} scenarios with AutoroutingPipelineSolver...\n`,
+    `Profiling ${scenarios.length} scenarios from ${opts.datasetName} with AutoroutingPipelineSolver...\n`,
   )
 
   let solved = 0
@@ -220,6 +269,7 @@ const main = () => {
     scenarioCount: number
     scenarioSuccessRate: number
     maxIter: number
+    totalIterations: number
     totalTimeMs: number
     p50Time: number | null
     p95Time: number | null
@@ -236,6 +286,7 @@ const main = () => {
     const times = recs.map((r) => r.timeMs)
     const iters = recs.map((r) => r.iterations)
     const maxIter = Math.round(Math.max(...recs.map((r) => r.maxIterations)))
+    const totalIterations = recs.reduce((sum, r) => sum + r.iterations, 0)
     const totalTimeMs = recs.reduce((sum, r) => sum + r.timeMs, 0)
     rows.push({
       name,
@@ -246,6 +297,7 @@ const main = () => {
           ? 0
           : (scenariosWithSuccess.size / scenariosTouched.size) * 100,
       maxIter,
+      totalIterations,
       totalTimeMs,
       p50Time: getPercentile(times, 0.5),
       p95Time: getPercentile(times, 0.95),
@@ -266,6 +318,7 @@ const main = () => {
     "Scenarios",
     "Success %",
     "MAX_ITER",
+    "Total Iters",
     "Total Time",
     "P50 Time",
     "P95 Time",
@@ -279,6 +332,7 @@ const main = () => {
     String(r.scenarioCount),
     `${r.scenarioSuccessRate.toFixed(0)}%`,
     String(r.maxIter),
+    String(Math.round(r.totalIterations)),
     formatTime(r.totalTimeMs),
     formatTime(r.p50Time),
     formatTime(r.p95Time),
@@ -289,6 +343,36 @@ const main = () => {
   const table = formatTable(headers, body)
   console.log(table)
   console.log()
+
+  const profileReport = {
+    datasetName: opts.datasetName,
+    scenarioCount: scenarios.length,
+    scenarioName: opts.scenarioName ?? null,
+    scenarioLimit: opts.scenarioLimit ?? null,
+    effort: opts.effort ?? null,
+    solved,
+    failed,
+    rows: rows.map(
+      (r): ProfileSolverRow => ({
+        solverName: r.name,
+        attemptCount: r.attemptCount,
+        scenarioCount: r.scenarioCount,
+        scenarioSuccessRate: r.scenarioSuccessRate,
+        maxIterations: r.maxIter,
+        totalIterations: r.totalIterations,
+        totalTimeMs: r.totalTimeMs,
+        p50TimeMs: r.p50Time,
+        p95TimeMs: r.p95Time,
+        p50Iterations: r.p50Iter,
+        p95Iterations: r.p95Iter,
+      }),
+    ),
+  }
+
+  await Bun.write(
+    "profile-solvers.json",
+    JSON.stringify(profileReport, null, 2),
+  )
 }
 
 main()
