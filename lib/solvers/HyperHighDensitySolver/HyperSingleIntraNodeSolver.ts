@@ -12,6 +12,7 @@ import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import { TwoCrossingRoutesHighDensitySolver } from "../HighDensitySolver/TwoRouteHighDensitySolver/TwoCrossingRoutesHighDensitySolver"
 import { SingleTransitionCrossingRouteSolver } from "../HighDensitySolver/TwoRouteHighDensitySolver/SingleTransitionCrossingRouteSolver"
 import { SingleTransitionIntraNodeSolver } from "../HighDensitySolver/SingleTransitionIntraNodeSolver"
+import { SingleTransitionThroughObstacleIntraNodeSolver } from "../HighDensitySolver/SingleTransitionThroughObstacleIntraNodeSolver"
 import { MultiHeadPolyLineIntraNodeSolver2 } from "../HighDensitySolver/MultiHeadPolyLineIntraNodeSolver/MultiHeadPolyLineIntraNodeSolver2_Optimized"
 import { MultiHeadPolyLineIntraNodeSolver3 } from "../HighDensitySolver/MultiHeadPolyLineIntraNodeSolver/MultiHeadPolyLineIntraNodeSolver3_ViaPossibilitiesSolverIntegration"
 import {
@@ -26,6 +27,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
   | TwoCrossingRoutesHighDensitySolver
   | SingleTransitionCrossingRouteSolver
   | SingleTransitionIntraNodeSolver
+  | SingleTransitionThroughObstacleIntraNodeSolver
   | FixedTopologyHighDensityIntraNodeSolver
   | SingleLayerNoDifferentRootIntersectionsIntraNodeSolver
   | HighDensityA03Solver
@@ -57,6 +59,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
 
   getCombinationDefs() {
     return [
+      ["throughObstacle"],
       ["singleLayerNoDifferentRootIntersections"],
       ["multiHeadPolyLine"],
       ["majorCombinations", "orderings6", "cellSizeFactor"],
@@ -173,6 +176,14 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
       //     },
       //   ],
       // },
+      {
+        name: "throughObstacle",
+        possibleValues: [
+          {
+            THROUGH_OBSTACLE: true,
+          },
+        ],
+      },
       {
         name: "closedFormSingleTrace",
         possibleValues: [
@@ -326,6 +337,16 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
       return new SingleTransitionIntraNodeSolver({
         nodeWithPortPoints: this.nodeWithPortPoints,
         viaDiameter: this.constructorParams.viaDiameter,
+      }) as any
+    }
+    if (hyperParameters.THROUGH_OBSTACLE) {
+      return new SingleTransitionThroughObstacleIntraNodeSolver({
+        nodeWithPortPoints: this.nodeWithPortPoints,
+        obstacles: this.constructorParams.obstacles,
+        connMap: this.connMap,
+        layerCount: this.constructorParams.layerCount,
+        viaDiameter: this.constructorParams.viaDiameter,
+        traceThickness: this.constructorParams.traceWidth,
       }) as any
     }
     if (hyperParameters.MULTI_HEAD_POLYLINE_SOLVER) {

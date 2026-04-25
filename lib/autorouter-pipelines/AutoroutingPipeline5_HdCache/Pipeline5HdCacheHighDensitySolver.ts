@@ -6,6 +6,7 @@ import type {
   HighDensityIntraNodeRoute,
   NodeWithPortPoints,
 } from "../../types/high-density-types"
+import type { Obstacle } from "../../types/srj-types"
 import { BaseSolver, type PendingEffect } from "../../solvers/BaseSolver"
 import { HyperSingleIntraNodeSolver } from "../../solvers/HyperHighDensitySolver/HyperSingleIntraNodeSolver"
 import { CachedIntraNodeRouteSolver } from "../../solvers/HighDensitySolver/CachedIntraNodeRouteSolver"
@@ -264,6 +265,8 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
   readonly viaDiameter: number
   readonly traceWidth: number
   readonly obstacleMargin: number
+  readonly obstacles: Obstacle[]
+  readonly layerCount: number
   readonly hdCacheBaseUrl: string
   readonly fetchImpl: typeof fetch
   readonly nodePfById: Map<CapacityMeshNodeId, number | null>
@@ -293,6 +296,8 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
     viaDiameter,
     traceWidth,
     obstacleMargin,
+    obstacles,
+    layerCount,
     nodePfById,
     hdCacheBaseUrl,
     fetchImpl,
@@ -303,6 +308,8 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
     viaDiameter?: number
     traceWidth?: number
     obstacleMargin?: number
+    obstacles?: Obstacle[]
+    layerCount?: number
     nodePfById?:
       | Map<CapacityMeshNodeId, number | null>
       | Record<string, number | null>
@@ -316,6 +323,8 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
     this.viaDiameter = viaDiameter ?? 0.3
     this.traceWidth = traceWidth ?? 0.15
     this.obstacleMargin = obstacleMargin ?? 0.15
+    this.obstacles = obstacles ?? []
+    this.layerCount = layerCount ?? 2
     this.hdCacheBaseUrl = hdCacheBaseUrl ?? DEFAULT_HD_CACHE_BASE_URL
     this.fetchImpl = (fetchImpl ?? globalThis.fetch).bind(
       globalThis,
@@ -367,6 +376,8 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
       viaDiameter: this.viaDiameter,
       traceWidth: this.traceWidth,
       obstacleMargin: this.obstacleMargin,
+      obstacles: this.obstacles,
+      layerCount: this.layerCount,
     })
 
     localSolver.solve()

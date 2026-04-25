@@ -8,6 +8,7 @@ import type {
   HighDensityIntraNodeRoute,
   NodeWithPortPoints,
 } from "../../types/high-density-types"
+import type { Obstacle } from "../../types/srj-types"
 import { BaseSolver } from "../BaseSolver"
 import { safeTransparentize } from "../colors"
 import { HighDensityHyperParameters } from "./HighDensityHyperParameters"
@@ -80,6 +81,8 @@ export class IntraNodeRouteSolver extends BaseSolver {
     viaDiameter?: number
     traceWidth?: number
     obstacleMargin?: number
+    obstacles?: Obstacle[]
+    layerCount?: number
   }) {
     const { nodeWithPortPoints, colorMap } = params
     super()

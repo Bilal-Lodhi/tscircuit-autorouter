@@ -73,6 +73,8 @@ export class AutoroutingPipelineSolver5_HdCache extends AutoroutingPipelineSolve
             viaDiameter: cms.viaDiameter,
             traceWidth: cms.minTraceWidth,
             obstacleMargin: cms.srj.defaultObstacleMargin ?? 0.15,
+            obstacles: cms.srj.obstacles,
+            layerCount: cms.srj.layerCount,
             hdCacheBaseUrl: cms.hdCacheBaseUrl,
             fetchImpl: cms.hdCacheFetch,
           },
