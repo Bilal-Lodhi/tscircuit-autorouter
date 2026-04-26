@@ -16,6 +16,14 @@ export {
   AutoroutingPipelineSolver5_HdCache,
 } from "./autorouter-pipelines/AutoroutingPipeline5_HdCache/AutoroutingPipelineSolver5_HdCache"
 export {
+  AutoroutingPipelineSolver6,
+  AutoroutingPipelineSolver6_PolyHypergraph,
+} from "./autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/AutoroutingPipelineSolver6_PolyHypergraph"
+export { PolyHighDensitySolver } from "./autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/PolyHighDensitySolver"
+export { PolySingleIntraNodeSolver } from "./autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/PolySingleIntraNodeSolver"
+export { PolyIntraNodeSolver } from "./autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/PolyIntraNodeSolver"
+export { AttachProjectedRectsSolver } from "./autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/AttachProjectedRectsSolver"
+export {
   getTunedTotalCapacity1,
   calculateOptimalCapacityDepth,
 } from "./utils/getTunedTotalCapacity1"
