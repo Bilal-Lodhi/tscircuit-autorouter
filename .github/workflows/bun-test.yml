@@ -9,7 +9,7 @@ on:
 
 jobs:
   test:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -55,4 +55,5 @@ jobs:
           name: diff-png-and-snap-svg-artifacts-node${{ matrix.node }}
           path: |
             **/*.diff.png
+            **/*.received.svg
             **/*.snap.svg
