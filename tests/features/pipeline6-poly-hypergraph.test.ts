@@ -208,8 +208,16 @@ test("Pipeline6 solves and snapshots a small obstacle route", () => {
   expect(
     solver.projectHighDensityToPolgonSolver?.routes.length,
   ).toBeGreaterThan(0)
+  expect(solver.polyGraphSolver!.visualize().polygons?.length).toBeGreaterThan(
+    0,
+  )
+  expect(solver.visualize().polygons?.length).toBeGreaterThan(0)
   expect(solver.getOutputSimpleRouteJson().traces).toHaveLength(2)
 
+  expect(solver.polyGraphSolver!.visualize()).toMatchGraphicsSvg(
+    import.meta.path,
+    { svgName: "pipeline6-poly-graph" },
+  )
   expect(solver.attachProjectedRectsSolver!.visualize()).toMatchGraphicsSvg(
     import.meta.path,
     { svgName: "pipeline6-projected-rects" },
