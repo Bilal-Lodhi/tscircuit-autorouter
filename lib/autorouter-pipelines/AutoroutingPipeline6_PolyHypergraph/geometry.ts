@@ -66,6 +66,8 @@ export const getPolygonSignedArea = (polygon: readonly Point[]) => {
 export const getPolygonArea = (polygon: readonly Point[]) =>
   Math.abs(getPolygonSignedArea(polygon))
 
+const getQuadArea = (quad: readonly Point[]) => getPolygonArea(quad)
+
 export const getPolygonCentroid = (polygon: readonly Point[]): Point => {
   const signedArea = getPolygonSignedArea(polygon)
   if (Math.abs(signedArea) < EPSILON) {
@@ -436,6 +438,25 @@ export const invertMatrix3x3 = (m: Matrix3x3): Matrix3x3 => {
   ]
 }
 
+const getRotationMatrixAroundPoint = (
+  center: Point,
+  ccwRotationRadians: number,
+): Matrix3x3 => {
+  const cos = Math.cos(ccwRotationRadians)
+  const sin = Math.sin(ccwRotationRadians)
+  return [
+    cos,
+    -sin,
+    center.x - cos * center.x + sin * center.y,
+    sin,
+    cos,
+    center.y - sin * center.x - cos * center.y,
+    0,
+    0,
+    1,
+  ]
+}
+
 export const applyMatrixToPoint = (matrix: Matrix3x3, point: Point): Point => {
   const denominator = matrix[6] * point.x + matrix[7] * point.y + matrix[8]
   if (Math.abs(denominator) < EPSILON) {
@@ -606,8 +627,27 @@ export const computeProjectedRect = (
     const hit = intersectRayWithPolygon(center, direction, workingPolygon)
     return hit ? { x: hit.x, y: hit.y } : corner
   }) as [Point, Point, Point, Point]
-  const rectToPolygonMatrix = computeHomography(rectCorners, targetQuad)
-  const polygonToRectMatrix = invertMatrix3x3(rectToPolygonMatrix)
+  let nonDegenerateTargetQuad =
+    getQuadArea(targetQuad) > EPSILON ? targetQuad : rotatedRectCorners
+  let rectToPolygonMatrix: Matrix3x3
+  let polygonToRectMatrix: Matrix3x3
+  try {
+    rectToPolygonMatrix = computeHomography(
+      rectCorners,
+      nonDegenerateTargetQuad,
+    )
+    polygonToRectMatrix = invertMatrix3x3(rectToPolygonMatrix)
+  } catch {
+    nonDegenerateTargetQuad = rotatedRectCorners
+    rectToPolygonMatrix = getRotationMatrixAroundPoint(
+      center,
+      ccwRotationRadians,
+    )
+    polygonToRectMatrix = getRotationMatrixAroundPoint(
+      center,
+      -ccwRotationRadians,
+    )
+  }
 
   return {
     center,
@@ -619,7 +659,7 @@ export const computeProjectedRect = (
     ccwRotationRadians,
     polygonArea,
     equivalentAreaExpansionFactor: expansionFactor,
-    targetQuad,
+    targetQuad: nonDegenerateTargetQuad,
     rectToPolygonMatrix,
     polygonToRectMatrix,
   }

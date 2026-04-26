@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test"
 import { AutoroutingPipelineSolver6 } from "lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/AutoroutingPipelineSolver6_PolyHypergraph"
+import { PolyHypergraphPortPointPathingSolver } from "lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/PolyHypergraphPortPointPathingSolver"
 import { PolySingleIntraNodeSolver } from "lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/PolySingleIntraNodeSolver"
 import { ProjectHighDensityToPolygonSolver } from "lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/ProjectHighDensityToPolygonSolver"
 import {
@@ -12,6 +13,7 @@ import {
 import type { PolyNodeWithPortPoints } from "lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/types"
 import type { SimpleRouteJson } from "lib/types"
 import { convertSrjToGraphicsObject } from "lib/utils/convertSrjToGraphicsObject"
+import { loadScenarios } from "scripts/benchmark/scenarios"
 
 const expectClose = (actual: number, expected: number, tolerance = 1e-6) => {
   expect(Math.abs(actual - expected)).toBeLessThanOrEqual(tolerance)
@@ -60,6 +62,33 @@ test("Pipeline6 projectedRect area expansion preserves center and reaches polygo
   )
   expectClose(distortedTopCorner.x, rotatedSquare[0]!.x)
   expectClose(distortedTopCorner.y, rotatedSquare[0]!.y)
+})
+
+test("Pipeline6 projectedRect handles sliver polygons without a singular homography", () => {
+  const sliverPolygon = [
+    { x: 4.349999, y: 10.45 },
+    { x: 4.3500000000000005, y: 11.450000999999999 },
+    { x: 4.349997, y: 10.5 },
+  ]
+
+  const projectedRect = computeProjectedRect(sliverPolygon, 0.25)
+
+  expect(projectedRect.targetQuad).toHaveLength(4)
+  expect(projectedRect.rectToPolygonMatrix.every(Number.isFinite)).toBe(true)
+  expect(projectedRect.polygonToRectMatrix.every(Number.isFinite)).toBe(true)
+})
+
+test("Pipeline6 falls back when constrained triangulation fails", async () => {
+  const scenarios = await loadScenarios("dataset01")
+  const circuit100 = scenarios.find(([name]) => name === "circuit100")?.[1]
+  expect(circuit100).toBeDefined()
+
+  const solver = new PolyHypergraphPortPointPathingSolver({
+    srj: circuit100!,
+  })
+
+  expect(solver.usedUnconstrainedDelaunayFallback).toBe(true)
+  expect(solver.convexRegions.regions.length).toBeGreaterThan(0)
 })
 
 test("PolySingleIntraNodeSolver solves in rect space before projection back to polygon", () => {
