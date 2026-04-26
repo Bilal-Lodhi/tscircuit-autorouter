@@ -8,11 +8,12 @@ import type {
 } from "lib/types/high-density-types"
 import { createObjectsWithZLayers } from "lib/utils/createObjectsWithZLayers"
 
-type Point = { x: number; y: number; z?: number }
+type Point = { x: number; y: number; z?: number; rootConnectionName?: string }
 type Route = {
   A: Point
   B: Point
   connectionName: string
+  rootConnectionName?: string
 }
 type LayeredObstacle = Obstacle & { zLayers: number[] }
 
@@ -75,42 +76,57 @@ export class SingleTransitionThroughObstacleIntraNodeSolver extends BaseSolver {
     this.traceThickness = params.traceThickness ?? 0.15
     this.routes = this.extractRoutesFromNode()
 
-    if (this.routes.length !== 1) {
+    if (this.routes.length === 0) {
       this.failed = true
-      this.error = `Expected 1 route, but got ${this.routes.length}`
+      this.error = "Expected at least 1 route"
       return
     }
 
-    const route = this.routes[0]!
-    if (route.A.z === undefined || route.B.z === undefined) {
+    if (
+      this.routes.some(
+        (route) => route.A.z === undefined || route.B.z === undefined,
+      )
+    ) {
       this.failed = true
       this.error = "Route points should have predefined z values"
       return
     }
 
-    if (route.A.z === route.B.z) {
+    if (!this.routes.some((route) => route.A.z !== route.B.z)) {
       this.failed = true
-      this.error = "Only one route provided, but it has no transition"
+      this.error = "No route transitions through an obstacle"
       return
     }
 
-    const containingObstacle = this.getContainingThroughObstacle(route)
-    if (!containingObstacle) {
+    const containingObstacles = this.routes.map((route) =>
+      this.getContainingThroughObstacle(route),
+    )
+    if (containingObstacles.some((obstacle) => !obstacle)) {
       this.failed = true
-      this.error = "No same-net multilayer obstacle contains the transition"
+      this.error = "No same-net multilayer obstacle contains every route"
       return
     }
 
-    this.solvedRoutes.push({
-      connectionName: route.connectionName,
-      route: [
-        { x: route.A.x, y: route.A.y, z: route.A.z },
-        { x: route.B.x, y: route.B.y, z: route.B.z },
-      ],
-      traceThickness: this.traceThickness,
-      viaDiameter: this.viaDiameter,
-      vias: [],
-    })
+    this.solvedRoutes.push(
+      ...this.routes.map((route) => ({
+        connectionName: route.connectionName,
+        rootConnectionName: route.rootConnectionName,
+        route: [
+          {
+            x: route.A.x,
+            y: route.A.y,
+            z: route.A.z!,
+            ...(route.A.z !== route.B.z
+              ? { toNextSegmentType: "through_obstacle" as const }
+              : {}),
+          },
+          { x: route.B.x, y: route.B.y, z: route.B.z! },
+        ],
+        traceThickness: this.traceThickness,
+        viaDiameter: this.viaDiameter,
+        vias: [],
+      })),
+    )
     this.solved = true
   }
 
@@ -129,11 +145,14 @@ export class SingleTransitionThroughObstacleIntraNodeSolver extends BaseSolver {
     const connectionGroups = new Map<string, Point[]>()
 
     for (const connectedPort of this.nodeWithPortPoints.portPoints) {
-      const { connectionName } = connectedPort
+      const { connectionName, rootConnectionName } = connectedPort
       if (!connectionGroups.has(connectionName)) {
         connectionGroups.set(connectionName, [])
       }
-      connectionGroups.get(connectionName)!.push(connectedPort)
+      connectionGroups.get(connectionName)!.push({
+        ...connectedPort,
+        rootConnectionName,
+      })
     }
 
     for (const [connectionName, points] of connectionGroups.entries()) {
@@ -142,6 +161,8 @@ export class SingleTransitionThroughObstacleIntraNodeSolver extends BaseSolver {
           A: { ...points[0]! },
           B: { ...points[1]! },
           connectionName,
+          rootConnectionName:
+            points[0]?.rootConnectionName ?? points[1]?.rootConnectionName,
         })
       }
     }
@@ -151,10 +172,13 @@ export class SingleTransitionThroughObstacleIntraNodeSolver extends BaseSolver {
   private getContainingThroughObstacle(route: Route) {
     const zA = route.A.z
     const zB = route.B.z
-    if (zA === undefined || zB === undefined || zA === zB) return null
+    if (zA === undefined || zB === undefined) return null
 
     return (
       this.obstacles.find((obstacle) => {
+        if (obstacle.zLayers.length < 2) {
+          return false
+        }
         if (!obstacle.zLayers.includes(zA) || !obstacle.zLayers.includes(zB)) {
           return false
         }

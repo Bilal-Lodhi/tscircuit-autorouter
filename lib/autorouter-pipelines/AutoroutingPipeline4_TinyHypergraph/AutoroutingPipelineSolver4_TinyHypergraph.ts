@@ -407,7 +407,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
       GlobalDrcForceImproveSolver,
       (cms) => [
         {
-          srj: cms.srjWithPointPairs!,
+          srj: cms.srjWithPointPairs! as any,
           hdRoutes: cms.traceWidthSolver!.getHdRoutesWithWidths(),
           effort: cms.effort,
         },
@@ -692,6 +692,8 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
           route: convertHdRouteToSimplifiedRoute(hdRoute, this.srj.layerCount, {
             connectionPoints: connection.pointsToConnect,
             defaultViaHoleDiameter: this.viaHoleDiameter,
+            obstacles: this.srj.obstacles,
+            connMap: this.connMap,
           }),
         }
 

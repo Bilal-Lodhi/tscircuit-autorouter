@@ -11,6 +11,20 @@ import { createObjectsWithZLayers } from "lib/utils/createObjectsWithZLayers"
 
 type Phase = "via_removal" | "via_merging" | "path_simplification"
 
+const VIA_INSIDE_OBSTACLE_TOLERANCE = 1e-6
+
+const pointInsideObstacle = (
+  point: { x: number; y: number },
+  obstacle: Obstacle,
+) =>
+  Math.abs(point.x - obstacle.center.x) <=
+    obstacle.width / 2 + VIA_INSIDE_OBSTACLE_TOLERANCE &&
+  Math.abs(point.y - obstacle.center.y) <=
+    obstacle.height / 2 + VIA_INSIDE_OBSTACLE_TOLERANCE
+
+const isMultilayerObstacle = (obstacle: Obstacle) =>
+  (obstacle.zLayers?.length ?? obstacle.layers?.length ?? 0) > 1
+
 /**
  * TraceSimplificationSolver consolidates trace optimization by iteratively applying
  * via removal, via merging, and path simplification phases. It reduces redundant vias
@@ -77,8 +91,79 @@ export class TraceSimplificationSolver extends BaseSolver {
         simplificationConfig.layerCount,
       ),
     }
-    this.hdRoutes = [...simplificationConfig.hdRoutes]
+    this.hdRoutes = this.markThroughObstacleSegments(
+      simplificationConfig.hdRoutes,
+    )
     this.MAX_ITERATIONS = 100e6
+  }
+
+  private isSameNetObstacle(route: HighDensityRoute, obstacle: Obstacle) {
+    return obstacle.connectedTo.some(
+      (connectedId) =>
+        connectedId === route.connectionName ||
+        connectedId === route.rootConnectionName ||
+        this.simplificationConfig.connMap.areIdsConnected(
+          route.connectionName,
+          connectedId,
+        ) ||
+        (route.rootConnectionName !== undefined &&
+          this.simplificationConfig.connMap.areIdsConnected(
+            route.rootConnectionName,
+            connectedId,
+          )),
+    )
+  }
+
+  private getSameNetObstacleForSegment(
+    route: HighDensityRoute,
+    start: { x: number; y: number },
+    end: { x: number; y: number },
+  ) {
+    return this.simplificationConfig.obstacles.find(
+      (obstacle) =>
+        isMultilayerObstacle(obstacle) &&
+        this.isSameNetObstacle(route, obstacle) &&
+        pointInsideObstacle(start, obstacle) &&
+        pointInsideObstacle(end, obstacle),
+    )
+  }
+
+  private isViaInsideSameNetObstacle(
+    route: HighDensityRoute,
+    via: { x: number; y: number },
+  ) {
+    return this.simplificationConfig.obstacles.some(
+      (obstacle) =>
+        isMultilayerObstacle(obstacle) &&
+        this.isSameNetObstacle(route, obstacle) &&
+        pointInsideObstacle(via, obstacle),
+    )
+  }
+
+  private markThroughObstacleSegments(
+    routes: ReadonlyArray<HighDensityRoute>,
+  ): HighDensityRoute[] {
+    return routes.map((route) => ({
+      ...route,
+      route: route.route.map((point, index, points) => {
+        const nextPoint = points[index + 1]
+        if (
+          nextPoint &&
+          point.z !== nextPoint.z &&
+          this.getSameNetObstacleForSegment(route, point, nextPoint)
+        ) {
+          return {
+            ...point,
+            toNextSegmentType: "through_obstacle" as const,
+          }
+        }
+
+        return { ...point }
+      }),
+      vias: route.vias.filter(
+        (via) => !this.isViaInsideSameNetObstacle(route, via),
+      ),
+    }))
   }
 
   _step() {
@@ -100,7 +185,9 @@ export class TraceSimplificationSolver extends BaseSolver {
       if (this.activeSubSolver.solved) {
         // Capture output using the registered callback
         if (this.extractResult) {
-          this.hdRoutes = this.extractResult(this.activeSubSolver)
+          this.hdRoutes = this.markThroughObstacleSegments(
+            this.extractResult(this.activeSubSolver),
+          )
         }
 
         // Clear activeSubSolver

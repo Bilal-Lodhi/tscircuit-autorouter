@@ -9,6 +9,26 @@ const GAP_PENALTY = 100000
 const GEOMETRIC_TOLERANCE = 1e-3
 export const MAX_STITCH_GAP_DISTANCE_3 = 1
 const MAX_TERMINAL_STITCH_GAP_DISTANCE_3 = 1.25
+type RoutePoint = HighDensityIntraNodeRoute["route"][number]
+
+const reverseRoutePoints = (points: RoutePoint[]): RoutePoint[] => {
+  const reversed = [...points].reverse().map((point) => {
+    const { toNextSegmentType, ...rest } = point
+    return rest
+  }) as RoutePoint[]
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const segmentType = points[i]?.toNextSegmentType
+    if (!segmentType) continue
+    const reversedStartIndex = points.length - i - 2
+    reversed[reversedStartIndex] = {
+      ...reversed[reversedStartIndex]!,
+      toNextSegmentType: segmentType,
+    }
+  }
+
+  return reversed
+}
 
 export class SingleHighDensityRouteStitchSolver3 extends BaseSolver {
   override getSolverName(): string {
@@ -236,11 +256,11 @@ export class SingleHighDensityRouteStitchSolver3 extends BaseSolver {
     const hdRouteToMerge = this.remainingHdRoutes[closestRouteIndex]
     this.remainingHdRoutes.splice(closestRouteIndex, 1)
 
-    let pointsToAdd: Array<{ x: number; y: number; z: number }>
+    let pointsToAdd: RoutePoint[]
     if (matchedOn === "first") {
       pointsToAdd = hdRouteToMerge.route
     } else {
-      pointsToAdd = [...hdRouteToMerge.route].reverse()
+      pointsToAdd = reverseRoutePoints(hdRouteToMerge.route)
     }
 
     if (
@@ -248,6 +268,9 @@ export class SingleHighDensityRouteStitchSolver3 extends BaseSolver {
       distance(lastMergedPoint, pointsToAdd[0]) < GEOMETRIC_TOLERANCE &&
       lastMergedPoint.z === pointsToAdd[0].z
     ) {
+      if (pointsToAdd[0].toNextSegmentType) {
+        lastMergedPoint.toNextSegmentType = pointsToAdd[0].toNextSegmentType
+      }
       this.mergedHdRoute.route.push(...pointsToAdd.slice(1))
     } else {
       this.mergedHdRoute.route.push(...pointsToAdd)

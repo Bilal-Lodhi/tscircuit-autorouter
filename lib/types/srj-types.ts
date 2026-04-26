@@ -123,6 +123,14 @@ export interface SimplifiedPcbTrace {
         footprint: "0603" | "1206" | "1206x4_pair"
         layer: string
       }
+    | {
+        route_type: "through_obstacle"
+        start: { x: number; y: number }
+        end: { x: number; y: number }
+        from_layer: string
+        to_layer: string
+        width: number
+      }
   >
 }
 
