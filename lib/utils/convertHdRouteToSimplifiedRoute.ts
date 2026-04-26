@@ -1,6 +1,8 @@
 import { distance } from "@tscircuit/math-utils"
+import type { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import {
   type ConnectionPoint,
+  type Obstacle,
   type SimplifiedPcbTraces,
   type SingleLayerConnectionPoint,
   isSingleLayerConnectionPoint,
@@ -8,14 +10,22 @@ import {
 import { HighDensityIntraNodeRoute, Jumper } from "lib/types/high-density-types"
 import { mapZToLayerName } from "./mapZToLayerName"
 
-type Point = { x: number; y: number; z: number }
+type Point = {
+  x: number
+  y: number
+  z: number
+  toNextSegmentType?: "through_obstacle"
+}
 const DEFAULT_TERMINAL_VIA_ATTACH_TOLERANCE = 0.25
 const SAME_POINT_TOLERANCE = 1e-12
+const SAME_NET_OBSTACLE_TOLERANCE = 1e-6
 
 export interface ConvertHdRouteToSimplifiedRouteOptions {
   connectionPoints?: ReadonlyArray<ConnectionPoint>
   terminalViaAttachTolerance?: number
   defaultViaHoleDiameter?: number
+  obstacles?: ReadonlyArray<Obstacle>
+  connMap?: ConnectivityMap
 }
 
 /**
@@ -33,6 +43,53 @@ const areSameXyPoint = (
   !!b &&
   Math.abs(a.x - b.x) <= SAME_POINT_TOLERANCE &&
   Math.abs(a.y - b.y) <= SAME_POINT_TOLERANCE
+
+const pointInsideObstacle = (
+  point: Pick<Point, "x" | "y">,
+  obstacle: Obstacle,
+) =>
+  Math.abs(point.x - obstacle.center.x) <=
+    obstacle.width / 2 + SAME_NET_OBSTACLE_TOLERANCE &&
+  Math.abs(point.y - obstacle.center.y) <=
+    obstacle.height / 2 + SAME_NET_OBSTACLE_TOLERANCE
+
+const isMultilayerObstacle = (obstacle: Obstacle) =>
+  (obstacle.zLayers?.length ?? obstacle.layers?.length ?? 0) > 1
+
+const isObstacleConnectedToRoute = (
+  obstacle: Obstacle,
+  hdRoute: HdRouteWithOptionalJumpers,
+  connMap?: ConnectivityMap,
+) =>
+  obstacle.connectedTo.some(
+    (connectedId) =>
+      connectedId === hdRoute.connectionName ||
+      connectedId === hdRoute.rootConnectionName ||
+      (connMap?.areIdsConnected(hdRoute.connectionName, connectedId) ??
+        false) ||
+      (hdRoute.rootConnectionName !== undefined &&
+        (connMap?.areIdsConnected(hdRoute.rootConnectionName, connectedId) ??
+          false)),
+  )
+
+const isThroughObstacleSegment = (
+  hdRoute: HdRouteWithOptionalJumpers,
+  start: Point,
+  end: Point,
+  opts: ConvertHdRouteToSimplifiedRouteOptions,
+) => {
+  if (start.toNextSegmentType === "through_obstacle") return true
+
+  return (
+    opts.obstacles?.some(
+      (obstacle) =>
+        isMultilayerObstacle(obstacle) &&
+        isObstacleConnectedToRoute(obstacle, hdRoute, opts.connMap) &&
+        pointInsideObstacle(start, obstacle) &&
+        pointInsideObstacle(end, obstacle),
+    ) ?? false
+  )
+}
 
 const findNearestTerminalViaPoint = ({
   endpoint,
@@ -206,6 +263,7 @@ export const convertHdRouteToSimplifiedRoute = (
     // If we're changing layers, process the current layer's points
     // and add a via if one exists at this position
     if (point.z !== currentZ) {
+      const previousPoint = currentLayerPoints[currentLayerPoints.length - 1]
       // Add all wire segments for the current layer
       const layerName = mapZToLayerName(currentZ, layerCount)
       for (const layerPoint of currentLayerPoints) {
@@ -218,29 +276,41 @@ export const convertHdRouteToSimplifiedRoute = (
         })
       }
 
-      // Check if a via exists at this position
-      const viaExists = hdRoute.vias.some(
-        (via) =>
-          Math.abs(via.x - point.x) < 0.001 &&
-          Math.abs(via.y - point.y) < 0.001,
-      )
-
-      // Add a via if one exists
-      if (viaExists) {
-        const fromLayer = mapZToLayerName(currentZ, layerCount)
-        const toLayer = mapZToLayerName(point.z, layerCount)
-
+      const nextLayerName = mapZToLayerName(point.z, layerCount)
+      if (
+        previousPoint &&
+        isThroughObstacleSegment(hdRoute, previousPoint, point, opts)
+      ) {
         result.push({
-          route_type: "via",
-          x: point.x,
-          y: point.y,
-          from_layer: fromLayer,
-          to_layer: toLayer,
-          via_diameter: hdRoute.viaDiameter,
-          ...(opts.defaultViaHoleDiameter !== undefined
-            ? { via_hole_diameter: opts.defaultViaHoleDiameter }
-            : {}),
+          route_type: "through_obstacle",
+          start: { x: previousPoint.x, y: previousPoint.y },
+          end: { x: point.x, y: point.y },
+          from_layer: layerName,
+          to_layer: nextLayerName,
+          width: hdRoute.traceThickness,
         })
+      } else {
+        // Check if a via exists at this position
+        const viaExists = hdRoute.vias.some(
+          (via) =>
+            Math.abs(via.x - point.x) < 0.001 &&
+            Math.abs(via.y - point.y) < 0.001,
+        )
+
+        // Add a via if one exists
+        if (viaExists) {
+          result.push({
+            route_type: "via",
+            x: point.x,
+            y: point.y,
+            from_layer: layerName,
+            to_layer: nextLayerName,
+            via_diameter: hdRoute.viaDiameter,
+            ...(opts.defaultViaHoleDiameter !== undefined
+              ? { via_hole_diameter: opts.defaultViaHoleDiameter }
+              : {}),
+          })
+        }
       }
 
       // Start a new layer

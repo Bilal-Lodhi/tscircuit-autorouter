@@ -38,7 +38,7 @@ function convertSimplifiedPcbTraceToCircuitJson(
             to_layer: segment.to_layer,
           }
         } else {
-          // jumper - skip for now as circuit-json doesn't support jumper route type
+          // jumper/through_obstacle - skip for now as circuit-json doesn't support these route types
           return null
         }
       })

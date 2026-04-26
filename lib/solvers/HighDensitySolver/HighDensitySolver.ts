@@ -8,6 +8,7 @@ import type {
   HighDensityIntraNodeRoute,
   NodeWithPortPoints,
 } from "../../types/high-density-types"
+import type { Obstacle } from "../../types/srj-types"
 import { BaseSolver } from "../BaseSolver"
 import { HyperSingleIntraNodeSolver } from "../HyperHighDensitySolver/HyperSingleIntraNodeSolver"
 import { safeTransparentize } from "../colors"
@@ -30,6 +31,8 @@ export class HighDensitySolver extends BaseSolver {
   traceWidth: number
   obstacleMargin: number
   effort: number
+  obstacles: Obstacle[]
+  layerCount: number
 
   failedSolvers: (IntraNodeRouteSolver | HyperSingleIntraNodeSolver)[]
   activeSubSolver: IntraNodeRouteSolver | HyperSingleIntraNodeSolver | null =
@@ -58,6 +61,8 @@ export class HighDensitySolver extends BaseSolver {
     obstacleMargin,
     effort,
     nodePfById,
+    obstacles,
+    layerCount,
   }: {
     nodePortPoints: NodeWithPortPoints[]
     colorMap?: Record<string, string>
@@ -66,6 +71,8 @@ export class HighDensitySolver extends BaseSolver {
     traceWidth?: number
     obstacleMargin?: number
     effort?: number
+    obstacles?: Obstacle[]
+    layerCount?: number
     nodePfById?:
       | Map<CapacityMeshNodeId, number | null>
       | Record<string, number | null>
@@ -81,6 +88,8 @@ export class HighDensitySolver extends BaseSolver {
     this.viaDiameter = viaDiameter ?? this.defaultViaDiameter
     this.traceWidth = traceWidth ?? this.defaultTraceThickness
     this.obstacleMargin = obstacleMargin ?? 0.15
+    this.obstacles = obstacles ?? []
+    this.layerCount = layerCount ?? 2
     this.nodePfById =
       nodePfById instanceof Map
         ? new Map(nodePfById)
@@ -256,6 +265,8 @@ export class HighDensitySolver extends BaseSolver {
       traceWidth: this.traceWidth,
       obstacleMargin: this.obstacleMargin,
       effort: this.effort,
+      obstacles: this.obstacles,
+      layerCount: this.layerCount,
     })
     this.updateCacheStats()
   }

@@ -101,6 +101,19 @@ export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
             stroke: "none",
             layer: `z${zLayers.join(",")}`,
           })
+        } else if (routePoint.route_type === "through_obstacle") {
+          const connectionColor = colorMap[trace.connection_name] ?? "purple"
+          lines.push({
+            points: [routePoint.start, routePoint.end],
+            strokeColor: safeTransparentize(connectionColor, 0.35),
+            strokeWidth: routePoint.width,
+            strokeDash: [0.1, 0.1],
+            layer: getGraphicsLayerFromLayerNames(
+              [routePoint.from_layer, routePoint.to_layer],
+              layerCount,
+            ),
+            label: `${trace.connection_name} through_obstacle`,
+          })
         }
       }
 

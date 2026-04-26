@@ -137,6 +137,69 @@ describe("convertHdRouteToSimplifiedRoute", () => {
     `)
   })
 
+  test("serializes marked layer changes as through_obstacle segments", () => {
+    const input: HighDensityIntraNodeRoute = {
+      connectionName: "through-obstacle-route",
+      traceThickness: 0.2,
+      viaDiameter: 0.6,
+      route: [
+        { x: 0, y: 0, z: 0 },
+        { x: 1, y: 0, z: 0, toNextSegmentType: "through_obstacle" },
+        { x: 1, y: 0, z: 1 },
+        { x: 2, y: 0, z: 1 },
+      ],
+      vias: [{ x: 1, y: 0 }],
+    }
+
+    const result = convertHdRouteToSimplifiedRoute(input, 2)
+    expect(result).toMatchInlineSnapshot(`
+      [
+        {
+          "layer": "top",
+          "route_type": "wire",
+          "width": 0.2,
+          "x": 0,
+          "y": 0,
+        },
+        {
+          "layer": "top",
+          "route_type": "wire",
+          "width": 0.2,
+          "x": 1,
+          "y": 0,
+        },
+        {
+          "end": {
+            "x": 1,
+            "y": 0,
+          },
+          "from_layer": "top",
+          "route_type": "through_obstacle",
+          "start": {
+            "x": 1,
+            "y": 0,
+          },
+          "to_layer": "bottom",
+          "width": 0.2,
+        },
+        {
+          "layer": "bottom",
+          "route_type": "wire",
+          "width": 0.2,
+          "x": 1,
+          "y": 0,
+        },
+        {
+          "layer": "bottom",
+          "route_type": "wire",
+          "width": 0.2,
+          "x": 2,
+          "y": 0,
+        },
+      ]
+    `)
+  })
+
   test("handles empty route correctly", () => {
     const input: HighDensityIntraNodeRoute = {
       connectionName: "empty-route",

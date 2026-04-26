@@ -55,6 +55,42 @@ const isPointInsideNode = (
   )
 }
 
+const isPointInsideObstacle = (
+  point: { x: number; y: number },
+  obstacle: Obstacle,
+) => {
+  const halfWidth = obstacle.width / 2
+  const halfHeight = obstacle.height / 2
+
+  return (
+    Math.abs(point.x - obstacle.center.x) <= halfWidth &&
+    Math.abs(point.y - obstacle.center.y) <= halfHeight
+  )
+}
+
+const isMultilayerObstacle = (obstacle: Obstacle) =>
+  (obstacle.zLayers?.length ?? obstacle.layers?.length ?? 0) > 1
+
+const isObstacleConnectedToRoute = (
+  obstacle: Obstacle,
+  route: HighDensityRoute,
+) =>
+  obstacle.connectedTo.includes(route.connectionName) ||
+  (route.rootConnectionName !== undefined &&
+    obstacle.connectedTo.includes(route.rootConnectionName))
+
+const isSameNetMultilayerObstacleRoute = (
+  route: HighDensityRoute,
+  obstacles: Obstacle[],
+) =>
+  route.route.length > 0 &&
+  obstacles.some(
+    (obstacle) =>
+      isMultilayerObstacle(obstacle) &&
+      isObstacleConnectedToRoute(obstacle, route) &&
+      route.route.every((point) => isPointInsideObstacle(point, obstacle)),
+  )
+
 const findNodeIndexForRoute = (
   route: HighDensityRoute,
   nodes: NodeWithPortPoints[],
@@ -169,6 +205,11 @@ export class Pipeline4HighDensityRepairSolver extends BaseSolver {
 
     const routeIndexesByNode = new Map<number, number[]>()
     for (let i = 0; i < params.hdRoutes.length; i++) {
+      if (
+        isSameNetMultilayerObstacleRoute(params.hdRoutes[i], params.obstacles)
+      ) {
+        continue
+      }
       const nodeIndex = findNodeIndexForRoute(
         params.hdRoutes[i],
         params.nodeWithPortPoints,
