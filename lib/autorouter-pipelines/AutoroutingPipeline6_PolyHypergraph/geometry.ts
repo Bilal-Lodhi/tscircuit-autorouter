@@ -18,6 +18,8 @@ export type ProjectedRect = {
   height: number
   innerWidth: number
   innerHeight: number
+  ccwRotationDegrees: number
+  ccwRotationRadians: number
   polygonArea: number
   equivalentAreaExpansionFactor: number
   targetQuad: [Point, Point, Point, Point]
@@ -26,8 +28,30 @@ export type ProjectedRect = {
 }
 
 const EPSILON = 1e-9
+const RIGHT_ANGLE_RADIANS = Math.PI / 2
+const ROTATION_SAMPLE_COUNT = 90
 
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value))
+
+const cross = (a: Point, b: Point) => a.x * b.y - a.y * b.x
+
+const dot = (a: Point, b: Point) => a.x * b.x + a.y * b.y
+
+const normalizeRotationRadians = (radians: number) => {
+  let normalized = radians % RIGHT_ANGLE_RADIANS
+  if (normalized < 0) normalized += RIGHT_ANGLE_RADIANS
+  if (RIGHT_ANGLE_RADIANS - normalized < 1e-8) return 0
+  return normalized
+}
+
+const getRotationAxes = (ccwRotationRadians: number) => {
+  const cos = Math.cos(ccwRotationRadians)
+  const sin = Math.sin(ccwRotationRadians)
+  return {
+    u: { x: cos, y: sin },
+    v: { x: -sin, y: cos },
+  }
+}
 
 export const getPolygonSignedArea = (polygon: readonly Point[]) => {
   let doubleArea = 0
@@ -134,15 +158,18 @@ export const isPointInConvexPolygon = (
 export const computeLargestCenteredRectInPolygon = (
   polygon: readonly Point[],
   center = getPolygonCentroid(polygon),
+  ccwRotationRadians = 0,
 ) => {
   const ccwPolygon = getCcwPolygon(polygon)
+  const { u, v } = getRotationAxes(ccwRotationRadians)
   const constraints = ccwPolygon.map((a, index) => {
     const b = ccwPolygon[(index + 1) % ccwPolygon.length]!
     const edgeX = b.x - a.x
     const edgeY = b.y - a.y
+    const edge = { x: edgeX, y: edgeY }
     return {
-      hxCoeff: Math.abs(edgeY),
-      hyCoeff: Math.abs(edgeX),
+      hxCoeff: Math.abs(cross(edge, u)),
+      hyCoeff: Math.abs(cross(edge, v)),
       limit: edgeX * (center.y - a.y) - edgeY * (center.x - a.x),
     }
   })
@@ -162,7 +189,13 @@ export const computeLargestCenteredRectInPolygon = (
   }
 
   if (!Number.isFinite(maxHalfWidth) || maxHalfWidth <= EPSILON) {
-    return { center, width: 1e-6, height: 1e-6 }
+    return {
+      center,
+      width: 1e-6,
+      height: 1e-6,
+      ccwRotationRadians,
+      ccwRotationDegrees: (ccwRotationRadians * 180) / Math.PI,
+    }
   }
 
   const getMaxHalfHeight = (halfWidth: number) => {
@@ -198,7 +231,66 @@ export const computeLargestCenteredRectInPolygon = (
     center,
     width: Math.max(1e-6, halfWidth * 2),
     height: Math.max(1e-6, halfHeight * 2),
+    ccwRotationRadians,
+    ccwRotationDegrees: (ccwRotationRadians * 180) / Math.PI,
   }
+}
+
+const computeLargestCenteredRotatedRectInPolygon = (
+  polygon: readonly Point[],
+  center: Point,
+) => {
+  const candidateAngles = new Set<number>()
+  candidateAngles.add(0)
+
+  for (let i = 0; i < ROTATION_SAMPLE_COUNT; i++) {
+    candidateAngles.add((i / ROTATION_SAMPLE_COUNT) * RIGHT_ANGLE_RADIANS)
+  }
+
+  for (let i = 0; i < polygon.length; i++) {
+    const a = polygon[i]!
+    const b = polygon[(i + 1) % polygon.length]!
+    const edgeAngle = Math.atan2(b.y - a.y, b.x - a.x)
+    candidateAngles.add(normalizeRotationRadians(edgeAngle))
+    candidateAngles.add(
+      normalizeRotationRadians(edgeAngle + RIGHT_ANGLE_RADIANS),
+    )
+  }
+
+  const scoreAngle = (angle: number) => {
+    const rect = computeLargestCenteredRectInPolygon(polygon, center, angle)
+    return {
+      rect,
+      area: rect.width * rect.height,
+    }
+  }
+
+  let best = scoreAngle(0)
+  let bestAngle = 0
+  for (const angle of candidateAngles) {
+    const candidate = scoreAngle(angle)
+    if (candidate.area > best.area + 1e-8) {
+      best = candidate
+      bestAngle = angle
+    }
+  }
+
+  const refinementRadius = RIGHT_ANGLE_RADIANS / ROTATION_SAMPLE_COUNT
+  let lo = bestAngle - refinementRadius
+  let hi = bestAngle + refinementRadius
+  for (let i = 0; i < 60; i++) {
+    const m1 = lo + (hi - lo) / 3
+    const m2 = hi - (hi - lo) / 3
+    if (scoreAngle(m1).area < scoreAngle(m2).area) {
+      lo = m1
+    } else {
+      hi = m2
+    }
+  }
+
+  const normalizedAngle = normalizeRotationRadians((lo + hi) / 2)
+  const refined = scoreAngle(normalizedAngle)
+  return refined.area > best.area + 1e-8 ? refined.rect : best.rect
 }
 
 const intersectRayWithSegment = (
@@ -356,25 +448,107 @@ export const applyMatrixToPoint = (matrix: Matrix3x3, point: Point): Point => {
   }
 }
 
+export const localPointToWorld = (
+  localPoint: Point,
+  center: Point,
+  ccwRotationRadians: number,
+): Point => {
+  const { u, v } = getRotationAxes(ccwRotationRadians)
+  return {
+    x: center.x + localPoint.x * u.x + localPoint.y * v.x,
+    y: center.y + localPoint.x * u.y + localPoint.y * v.y,
+  }
+}
+
+export const worldPointToLocal = (
+  point: Point,
+  center: Point,
+  ccwRotationRadians: number,
+): Point => {
+  const { u, v } = getRotationAxes(ccwRotationRadians)
+  const delta = { x: point.x - center.x, y: point.y - center.y }
+  return {
+    x: dot(delta, u),
+    y: dot(delta, v),
+  }
+}
+
+export const getProjectedRectSourceCorners = (
+  rect: Pick<ProjectedRect, "center" | "width" | "height">,
+): [Point, Point, Point, Point] => {
+  const halfWidth = rect.width / 2
+  const halfHeight = rect.height / 2
+  return [
+    { x: rect.center.x - halfWidth, y: rect.center.y - halfHeight },
+    { x: rect.center.x + halfWidth, y: rect.center.y - halfHeight },
+    { x: rect.center.x + halfWidth, y: rect.center.y + halfHeight },
+    { x: rect.center.x - halfWidth, y: rect.center.y + halfHeight },
+  ]
+}
+
+export const getProjectedRectCorners = (
+  rect: Pick<
+    ProjectedRect,
+    "center" | "width" | "height" | "ccwRotationRadians"
+  >,
+): [Point, Point, Point, Point] => {
+  const halfWidth = rect.width / 2
+  const halfHeight = rect.height / 2
+  return [
+    localPointToWorld(
+      { x: -halfWidth, y: -halfHeight },
+      rect.center,
+      rect.ccwRotationRadians,
+    ),
+    localPointToWorld(
+      { x: halfWidth, y: -halfHeight },
+      rect.center,
+      rect.ccwRotationRadians,
+    ),
+    localPointToWorld(
+      { x: halfWidth, y: halfHeight },
+      rect.center,
+      rect.ccwRotationRadians,
+    ),
+    localPointToWorld(
+      { x: -halfWidth, y: halfHeight },
+      rect.center,
+      rect.ccwRotationRadians,
+    ),
+  ]
+}
+
 export const projectPointToRectBoundary = (
   point: Point,
-  rect: Pick<ProjectedRect, "center" | "width" | "height">,
+  rect: Pick<
+    ProjectedRect,
+    "center" | "width" | "height" | "ccwRotationRadians"
+  >,
 ): Point => {
-  const dx = point.x - rect.center.x
-  const dy = point.y - rect.center.y
-  if (Math.abs(dx) < EPSILON && Math.abs(dy) < EPSILON) {
+  const localPoint = worldPointToLocal(
+    point,
+    rect.center,
+    rect.ccwRotationRadians,
+  )
+  if (Math.abs(localPoint.x) < EPSILON && Math.abs(localPoint.y) < EPSILON) {
     return { ...rect.center }
   }
 
   const halfWidth = rect.width / 2
   const halfHeight = rect.height / 2
-  const xScale = Math.abs(dx) > EPSILON ? halfWidth / Math.abs(dx) : Infinity
-  const yScale = Math.abs(dy) > EPSILON ? halfHeight / Math.abs(dy) : Infinity
+  const xScale =
+    Math.abs(localPoint.x) > EPSILON
+      ? halfWidth / Math.abs(localPoint.x)
+      : Infinity
+  const yScale =
+    Math.abs(localPoint.y) > EPSILON
+      ? halfHeight / Math.abs(localPoint.y)
+      : Infinity
   const scale = Math.min(xScale, yScale)
 
   return {
-    x: rect.center.x + dx * scale,
-    y: rect.center.y + dy * scale,
+    x: rect.center.x + localPoint.x * scale,
+    y: rect.center.y + localPoint.y * scale,
   }
 }
 
@@ -387,7 +561,10 @@ export const computeProjectedRect = (
     ? [...polygon]
     : getConvexHull(polygon)
   const center = getPolygonCentroid(workingPolygon)
-  const innerRect = computeLargestCenteredRectInPolygon(workingPolygon, center)
+  const innerRect = computeLargestCenteredRotatedRectInPolygon(
+    workingPolygon,
+    center,
+  )
   const polygonArea = getPolygonArea(workingPolygon)
   const innerArea = innerRect.width * innerRect.height
   const expansionFactor = clamp01(equivalentAreaExpansionFactor)
@@ -399,15 +576,22 @@ export const computeProjectedRect = (
       : 1
   const width = innerRect.width * scale
   const height = innerRect.height * scale
-  const halfWidth = width / 2
-  const halfHeight = height / 2
-  const rectCorners: [Point, Point, Point, Point] = [
-    { x: center.x - halfWidth, y: center.y - halfHeight },
-    { x: center.x + halfWidth, y: center.y - halfHeight },
-    { x: center.x + halfWidth, y: center.y + halfHeight },
-    { x: center.x - halfWidth, y: center.y + halfHeight },
-  ]
-  const targetQuad = rectCorners.map((corner) => {
+  const ccwRotationRadians = normalizeRotationRadians(
+    innerRect.ccwRotationRadians,
+  )
+  const ccwRotationDegrees = (ccwRotationRadians * 180) / Math.PI
+  const rectCorners = getProjectedRectSourceCorners({
+    center,
+    width,
+    height,
+  })
+  const rotatedRectCorners = getProjectedRectCorners({
+    center,
+    width,
+    height,
+    ccwRotationRadians,
+  })
+  const targetQuad = rotatedRectCorners.map((corner) => {
     const direction = { x: corner.x - center.x, y: corner.y - center.y }
     const hit = intersectRayWithPolygon(center, direction, workingPolygon)
     return hit ? { x: hit.x, y: hit.y } : corner
@@ -421,6 +605,8 @@ export const computeProjectedRect = (
     height,
     innerWidth: innerRect.width,
     innerHeight: innerRect.height,
+    ccwRotationDegrees,
+    ccwRotationRadians,
     polygonArea,
     equivalentAreaExpansionFactor: expansionFactor,
     targetQuad,

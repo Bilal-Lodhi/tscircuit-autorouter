@@ -60,6 +60,7 @@ export class AttachProjectedRectsSolver extends BaseSolver {
                 center: node.projectedRect.center,
                 width: node.projectedRect.width,
                 height: node.projectedRect.height,
+                ccwRotationDegrees: node.projectedRect.ccwRotationDegrees,
                 fill: "rgba(255, 165, 0, 0.16)",
                 stroke: "rgba(255, 140, 0, 0.8)",
                 label: `${node.capacityMeshNodeId} projectedRect`,

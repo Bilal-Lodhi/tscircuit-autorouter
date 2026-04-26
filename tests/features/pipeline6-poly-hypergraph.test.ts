@@ -2,8 +2,11 @@ import { expect, test } from "bun:test"
 import { AutoroutingPipelineSolver6 } from "lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/AutoroutingPipelineSolver6_PolyHypergraph"
 import { PolySingleIntraNodeSolver } from "lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/PolySingleIntraNodeSolver"
 import {
+  applyMatrixToPoint,
   computeProjectedRect,
+  getProjectedRectCorners,
   isPointInConvexPolygon,
+  projectPointToRectBoundary,
 } from "lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/geometry"
 import type { PolyNodeWithPortPoints } from "lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/types"
 import type { SimpleRouteJson } from "lib/types"
@@ -14,32 +17,48 @@ const expectClose = (actual: number, expected: number, tolerance = 1e-6) => {
 }
 
 test("Pipeline6 projectedRect area expansion preserves center and reaches polygon area", () => {
-  const diamond = [
-    { x: 0, y: -2 },
-    { x: 4, y: 0 },
-    { x: 0, y: 2 },
-    { x: -4, y: 0 },
+  const rotatedSquare = [
+    { x: 0, y: -Math.SQRT2 },
+    { x: Math.SQRT2, y: 0 },
+    { x: 0, y: Math.SQRT2 },
+    { x: -Math.SQRT2, y: 0 },
+  ]
+  const trapezoid = [
+    { x: 0, y: 0 },
+    { x: 6, y: 0 },
+    { x: 5, y: 4 },
+    { x: 1, y: 4 },
   ]
 
-  const insideRect = computeProjectedRect(diamond, 0)
-  const equivalentAreaRect = computeProjectedRect(diamond, 1)
+  const insideRect = computeProjectedRect(rotatedSquare, 0)
+  const equivalentAreaRect = computeProjectedRect(trapezoid, 1)
 
   expectClose(insideRect.center.x, 0)
   expectClose(insideRect.center.y, 0)
-  expectClose(insideRect.width * insideRect.height, 8)
-  expectClose(equivalentAreaRect.width * equivalentAreaRect.height, 16)
-  expectClose(equivalentAreaRect.polygonArea, 16)
+  expectClose(insideRect.width * insideRect.height, 4)
+  expectClose(insideRect.ccwRotationDegrees, 45, 0.05)
+  expectClose(
+    equivalentAreaRect.width * equivalentAreaRect.height,
+    equivalentAreaRect.polygonArea,
+  )
+  expectClose(equivalentAreaRect.polygonArea, 20)
 
-  const halfWidth = insideRect.width / 2
-  const halfHeight = insideRect.height / 2
-  for (const corner of [
-    { x: -halfWidth, y: -halfHeight },
-    { x: halfWidth, y: -halfHeight },
-    { x: halfWidth, y: halfHeight },
-    { x: -halfWidth, y: halfHeight },
-  ]) {
-    expect(isPointInConvexPolygon(corner, diamond)).toBe(true)
+  for (const corner of getProjectedRectCorners(insideRect)) {
+    expect(isPointInConvexPolygon(corner, rotatedSquare)).toBe(true)
   }
+
+  const projectedTopCorner = projectPointToRectBoundary(
+    rotatedSquare[0]!,
+    insideRect,
+  )
+  expectClose(projectedTopCorner.x, -1)
+  expectClose(projectedTopCorner.y, -1)
+  const distortedTopCorner = applyMatrixToPoint(
+    insideRect.rectToPolygonMatrix,
+    projectedTopCorner,
+  )
+  expectClose(distortedTopCorner.x, rotatedSquare[0]!.x)
+  expectClose(distortedTopCorner.y, rotatedSquare[0]!.y)
 })
 
 test("PolySingleIntraNodeSolver projects into a rect and distorts solved routes back to polygon", () => {

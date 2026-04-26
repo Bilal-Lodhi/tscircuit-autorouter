@@ -199,6 +199,7 @@ export class PolySingleIntraNodeSolver extends BaseSolver {
               center: projectedRect.center,
               width: projectedRect.width,
               height: projectedRect.height,
+              ccwRotationDegrees: projectedRect.ccwRotationDegrees,
               fill: "rgba(255, 165, 0, 0.14)",
               stroke: "rgba(255, 120, 0, 0.8)",
               label: `${node.capacityMeshNodeId} projectedRect`,
