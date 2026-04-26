@@ -46,14 +46,26 @@ export class AttachProjectedRectsSolver extends BaseSolver {
   }
 
   visualize(): GraphicsObject {
+    const nodes =
+      this.outputNodes.length > 0
+        ? this.outputNodes
+        : this.params.nodesWithPortPoints
+
     return {
-      polygons: this.outputNodes.map((node) => ({
+      polygons: nodes.map((node) => ({
         points: node.polygon,
-        fill: "rgba(60, 160, 220, 0.12)",
-        stroke: "rgba(40, 90, 150, 0.45)",
-        label: node.capacityMeshNodeId,
+        fill: "rgba(40, 140, 220, 0.06)",
+        stroke: "rgba(20, 70, 160, 0.95)",
+        strokeWidth: 0.04,
+        label: `${node.capacityMeshNodeId} polygon`,
       })),
-      rects: this.outputNodes.flatMap((node) =>
+      lines: nodes.map((node) => ({
+        points: [...node.polygon, node.polygon[0]!],
+        strokeColor: "rgba(20, 70, 160, 0.95)",
+        strokeWidth: 0.04,
+        label: `${node.capacityMeshNodeId} polygon outline`,
+      })),
+      rects: nodes.flatMap((node) =>
         node.projectedRect
           ? [
               {
@@ -68,7 +80,7 @@ export class AttachProjectedRectsSolver extends BaseSolver {
             ]
           : [],
       ),
-      points: this.outputNodes.flatMap((node) =>
+      points: nodes.flatMap((node) =>
         node.portPoints.map((point) => ({
           x: point.x,
           y: point.y,
