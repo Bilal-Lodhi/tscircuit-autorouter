@@ -1,7 +1,7 @@
 {
   "name": "@tscircuit/capacity-autorouter",
   "main": "./dist/index.js",
-  "version": "0.0.455",
+  "version": "0.0.457",
   "type": "module",
   "files": [
     "dist"
@@ -74,7 +74,7 @@
     "high-density-repair03": "git+https://github.com/tscircuit/high-density-repair03.git#a2f630fdf04b06f3ead207fa2c0574b5db57596c"
   },
   "dependencies": {
-    "@tscircuit/high-density-a01": "^0.0.25",
+    "@tscircuit/high-density-a01": "^0.0.37",
     "fast-json-stable-stringify": "^2.1.0",
     "object-hash": "^3.0.0",
     "pcb-poly-hyper-graph": "https://codeload.github.com/tscircuit/pcb-poly-hyper-graph/tar.gz/ea38a9f3876006d70ad9d6b4f2bc66d68e16ce7e",
