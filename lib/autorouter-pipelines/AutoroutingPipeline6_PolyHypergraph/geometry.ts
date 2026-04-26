@@ -518,6 +518,16 @@ export const getProjectedRectCorners = (
   ]
 }
 
+export const solveSpacePointToProjectedRectPoint = (
+  point: Point,
+  rect: Pick<ProjectedRect, "center" | "ccwRotationRadians">,
+): Point =>
+  localPointToWorld(
+    { x: point.x - rect.center.x, y: point.y - rect.center.y },
+    rect.center,
+    rect.ccwRotationRadians,
+  )
+
 export const projectPointToRectBoundary = (
   point: Point,
   rect: Pick<

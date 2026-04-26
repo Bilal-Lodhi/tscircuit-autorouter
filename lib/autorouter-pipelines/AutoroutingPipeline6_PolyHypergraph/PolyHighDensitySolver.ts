@@ -6,6 +6,7 @@ import type { HighDensityIntraNodeRoute } from "lib/types/high-density-types"
 import { combineVisualizations } from "lib/utils/combineVisualizations"
 import { mergeRouteSegments } from "lib/utils/mergeRouteSegments"
 import { safeTransparentize } from "lib/solvers/colors"
+import { solveSpacePointToProjectedRectPoint } from "./geometry"
 import { PolySingleIntraNodeSolver } from "./PolySingleIntraNodeSolver"
 import type { PolyNodeWithPortPoints } from "./types"
 
@@ -15,7 +16,9 @@ export class PolyHighDensitySolver extends BaseSolver {
   }
 
   unsolvedNodePortPoints: PolyNodeWithPortPoints[]
+  nodePortPoints: PolyNodeWithPortPoints[]
   routes: HighDensityIntraNodeRoute[] = []
+  routesByNodeId = new Map<CapacityMeshNodeId, HighDensityIntraNodeRoute[]>()
   failedSolvers: PolySingleIntraNodeSolver[] = []
   activeSubSolver: PolySingleIntraNodeSolver | null = null
   colorMap: Record<string, string>
@@ -48,6 +51,7 @@ export class PolyHighDensitySolver extends BaseSolver {
       | Record<string, number | null>
   }) {
     super()
+    this.nodePortPoints = [...nodePortPoints]
     this.unsolvedNodePortPoints = [...nodePortPoints]
     this.colorMap = colorMap ?? {}
     this.connMap = connMap
@@ -66,6 +70,13 @@ export class PolyHighDensitySolver extends BaseSolver {
     if (this.activeSubSolver) {
       this.activeSubSolver.step()
       if (this.activeSubSolver.solved) {
+        const nodeId =
+          this.activeSubSolver.params.nodeWithPortPoints.capacityMeshNodeId
+        const routes = this.activeSubSolver.solvedRoutes
+        this.routesByNodeId.set(nodeId, [
+          ...(this.routesByNodeId.get(nodeId) ?? []),
+          ...routes,
+        ])
         this.routes.push(...this.activeSubSolver.solvedRoutes)
         this.activeSubSolver = null
       } else if (this.activeSubSolver.failed) {
@@ -119,7 +130,7 @@ export class PolyHighDensitySolver extends BaseSolver {
   getConstructorParams() {
     return [
       {
-        nodePortPoints: this.unsolvedNodePortPoints,
+        nodePortPoints: this.nodePortPoints,
         colorMap: this.colorMap,
         connMap: this.connMap,
         viaDiameter: this.viaDiameter,
@@ -133,53 +144,104 @@ export class PolyHighDensitySolver extends BaseSolver {
 
   visualize(): GraphicsObject {
     const polygonViz: GraphicsObject = {
-      polygons: [
+      polygons: this.nodePortPoints.map((node) => ({
+        points: node.polygon,
+        fill: "rgba(180, 180, 180, 0.05)",
+        stroke: "rgba(120, 120, 120, 0.25)",
+        label: `${node.capacityMeshNodeId} polygon`,
+      })),
+      rects: this.nodePortPoints.flatMap((node) =>
+        node.projectedRect
+          ? [
+              {
+                center: node.projectedRect.center,
+                width: node.projectedRect.width,
+                height: node.projectedRect.height,
+                ccwRotationDegrees: node.projectedRect.ccwRotationDegrees,
+                fill: "rgba(255, 165, 0, 0.08)",
+                stroke: "rgba(255, 120, 0, 0.65)",
+                label: `${node.capacityMeshNodeId} projectedRect`,
+              },
+            ]
+          : [],
+      ),
+      lines: [],
+      circles: [],
+      points: this.nodePortPoints.flatMap((node) =>
+        node.portPoints.map((point) => ({
+          x: point.x,
+          y: point.y,
+          color: "rgba(80, 80, 80, 0.5)",
+          label: `${point.connectionName} original`,
+        })),
+      ),
+    }
+
+    for (const [nodeId, routes] of this.routesByNodeId) {
+      const node = this.nodePortPoints.find(
+        (candidate) => candidate.capacityMeshNodeId === nodeId,
+      )
+      const projectedRect = node?.projectedRect
+      if (!projectedRect) continue
+
+      for (const route of routes) {
+        const routeColor = this.colorMap[route.connectionName] ?? "#0000ff"
+        const projectedRectRoute = {
+          ...route,
+          route: route.route.map((point) => ({
+            ...point,
+            ...solveSpacePointToProjectedRectPoint(point, projectedRect),
+          })),
+          vias: route.vias.map((via) =>
+            solveSpacePointToProjectedRectPoint(via, projectedRect),
+          ),
+        }
+        const mergedSegments = mergeRouteSegments(
+          projectedRectRoute.route,
+          route.connectionName,
+          routeColor,
+        )
+
+        for (const segment of mergedSegments) {
+          polygonViz.lines!.push({
+            points: segment.points,
+            label: segment.connectionName,
+            strokeColor:
+              segment.z === 0
+                ? segment.color
+                : safeTransparentize(segment.color, 0.5),
+            layer: `z${segment.z}`,
+            strokeWidth: route.traceThickness,
+            strokeDash: segment.z !== 0 ? [0.1, 0.3] : undefined,
+          })
+        }
+
+        for (const via of projectedRectRoute.vias) {
+          polygonViz.circles!.push({
+            center: via,
+            layer: "z0,1",
+            radius: route.viaDiameter / 2,
+            fill: routeColor,
+            label: `${route.connectionName} via`,
+          })
+        }
+      }
+    }
+
+    const activeSubSolverViz = this.activeSubSolver?.visualize()
+    if (activeSubSolverViz) {
+      polygonViz.polygons!.push(
         ...this.unsolvedNodePortPoints.map((node) => ({
           points: node.polygon,
           fill: "rgba(180, 180, 180, 0.08)",
           stroke: "rgba(120, 120, 120, 0.4)",
           label: node.capacityMeshNodeId,
         })),
-      ],
-      lines: [],
-      circles: [],
-      points: [],
-    }
-
-    for (const route of this.routes) {
-      const mergedSegments = mergeRouteSegments(
-        route.route,
-        route.connectionName,
-        this.colorMap[route.connectionName],
       )
-
-      for (const segment of mergedSegments) {
-        polygonViz.lines!.push({
-          points: segment.points,
-          label: segment.connectionName,
-          strokeColor:
-            segment.z === 0
-              ? segment.color
-              : safeTransparentize(segment.color, 0.5),
-          layer: `z${segment.z}`,
-          strokeWidth: route.traceThickness,
-          strokeDash: segment.z !== 0 ? [0.1, 0.3] : undefined,
-        })
-      }
-
-      for (const via of route.vias) {
-        polygonViz.circles!.push({
-          center: via,
-          layer: "z0,1",
-          radius: route.viaDiameter / 2,
-          fill: this.colorMap[route.connectionName],
-          label: `${route.connectionName} via`,
-        })
-      }
     }
 
-    return this.activeSubSolver
-      ? combineVisualizations(polygonViz, this.activeSubSolver.visualize())
+    return activeSubSolverViz
+      ? combineVisualizations(polygonViz, activeSubSolverViz)
       : polygonViz
   }
 }

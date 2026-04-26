@@ -31,6 +31,7 @@ import { getViaDimensions } from "lib/utils/getViaDimensions"
 import { AttachProjectedRectsSolver } from "./AttachProjectedRectsSolver"
 import { PolyHighDensitySolver } from "./PolyHighDensitySolver"
 import { PolyHypergraphPortPointPathingSolver } from "./PolyHypergraphPortPointPathingSolver"
+import { ProjectHighDensityToPolygonSolver } from "./ProjectHighDensityToPolygonSolver"
 import type { PolyNodeWithPortPoints } from "./types"
 
 interface CapacityMeshSolverOptions {
@@ -87,6 +88,7 @@ export class AutoroutingPipelineSolver6_PolyHypergraph extends BaseSolver {
   polyGraphSolver?: PolyHypergraphPortPointPathingSolver
   attachProjectedRectsSolver?: AttachProjectedRectsSolver
   highDensityRouteSolver?: PolyHighDensitySolver
+  projectHighDensityToPolgonSolver?: ProjectHighDensityToPolygonSolver
   highDensityStitchSolver?: MultipleHighDensityRouteStitchSolver3
   traceSimplificationSolver?: TraceSimplificationSolver
   traceWidthSolver?: TraceWidthSolver
@@ -209,12 +211,23 @@ export class AutoroutingPipelineSolver6_PolyHypergraph extends BaseSolver {
       ],
     ),
     definePipelineStep(
+      "projectHighDensityToPolgonSolver",
+      ProjectHighDensityToPolygonSolver,
+      (cms) => [
+        {
+          nodePortPoints: cms.projectedHighDensityNodePortPoints ?? [],
+          routesByNodeId: cms.highDensityRouteSolver!.routesByNodeId,
+          colorMap: cms.colorMap,
+        },
+      ],
+    ),
+    definePipelineStep(
       "highDensityStitchSolver",
       MultipleHighDensityRouteStitchSolver3,
       (cms) => [
         {
           connections: cms.srjWithPointPairs!.connections,
-          hdRoutes: cms.highDensityRouteSolver!.routes,
+          hdRoutes: cms.projectHighDensityToPolgonSolver!.routes,
           colorMap: cms.colorMap,
           layerCount: cms.srj.layerCount,
           defaultViaDiameter: cms.viaDiameter,
@@ -421,6 +434,8 @@ export class AutoroutingPipelineSolver6_PolyHypergraph extends BaseSolver {
     const polyGraphViz = this.polyGraphSolver?.visualize()
     const projectedRectViz = this.attachProjectedRectsSolver?.visualize()
     const highDensityViz = this.highDensityRouteSolver?.visualize()
+    const projectHighDensityToPolygonViz =
+      this.projectHighDensityToPolgonSolver?.visualize()
     const highDensityStitchViz = this.highDensityStitchSolver?.visualize()
     const traceSimplificationViz = this.traceSimplificationSolver?.visualize()
 
@@ -433,6 +448,9 @@ export class AutoroutingPipelineSolver6_PolyHypergraph extends BaseSolver {
         projectedRectViz,
         highDensityViz
           ? combineVisualizations(problemViz, highDensityViz)
+          : null,
+        projectHighDensityToPolygonViz
+          ? combineVisualizations(problemViz, projectHighDensityToPolygonViz)
           : null,
         highDensityStitchViz,
         traceSimplificationViz,
@@ -447,6 +465,26 @@ export class AutoroutingPipelineSolver6_PolyHypergraph extends BaseSolver {
   }
 
   preview(): GraphicsObject {
+    if (this.projectHighDensityToPolgonSolver) {
+      const lines: Line[] = []
+      for (
+        let i = this.projectHighDensityToPolgonSolver.routes.length - 1;
+        i >= 0;
+        i--
+      ) {
+        const route = this.projectHighDensityToPolgonSolver.routes[i]
+        lines.push({
+          points: route.route.map((point) => ({
+            x: point.x,
+            y: point.y,
+          })),
+          strokeColor: this.colorMap[route.connectionName],
+        })
+        if (lines.length > 200) break
+      }
+      return { lines }
+    }
+
     if (this.highDensityRouteSolver) {
       const lines: Line[] = []
       for (let i = this.highDensityRouteSolver.routes.length - 1; i >= 0; i--) {

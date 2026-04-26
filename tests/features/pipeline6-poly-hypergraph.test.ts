@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test"
 import { AutoroutingPipelineSolver6 } from "lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/AutoroutingPipelineSolver6_PolyHypergraph"
 import { PolySingleIntraNodeSolver } from "lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/PolySingleIntraNodeSolver"
+import { ProjectHighDensityToPolygonSolver } from "lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/ProjectHighDensityToPolygonSolver"
 import {
   applyMatrixToPoint,
   computeProjectedRect,
@@ -61,7 +62,7 @@ test("Pipeline6 projectedRect area expansion preserves center and reaches polygo
   expectClose(distortedTopCorner.y, rotatedSquare[0]!.y)
 })
 
-test("PolySingleIntraNodeSolver projects into a rect and distorts solved routes back to polygon", () => {
+test("PolySingleIntraNodeSolver solves in rect space before projection back to polygon", () => {
   const polygon = [
     { x: 0, y: 0 },
     { x: 6, y: 0 },
@@ -101,6 +102,43 @@ test("PolySingleIntraNodeSolver projects into a rect and distorts solved routes 
       (point) => point.connectionName === route.connectionName,
     )
     expect(endpoints).toHaveLength(2)
+    const projectedStart = projectPointToRectBoundary(
+      endpoints[0]!,
+      node.projectedRect!,
+    )
+    const projectedEnd = projectPointToRectBoundary(
+      endpoints[1]!,
+      node.projectedRect!,
+    )
+    expect(route.route[0]).toMatchObject({
+      x: projectedStart.x,
+      y: projectedStart.y,
+      z: endpoints[0]!.z,
+    })
+    expect(route.route[route.route.length - 1]).toMatchObject({
+      x: projectedEnd.x,
+      y: projectedEnd.y,
+      z: endpoints[1]!.z,
+    })
+  }
+
+  expect(solver.visualize()).toMatchGraphicsSvg(import.meta.path, {
+    svgName: "poly-single-intra-node",
+  })
+
+  const projectionSolver = new ProjectHighDensityToPolygonSolver({
+    nodePortPoints: [node],
+    routesByNodeId: new Map([[node.capacityMeshNodeId, solver.solvedRoutes]]),
+  })
+  projectionSolver.solve()
+
+  expect(projectionSolver.solved).toBe(true)
+  expect(projectionSolver.routes).toHaveLength(2)
+
+  for (const route of projectionSolver.routes) {
+    const endpoints = node.portPoints.filter(
+      (point) => point.connectionName === route.connectionName,
+    )
     expect(route.route[0]).toMatchObject({
       x: endpoints[0]!.x,
       y: endpoints[0]!.y,
@@ -113,8 +151,8 @@ test("PolySingleIntraNodeSolver projects into a rect and distorts solved routes 
     })
   }
 
-  expect(solver.visualize()).toMatchGraphicsSvg(import.meta.path, {
-    svgName: "poly-single-intra-node",
+  expect(projectionSolver.visualize()).toMatchGraphicsSvg(import.meta.path, {
+    svgName: "poly-project-high-density-to-polygon",
   })
 })
 
@@ -167,6 +205,9 @@ test("Pipeline6 solves and snapshots a small obstacle route", () => {
     ),
   ).toBe(true)
   expect(solver.highDensityRouteSolver?.routes.length).toBeGreaterThan(0)
+  expect(
+    solver.projectHighDensityToPolgonSolver?.routes.length,
+  ).toBeGreaterThan(0)
   expect(solver.getOutputSimpleRouteJson().traces).toHaveLength(2)
 
   expect(solver.attachProjectedRectsSolver!.visualize()).toMatchGraphicsSvg(
@@ -177,6 +218,11 @@ test("Pipeline6 solves and snapshots a small obstacle route", () => {
     import.meta.path,
     { svgName: "pipeline6-poly-high-density" },
   )
+  expect(
+    solver.projectHighDensityToPolgonSolver!.visualize(),
+  ).toMatchGraphicsSvg(import.meta.path, {
+    svgName: "pipeline6-project-high-density-to-polygon",
+  })
   expect(
     convertSrjToGraphicsObject(solver.getOutputSimpleRouteJson()),
   ).toMatchGraphicsSvg(import.meta.path, { svgName: "pipeline6-output" })

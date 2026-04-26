@@ -23,6 +23,7 @@ export { PolyHighDensitySolver } from "./autorouter-pipelines/AutoroutingPipelin
 export { PolySingleIntraNodeSolver } from "./autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/PolySingleIntraNodeSolver"
 export { PolyIntraNodeSolver } from "./autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/PolyIntraNodeSolver"
 export { AttachProjectedRectsSolver } from "./autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/AttachProjectedRectsSolver"
+export { ProjectHighDensityToPolygonSolver } from "./autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/ProjectHighDensityToPolygonSolver"
 export {
   getTunedTotalCapacity1,
   calculateOptimalCapacityDepth,

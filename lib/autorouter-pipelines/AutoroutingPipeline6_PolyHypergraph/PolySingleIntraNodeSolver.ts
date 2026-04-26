@@ -8,15 +8,8 @@ import type {
   PortPoint,
 } from "lib/types/high-density-types"
 import { combineVisualizations } from "lib/utils/combineVisualizations"
-import {
-  applyMatrixToPoint,
-  projectPointToRectBoundary,
-  type Point,
-} from "./geometry"
+import { projectPointToRectBoundary } from "./geometry"
 import type { PolyNodeWithPortPoints } from "./types"
-
-const pointDistanceSq = (a: Point, b: Point) =>
-  (a.x - b.x) ** 2 + (a.y - b.y) ** 2
 
 type ProjectedPortRecord = {
   projected: PortPoint
@@ -85,79 +78,13 @@ export class PolySingleIntraNodeSolver extends BaseSolver {
     this.MAX_ITERATIONS = this.highDensitySolver.MAX_ITERATIONS + 1_000
   }
 
-  private findOriginalPortForRouteEndpoint(
-    connectionName: string,
-    projectedPoint: Point & { z?: number },
-  ) {
-    const sameConnectionPorts = this.projectedPorts.filter(
-      ({ projected }) =>
-        projected.connectionName === connectionName &&
-        (projectedPoint.z === undefined || projected.z === projectedPoint.z),
-    )
-    if (sameConnectionPorts.length === 0) return undefined
-
-    return sameConnectionPorts.reduce((best, candidate) =>
-      pointDistanceSq(candidate.projected, projectedPoint) <
-      pointDistanceSq(best.projected, projectedPoint)
-        ? candidate
-        : best,
-    ).original
-  }
-
-  private distortSolvedRoutes() {
-    const matrix =
-      this.params.nodeWithPortPoints.projectedRect!.rectToPolygonMatrix
-
-    this.solvedRoutes = this.highDensitySolver.solvedRoutes.map((route) => {
-      const distortedRoute = route.route.map((point) => ({
-        ...point,
-        ...applyMatrixToPoint(matrix, point),
-      }))
-      const distortedVias = route.vias.map((via) =>
-        applyMatrixToPoint(matrix, via),
-      )
-
-      const firstOriginal = this.findOriginalPortForRouteEndpoint(
-        route.connectionName,
-        route.route[0]!,
-      )
-      const lastOriginal = this.findOriginalPortForRouteEndpoint(
-        route.connectionName,
-        route.route[route.route.length - 1]!,
-      )
-
-      if (firstOriginal && distortedRoute[0]) {
-        distortedRoute[0] = {
-          ...distortedRoute[0],
-          x: firstOriginal.x,
-          y: firstOriginal.y,
-          z: firstOriginal.z,
-        }
-      }
-      if (lastOriginal && distortedRoute[distortedRoute.length - 1]) {
-        distortedRoute[distortedRoute.length - 1] = {
-          ...distortedRoute[distortedRoute.length - 1]!,
-          x: lastOriginal.x,
-          y: lastOriginal.y,
-          z: lastOriginal.z,
-        }
-      }
-
-      return {
-        ...route,
-        route: distortedRoute,
-        vias: distortedVias,
-      }
-    })
-  }
-
   _step() {
     this.highDensitySolver.step()
     this.progress = this.highDensitySolver.progress
     this.stats = this.highDensitySolver.stats
 
     if (this.highDensitySolver.solved) {
-      this.distortSolvedRoutes()
+      this.solvedRoutes = this.highDensitySolver.solvedRoutes
       this.solved = true
       this.activeSubSolver = null
     } else if (this.highDensitySolver.failed) {
