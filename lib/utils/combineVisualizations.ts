@@ -8,6 +8,10 @@ export const combineVisualizations = (
     lines: [],
     circles: [],
     rects: [],
+    polygons: [],
+    infiniteLines: [],
+    arrows: [],
+    texts: [],
   }
 
   visualizations.forEach((viz, i) => {
@@ -34,6 +38,30 @@ export const combineVisualizations = (
       combined.rects = [
         ...(combined.rects || []),
         ...viz.rects.map((r) => ({ ...r, step: i })),
+      ]
+    }
+    if (viz.polygons) {
+      combined.polygons = [
+        ...(combined.polygons || []),
+        ...viz.polygons.map((p) => ({ ...p, step: i })),
+      ]
+    }
+    if (viz.infiniteLines) {
+      combined.infiniteLines = [
+        ...(combined.infiniteLines || []),
+        ...viz.infiniteLines.map((l) => ({ ...l, step: i })),
+      ]
+    }
+    if (viz.arrows) {
+      combined.arrows = [
+        ...(combined.arrows || []),
+        ...viz.arrows.map((a) => ({ ...a, step: i })),
+      ]
+    }
+    if (viz.texts) {
+      combined.texts = [
+        ...(combined.texts || []),
+        ...viz.texts.map((t) => ({ ...t, step: i })),
       ]
     }
   })

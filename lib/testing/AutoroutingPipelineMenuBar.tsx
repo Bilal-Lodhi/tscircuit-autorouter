@@ -50,6 +50,10 @@ export const PIPELINE_OPTIONS = [
     label: "Pipeline5 HD Cache Port Point Pathing",
   },
   {
+    id: "AutoroutingPipelineSolver6",
+    label: "Pipeline6 Poly Hypergraph",
+  },
+  {
     id: "AssignableAutoroutingPipeline1Solver",
     label: "Assignable Pipeline 1",
   },

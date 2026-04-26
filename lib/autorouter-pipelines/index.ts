@@ -13,3 +13,7 @@ export {
   AutoroutingPipelineSolver5,
   AutoroutingPipelineSolver5_HdCache,
 } from "./AutoroutingPipeline5_HdCache/AutoroutingPipelineSolver5_HdCache"
+export {
+  AutoroutingPipelineSolver6,
+  AutoroutingPipelineSolver6_PolyHypergraph,
+} from "./AutoroutingPipeline6_PolyHypergraph/AutoroutingPipelineSolver6_PolyHypergraph"

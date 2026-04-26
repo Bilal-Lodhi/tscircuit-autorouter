@@ -33,6 +33,9 @@ const POINT_OFFSET = 0.02
 const pointKey = (point: Point2) =>
   `${point.x.toFixed(6)},${point.y.toFixed(6)}`
 
+const comparePoint2 = (a: Point2, b: Point2) =>
+  pointKey(a).localeCompare(pointKey(b))
+
 const samePoint = (a: Point2, b: Point2) =>
   Math.abs(a.x - b.x) < EPS && Math.abs(a.y - b.y) < EPS
 
@@ -241,7 +244,9 @@ const getCandidatePairSetsForConnection = (
   if (points.length > 4) {
     const sortedPoints = [...points].sort(
       (a, b) =>
-        getPerimeterPosition(a, bounds) - getPerimeterPosition(b, bounds),
+        getPerimeterPosition(a, bounds) - getPerimeterPosition(b, bounds) ||
+        a.connectionName.localeCompare(b.connectionName) ||
+        comparePoint2(a, b),
     )
     return [
       sortedPoints.slice(1).map((_, index) => ({
@@ -269,7 +274,11 @@ const getCandidatePairSetsForConnection = (
   spanningTrees.sort(
     (a, b) =>
       a.reduce((sum, edge) => sum + edge.weight, 0) -
-      b.reduce((sum, edge) => sum + edge.weight, 0),
+        b.reduce((sum, edge) => sum + edge.weight, 0) ||
+      a
+        .map((edge) => `${edge.a}-${edge.b}`)
+        .join(",")
+        .localeCompare(b.map((edge) => `${edge.a}-${edge.b}`).join(",")),
   )
 
   return spanningTrees.map((tree) =>
@@ -340,7 +349,11 @@ const findPath = ({
     let currentDistance = Infinity
     for (const key of queue) {
       const candidateDistance = distanceByKey.get(key) ?? Infinity
-      if (candidateDistance < currentDistance) {
+      if (
+        candidateDistance < currentDistance - EPS ||
+        (Math.abs(candidateDistance - currentDistance) <= EPS &&
+          (currentKey === null || key < currentKey))
+      ) {
         currentDistance = candidateDistance
         currentKey = key
       }
@@ -363,7 +376,13 @@ const findPath = ({
 
       const candidateDistance =
         currentDistance + distance(currentNode, nextNode)
-      if (candidateDistance < (distanceByKey.get(nextKey) ?? Infinity)) {
+      const nextDistance = distanceByKey.get(nextKey) ?? Infinity
+      const nextPreviousKey = previousByKey.get(nextKey)
+      if (
+        candidateDistance < nextDistance - EPS ||
+        (Math.abs(candidateDistance - nextDistance) <= EPS &&
+          (nextPreviousKey == null || currentKey < nextPreviousKey))
+      ) {
         distanceByKey.set(nextKey, candidateDistance)
         previousByKey.set(nextKey, currentKey)
       }
