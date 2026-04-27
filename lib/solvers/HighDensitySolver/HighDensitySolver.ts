@@ -140,7 +140,7 @@ export class HighDensitySolver extends BaseSolver {
     },
   ): string {
     return [
-      `hd_node_marker`,
+      "hd_node_marker",
       `node: ${capacityMeshNodeId}`,
       `status: ${metadata.status}`,
       `solver: ${metadata.solverType}`,
@@ -182,9 +182,6 @@ export class HighDensitySolver extends BaseSolver {
     }
     if (hyperParameters?.CLOSED_FORM_TWO_TRACE_TRANSITION_CROSSING) {
       return "SingleTransitionCrossingRouteSolver"
-    }
-    if (hyperParameters?.FIXED_TOPOLOGY_HIGH_DENSITY_INTRA_NODE_SOLVER) {
-      return "FixedTopologyHighDensityIntraNodeSolver"
     }
     if (hyperParameters?.HIGH_DENSITY_A01) {
       return "HighDensitySolverA01"

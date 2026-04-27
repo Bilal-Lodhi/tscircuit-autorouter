@@ -167,12 +167,6 @@ const solvingCases = [
     },
   },
   {
-    name: "FixedTopologyHighDensityIntraNodeSolver",
-    hyperParameters: {
-      FIXED_TOPOLOGY_HIGH_DENSITY_INTRA_NODE_SOLVER: true,
-    },
-  },
-  {
     name: "HighDensitySolverA01",
     hyperParameters: {
       HIGH_DENSITY_A01: true,
