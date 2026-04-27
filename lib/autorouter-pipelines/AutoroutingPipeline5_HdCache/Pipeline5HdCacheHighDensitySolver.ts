@@ -2,16 +2,16 @@ import type { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { GraphicsObject } from "graphics-debug"
 import type { CapacityMeshNodeId } from "lib/types/capacity-mesh-types"
 import { mergeRouteSegments } from "lib/utils/mergeRouteSegments"
+import { BaseSolver, type PendingEffect } from "../../solvers/BaseSolver"
+import { CachedIntraNodeRouteSolver } from "../../solvers/HighDensitySolver/CachedIntraNodeRouteSolver"
+import { IntraNodeRouteSolver } from "../../solvers/HighDensitySolver/IntraNodeSolver"
+import { HyperSingleIntraNodeSolver } from "../../solvers/HyperHighDensitySolver/HyperSingleIntraNodeSolver"
+import { safeTransparentize } from "../../solvers/colors"
 import type {
   HighDensityIntraNodeRoute,
   NodeWithPortPoints,
 } from "../../types/high-density-types"
 import type { Obstacle } from "../../types/srj-types"
-import { BaseSolver, type PendingEffect } from "../../solvers/BaseSolver"
-import { HyperSingleIntraNodeSolver } from "../../solvers/HyperHighDensitySolver/HyperSingleIntraNodeSolver"
-import { CachedIntraNodeRouteSolver } from "../../solvers/HighDensitySolver/CachedIntraNodeRouteSolver"
-import { IntraNodeRouteSolver } from "../../solvers/HighDensitySolver/IntraNodeSolver"
-import { safeTransparentize } from "../../solvers/colors"
 
 type HdCacheSolveResponseBody = {
   ok: boolean
@@ -201,9 +201,6 @@ const getIntraNodeStrategyName = (
   }
   if (hyperParameters?.CLOSED_FORM_TWO_TRACE_TRANSITION_CROSSING) {
     return "SingleTransitionCrossingRouteSolver"
-  }
-  if (hyperParameters?.FIXED_TOPOLOGY_HIGH_DENSITY_INTRA_NODE_SOLVER) {
-    return "FixedTopologyHighDensityIntraNodeSolver"
   }
   if (hyperParameters?.HIGH_DENSITY_A01) {
     return "HighDensitySolverA01"
