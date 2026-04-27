@@ -70,7 +70,7 @@ export class HyperSingleIntraNodeSolver extends HyperParameterSupervisorSolver<
       // ["closedFormTwoTrace"],
       ["highDensityA01"],
       ["highDensityA03"],
-      ["fixedTopologyHighDensityIntraNodeSolver"],
+      // ["fixedTopologyHighDensityIntraNodeSolver"],
     ]
   }
 
