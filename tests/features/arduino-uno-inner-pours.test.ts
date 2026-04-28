@@ -6,6 +6,7 @@ import {
   arduinoUnoWithPowerGroundBottomInner2Pours,
   arduinoUnoWithPowerGroundInnerPours,
 } from "../../fixtures/bug-reports/bugreport46-ac4337/bugreport46-ac4337-arduino-uno-inner-pours"
+import { getLastStepSvg } from "tests/fixtures/getLastStepSvg"
 
 const expectPour = ({
   srj,
@@ -127,4 +128,8 @@ test("Arduino Uno bottom/inner2 pour fixture adds bottom power and inner2 ground
       },
     ]
   `)
+
+  expect(getLastStepSvg(solver.visualize())).toMatchSvgSnapshot(
+    import.meta.path,
+  )
 }, 120_000)
