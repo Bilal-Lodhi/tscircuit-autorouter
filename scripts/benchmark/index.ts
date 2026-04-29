@@ -17,7 +17,7 @@ import type {
 import {
   DATASET_NAMES,
   type DatasetName,
-  isDatasetName,
+  normalizeDatasetName,
   loadScenarios,
 } from "./scenarios"
 
@@ -210,12 +210,13 @@ const parseArgs = (): BenchmarkOptions => {
           `--dataset requires a value (${DATASET_NAMES.join(", ")})`,
         )
       }
-      if (!isDatasetName(rawDatasetName)) {
+      const datasetName = normalizeDatasetName(rawDatasetName)
+      if (!datasetName) {
         throw new Error(
           `Unknown dataset "${rawDatasetName}". Available: ${DATASET_NAMES.join(", ")}`,
         )
       }
-      options.datasetName = rawDatasetName
+      options.datasetName = datasetName
       i += 1
       continue
     }

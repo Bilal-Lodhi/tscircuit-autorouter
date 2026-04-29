@@ -19,8 +19,8 @@ import type { SimpleRouteJson } from "../lib/types/srj-types"
 import {
   DATASET_NAMES,
   type DatasetName,
-  isDatasetName,
   loadScenarioBySampleNumber,
+  normalizeDatasetName,
   toSimpleRouteJson,
 } from "./benchmark/scenarios"
 
@@ -290,13 +290,14 @@ const parseArgs = (): RunSampleOptions => {
     }
 
     if (arg === "--dataset") {
-      const dataset = args[i + 1]
-      if (!dataset || dataset.startsWith("-")) {
+      const rawDatasetName = args[i + 1]
+      if (!rawDatasetName || rawDatasetName.startsWith("-")) {
         throw new Error("--dataset requires a value")
       }
-      if (!isDatasetName(dataset)) {
+      const dataset = normalizeDatasetName(rawDatasetName)
+      if (!dataset) {
         throw new Error(
-          `Unknown dataset "${dataset}". Available: ${DATASET_NAMES.join(", ")}`,
+          `Unknown dataset "${rawDatasetName}". Available: ${DATASET_NAMES.join(", ")}`,
         )
       }
       options.dataset = dataset

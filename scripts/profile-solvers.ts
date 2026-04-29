@@ -5,7 +5,7 @@ import { BaseSolver } from "../lib/solvers/BaseSolver"
 import {
   DATASET_NAMES,
   type DatasetName,
-  isDatasetName,
+  normalizeDatasetName,
   loadScenarios as loadBenchmarkScenarios,
 } from "./benchmark/scenarios"
 
@@ -142,12 +142,13 @@ const parseArgs = (): ProfileOptions => {
           `--dataset requires a value (${DATASET_NAMES.join(", ")})`,
         )
       }
-      if (!isDatasetName(rawDatasetName)) {
+      const datasetName = normalizeDatasetName(rawDatasetName)
+      if (!datasetName) {
         throw new Error(
           `Unknown dataset "${rawDatasetName}". Available: ${DATASET_NAMES.join(", ")}`,
         )
       }
-      options.datasetName = rawDatasetName
+      options.datasetName = datasetName
       i += 1
     } else if (arg === "--effort") {
       const rawEffort = args[i + 1]

@@ -8,6 +8,11 @@ declare module "@tscircuit/dataset-srj05" {
   export = dataset
 }
 
+declare module "@tsci/seveibar.dataset-srj13" {
+  const dataset: any
+  export = dataset
+}
+
 declare module "zdwiel-dataset" {
   const dataset: any
   export = dataset

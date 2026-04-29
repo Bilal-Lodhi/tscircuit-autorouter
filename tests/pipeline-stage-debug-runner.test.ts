@@ -13,7 +13,10 @@ import path from "node:path"
 import { AutoroutingPipelineSolver4 } from "lib"
 import { PipelineStageDebugRunner } from "lib/testing/PipelineStageDebugRunner"
 import type { SimpleRouteJson } from "lib/types"
-import { loadScenarioBySampleNumber } from "../scripts/benchmark/scenarios"
+import {
+  loadScenarioBySampleNumber,
+  normalizeDatasetName,
+} from "../scripts/benchmark/scenarios"
 
 const tempDirs: string[] = []
 const repoTempPaths: string[] = []
@@ -70,6 +73,18 @@ test("loadScenarioBySampleNumber follows benchmark dataset ordering", async () =
   expect(sample.sampleNumber).toBe(1)
   expect(sample.scenarioName).toBe("circuit001")
   expect(sample.totalSamples).toBeGreaterThan(1)
+  expect(sample.scenario.bounds).toBeDefined()
+})
+
+test("dataset 13 alias loads srj13 samples in example order", async () => {
+  const datasetName = normalizeDatasetName("13")
+  expect(datasetName).toBe("srj13")
+
+  const sample = await loadScenarioBySampleNumber(datasetName!, 1)
+
+  expect(sample.sampleNumber).toBe(1)
+  expect(sample.scenarioName).toBe("example_01")
+  expect(sample.totalSamples).toBe(50)
   expect(sample.scenario.bounds).toBeDefined()
 })
 

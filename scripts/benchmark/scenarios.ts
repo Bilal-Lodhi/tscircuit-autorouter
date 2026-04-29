@@ -1,10 +1,18 @@
 import type { SimpleRouteJson } from "../../lib/types/srj-types"
 
-export const DATASET_NAMES = ["dataset01", "zdwiel", "srj05"] as const
+export const DATASET_NAMES = ["dataset01", "zdwiel", "srj05", "srj13"] as const
 
 export type DatasetName = (typeof DATASET_NAMES)[number]
 
 type DatasetModule = Record<string, unknown>
+
+export const DATASET_ALIASES: Record<string, DatasetName> = {
+  "1": "dataset01",
+  "01": "dataset01",
+  "5": "srj05",
+  "05": "srj05",
+  "13": "srj13",
+}
 
 const datasetLoaders: Record<DatasetName, () => Promise<DatasetModule>> = {
   dataset01: async () =>
@@ -12,16 +20,25 @@ const datasetLoaders: Record<DatasetName, () => Promise<DatasetModule>> = {
   zdwiel: async () => (await import("zdwiel-dataset")) as DatasetModule,
   srj05: async () =>
     (await import("@tscircuit/dataset-srj05")) as DatasetModule,
+  srj13: async () =>
+    (await import("@tsci/seveibar.dataset-srj13")) as DatasetModule,
 }
 
 const datasetScenarioKeyPatterns: Record<DatasetName, RegExp> = {
   dataset01: /^circuit\d+$/,
   zdwiel: /^ts\d+_/,
   srj05: /^sample\d{3}.*Circuit$/,
+  srj13: /^example_\d+$/,
 }
 
 export const isDatasetName = (value: string): value is DatasetName =>
   DATASET_NAMES.includes(value as DatasetName)
+
+export const normalizeDatasetName = (value: string): DatasetName | null => {
+  const alias = DATASET_ALIASES[value]
+  if (alias) return alias
+  return isDatasetName(value) ? value : null
+}
 
 export const toSimpleRouteJson = (value: unknown): SimpleRouteJson | null => {
   if (!value || typeof value !== "object") {
