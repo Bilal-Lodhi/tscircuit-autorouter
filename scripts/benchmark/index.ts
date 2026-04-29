@@ -15,10 +15,10 @@ import type {
   WorkerTaskMessage,
 } from "./benchmark-types"
 import {
-  DATASET_NAMES,
+  DATASET_OPTIONS_LABEL,
   type DatasetName,
-  normalizeDatasetName,
   loadScenarios,
+  parseDatasetName,
 } from "./scenarios"
 
 type BenchmarkOptions = {
@@ -206,14 +206,12 @@ const parseArgs = (): BenchmarkOptions => {
     if (arg === "--dataset") {
       const rawDatasetName = args[i + 1]
       if (!rawDatasetName || rawDatasetName.startsWith("-")) {
-        throw new Error(
-          `--dataset requires a value (${DATASET_NAMES.join(", ")})`,
-        )
+        throw new Error(`--dataset requires a value (${DATASET_OPTIONS_LABEL})`)
       }
-      const datasetName = normalizeDatasetName(rawDatasetName)
+      const datasetName = parseDatasetName(rawDatasetName)
       if (!datasetName) {
         throw new Error(
-          `Unknown dataset "${rawDatasetName}". Available: ${DATASET_NAMES.join(", ")}`,
+          `Unknown dataset "${rawDatasetName}". Available: ${DATASET_OPTIONS_LABEL}`,
         )
       }
       options.datasetName = datasetName

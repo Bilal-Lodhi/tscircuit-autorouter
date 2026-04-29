@@ -3,10 +3,10 @@
 import { AutoroutingPipelineSolver } from "../lib"
 import { BaseSolver } from "../lib/solvers/BaseSolver"
 import {
-  DATASET_NAMES,
+  DATASET_OPTIONS_LABEL,
   type DatasetName,
-  normalizeDatasetName,
   loadScenarios as loadBenchmarkScenarios,
+  parseDatasetName,
 } from "./benchmark/scenarios"
 
 // --- Types ---
@@ -138,14 +138,12 @@ const parseArgs = (): ProfileOptions => {
     } else if (arg === "--dataset") {
       const rawDatasetName = args[i + 1]
       if (!rawDatasetName || rawDatasetName.startsWith("-")) {
-        throw new Error(
-          `--dataset requires a value (${DATASET_NAMES.join(", ")})`,
-        )
+        throw new Error(`--dataset requires a value (${DATASET_OPTIONS_LABEL})`)
       }
-      const datasetName = normalizeDatasetName(rawDatasetName)
+      const datasetName = parseDatasetName(rawDatasetName)
       if (!datasetName) {
         throw new Error(
-          `Unknown dataset "${rawDatasetName}". Available: ${DATASET_NAMES.join(", ")}`,
+          `Unknown dataset "${rawDatasetName}". Available: ${DATASET_OPTIONS_LABEL}`,
         )
       }
       options.datasetName = datasetName
@@ -165,7 +163,7 @@ const parseArgs = (): ProfileOptions => {
           "Options:",
           "  --scenario NAME      Run only the named scenario",
           "  --scenario-limit N   Run only first N scenarios",
-          `  --dataset NAME       Dataset to profile: ${DATASET_NAMES.join(", ")}`,
+          `  --dataset NAME       Dataset to profile: ${DATASET_OPTIONS_LABEL}`,
           "  --effort N           Override scenario effort multiplier",
           "  -h, --help           Show this help",
         ].join("\n"),

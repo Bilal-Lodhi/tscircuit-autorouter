@@ -15,7 +15,7 @@ import { PipelineStageDebugRunner } from "lib/testing/PipelineStageDebugRunner"
 import type { SimpleRouteJson } from "lib/types"
 import {
   loadScenarioBySampleNumber,
-  normalizeDatasetName,
+  parseDatasetName,
 } from "../scripts/benchmark/scenarios"
 
 const tempDirs: string[] = []
@@ -77,7 +77,7 @@ test("loadScenarioBySampleNumber follows benchmark dataset ordering", async () =
 })
 
 test("dataset 13 alias loads srj13 samples in example order", async () => {
-  const datasetName = normalizeDatasetName("13")
+  const datasetName = parseDatasetName("13")
   expect(datasetName).toBe("srj13")
 
   const sample = await loadScenarioBySampleNumber(datasetName!, 1)

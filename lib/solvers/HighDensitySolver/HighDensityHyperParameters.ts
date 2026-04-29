@@ -51,6 +51,4 @@ export interface HighDensityHyperParameters {
 
   // Minimum travel distance before allowing jumper neighbors
   MIN_TRAVEL_BEFORE_JUMPER?: number // mm - default: 3
-
-  FIXED_TOPOLOGY_HIGH_DENSITY_INTRA_NODE_SOLVER?: boolean
 }
