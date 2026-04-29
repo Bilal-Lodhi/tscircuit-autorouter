@@ -290,14 +290,14 @@ const parseArgs = (): RunSampleOptions => {
     }
 
     if (arg === "--dataset") {
-      const dataset = args[i + 1]
-      if (!dataset || dataset.startsWith("-")) {
+      const rawDatasetName = args[i + 1]
+      if (!rawDatasetName || rawDatasetName.startsWith("-")) {
         throw new Error("--dataset requires a value")
       }
-      const datasetName = parseDatasetName(dataset)
+      const datasetName = parseDatasetName(rawDatasetName)
       if (!datasetName) {
         throw new Error(
-          `Unknown dataset "${dataset}". Available: ${DATASET_OPTIONS_LABEL}`,
+          `Unknown dataset "${rawDatasetName}". Available: ${DATASET_OPTIONS_LABEL}`,
         )
       }
       options.dataset = datasetName

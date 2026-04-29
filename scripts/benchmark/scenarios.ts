@@ -6,6 +6,7 @@ export const DATASET_NAMES = [
   "srj05",
   "srj11",
   "srj12",
+  "srj13",
 ] as const
 
 export type DatasetName = (typeof DATASET_NAMES)[number]
@@ -13,7 +14,7 @@ export type DatasetName = (typeof DATASET_NAMES)[number]
 type DatasetModule = Record<string, unknown>
 
 export const DATASET_OPTIONS_LABEL =
-  "1/dataset01, zdwiel, 5/srj05, 11/srj11, 12/srj12"
+  "1/dataset01, zdwiel, 5/srj05, 11/srj11, 12/srj12, 13/srj13"
 
 const datasetAliases: Record<string, DatasetName> = {
   "1": "dataset01",
@@ -32,6 +33,10 @@ const datasetAliases: Record<string, DatasetName> = {
   srj12: "srj12",
   "dataset-srj12-bus-routing": "srj12",
   "@tsci/tscircuit.dataset-srj12-bus-routing": "srj12",
+  "13": "srj13",
+  srj13: "srj13",
+  "dataset-srj13": "srj13",
+  "@tsci/seveibar.dataset-srj13": "srj13",
   zdwiel: "zdwiel",
 }
 
@@ -80,6 +85,8 @@ const datasetLoaders: Record<DatasetName, () => Promise<DatasetModule>> = {
       getSpecifier: (sampleId) =>
         `@tsci/tscircuit.dataset-srj12-bus-routing/circuits/sample${sampleId}/sample${sampleId}.circuit.simple-route.json`,
     }),
+  srj13: async () =>
+    (await import("@tsci/seveibar.dataset-srj13")) as DatasetModule,
 }
 
 const datasetScenarioKeyPatterns: Record<DatasetName, RegExp> = {
@@ -88,6 +95,7 @@ const datasetScenarioKeyPatterns: Record<DatasetName, RegExp> = {
   srj05: /^sample\d{3}.*Circuit$/,
   srj11: /^sample\d{3}Circuit$/,
   srj12: /^sample\d{3}Circuit$/,
+  srj13: /^example_\d+$/,
 }
 
 export const toSimpleRouteJson = (value: unknown): SimpleRouteJson | null => {

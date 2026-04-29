@@ -75,7 +75,7 @@ Options:
   --concurrency N      Number of Bun workers used per solver, or "auto"
   --effort N           Override scenario effort multiplier
   --sample-timeout D   Override per-sample timeout directly; otherwise timeout is 60s + 60s * effort
-  --dataset NAME       Dataset to benchmark: 1/dataset01 (default), zdwiel, 5/srj05, 11/srj11, or 12/srj12
+  --dataset NAME       Dataset to benchmark: 1/dataset01 (default), zdwiel, 5/srj05, 11/srj11, 12/srj12, or 13/srj13
   --include-assignable Include assignable pipelines (excluded by default)
   -h, --help           Show this help
 
@@ -97,6 +97,7 @@ Examples:
   ./benchmark.sh --solver AutoroutingPipelineSolver4 --dataset srj05 --scenario-limit 20
   ./benchmark.sh --dataset 11 --scenario-limit 20
   ./benchmark.sh --dataset 12 --scenario-limit 10
+  ./benchmark.sh --dataset 13
   ./benchmark.sh --include-assignable
 EOF
 
