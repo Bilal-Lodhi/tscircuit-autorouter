@@ -65,6 +65,10 @@ export const PIPELINE_OPTIONS = [
     id: "AssignableAutoroutingPipeline3",
     label: "Assignable Pipeline 3 (Jumpers)",
   },
+  {
+    id: "KrtAutoroutingPipelineSolver",
+    label: "KRT Autorouter (WASM)",
+  },
 ] as const
 
 export type PipelineId = (typeof PIPELINE_OPTIONS)[number]["id"]
