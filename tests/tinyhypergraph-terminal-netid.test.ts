@@ -113,7 +113,10 @@ test("pipeline4 tiny graph generation does not emit free one-port endpoint regio
   const loaded = loadSerializedHyperGraph(serializedGraph)
   const tinySolver = new TinyHyperGraphSolver(loaded.topology, loaded.problem)
   const startPortId = loaded.problem.routeStartPort[0]!
-  const startingNextRegionId = tinySolver.getStartingNextRegionId(0, startPortId)
+  const startingNextRegionId = tinySolver.getStartingNextRegionId(
+    0,
+    startPortId,
+  )
   const startingNextRegion =
     loaded.topology.regionMetadata?.[startingNextRegionId!]
 
