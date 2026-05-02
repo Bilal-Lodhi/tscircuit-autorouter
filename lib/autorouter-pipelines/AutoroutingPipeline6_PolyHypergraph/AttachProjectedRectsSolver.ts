@@ -1,6 +1,10 @@
 import type { GraphicsObject } from "graphics-debug"
 import { BaseSolver } from "lib/solvers/BaseSolver"
 import { computeProjectedRect } from "./geometry"
+import {
+  getRequiredRoutingCorridorWidth,
+  shouldClampProjectionExpansion,
+} from "./shouldClampProjectionExpansion"
 import type { PolyNodeWithPortPoints } from "./types"
 
 export class AttachProjectedRectsSolver extends BaseSolver {
@@ -9,12 +13,16 @@ export class AttachProjectedRectsSolver extends BaseSolver {
   }
 
   outputNodes: PolyNodeWithPortPoints[] = []
+  projectionAdjustmentByNodeId = new Map<string, string>()
 
   constructor(
     public params: {
       nodesWithPortPoints: PolyNodeWithPortPoints[]
       equivalentAreaExpansionFactor?: number
       minProjectedRectDimension?: number
+      traceWidth?: number
+      viaDiameter?: number
+      obstacleMargin?: number
     },
   ) {
     super()
@@ -22,12 +30,59 @@ export class AttachProjectedRectsSolver extends BaseSolver {
   }
 
   _step() {
+    this.projectionAdjustmentByNodeId.clear()
     this.outputNodes = this.params.nodesWithPortPoints.map((node) => {
-      const projectedRect = computeProjectedRect(
+      const requestedExpansionFactor =
+        this.params.equivalentAreaExpansionFactor ?? 0
+      const minProjectedRectDimension =
+        this.params.minProjectedRectDimension ?? 0
+      const requiredRoutingCorridorWidth = getRequiredRoutingCorridorWidth({
+        traceWidth: this.params.traceWidth,
+        viaDiameter: this.params.viaDiameter,
+        obstacleMargin: this.params.obstacleMargin,
+        minProjectedRectDimension,
+      })
+      let projectedRect = computeProjectedRect(
         node.polygon,
-        this.params.equivalentAreaExpansionFactor ?? 0,
-        this.params.minProjectedRectDimension ?? 0,
+        requestedExpansionFactor,
+        minProjectedRectDimension,
       )
+
+      const minDimension = Math.min(projectedRect.width, projectedRect.height)
+      const nextTraceLaneWidth =
+        requiredRoutingCorridorWidth + (this.params.traceWidth ?? 0)
+      if (minDimension > nextTraceLaneWidth) {
+        return {
+          ...node,
+          center: projectedRect.center,
+          width: projectedRect.width,
+          height: projectedRect.height,
+          projectedRect,
+        }
+      }
+
+      const conservativeProjectedRect = computeProjectedRect(
+        node.polygon,
+        1,
+        minProjectedRectDimension,
+      )
+
+      if (
+        shouldClampProjectionExpansion({
+          node,
+          projectedRect,
+          conservativeProjectedRect,
+          requiredRoutingCorridorWidth,
+          traceWidth: this.params.traceWidth,
+        })
+      ) {
+        projectedRect = conservativeProjectedRect
+        this.projectionAdjustmentByNodeId.set(
+          node.capacityMeshNodeId,
+          "corridor-expansion-factor-1",
+        )
+      }
+
       return {
         ...node,
         center: projectedRect.center,
