@@ -139,9 +139,29 @@ const getSharedConnectionZ = (params: {
   return sharedZ ?? params.fallbackZ
 }
 
-const buildSerializedTinyGraph = (
+const getConnectionNetId = (
+  connection: HgPortPointPathingSolverParams["connections"][number],
+) => connection.mutuallyConnectedNetworkId ?? connection.connectionId
+
+const getConnectionNetIndexMap = (
+  connections: HgPortPointPathingSolverParams["connections"],
+) => {
+  const netIndexById = new Map<string, number>()
+
+  for (const connection of connections) {
+    const netId = getConnectionNetId(connection)
+    if (!netIndexById.has(netId)) {
+      netIndexById.set(netId, netIndexById.size)
+    }
+  }
+
+  return netIndexById
+}
+
+export const buildSerializedTinyGraph = (
   params: HgPortPointPathingSolverParams,
 ): SerializedHyperGraph => {
+  const netIndexById = getConnectionNetIndexMap(params.connections)
   const regions: SerializedHyperGraph["regions"] = params.graph.regions.map(
     (region) => ({
       regionId: region.regionId,
@@ -202,6 +222,8 @@ const buildSerializedTinyGraph = (
     const endTerminalRegionId = `tiny-terminal:end-region:${connection.connectionId}`
     const startTerminalPortId = `tiny-terminal:start-port:${connection.connectionId}`
     const endTerminalPortId = `tiny-terminal:end-port:${connection.connectionId}`
+    const terminalNetId =
+      netIndexById.get(getConnectionNetId(connection)) ?? -1
 
     regions.push({
       regionId: startTerminalRegionId,
@@ -215,6 +237,7 @@ const buildSerializedTinyGraph = (
         width: TINY_TERMINAL_REGION_SIZE,
         height: TINY_TERMINAL_REGION_SIZE,
         availableZ: [startZ],
+        netId: terminalNetId,
         _containsTarget: true,
         _tinyTerminal: true,
         _tinyTerminalNetId:
@@ -234,6 +257,7 @@ const buildSerializedTinyGraph = (
         width: TINY_TERMINAL_REGION_SIZE,
         height: TINY_TERMINAL_REGION_SIZE,
         availableZ: [endZ],
+        netId: terminalNetId,
         _containsTarget: true,
         _tinyTerminal: true,
         _tinyTerminalNetId:
