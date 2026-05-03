@@ -103,8 +103,18 @@ test("pipeline4 tiny graph generation does not emit free one-port endpoint regio
   const terminalRegions = serializedGraph.regions.filter(
     (region) => region.d?._tinyTerminal === true,
   )
+  const serializedConnection = serializedGraph.connections?.[0] as
+    | (NonNullable<typeof serializedGraph.connections>[number] & {
+        startPortId?: string
+        endPortId?: string
+      })
+    | undefined
 
   expect(terminalRegions).toHaveLength(2)
+  expect(serializedConnection?.startPortId).toBe(
+    "tiny-terminal:start-port:conn1",
+  )
+  expect(serializedConnection?.endPortId).toBe("tiny-terminal:end-port:conn1")
   for (const region of terminalRegions) {
     expect(region.pointIds).toHaveLength(1)
     expect(region.d?.netId).toBe(0)

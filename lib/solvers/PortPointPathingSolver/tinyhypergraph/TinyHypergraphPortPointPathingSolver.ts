@@ -32,6 +32,10 @@ type RouteMetadata = {
 type SerializedTinyConnection = NonNullable<
   SerializedHyperGraph["connections"]
 >[number]
+type SerializedTinyConnectionWithEndpointPorts = SerializedTinyConnection & {
+  startPortId?: string
+  endPortId?: string
+}
 type SerializedTinySolvedRoute = NonNullable<
   SerializedHyperGraph["solvedRoutes"]
 >[number]
@@ -143,6 +147,12 @@ const getConnectionNetId = (
   connection: HgPortPointPathingSolverParams["connections"][number],
 ) => connection.mutuallyConnectedNetworkId ?? connection.connectionId
 
+const getStartTerminalPortId = (connectionId: string) =>
+  `tiny-terminal:start-port:${connectionId}`
+
+const getEndTerminalPortId = (connectionId: string) =>
+  `tiny-terminal:end-port:${connectionId}`
+
 const getConnectionNetIndexMap = (
   connections: HgPortPointPathingSolverParams["connections"],
 ) => {
@@ -179,16 +189,17 @@ export const buildSerializedTinyGraph = (
     }),
   )
 
-  const connections: SerializedTinyConnection[] = params.connections.map(
-    (connection) => ({
+  const connections: SerializedTinyConnectionWithEndpointPorts[] =
+    params.connections.map((connection) => ({
       connectionId: connection.connectionId,
       mutuallyConnectedNetworkId:
         connection.mutuallyConnectedNetworkId ?? connection.connectionId,
       startRegionId: connection.startRegion.regionId,
       endRegionId: connection.endRegion.regionId,
+      startPortId: getStartTerminalPortId(connection.connectionId),
+      endPortId: getEndTerminalPortId(connection.connectionId),
       simpleRouteConnection: connection.simpleRouteConnection,
-    }),
-  )
+    }))
 
   const solvedRoutes: SerializedTinySolvedRoute[] = []
 
@@ -220,8 +231,10 @@ export const buildSerializedTinyGraph = (
 
     const startTerminalRegionId = `tiny-terminal:start-region:${connection.connectionId}`
     const endTerminalRegionId = `tiny-terminal:end-region:${connection.connectionId}`
-    const startTerminalPortId = `tiny-terminal:start-port:${connection.connectionId}`
-    const endTerminalPortId = `tiny-terminal:end-port:${connection.connectionId}`
+    const startTerminalPortId = getStartTerminalPortId(
+      connection.connectionId,
+    )
+    const endTerminalPortId = getEndTerminalPortId(connection.connectionId)
     const terminalNetId = netIndexById.get(getConnectionNetId(connection)) ?? -1
 
     regions.push({
