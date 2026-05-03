@@ -231,9 +231,7 @@ export const buildSerializedTinyGraph = (
 
     const startTerminalRegionId = `tiny-terminal:start-region:${connection.connectionId}`
     const endTerminalRegionId = `tiny-terminal:end-region:${connection.connectionId}`
-    const startTerminalPortId = getStartTerminalPortId(
-      connection.connectionId,
-    )
+    const startTerminalPortId = getStartTerminalPortId(connection.connectionId)
     const endTerminalPortId = getEndTerminalPortId(connection.connectionId)
     const terminalNetId = netIndexById.get(getConnectionNetId(connection)) ?? -1
 
