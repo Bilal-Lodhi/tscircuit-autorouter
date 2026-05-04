@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test"
-import { JumperPrepatternSolver } from "../../../lib/solvers/JumperPrepatternSolver/index"
+import { JumperPrepatternSolver } from "lib/solvers/JumperPrepatternSolver"
 import input from "../../../fixtures/features/jumper-high-density/jumper-high-density03-input.json" with {
   type: "json",
 }

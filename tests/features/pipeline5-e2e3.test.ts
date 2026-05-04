@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test"
-import { convertSrjToGraphicsObject } from "../../lib/index"
-import { AutoroutingPipelineSolver4 } from "../../lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
-import type { Pipeline5HdCacheHighDensitySolver } from "../../lib/autorouter-pipelines/AutoroutingPipeline5_HdCache/Pipeline5HdCacheHighDensitySolver"
-import { AutoroutingPipelineSolver5 } from "../../lib/autorouter-pipelines/AutoroutingPipeline5_HdCache/AutoroutingPipelineSolver5_HdCache"
-import type { SimpleRouteJson } from "../../lib/types/index"
+import { convertSrjToGraphicsObject } from "../../lib"
+import { AutoroutingPipelineSolver4 } from "lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
+import type { Pipeline5HdCacheHighDensitySolver } from "lib/autorouter-pipelines/AutoroutingPipeline5_HdCache/Pipeline5HdCacheHighDensitySolver"
+import { AutoroutingPipelineSolver5 } from "lib/autorouter-pipelines/AutoroutingPipeline5_HdCache/AutoroutingPipelineSolver5_HdCache"
+import type { SimpleRouteJson } from "lib/types"
 import e2e3Fixture from "../../fixtures/legacy/assets/e2e3.json"
 
 const shouldAttemptRemoteSolve = (metadata: {

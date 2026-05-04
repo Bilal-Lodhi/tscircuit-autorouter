@@ -1,11 +1,11 @@
 import { expect, test } from "bun:test"
 import { CurvyTraceSolver } from "@tscircuit/curvy-trace-solver"
-import { HyperSingleIntraNodeSolver } from "../../lib/solvers/HyperHighDensitySolver/HyperSingleIntraNodeSolver"
-import { SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost } from "../../lib/solvers/HighDensitySolver/SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost"
-import { createSrjFromNodeWithPortPoints } from "../../lib/utils/createSrjFromNodeWithPortPoints"
-import { convertToCircuitJson } from "../../lib/testing/utils/convertToCircuitJson"
-import { getDrcErrors } from "../../lib/testing/getDrcErrors"
-import type { HighDensityIntraNodeRoute } from "../../lib/types/high-density-types"
+import { HyperSingleIntraNodeSolver } from "lib/solvers/HyperHighDensitySolver/HyperSingleIntraNodeSolver"
+import { SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost } from "lib/solvers/HighDensitySolver/SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost"
+import { createSrjFromNodeWithPortPoints } from "lib/utils/createSrjFromNodeWithPortPoints"
+import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
+import { getDrcErrors } from "lib/testing/getDrcErrors"
+import type { HighDensityIntraNodeRoute } from "lib/types/high-density-types"
 import cmn159Data from "../../fixtures/bug-reports/dataset01-circuit102-cmn_159/cmn_159-node-data.json" with {
   type: "json",
 }

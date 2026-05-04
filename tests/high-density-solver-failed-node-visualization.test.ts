@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { HighDensitySolver } from "../lib/solvers/HighDensitySolver/HighDensitySolver"
+import { HighDensitySolver } from "lib/solvers/HighDensitySolver/HighDensitySolver"
 
 test("HighDensitySolver draws an origin guide to failed nodes", () => {
   const solver = new HighDensitySolver({

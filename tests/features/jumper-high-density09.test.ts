@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test"
-import { HyperJumperPrepatternSolver2 } from "../../lib/solvers/JumperPrepatternSolver/HyperJumperPrepatternSolver2"
-import { generateColorMapFromNodeWithPortPoints } from "../../lib/utils/generateColorMapFromNodeWithPortPoints"
+import { HyperJumperPrepatternSolver2 } from "lib/solvers/JumperPrepatternSolver/HyperJumperPrepatternSolver2"
+import { generateColorMapFromNodeWithPortPoints } from "lib/utils/generateColorMapFromNodeWithPortPoints"
 import input from "../../fixtures/features/jumper-high-density/jumper-high-density09-input.json" with {
   type: "json",
 }

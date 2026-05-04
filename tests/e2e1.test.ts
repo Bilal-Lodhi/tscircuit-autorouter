@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test"
-import { CapacityMeshSolver } from "../lib/index"
+import { CapacityMeshSolver } from "../lib"
 import keyboardRoutes from "../fixtures/legacy/assets/growing-grid-keyboard-sample-sample95-unrouted_simple_route.json" with {
   type: "json",
 }
@@ -7,9 +7,9 @@ import type {
   SimpleRouteJson,
   SimplifiedPcbTraces,
   Obstacle,
-} from "../lib/types/index"
+} from "../lib/types"
 import { Line, Rect } from "graphics-debug"
-import { convertSrjToGraphicsObject } from "../lib/index"
+import { convertSrjToGraphicsObject } from "../lib"
 
 test.skip("should solve keyboard1 board and produce valid SimpleRouteJson output", async () => {
   // Create a solver with the keyboard1 input

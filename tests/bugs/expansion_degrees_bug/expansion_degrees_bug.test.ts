@@ -18,8 +18,8 @@ import {
 import {
   MultiSectionPortPointOptimizer,
   type MultiSectionPortPointOptimizerParams,
-} from "../../../lib/solvers/MultiSectionPortPointOptimizer/index"
-import type { PortPoint } from "../../../lib/types/high-density-types"
+} from "lib/solvers/MultiSectionPortPointOptimizer"
+import type { PortPoint } from "lib/types/high-density-types"
 
 const EXPANSION_DEGREEs = [1, 2, 3, 4, 5, 6]
 

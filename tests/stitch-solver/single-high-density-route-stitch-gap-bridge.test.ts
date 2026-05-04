@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
-import { SingleHighDensityRouteStitchSolver3 } from "../../lib/solvers/RouteStitchingSolver/SingleHighDensityRouteStitchSolver3"
-import type { HighDensityIntraNodeRoute } from "../../lib/types/high-density-types"
+import { SingleHighDensityRouteStitchSolver3 } from "lib/solvers/RouteStitchingSolver/SingleHighDensityRouteStitchSolver3"
+import type { HighDensityIntraNodeRoute } from "lib/types/high-density-types"
 
 const makeRoute = (
   connectionName: string,

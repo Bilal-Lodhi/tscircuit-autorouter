@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
-import { AutoroutingPipelineSolver3_HgPortPointPathing } from "../../lib/autorouter-pipelines/AutoroutingPipeline3_HgPortPointPathing/AutoroutingPipelineSolver3_HgPortPointPathing"
-import type { SimpleRouteJson } from "../../lib/types/index"
+import { AutoroutingPipelineSolver3_HgPortPointPathing } from "lib/autorouter-pipelines/AutoroutingPipeline3_HgPortPointPathing/AutoroutingPipelineSolver3_HgPortPointPathing"
+import type { SimpleRouteJson } from "lib/types"
 import e2e3Fixture from "../../fixtures/legacy/assets/e2e3.json"
 
 test(

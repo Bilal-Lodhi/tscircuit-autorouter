@@ -1,6 +1,6 @@
 import { expect, test, describe } from "bun:test"
 import { convertHdRouteToSimplifiedRoute } from "../../lib/utils/convertHdRouteToSimplifiedRoute"
-import type { ConnectionPoint } from "../../lib/types/index"
+import type { ConnectionPoint } from "../../lib/types"
 import { HighDensityIntraNodeRoute } from "../../lib/types/high-density-types"
 
 describe("convertHdRouteToSimplifiedRoute", () => {

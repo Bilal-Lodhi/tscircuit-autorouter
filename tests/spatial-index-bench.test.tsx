@@ -1,7 +1,7 @@
 import { test } from "bun:test"
 import RBush from "rbush"
 import Flatbush from "flatbush"
-import { Obstacle } from "../lib/types/index"
+import { Obstacle } from "../lib/types"
 
 const N = 100_000
 const N_LEGACY = 10_000

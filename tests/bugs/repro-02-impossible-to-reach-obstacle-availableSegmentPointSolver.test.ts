@@ -1,5 +1,5 @@
-import { AvailableSegmentPointSolver } from "../../lib/solvers/AvailableSegmentPointSolver/AvailableSegmentPointSolver"
-import type { CapacityMeshEdge, CapacityMeshNode } from "../../lib/types/index"
+import { AvailableSegmentPointSolver } from "lib/solvers/AvailableSegmentPointSolver/AvailableSegmentPointSolver"
+import type { CapacityMeshEdge, CapacityMeshNode } from "lib/types"
 import availableSegmentPointSolver_input from "./assets/availableSegmentPointSolver_input-113.json"
 import { expect, test } from "bun:test"
 

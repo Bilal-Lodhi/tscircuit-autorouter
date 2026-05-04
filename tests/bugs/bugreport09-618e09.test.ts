@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { AutoroutingPipeline1_OriginalUnravel } from "../../lib/index"
-import type { SimpleRouteJson } from "../../lib/types/index"
+import { AutoroutingPipeline1_OriginalUnravel } from "lib"
+import type { SimpleRouteJson } from "lib/types"
 import bugReport from "../../fixtures/bug-reports/bugreport09-618e09/bugreport09-618e09.json" with {
   type: "json",
 }

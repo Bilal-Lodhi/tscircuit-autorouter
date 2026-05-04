@@ -1,8 +1,8 @@
 import { parentPort } from "node:worker_threads"
-import { HighDensitySolver } from "../../lib/solvers/HighDensitySolver/HighDensitySolver"
-import { calculateNodeProbabilityOfFailure } from "../../lib/solvers/UnravelSolver/calculateCrossingProbabilityOfFailure"
-import { NodeWithPortPoints } from "../../lib/types/high-density-types"
-import { getIntraNodeCrossingsUsingCircle } from "../../lib/utils/getIntraNodeCrossingsUsingCircle"
+import { HighDensitySolver } from "lib/solvers/HighDensitySolver/HighDensitySolver"
+import { calculateNodeProbabilityOfFailure } from "lib/solvers/UnravelSolver/calculateCrossingProbabilityOfFailure.ts"
+import { NodeWithPortPoints } from "lib/types/high-density-types.ts"
+import { getIntraNodeCrossingsUsingCircle } from "lib/utils/getIntraNodeCrossingsUsingCircle"
 
 type WorkerRequest = {
   taskId: number

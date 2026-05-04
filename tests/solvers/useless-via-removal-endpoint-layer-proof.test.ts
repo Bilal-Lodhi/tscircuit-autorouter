@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test"
-import { HighDensityRouteSpatialIndex } from "../../lib/data-structures/HighDensityRouteSpatialIndex"
-import { ObstacleSpatialHashIndex } from "../../lib/data-structures/ObstacleTree"
-import { SingleRouteUselessViaRemovalSolver } from "../../lib/solvers/UselessViaRemovalSolver/SingleRouteUselessViaRemovalSolver"
-import type { HighDensityRoute } from "../../lib/types/high-density-types"
-import type { Obstacle } from "../../lib/types/index"
+import { HighDensityRouteSpatialIndex } from "lib/data-structures/HighDensityRouteSpatialIndex"
+import { ObstacleSpatialHashIndex } from "lib/data-structures/ObstacleTree"
+import { SingleRouteUselessViaRemovalSolver } from "lib/solvers/UselessViaRemovalSolver/SingleRouteUselessViaRemovalSolver"
+import type { HighDensityRoute } from "lib/types/high-density-types"
+import type { Obstacle } from "lib/types"
 
 const baseRoute: HighDensityRoute = {
   connectionName: "source_net_test",

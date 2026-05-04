@@ -85,7 +85,7 @@ try {
 }
 
 // Create fixture file
-const fixtureTemplate = `// @ts-nocheck\nimport { AutoroutingPipelineDebugger } from "../lib/testing/AutoroutingPipelineDebugger"
+const fixtureTemplate = `// @ts-nocheck\nimport { AutoroutingPipelineDebugger } from "lib/testing/AutoroutingPipelineDebugger"
 import bugReportJson from "./${jsonFileName}"
 
 export default () => {

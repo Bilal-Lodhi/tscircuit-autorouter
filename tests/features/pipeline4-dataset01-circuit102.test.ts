@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test"
 import * as dataset01 from "@tscircuit/autorouting-dataset-01"
-import { getGlobalInMemoryCache } from "../../lib/cache/setupGlobalCaches"
-import { AutoroutingPipelineSolver4 } from "../../lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
-import type { NodeWithPortPoints } from "../../lib/types/high-density-types"
-import type { SimpleRouteJson } from "../../lib/types/index"
+import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
+import { AutoroutingPipelineSolver4 } from "lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
+import type { NodeWithPortPoints } from "lib/types/high-density-types"
+import type { SimpleRouteJson } from "lib/types"
 
 const getCircuit102 = () =>
   (dataset01 as Record<string, unknown>).circuit102 as SimpleRouteJson

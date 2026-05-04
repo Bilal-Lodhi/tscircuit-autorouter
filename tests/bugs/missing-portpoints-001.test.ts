@@ -2,8 +2,8 @@ import { expect, test } from "bun:test"
 import bugReport from "fixtures/bug-reports/missing-port-points-001/missing-port-points-001.json" with {
   type: "json",
 }
-import type { SimpleRouteJson } from "../../lib/types/index"
-import { AutoroutingPipelineSolver3_HgPortPointPathing } from "../../lib/index"
+import type { SimpleRouteJson } from "lib/types"
+import { AutoroutingPipelineSolver3_HgPortPointPathing } from "lib/index"
 import { getLastStepSvg } from "tests/fixtures/getLastStepSvg"
 
 const srj = bugReport as SimpleRouteJson

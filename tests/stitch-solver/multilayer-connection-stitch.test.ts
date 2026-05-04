@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { MultipleHighDensityRouteStitchSolver } from "../../lib/solvers/RouteStitchingSolver/MultipleHighDensityRouteStitchSolver"
+import { MultipleHighDensityRouteStitchSolver } from "lib/solvers/RouteStitchingSolver/MultipleHighDensityRouteStitchSolver"
 import { getSvgFromGraphicsObject } from "graphics-debug"
 import inputs from "./multilayer-connection-stitch.json"
 

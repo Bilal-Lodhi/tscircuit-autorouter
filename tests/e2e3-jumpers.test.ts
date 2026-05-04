@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
-import { AssignableAutoroutingPipeline3 } from "../lib/index"
-import { SimpleRouteJson } from "../lib/types/index"
-import { convertSrjToGraphicsObject } from "../lib/index"
+import { AssignableAutoroutingPipeline3 } from "../lib"
+import { SimpleRouteJson } from "lib/types"
+import { convertSrjToGraphicsObject } from "../lib"
 import e2e3Fixture from "../fixtures/legacy/assets/e2e3.json"
 
 test("should solve e2e3 single-layer with 0603 jumpers available", async () => {

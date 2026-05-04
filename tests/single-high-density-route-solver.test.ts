@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
-import { SingleHighDensityRouteSolver } from "../lib/solvers/HighDensitySolver/SingleHighDensityRouteSolver"
-import { SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost } from "../lib/solvers/HighDensitySolver/SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost"
-import type { HighDensityIntraNodeRoute } from "../lib/types/high-density-types"
+import { SingleHighDensityRouteSolver } from "lib/solvers/HighDensitySolver/SingleHighDensityRouteSolver"
+import { SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost } from "lib/solvers/HighDensitySolver/SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost"
+import type { HighDensityIntraNodeRoute } from "lib/types/high-density-types"
 
 const baseOpts = {
   connectionName: "conn-a",

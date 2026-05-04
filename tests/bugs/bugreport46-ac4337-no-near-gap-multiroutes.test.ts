@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
-import { AutoroutingPipelineSolver4 } from "../../lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
-import { MAX_STITCH_GAP_DISTANCE_3 } from "../../lib/solvers/RouteStitchingSolver/SingleHighDensityRouteStitchSolver3"
+import { AutoroutingPipelineSolver4 } from "lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
+import { MAX_STITCH_GAP_DISTANCE_3 } from "lib/solvers/RouteStitchingSolver/SingleHighDensityRouteStitchSolver3"
 import bugReport from "../../fixtures/bug-reports/bugreport46-ac4337/bugreport46-ac4337-arduino-uno.json" with {
   type: "json",
 }

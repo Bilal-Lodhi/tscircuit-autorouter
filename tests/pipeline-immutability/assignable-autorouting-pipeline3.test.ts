@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
-import { AssignableAutoroutingPipeline3 } from "../../lib/autorouter-pipelines/AssignableAutoroutingPipeline3/AssignableAutoroutingPipeline3"
-import type { SimpleRouteJson } from "../../lib/types/index"
+import { AssignableAutoroutingPipeline3 } from "lib/autorouter-pipelines/AssignableAutoroutingPipeline3/AssignableAutoroutingPipeline3"
+import type { SimpleRouteJson } from "lib/types"
 import reproJson from "../repro/dip16-basic.json"
 
 test(

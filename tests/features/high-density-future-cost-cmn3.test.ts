@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
-import { IntraNodeRouteSolver } from "../../lib/solvers/HighDensitySolver/IntraNodeSolver"
-import { generateColorMapFromNodeWithPortPoints } from "../../lib/utils/generateColorMapFromNodeWithPortPoints"
+import { IntraNodeRouteSolver } from "lib/solvers/HighDensitySolver/IntraNodeSolver"
+import { generateColorMapFromNodeWithPortPoints } from "lib/utils/generateColorMapFromNodeWithPortPoints"
 import cmn3Node from "../../fixtures/features/high-density-future-cost/high-density-future-cost-cmn3-pipeline4-circuit003-node.json" with {
   type: "json",
 }

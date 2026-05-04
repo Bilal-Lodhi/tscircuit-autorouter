@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test"
-import { JumperHighDensitySolver } from "../../lib/autorouter-pipelines/AssignableAutoroutingPipeline2/JumperHighDensitySolver"
-import { generateColorMapFromNodeWithPortPoints } from "../../lib/utils/generateColorMapFromNodeWithPortPoints"
+import { JumperHighDensitySolver } from "lib/autorouter-pipelines/AssignableAutoroutingPipeline2/JumperHighDensitySolver"
+import { generateColorMapFromNodeWithPortPoints } from "lib/utils/generateColorMapFromNodeWithPortPoints"
 import input from "../../fixtures/features/jumper-high-density/jumper-high-density08-input.json" with {
   type: "json",
 }

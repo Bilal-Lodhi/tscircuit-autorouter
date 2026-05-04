@@ -1,4 +1,4 @@
-import { CapacityMeshSolver } from "../../lib/index"
+import { CapacityMeshSolver } from "lib/index"
 import type { SimpleRouteJson, SimplifiedPcbTrace } from "@tscircuit/core"
 import type {
   AutorouterCompleteEvent,

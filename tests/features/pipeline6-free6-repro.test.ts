@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
-import { AttachProjectedRectsSolver } from "../../lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/AttachProjectedRectsSolver"
-import { PolySingleIntraNodeSolver } from "../../lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/PolySingleIntraNodeSolver"
+import { AttachProjectedRectsSolver } from "lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/AttachProjectedRectsSolver"
+import { PolySingleIntraNodeSolver } from "lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/PolySingleIntraNodeSolver"
 
 test("pipeline6 free-6 extracted node uses conservative sliver projection", () => {
   const polygon = [

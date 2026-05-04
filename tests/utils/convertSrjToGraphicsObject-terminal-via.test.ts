@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
-import { convertSrjToGraphicsObject } from "../../lib/index"
-import type { SimpleRouteJson } from "../../lib/types/index"
+import { convertSrjToGraphicsObject } from "../../lib"
+import type { SimpleRouteJson } from "../../lib/types"
 
 test("convertSrjToGraphicsObject renders vias even when the via is the last route point", () => {
   const srj: SimpleRouteJson = {

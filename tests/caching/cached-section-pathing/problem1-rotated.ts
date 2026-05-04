@@ -1,4 +1,4 @@
-import { CapacityMeshNode, CapacityMeshEdge } from "../../../lib/types/index"
+import { CapacityMeshNode, CapacityMeshEdge } from "lib/types"
 import * as originalProblem from "./problem1"
 
 // Function to rotate a point 90 degrees clockwise around the origin

@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test"
-import { TraceWidthSolver } from "../../../lib/solvers/TraceWidthSolver/TraceWidthSolver"
-import { SimpleRouteConnection } from "../../../lib/types/index"
+import { TraceWidthSolver } from "lib/solvers/TraceWidthSolver/TraceWidthSolver"
+import { SimpleRouteConnection } from "lib/types"
 import input from "../../../fixtures/features/tracewidthsolver/tracewidthsolver02-input.json" with {
   type: "json",
 }

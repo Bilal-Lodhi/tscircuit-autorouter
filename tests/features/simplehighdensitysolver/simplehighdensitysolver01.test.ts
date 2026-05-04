@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test"
-import { SimpleHighDensitySolver } from "../../../lib/autorouter-pipelines/AssignableAutoroutingPipeline2/SimpleHighDensitySolver"
-import { generateColorMapFromNodeWithPortPoints } from "../../../lib/utils/generateColorMapFromNodeWithPortPoints"
+import { SimpleHighDensitySolver } from "lib/autorouter-pipelines/AssignableAutoroutingPipeline2/SimpleHighDensitySolver"
+import { generateColorMapFromNodeWithPortPoints } from "lib/utils/generateColorMapFromNodeWithPortPoints"
 import input from "../../../fixtures/features/simplehighdensitysolver/simplehighdensitysolver01-input.json" with {
   type: "json",
 }

@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
-import { NodeDimensionSubdivisionSolver } from "../lib/solvers/NodeDimensionSubdivisionSolver/NodeDimensionSubdivisionSolver"
-import type { CapacityMeshNode } from "../lib/types/index"
+import { NodeDimensionSubdivisionSolver } from "lib/solvers/NodeDimensionSubdivisionSolver/NodeDimensionSubdivisionSolver"
+import type { CapacityMeshNode } from "lib/types"
 
 const createNode = (
   overrides: Partial<CapacityMeshNode> = {},

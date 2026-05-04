@@ -1,8 +1,8 @@
 import { test, expect } from "bun:test"
 import reproJson from "./dip16-crossing-traces.json"
-import type { SimpleRouteJson } from "../../lib/types/index"
+import type { SimpleRouteJson } from "lib/types"
 import { getLastStepSvg } from "../fixtures/getLastStepSvg"
-import { AssignableAutoroutingPipeline3 } from "../../lib/index"
+import { AssignableAutoroutingPipeline3 } from "lib/index"
 
 test.skip("dip16 crossing traces 0603", () => {
   const solver = new AssignableAutoroutingPipeline3({

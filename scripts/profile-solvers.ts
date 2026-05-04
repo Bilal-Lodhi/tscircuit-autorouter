@@ -3,7 +3,7 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process"
 import * as os from "node:os"
 import * as readline from "node:readline"
-import { AutoroutingPipelineSolver } from "../lib/index"
+import { AutoroutingPipelineSolver } from "../lib"
 import { BaseSolver } from "../lib/solvers/BaseSolver"
 import type { SimpleRouteJson } from "../lib/types/srj-types"
 import {

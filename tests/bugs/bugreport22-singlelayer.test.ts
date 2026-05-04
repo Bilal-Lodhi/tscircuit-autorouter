@@ -2,11 +2,11 @@ import { expect, test } from "bun:test"
 import {
   AssignableAutoroutingPipeline1Solver,
   AssignableAutoroutingPipeline2,
-} from "../../lib/index"
+} from "lib"
 import bugReport from "../../fixtures/bug-reports/bugreport22-2a75ce/bugreport22-2a75ce.json" with {
   type: "json",
 }
-import type { Obstacle, SimpleRouteJson } from "../../lib/types/index"
+import type { Obstacle, SimpleRouteJson } from "lib/types"
 import { getLastStepSvg } from "../fixtures/getLastStepSvg"
 
 test("bugreport22 - singlelayer (subset)", () => {

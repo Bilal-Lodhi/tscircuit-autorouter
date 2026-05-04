@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test"
-import { IntraNodeRouteSolver } from "../../lib/solvers/HighDensitySolver/IntraNodeSolver"
-import { generateColorMapFromNodeWithPortPoints } from "../../lib/utils/generateColorMapFromNodeWithPortPoints"
-import type { NodeWithPortPoints } from "../../lib/types/high-density-types"
+import { IntraNodeRouteSolver } from "lib/solvers/HighDensitySolver/IntraNodeSolver"
+import { generateColorMapFromNodeWithPortPoints } from "lib/utils/generateColorMapFromNodeWithPortPoints"
+import type { NodeWithPortPoints } from "lib/types/high-density-types"
 
 const nodeWithPortPoints: NodeWithPortPoints = {
   capacityMeshNodeId: "cmn_2",

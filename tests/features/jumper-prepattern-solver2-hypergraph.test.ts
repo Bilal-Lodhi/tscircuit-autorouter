@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test"
-import { JumperPrepatternSolver2_HyperGraph } from "../../lib/solvers/JumperPrepatternSolver/JumperPrepatternSolver2_HyperGraph"
-import type { NodeWithPortPoints } from "../../lib/types/high-density-types"
+import { JumperPrepatternSolver2_HyperGraph } from "lib/solvers/JumperPrepatternSolver/JumperPrepatternSolver2_HyperGraph"
+import type { NodeWithPortPoints } from "lib/types/high-density-types"
 
 test("JumperPrepatternSolver2_HyperGraph - single_1206x4 pattern simple route", () => {
   // Create a node large enough for the ~8x8mm single_1206x4 pattern

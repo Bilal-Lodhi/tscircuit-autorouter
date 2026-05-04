@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test"
-import { MultiHeadPolyLineIntraNodeSolver } from "../../lib/solvers/HighDensitySolver/MultiHeadPolyLineIntraNodeSolver/MultiHeadPolyLineIntraNodeSolver"
+import { MultiHeadPolyLineIntraNodeSolver } from "lib/solvers/HighDensitySolver/MultiHeadPolyLineIntraNodeSolver/MultiHeadPolyLineIntraNodeSolver"
 import cn705 from "fixtures/legacy/assets/cn705-nodeWithPortPoints.json" with {
   type: "json",
 }

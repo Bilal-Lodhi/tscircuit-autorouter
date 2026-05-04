@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test"
 import * as dataset01 from "@tscircuit/autorouting-dataset-01"
-import { AutoroutingPipelineSolver4 } from "../../lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
-import { getDrcErrors } from "../../lib/testing/getDrcErrors"
-import { convertToCircuitJson } from "../../lib/testing/utils/convertToCircuitJson"
-import type { SimpleRouteJson } from "../../lib/types/index"
+import { AutoroutingPipelineSolver4 } from "lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
+import { getDrcErrors } from "lib/testing/getDrcErrors"
+import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
+import type { SimpleRouteJson } from "lib/types"
 
 test(
   "pipeline4 dataset01 circuit155 avoids via-to-trace overlaps after high-density routing",

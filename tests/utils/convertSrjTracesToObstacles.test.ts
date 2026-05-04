@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test"
-import type { SimpleRouteJson } from "../../lib/types/index"
+import type { SimpleRouteJson } from "lib/types"
 import {
   convertSrjTracesToObstacles,
   getObstaclesFromSrjTraces,
-} from "../../lib/utils/convertSrjTracesToObstacles"
+} from "lib/utils/convertSrjTracesToObstacles"
 
 const baseSrj: SimpleRouteJson = {
   layerCount: 4,

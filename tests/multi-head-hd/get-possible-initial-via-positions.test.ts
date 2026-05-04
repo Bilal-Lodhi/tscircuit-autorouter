@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test"
-import { getPossibleInitialViaPositions } from "../../lib/solvers/HighDensitySolver/MultiHeadPolyLineIntraNodeSolver/getPossibleInitialViaPositions"
+import { getPossibleInitialViaPositions } from "lib/solvers/HighDensitySolver/MultiHeadPolyLineIntraNodeSolver/getPossibleInitialViaPositions"
 
 test("getPossibleInitialViaPositions1", () => {
   const possiblePositions = getPossibleInitialViaPositions({

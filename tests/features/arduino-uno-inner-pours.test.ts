@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { AutoroutingPipelineSolver } from "../../lib/index"
+import { AutoroutingPipelineSolver } from "lib"
 import {
   ARDUINO_UNO_GROUND_NET,
   ARDUINO_UNO_POWER_NET,

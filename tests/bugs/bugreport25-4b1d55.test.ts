@@ -2,11 +2,11 @@ import { expect, test } from "bun:test"
 import {
   AutoroutingPipeline1_OriginalUnravel,
   AutoroutingPipelineSolver,
-} from "../../lib/index"
+} from "lib"
 import bugReport from "../../fixtures/bug-reports/bugreport25-4b1d55/bugreport25-4b1d55.json" with {
   type: "json",
 }
-import type { SimpleRouteJson } from "../../lib/types/index"
+import type { SimpleRouteJson } from "lib/types"
 import { getLastStepSvg } from "../fixtures/getLastStepSvg"
 
 const srj = bugReport.simple_route_json as SimpleRouteJson

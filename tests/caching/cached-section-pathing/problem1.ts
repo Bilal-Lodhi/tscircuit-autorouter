@@ -1,4 +1,4 @@
-import { CapacityMeshNode, CapacityMeshEdge } from "../../../lib/types/index"
+import { CapacityMeshNode, CapacityMeshEdge } from "lib/types"
 
 // Node Definitions based on multisectioncapacitypathing3.json section* fields
 // Includes nodeA0 from main nodes list as it's referenced in sectionEdges/Terminals

@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test"
 import * as dataset01 from "@tscircuit/autorouting-dataset-01"
-import { getGlobalInMemoryCache } from "../../lib/cache/setupGlobalCaches"
-import { AutoroutingPipelineSolver4 } from "../../lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
-import type { SimpleRouteJson } from "../../lib/types/index"
+import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
+import { AutoroutingPipelineSolver4 } from "lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
+import type { SimpleRouteJson } from "lib/types"
 import { getLastStepSvg } from "tests/fixtures/getLastStepSvg"
 
 test("pipeline4 dataset01 circuit015 visual snapshot", () => {

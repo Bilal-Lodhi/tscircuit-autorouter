@@ -1,13 +1,13 @@
 import { expect, test } from "bun:test"
-import { AutoroutingPipelineSolver } from "../lib/index"
-import { SimpleRouteJson } from "../lib/types/index"
-import { convertSrjToGraphicsObject } from "../lib/index"
+import { AutoroutingPipelineSolver } from "../lib"
+import { SimpleRouteJson } from "lib/types"
+import { convertSrjToGraphicsObject } from "../lib"
 import { getSvgFromGraphicsObject } from "graphics-debug"
 import { AutoroutingPipelineSolver2_PortPointPathing } from "../lib/autorouter-pipelines/AutoroutingPipeline2_PortPointPathing/AutoroutingPipelineSolver2_PortPointPathing"
 import {
   createPortPointSection,
   visualizeSection,
-} from "../lib/solvers/MultiSectionPortPointOptimizer/index"
+} from "../lib/solvers/MultiSectionPortPointOptimizer"
 import { MultiSectionPortPointOptimizer } from "../lib/solvers/MultiSectionPortPointOptimizer/MultiSectionPortPointOptimizer"
 import e2e3Fixture from "../fixtures/legacy/assets/e2e3.json"
 

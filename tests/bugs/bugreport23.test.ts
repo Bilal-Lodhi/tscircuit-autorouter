@@ -1,10 +1,10 @@
 import { expect, test } from "bun:test"
 import { AutoroutingPipelineSolver2_PortPointPathing } from "../../lib/autorouter-pipelines/AutoroutingPipeline2_PortPointPathing/AutoroutingPipelineSolver2_PortPointPathing"
-import type { SimpleRouteJson } from "../../lib/types/index"
+import type { SimpleRouteJson } from "lib/types"
 import bugreport23 from "../../fixtures/bug-reports/bugreport23-LGA15x4/bugreport23-LGA15x4.srj.json" with {
   type: "json",
 }
-import { convertSrjToGraphicsObject } from "../../lib/index"
+import { convertSrjToGraphicsObject } from "lib/index"
 import { stackGraphicsVertically } from "graphics-debug"
 import kluer from "kleur"
 

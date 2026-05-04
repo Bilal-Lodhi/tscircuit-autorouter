@@ -1,12 +1,12 @@
 import { expect, test } from "bun:test"
 import * as dataset01 from "@tscircuit/autorouting-dataset-01"
-import { AutoroutingPipelineSolver4 } from "../lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
-import { Pipeline4HighDensityRepairSolver } from "../lib/solvers/HighDensityRepairSolver/Pipeline4HighDensityRepairSolver"
+import { AutoroutingPipelineSolver4 } from "lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
+import { Pipeline4HighDensityRepairSolver } from "lib/solvers/HighDensityRepairSolver/Pipeline4HighDensityRepairSolver"
 import type {
   HighDensityRoute,
   NodeWithPortPoints,
-} from "../lib/types/high-density-types"
-import type { SimpleRouteJson } from "../lib/types/index"
+} from "lib/types/high-density-types"
+import type { SimpleRouteJson } from "lib/types"
 import { HighDensityForceImproveSolver } from "high-density-repair01/lib/HighDensityForceImproveSolver"
 
 const srj: SimpleRouteJson = {

@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test"
-import { SCALE } from "../../lib/testing/capacity-node-editor/constants"
+import { SCALE } from "lib/testing/capacity-node-editor/constants"
 import {
   CAPACITY_NODE_EDITOR_VIEW_PADDING_PX,
   getInitialCapacityNodeEditorView,
-} from "../../lib/testing/capacity-node-editor/getInitialCapacityNodeEditorView"
+} from "lib/testing/capacity-node-editor/getInitialCapacityNodeEditorView"
 
 describe("getInitialCapacityNodeEditorView", () => {
   test("centers a node at the default editor scale when the viewport is large enough", () => {

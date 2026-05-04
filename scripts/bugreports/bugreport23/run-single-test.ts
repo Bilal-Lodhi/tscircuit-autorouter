@@ -47,7 +47,7 @@ Module._load = function (request: string, parent: any, isMain: boolean) {
 // Let's use a simpler approach - directly copy and modify the solver.
 
 import { AutoroutingPipelineSolver2_PortPointPathing } from "../../../lib/autorouter-pipelines/AutoroutingPipeline2_PortPointPathing/AutoroutingPipelineSolver2_PortPointPathing"
-import type { SimpleRouteJson } from "../../../lib/types/index"
+import type { SimpleRouteJson } from "../../../lib/types"
 import bugreport23 from "../../../fixtures/bug-reports/bugreport23-LGA15x4/bugreport23-LGA15x4.srj.json" with {
   type: "json",
 }

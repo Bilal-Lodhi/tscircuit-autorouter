@@ -1,4 +1,4 @@
-import { CapacityMeshNode, CapacityMeshEdge } from "../../../lib/types/index"
+import { CapacityMeshNode, CapacityMeshEdge } from "lib/types"
 import * as originalProblem from "./problem1"
 
 // Use the same nodes and edges as the original problem

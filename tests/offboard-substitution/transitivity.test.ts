@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
-import { AutoroutingPipelineSolver } from "../../lib/index"
-import type { SimpleRouteJson } from "../../lib/types/index"
+import { AutoroutingPipelineSolver } from "lib"
+import type { SimpleRouteJson } from "lib/types"
 import { getLastStepSvg } from "../fixtures/getLastStepSvg"
 import transitivitySrjData from "./srj/transitivity.srj.json"
 
