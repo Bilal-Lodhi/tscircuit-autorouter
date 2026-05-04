@@ -1,14 +1,14 @@
-import { BaseSolver } from "lib/solvers/BaseSolver"
+import { BaseSolver } from "../../solvers/BaseSolver"
 import { GraphicsObject } from "graphics-debug"
 import type {
   CapacityMeshEdge,
   CapacityMeshNode,
   CapacityPath,
   SimpleRouteConnection,
-} from "lib/types"
-import { getConnectionPointLayer } from "lib/types/srj-types"
-import { isPointInRect } from "lib/utils/isPointInRect"
-import { createNodeMap } from "lib/utils/createNodeMap"
+} from "../../types/index"
+import { getConnectionPointLayer } from "../../types/srj-types"
+import { isPointInRect } from "../../utils/isPointInRect"
+import { createNodeMap } from "../../utils/createNodeMap"
 
 type AnimationState = "showing_original_path" | "showing_fragment" | "done"
 

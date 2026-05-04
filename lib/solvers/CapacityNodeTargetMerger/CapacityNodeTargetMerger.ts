@@ -1,10 +1,10 @@
-import { CapacityMeshNode, SimpleRouteConnection } from "lib/types"
-import { Obstacle } from "lib/types"
+import { CapacityMeshNode, SimpleRouteConnection } from "../../types/index"
+import { Obstacle } from "../../types/index"
 import { BaseSolver } from "../BaseSolver"
 import { GraphicsObject } from "graphics-debug"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
-import { doRectsOverlap } from "lib/utils/doRectsOverlap"
-import { isPointInRect } from "lib/utils/isPointInRect"
+import { doRectsOverlap } from "../../utils/doRectsOverlap"
+import { isPointInRect } from "../../utils/isPointInRect"
 
 /**
  * Merge targets that are close to each other into a single target

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import { CachedIntraNodeRouteSolver } from "lib/solvers/HighDensitySolver/CachedIntraNodeRouteSolver"
-import type { NodeWithPortPoints } from "lib/types/high-density-types"
+import { CachedIntraNodeRouteSolver } from "../../lib/solvers/HighDensitySolver/CachedIntraNodeRouteSolver"
+import type { NodeWithPortPoints } from "../../lib/types/high-density-types"
 
 const makeNode = (): NodeWithPortPoints => ({
   capacityMeshNodeId: "cmn_test",

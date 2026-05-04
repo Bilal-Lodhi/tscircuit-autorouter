@@ -1,4 +1,4 @@
-import type { CapacityMeshNode, CapacityMeshNodeId } from "../../types"
+import type { CapacityMeshNode, CapacityMeshNodeId } from "../../types/index"
 import type { NodeWithPortPoints } from "../../types/high-density-types"
 import { getIntraNodeCrossings } from "../../utils/getIntraNodeCrossings"
 import { getIntraNodeCrossingsUsingCircle } from "../../utils/getIntraNodeCrossingsUsingCircle"

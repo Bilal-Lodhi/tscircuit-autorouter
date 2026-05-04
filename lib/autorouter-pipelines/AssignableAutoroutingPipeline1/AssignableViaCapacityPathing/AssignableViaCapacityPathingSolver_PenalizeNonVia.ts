@@ -1,11 +1,11 @@
-import { CapacityPathingGreedySolver } from "lib/solvers/CapacityPathingSectionSolver/CapacityPathingGreedySolver"
-import type { CapacityHyperParameters } from "lib/solvers/CapacityHyperParameters"
-import type { CapacityMeshNode } from "lib/types"
-import { cloneAndShuffleArray } from "lib/utils/cloneAndShuffleArray"
+import { CapacityPathingGreedySolver } from "../../../solvers/CapacityPathingSectionSolver/CapacityPathingGreedySolver"
+import type { CapacityHyperParameters } from "../../../solvers/CapacityHyperParameters"
+import type { CapacityMeshNode } from "../../../types/index"
+import { cloneAndShuffleArray } from "../../../utils/cloneAndShuffleArray"
 import type {
   Candidate,
   CapacityPathingSolver,
-} from "lib/solvers/CapacityPathingSolver/CapacityPathingSolver"
+} from "../../../solvers/CapacityPathingSolver/CapacityPathingSolver"
 
 type CapacityPathingConstructorParams = ConstructorParameters<
   typeof CapacityPathingGreedySolver

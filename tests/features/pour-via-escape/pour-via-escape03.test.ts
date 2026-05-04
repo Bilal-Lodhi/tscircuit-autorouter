@@ -1,10 +1,10 @@
 import { expect, test } from "bun:test"
-import { AutoroutingPipelineSolver } from "lib"
+import { AutoroutingPipelineSolver } from "../../../lib/index"
 import bugReport from "../../../fixtures/features/pour-via-escape/pour-via-escape03.json" with {
   type: "json",
 }
-import type { SimpleRouteJson } from "lib/types"
-import { mapZToLayerName } from "lib/utils/mapZToLayerName"
+import type { SimpleRouteJson } from "../../../lib/types/index"
+import { mapZToLayerName } from "../../../lib/utils/mapZToLayerName"
 import { getLastStepGraphicsObject } from "../../fixtures/getLastStepGraphicsObject"
 import { getLastStepSvg } from "../../fixtures/getLastStepSvg"
 

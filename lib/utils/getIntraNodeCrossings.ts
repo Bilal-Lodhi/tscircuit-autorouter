@@ -1,5 +1,5 @@
 import { doSegmentsIntersect } from "@tscircuit/math-utils"
-import { NodeWithPortPoints } from "lib/types/high-density-types"
+import { NodeWithPortPoints } from "../types/high-density-types"
 
 // Intersection calculation is only accurate to 0.00001 (0.01mm)
 const intSpace = (a: number) => Math.round(a * 10000)

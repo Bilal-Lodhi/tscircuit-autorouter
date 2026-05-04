@@ -7,7 +7,7 @@ import {
   AutoroutingPipelineSolver2_PortPointPathing,
   AutoroutingPipelineSolver3_HgPortPointPathing,
   AutoroutingPipelineSolver4,
-} from "../lib"
+} from "../lib/index"
 import {
   PipelineStageDebugRunner,
   type StageDebuggablePipelineSolver,

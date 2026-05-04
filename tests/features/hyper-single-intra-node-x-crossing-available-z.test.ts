@@ -1,12 +1,12 @@
 import { expect, test } from "bun:test"
-import { HyperSingleIntraNodeSolver } from "lib/solvers/HyperHighDensitySolver/HyperSingleIntraNodeSolver"
-import type { SimpleRouteJson } from "lib/types"
+import { HyperSingleIntraNodeSolver } from "../../lib/solvers/HyperHighDensitySolver/HyperSingleIntraNodeSolver"
+import type { SimpleRouteJson } from "../../lib/types/index"
 import type {
   HighDensityIntraNodeRoute,
   NodeWithPortPoints,
-} from "lib/types/high-density-types"
-import { convertHdRouteToSimplifiedRoute } from "lib/utils/convertHdRouteToSimplifiedRoute"
-import { convertSrjToGraphicsObject } from "lib/utils/convertSrjToGraphicsObject"
+} from "../../lib/types/high-density-types"
+import { convertHdRouteToSimplifiedRoute } from "../../lib/utils/convertHdRouteToSimplifiedRoute"
+import { convertSrjToGraphicsObject } from "../../lib/utils/convertSrjToGraphicsObject"
 
 const createCrossingNode = (): NodeWithPortPoints => ({
   capacityMeshNodeId: "x-crossing-available-z",

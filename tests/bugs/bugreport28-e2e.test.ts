@@ -2,9 +2,9 @@ import { expect, test } from "bun:test"
 import bugReport from "../../fixtures/bug-reports/bugreport28-18a9ef/bugreport28-18a9ef.json" with {
   type: "json",
 }
-import type { SimpleRouteJson } from "lib/types"
+import type { SimpleRouteJson } from "../../lib/types/index"
 import { getLastStepSvg } from "../fixtures/getLastStepSvg"
-import { AutoroutingPipelineSolver2_PortPointPathing } from "lib/autorouter-pipelines"
+import { AutoroutingPipelineSolver2_PortPointPathing } from "../../lib/autorouter-pipelines/index"
 
 const srj = bugReport.simple_route_json as SimpleRouteJson
 

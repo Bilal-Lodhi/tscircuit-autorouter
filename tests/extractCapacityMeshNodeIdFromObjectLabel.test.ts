@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { extractCapacityMeshNodeIdFromObjectLabel } from "lib/testing/utils/extractCapacityMeshNodeIdFromObjectLabel"
+import { extractCapacityMeshNodeIdFromObjectLabel } from "../lib/testing/utils/extractCapacityMeshNodeIdFromObjectLabel"
 
 test("extractCapacityMeshNodeIdFromObjectLabel parses plain node labels", () => {
   expect(extractCapacityMeshNodeIdFromObjectLabel("cmn_0 (CENTER)")).toBe(

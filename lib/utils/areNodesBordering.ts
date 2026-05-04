@@ -1,4 +1,4 @@
-import { CapacityMeshNode } from "../types"
+import { CapacityMeshNode } from "../types/index"
 
 export function areNodesBordering(
   node1: CapacityMeshNode,

@@ -1,7 +1,7 @@
 import { useState } from "react"
-import type { NodeWithPortPoints } from "lib/types/high-density-types"
-import { HyperHighDensityDebugger } from "lib/testing/HyperHighDensityDebugger"
-import CapacityNodeEditor from "lib/testing/CapacityNodeEditor"
+import type { NodeWithPortPoints } from "../types/high-density-types"
+import { HyperHighDensityDebugger } from "./HyperHighDensityDebugger"
+import CapacityNodeEditor from "./CapacityNodeEditor"
 
 export interface HighDensityInteractiveNodeDebuggerProps {
   nodeWithPortPoints: NodeWithPortPoints

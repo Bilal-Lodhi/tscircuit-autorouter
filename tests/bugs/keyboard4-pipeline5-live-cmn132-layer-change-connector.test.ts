@@ -2,15 +2,15 @@ import { expect, test } from "bun:test"
 import keyboard4 from "../../fixtures/legacy/assets/keyboard4.json" with {
   type: "json",
 }
-import { AutoroutingPipelineSolver5 } from "lib/autorouter-pipelines/AutoroutingPipeline5_HdCache/AutoroutingPipelineSolver5_HdCache"
-import { SameNetViaMergerSolver } from "lib/solvers/SameNetViaMergerSolver/SameNetViaMergerSolver"
-import { MultiSimplifiedPathSolver } from "lib/solvers/SimplifiedPathSolver/MultiSimplifiedPathSolver"
-import { UselessViaRemovalSolver } from "lib/solvers/UselessViaRemovalSolver/UselessViaRemovalSolver"
-import type { SimpleRouteJson } from "lib/types"
+import { AutoroutingPipelineSolver5 } from "../../lib/autorouter-pipelines/AutoroutingPipeline5_HdCache/AutoroutingPipelineSolver5_HdCache"
+import { SameNetViaMergerSolver } from "../../lib/solvers/SameNetViaMergerSolver/SameNetViaMergerSolver"
+import { MultiSimplifiedPathSolver } from "../../lib/solvers/SimplifiedPathSolver/MultiSimplifiedPathSolver"
+import { UselessViaRemovalSolver } from "../../lib/solvers/UselessViaRemovalSolver/UselessViaRemovalSolver"
+import type { SimpleRouteJson } from "../../lib/types/index"
 import type {
   HighDensityRoute,
   NodeWithPortPoints,
-} from "lib/types/high-density-types"
+} from "../../lib/types/high-density-types"
 
 const EPSILON = 1e-3
 

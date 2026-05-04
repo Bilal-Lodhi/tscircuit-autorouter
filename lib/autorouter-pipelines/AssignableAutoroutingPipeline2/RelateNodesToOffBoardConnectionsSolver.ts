@@ -1,16 +1,16 @@
-import { BaseSolver } from "lib/solvers/BaseSolver"
+import { BaseSolver } from "../../solvers/BaseSolver"
 import {
   CapacityMeshNode,
   CapacityMeshNodeId,
   Obstacle,
   OffBoardConnectionId,
   SimpleRouteJson,
-} from "lib/types"
-import { CapacityNodeTree } from "lib/data-structures/CapacityNodeTree"
+} from "../../types/index"
+import { CapacityNodeTree } from "../../data-structures/CapacityNodeTree"
 import { ConnectivityMap } from "connectivity-map"
 import { GraphicsObject } from "graphics-debug"
-import { getStringColor } from "lib/solvers/colors"
-import { createObjectsWithZLayers } from "lib/utils/createObjectsWithZLayers"
+import { getStringColor } from "../../solvers/colors"
+import { createObjectsWithZLayers } from "../../utils/createObjectsWithZLayers"
 
 /**
  * This solver looks at every obstacle with off board connections (one per step),

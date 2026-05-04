@@ -1,10 +1,10 @@
-import { BaseSolver } from "lib/solvers/BaseSolver"
+import { BaseSolver } from "../../solvers/BaseSolver"
 import type { GraphicsObject } from "graphics-debug"
 import type {
   SimpleRouteJson,
   Obstacle,
   OffBoardConnectionId,
-} from "../../types"
+} from "../../types/index"
 import {
   createColorMapFromStrings,
   safeTransparentize,

@@ -1,13 +1,13 @@
 import type { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { GraphicsObject } from "graphics-debug"
-import { BaseSolver } from "lib/solvers/BaseSolver"
-import { HyperSingleIntraNodeSolver } from "lib/solvers/HyperHighDensitySolver/HyperSingleIntraNodeSolver"
+import { BaseSolver } from "../../solvers/BaseSolver"
+import { HyperSingleIntraNodeSolver } from "../../solvers/HyperHighDensitySolver/HyperSingleIntraNodeSolver"
 import type {
   HighDensityIntraNodeRoute,
   NodeWithPortPoints,
   PortPoint,
-} from "lib/types/high-density-types"
-import { combineVisualizations } from "lib/utils/combineVisualizations"
+} from "../../types/high-density-types"
+import { combineVisualizations } from "../../utils/combineVisualizations"
 import { projectPointToRectBoundary } from "./geometry"
 import type { PolyNodeWithPortPoints } from "./types"
 

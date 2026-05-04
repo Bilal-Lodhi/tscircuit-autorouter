@@ -13,7 +13,7 @@ import type {
   CapacityMeshNode,
   CapacityMeshNodeId,
   SimpleRouteJson,
-} from "../../types"
+} from "../../types/index"
 import type { NodeWithPortPoints } from "../../types/high-density-types"
 import {
   precomputeSharedParams,

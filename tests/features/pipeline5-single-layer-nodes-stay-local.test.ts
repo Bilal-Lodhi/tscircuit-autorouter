@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
-import { Pipeline5HdCacheHighDensitySolver } from "lib/autorouter-pipelines/AutoroutingPipeline5_HdCache/Pipeline5HdCacheHighDensitySolver"
-import type { NodeWithPortPoints } from "lib/types/high-density-types"
+import { Pipeline5HdCacheHighDensitySolver } from "../../lib/autorouter-pipelines/AutoroutingPipeline5_HdCache/Pipeline5HdCacheHighDensitySolver"
+import type { NodeWithPortPoints } from "../../lib/types/high-density-types"
 
 test.skip("pipeline5 keeps single-layer high-density nodes local even when pair count is >= 3", () => {
   const singleLayerNode: NodeWithPortPoints = {

@@ -5,20 +5,20 @@ import {
   pointToSegmentDistance,
 } from "@tscircuit/math-utils"
 import type { GraphicsObject } from "graphics-debug"
-import { BaseSolver } from "lib/solvers/BaseSolver"
+import { BaseSolver } from "../../BaseSolver"
 import {
   HighDensityIntraNodeRoute,
   NodeWithPortPoints,
-} from "lib/types/high-density-types"
-import { calculatePerpendicularPointsAtDistance } from "lib/utils/calculatePointsAtDistance"
+} from "../../../types/high-density-types"
+import { calculatePerpendicularPointsAtDistance } from "../../../utils/calculatePointsAtDistance"
 import {
   type PointBoundsPosition,
   classifyPointInBounds,
-} from "lib/utils/classifyPointInBounds"
-import { findClosestPointToABCWithinBounds } from "lib/utils/findClosestPointToABCWithinBounds"
-import { findPointToGetAroundCircle } from "lib/utils/findPointToGetAroundCircle"
-import { getIntraNodeCrossings } from "lib/utils/getIntraNodeCrossings"
-import { snapToNearestBound } from "lib/utils/snapToNearestBound"
+} from "../../../utils/classifyPointInBounds"
+import { findClosestPointToABCWithinBounds } from "../../../utils/findClosestPointToABCWithinBounds"
+import { findPointToGetAroundCircle } from "../../../utils/findPointToGetAroundCircle"
+import { getIntraNodeCrossings } from "../../../utils/getIntraNodeCrossings"
+import { snapToNearestBound } from "../../../utils/snapToNearestBound"
 import {
   calculateTraversalPercentages,
   pointToAngle,

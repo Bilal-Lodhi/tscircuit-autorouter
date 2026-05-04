@@ -1,7 +1,7 @@
 import type {
   HighDensityIntraNodeRouteWithJumpers,
   NodeWithPortPoints,
-} from "lib/types/high-density-types"
+} from "../../types/high-density-types"
 import { IntraNodeSolverWithJumpers } from "./IntraNodeSolverWithJumpers"
 import {
   HyperParameterSupervisorSolver,

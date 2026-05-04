@@ -1,9 +1,9 @@
 import { describe, expect, it, beforeEach } from "bun:test"
-import { InMemoryCache } from "lib/cache/InMemoryCache"
-import { CachedHyperCapacityPathingSingleSectionSolver } from "lib/solvers/CapacityPathingSectionSolver/CachedHyperCapacityPathingSingleSectionSolver"
+import { InMemoryCache } from "../../../lib/cache/InMemoryCache"
+import { CachedHyperCapacityPathingSingleSectionSolver } from "../../../lib/solvers/CapacityPathingSectionSolver/CachedHyperCapacityPathingSingleSectionSolver"
 import * as problem1 from "./problem1"
 import * as problem1Rotated from "./problem1-rotated"
-import { CapacityPathingSingleSectionPathingSolver } from "lib/solvers/CapacityPathingSectionSolver/CapacityPathingSingleSectionSolver"
+import { CapacityPathingSingleSectionPathingSolver } from "../../../lib/solvers/CapacityPathingSectionSolver/CapacityPathingSingleSectionSolver"
 import { getSvgFromGraphicsObject } from "graphics-debug"
 
 describe("CachedHyperCapacityPathingSingleSectionSolver Rotational Invariance", () => {

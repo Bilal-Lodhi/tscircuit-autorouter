@@ -1,9 +1,9 @@
-import { ObstacleSpatialHashIndex } from "lib/data-structures/ObstacleTree"
+import { ObstacleSpatialHashIndex } from "../../data-structures/ObstacleTree"
 import { BaseSolver } from "../BaseSolver"
 import {
   HighDensityRoute,
   HighDensityRouteSpatialIndex,
-} from "lib/data-structures/HighDensityRouteSpatialIndex"
+} from "../../data-structures/HighDensityRouteSpatialIndex"
 import { segmentToBoxMinDistance } from "@tscircuit/math-utils"
 import { GraphicsObject } from "graphics-debug"
 

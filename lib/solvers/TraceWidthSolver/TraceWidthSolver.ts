@@ -1,12 +1,16 @@
 import { BaseSolver } from "../BaseSolver"
-import { HighDensityRoute } from "lib/types/high-density-types"
-import { Obstacle, SimpleRouteConnection, SimpleRouteJson } from "lib/types"
+import { HighDensityRoute } from "../../types/high-density-types"
+import {
+  Obstacle,
+  SimpleRouteConnection,
+  SimpleRouteJson,
+} from "../../types/index"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
-import { ObstacleSpatialHashIndex } from "lib/data-structures/ObstacleTree"
-import { HighDensityRouteSpatialIndex } from "lib/data-structures/HighDensityRouteSpatialIndex"
+import { ObstacleSpatialHashIndex } from "../../data-structures/ObstacleTree"
+import { HighDensityRouteSpatialIndex } from "../../data-structures/HighDensityRouteSpatialIndex"
 import { GraphicsObject } from "graphics-debug"
-import { getJumpersGraphics } from "lib/utils/getJumperGraphics"
-import { createObjectsWithZLayers } from "lib/utils/createObjectsWithZLayers"
+import { getJumpersGraphics } from "../../utils/getJumperGraphics"
+import { createObjectsWithZLayers } from "../../utils/createObjectsWithZLayers"
 
 const CURSOR_STEP_DISTANCE = 0.1
 

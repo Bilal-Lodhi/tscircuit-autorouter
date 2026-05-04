@@ -1,6 +1,6 @@
-import type { ConnectionPoint, Obstacle } from "lib/types"
-import { getConnectionPointLayers } from "lib/types/srj-types"
-import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
+import type { ConnectionPoint, Obstacle } from "../types/index"
+import { getConnectionPointLayers } from "../types/srj-types"
+import { mapLayerNameToZ } from "./mapLayerNameToZ"
 
 export const getGraphicsLayerFromLayerNames = (
   layerNames: readonly string[],

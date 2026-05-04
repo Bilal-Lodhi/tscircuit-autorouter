@@ -1,4 +1,4 @@
-import type { Obstacle, SimpleRouteJson } from "lib/types"
+import type { Obstacle, SimpleRouteJson } from "../types/index"
 
 const normalizeRotation = (rotationDegrees: number) =>
   ((rotationDegrees % 360) + 360) % 360

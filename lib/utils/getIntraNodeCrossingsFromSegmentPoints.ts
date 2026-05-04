@@ -1,5 +1,5 @@
 import { doSegmentsIntersect } from "@tscircuit/math-utils"
-import { SegmentPoint } from "lib/solvers/UnravelSolver/types"
+import { SegmentPoint } from "../solvers/UnravelSolver/types"
 
 export const getIntraNodeCrossingsFromSegmentPoints = (
   segmentPoints: SegmentPoint[],

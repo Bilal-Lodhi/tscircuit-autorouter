@@ -1,9 +1,9 @@
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { GraphicsObject } from "graphics-debug"
-import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
-import type { CapacityMeshNodeId } from "lib/types/capacity-mesh-types"
-import { combineVisualizations } from "lib/utils/combineVisualizations"
-import { mergeRouteSegments } from "lib/utils/mergeRouteSegments"
+import { getGlobalInMemoryCache } from "../../cache/setupGlobalCaches"
+import type { CapacityMeshNodeId } from "../../types/capacity-mesh-types"
+import { combineVisualizations } from "../../utils/combineVisualizations"
+import { mergeRouteSegments } from "../../utils/mergeRouteSegments"
 import type {
   HighDensityIntraNodeRoute,
   NodeWithPortPoints,

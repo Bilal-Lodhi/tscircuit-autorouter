@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test"
-import { HighDensitySolver } from "lib/solvers/HighDensitySolver/HighDensitySolver"
+import { HighDensitySolver } from "../../lib/solvers/HighDensitySolver/HighDensitySolver"
 
 const inputs = {
   nodePortPoints: [

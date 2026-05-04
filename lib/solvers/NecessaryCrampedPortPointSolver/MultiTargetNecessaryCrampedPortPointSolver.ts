@@ -3,7 +3,7 @@ import {
   CapacityMeshNode,
   CapacityMeshNodeId,
   SimpleRouteJson,
-} from "lib/types"
+} from "../../types/index"
 import {
   SegmentPortPoint,
   SharedEdgeSegment,

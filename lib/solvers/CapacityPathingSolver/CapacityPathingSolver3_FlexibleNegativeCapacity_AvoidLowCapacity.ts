@@ -1,4 +1,4 @@
-import type { CapacityMeshNode } from "lib/types"
+import type { CapacityMeshNode } from "../../types/index"
 import { CapacityPathingSolver, type Candidate } from "./CapacityPathingSolver"
 
 export class CapacityPathingSolver3_FlexibleNegativeCapacity_AvoidLowCapacity extends CapacityPathingSolver {

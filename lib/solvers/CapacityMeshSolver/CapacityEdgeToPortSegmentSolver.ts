@@ -4,7 +4,7 @@ import type {
   CapacityMeshNode,
   CapacityMeshNodeId,
   CapacityPath,
-} from "../../types"
+} from "../../types/index"
 import type { NodePortSegment } from "../../types/capacity-edges-to-port-segments-types"
 import { BaseSolver } from "../BaseSolver"
 import { getNodeEdgeMap } from "./getNodeEdgeMap"

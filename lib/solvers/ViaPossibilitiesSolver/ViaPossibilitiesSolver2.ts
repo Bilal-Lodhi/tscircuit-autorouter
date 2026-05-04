@@ -10,11 +10,11 @@ import {
   segmentToSegmentMinDistance,
 } from "@tscircuit/math-utils"
 import { GraphicsObject } from "graphics-debug"
-import { NodeWithPortPoints } from "lib/types/high-density-types"
-import { cloneAndShuffleArray } from "lib/utils/cloneAndShuffleArray"
-import { generateColorMapFromNodeWithPortPoints } from "lib/utils/generateColorMapFromNodeWithPortPoints"
-import { getBoundsFromNodeWithPortPoints } from "lib/utils/getBoundsFromNodeWithPortPoints"
-import { PortPairMap, getPortPairMap } from "lib/utils/getPortPairs"
+import { NodeWithPortPoints } from "../../types/high-density-types"
+import { cloneAndShuffleArray } from "../../utils/cloneAndShuffleArray"
+import { generateColorMapFromNodeWithPortPoints } from "../../utils/generateColorMapFromNodeWithPortPoints"
+import { getBoundsFromNodeWithPortPoints } from "../../utils/getBoundsFromNodeWithPortPoints"
+import { PortPairMap, getPortPairMap } from "../../utils/getPortPairs"
 import { BaseSolver } from "../BaseSolver"
 import { safeTransparentize } from "../colors"
 

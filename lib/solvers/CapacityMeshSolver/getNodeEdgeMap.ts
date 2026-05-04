@@ -1,4 +1,4 @@
-import type { CapacityMeshEdge, CapacityMeshNodeId } from "../../types"
+import type { CapacityMeshEdge, CapacityMeshNodeId } from "../../types/index"
 
 export function getNodeEdgeMap(
   edges: CapacityMeshEdge[],

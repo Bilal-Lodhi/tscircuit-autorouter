@@ -2,35 +2,35 @@ import { HyperGraphSectionOptimizer } from "@tscircuit/hypergraph"
 import { RectDiffPipeline } from "@tscircuit/rectdiff"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { GraphicsObject, Line } from "graphics-debug"
-import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
-import { CacheProvider } from "lib/cache/types"
-import { MultiTargetNecessaryCrampedPortPointSolver } from "lib/solvers/NecessaryCrampedPortPointSolver/MultiTargetNecessaryCrampedPortPointSolver"
+import { getGlobalInMemoryCache } from "../../cache/setupGlobalCaches"
+import { CacheProvider } from "../../cache/types"
+import { MultiTargetNecessaryCrampedPortPointSolver } from "../../solvers/NecessaryCrampedPortPointSolver/MultiTargetNecessaryCrampedPortPointSolver"
 import {
   HgPortPointPathingSolver,
   buildHyperGraph,
-} from "lib/solvers/PortPointPathingSolver/hgportpointpathingsolver"
-import { computeCostPerRegion } from "lib/solvers/PortPointPathingSolver/hgportpointpathingsolver/computeCost"
-import { UniformPortDistributionSolver } from "lib/solvers/UniformPortDistributionSolver/UniformPortDistributionSolver"
-import { getColorMap } from "lib/solvers/colors"
+} from "../../solvers/PortPointPathingSolver/hgportpointpathingsolver/index"
+import { computeCostPerRegion } from "../../solvers/PortPointPathingSolver/hgportpointpathingsolver/computeCost"
+import { UniformPortDistributionSolver } from "../../solvers/UniformPortDistributionSolver/UniformPortDistributionSolver"
+import { getColorMap } from "../../solvers/colors"
 import {
   CapacityMeshEdge,
   CapacityMeshNode,
   SimpleRouteJson,
   SimplifiedPcbTrace,
   SimplifiedPcbTraces,
-} from "lib/types"
-import { HighDensityRoute } from "lib/types/high-density-types"
-import { combineVisualizations } from "lib/utils/combineVisualizations"
-import { convertHdRouteToSimplifiedRoute } from "lib/utils/convertHdRouteToSimplifiedRoute"
-import { convertSrjToGraphicsObject } from "lib/utils/convertSrjToGraphicsObject"
-import { createObstacleLabelFormatter } from "lib/utils/formatObstacleLabel"
+} from "../../types/index"
+import { HighDensityRoute } from "../../types/high-density-types"
+import { combineVisualizations } from "../../utils/combineVisualizations"
+import { convertHdRouteToSimplifiedRoute } from "../../utils/convertHdRouteToSimplifiedRoute"
+import { convertSrjToGraphicsObject } from "../../utils/convertSrjToGraphicsObject"
+import { createObstacleLabelFormatter } from "../../utils/formatObstacleLabel"
 import {
   getGraphicsLayerForConnectionPoint,
   getGraphicsLayerForObstacle,
-} from "lib/utils/getGraphicsObjectLayer"
-import { getConnectivityMapFromSimpleRouteJson } from "lib/utils/getConnectivityMapFromSimpleRouteJson"
-import { getViaDimensions } from "lib/utils/getViaDimensions"
-import { calculateOptimalCapacityDepth } from "lib/utils/getTunedTotalCapacity1"
+} from "../../utils/getGraphicsObjectLayer"
+import { getConnectivityMapFromSimpleRouteJson } from "../../utils/getConnectivityMapFromSimpleRouteJson"
+import { getViaDimensions } from "../../utils/getViaDimensions"
+import { calculateOptimalCapacityDepth } from "../../utils/getTunedTotalCapacity1"
 import { AvailableSegmentPointSolver } from "../../solvers/AvailableSegmentPointSolver/AvailableSegmentPointSolver"
 import { BaseSolver } from "../../solvers/BaseSolver"
 import { CapacityMeshEdgeSolver } from "../../solvers/CapacityMeshSolver/CapacityMeshEdgeSolver"
@@ -38,7 +38,7 @@ import { CapacityMeshEdgeSolver2_NodeTreeOptimization } from "../../solvers/Capa
 import { CapacityNodeTargetMerger } from "../../solvers/CapacityNodeTargetMerger/CapacityNodeTargetMerger"
 import { DeadEndSolver } from "../../solvers/DeadEndSolver/DeadEndSolver"
 import { HighDensitySolver } from "../../solvers/HighDensitySolver/HighDensitySolver"
-import { MultiSectionPortPointOptimizer } from "../../solvers/MultiSectionPortPointOptimizer"
+import { MultiSectionPortPointOptimizer } from "../../solvers/MultiSectionPortPointOptimizer/index"
 import { NetToPointPairsSolver } from "../../solvers/NetToPointPairsSolver/NetToPointPairsSolver"
 import { NetToPointPairsSolver2_OffBoardConnection } from "../../solvers/NetToPointPairsSolver2_OffBoardConnection/NetToPointPairsSolver2_OffBoardConnection"
 import { MultipleHighDensityRouteStitchSolver } from "../../solvers/RouteStitchingSolver/MultipleHighDensityRouteStitchSolver"

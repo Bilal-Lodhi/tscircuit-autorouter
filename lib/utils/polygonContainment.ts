@@ -3,7 +3,7 @@ import {
   getSegmentIntersection,
   pointToSegmentDistance,
 } from "@tscircuit/math-utils"
-import { minimumDistanceBetweenSegments } from "lib/utils/minimumDistanceBetweenSegments"
+import { minimumDistanceBetweenSegments } from "./minimumDistanceBetweenSegments"
 
 export type PolygonPoint = { x: number; y: number }
 

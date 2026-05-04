@@ -1,12 +1,12 @@
 import type { GraphicsObject } from "graphics-debug"
-import { BaseSolver } from "lib/solvers/BaseSolver"
-import { safeTransparentize } from "lib/solvers/colors"
-import type { CapacityMeshNodeId } from "lib/types/capacity-mesh-types"
+import { BaseSolver } from "../../solvers/BaseSolver"
+import { safeTransparentize } from "../../solvers/colors"
+import type { CapacityMeshNodeId } from "../../types/capacity-mesh-types"
 import type {
   HighDensityIntraNodeRoute,
   PortPoint,
-} from "lib/types/high-density-types"
-import { mergeRouteSegments } from "lib/utils/mergeRouteSegments"
+} from "../../types/high-density-types"
+import { mergeRouteSegments } from "../../utils/mergeRouteSegments"
 import {
   applyMatrixToPoint,
   projectPointToRectBoundary,

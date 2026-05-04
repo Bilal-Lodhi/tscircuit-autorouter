@@ -1,4 +1,4 @@
-import type { CapacityMeshNodeId, SimpleRouteJson } from "../../types"
+import type { CapacityMeshNodeId, SimpleRouteJson } from "../../types/index"
 import type { PortPoint } from "../../types/high-density-types"
 import type {
   ConnectionPathResult,

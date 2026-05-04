@@ -5,9 +5,9 @@ import type {
 } from "../../types/capacity-mesh-types"
 import { BaseSolver } from "../BaseSolver"
 import { distance } from "@tscircuit/math-utils"
-import { areNodesBordering } from "lib/utils/areNodesBordering"
+import { areNodesBordering } from "../../utils/areNodesBordering"
 import { CapacityMeshEdgeSolver } from "./CapacityMeshEdgeSolver"
-import { CapacityNodeTree } from "lib/data-structures/CapacityNodeTree"
+import { CapacityNodeTree } from "../../data-structures/CapacityNodeTree"
 
 export class CapacityMeshEdgeSolver2_NodeTreeOptimization extends CapacityMeshEdgeSolver {
   override getSolverName(): string {

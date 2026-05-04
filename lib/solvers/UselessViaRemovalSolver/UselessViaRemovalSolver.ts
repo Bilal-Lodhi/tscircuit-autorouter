@@ -1,14 +1,14 @@
-import { ObstacleSpatialHashIndex } from "lib/data-structures/ObstacleTree"
-import { SegmentTree } from "lib/data-structures/SegmentTree"
+import { ObstacleSpatialHashIndex } from "../../data-structures/ObstacleTree"
+import { SegmentTree } from "../../data-structures/SegmentTree"
 import { BaseSolver } from "../BaseSolver"
-import { HighDensityRoute } from "lib/types/high-density-types"
-import { Obstacle } from "lib/types"
+import { HighDensityRoute } from "../../types/high-density-types"
+import { Obstacle } from "../../types/index"
 import { GraphicsObject } from "graphics-debug"
-import { mapZToLayerName } from "lib/utils/mapZToLayerName"
-import { HighDensityRouteSpatialIndex } from "lib/data-structures/HighDensityRouteSpatialIndex"
+import { mapZToLayerName } from "../../utils/mapZToLayerName"
+import { HighDensityRouteSpatialIndex } from "../../data-structures/HighDensityRouteSpatialIndex"
 import { SingleRouteUselessViaRemovalSolver } from "./SingleRouteUselessViaRemovalSolver"
-import { getJumpersGraphics } from "lib/utils/getJumperGraphics"
-import { createObjectsWithZLayers } from "lib/utils/createObjectsWithZLayers"
+import { getJumpersGraphics } from "../../utils/getJumperGraphics"
+import { createObjectsWithZLayers } from "../../utils/createObjectsWithZLayers"
 
 export interface UselessViaRemovalSolverInput {
   unsimplifiedHdRoutes: HighDensityRoute[]

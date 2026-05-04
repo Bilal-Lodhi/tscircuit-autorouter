@@ -1,10 +1,10 @@
 {
   "name": "@tscircuit/capacity-autorouter",
-  "main": "./dist/index.js",
+  "main": "./lib/index.ts",
   "version": "0.0.489",
   "type": "module",
   "files": [
-    "dist"
+    "lib"
   ],
   "scripts": {
     "start": "cosmos",
@@ -83,5 +83,9 @@
     "@tscircuit/high-density-a01": "^0.0.37",
     "fast-json-stable-stringify": "^2.1.0",
     "object-hash": "^3.0.0"
+  },
+  "types": "./lib/index.ts",
+  "exports": {
+    ".": "./lib/index.ts"
   }
 }

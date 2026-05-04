@@ -1,6 +1,6 @@
 import { pointToBoxDistance } from "@tscircuit/math-utils"
-import type { ConnectionPoint } from "lib/types"
-import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
+import type { ConnectionPoint } from "../../../types/index"
+import { mapLayerNameToZ } from "../../../utils/mapLayerNameToZ"
 import { sharedZLayers } from "./sharedZLayers"
 import type { RegionHg } from "./types"
 

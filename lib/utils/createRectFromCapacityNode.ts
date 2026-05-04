@@ -1,5 +1,5 @@
 import { Rect } from "graphics-debug"
-import { CapacityMeshNode } from "lib/types"
+import { CapacityMeshNode } from "../types/index"
 
 export const createRectFromCapacityNode = (
   node: CapacityMeshNode,

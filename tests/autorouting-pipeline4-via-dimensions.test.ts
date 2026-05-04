@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test"
-import { AutoroutingPipelineSolver4 } from "lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
-import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
-import type { NodeWithPortPoints } from "lib/types/high-density-types"
-import type { SimpleRouteJson } from "lib/types"
-import { convertSrjToGraphicsObject } from "lib/utils/convertSrjToGraphicsObject"
+import { AutoroutingPipelineSolver4 } from "../lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
+import { convertToCircuitJson } from "../lib/testing/utils/convertToCircuitJson"
+import type { NodeWithPortPoints } from "../lib/types/high-density-types"
+import type { SimpleRouteJson } from "../lib/types/index"
+import { convertSrjToGraphicsObject } from "../lib/utils/convertSrjToGraphicsObject"
 
 const srj: SimpleRouteJson = {
   layerCount: 2,

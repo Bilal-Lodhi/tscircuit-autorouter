@@ -1,4 +1,4 @@
-import { NodeWithPortPoints } from "lib/types/high-density-types"
+import { NodeWithPortPoints } from "../types/high-density-types"
 import type { Point3 } from "@tscircuit/math-utils"
 
 export type PortPairMap = Map<

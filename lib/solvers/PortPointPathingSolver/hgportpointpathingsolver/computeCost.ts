@@ -1,6 +1,6 @@
 import { Region } from "@tscircuit/hypergraph"
-import { calculateNodeProbabilityOfFailure } from "lib/solvers/UnravelSolver/calculateCrossingProbabilityOfFailure"
-import { getIntraNodeCrossingsUsingCircle } from "lib/utils/getIntraNodeCrossingsUsingCircle"
+import { calculateNodeProbabilityOfFailure } from "../../UnravelSolver/calculateCrossingProbabilityOfFailure"
+import { getIntraNodeCrossingsUsingCircle } from "../../../utils/getIntraNodeCrossingsUsingCircle"
 
 export const computeCostPerRegion = (region: Region) => {
   if (!region.assignments || region.assignments.length === 0) {

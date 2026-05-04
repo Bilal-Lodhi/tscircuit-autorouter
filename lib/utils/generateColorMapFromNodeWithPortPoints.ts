@@ -1,4 +1,4 @@
-import { NodeWithPortPoints } from "lib/types/high-density-types"
+import { NodeWithPortPoints } from "../types/high-density-types"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 export const generateColorMapFromNodeWithPortPoints = (
   nodeWithPortPoints: NodeWithPortPoints,

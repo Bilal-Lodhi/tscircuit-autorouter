@@ -1,11 +1,11 @@
 import { RectDiffPipeline } from "@tscircuit/rectdiff"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { GraphicsObject } from "graphics-debug"
-import { JUMPER_DIMENSIONS, JumperFootprint } from "lib/utils/jumperSizes"
+import { JUMPER_DIMENSIONS, JumperFootprint } from "../../utils/jumperSizes"
 import { RelateNodesToOffBoardConnectionsSolver } from "../../autorouter-pipelines/AssignableAutoroutingPipeline2/RelateNodesToOffBoardConnectionsSolver"
 import { SimpleHighDensitySolver } from "../../autorouter-pipelines/AssignableAutoroutingPipeline2/SimpleHighDensitySolver"
-import type { SimpleRouteConnection, SimpleRouteJson } from "../../types"
-import type { CapacityMeshEdge, CapacityMeshNode } from "../../types"
+import type { SimpleRouteConnection, SimpleRouteJson } from "../../types/index"
+import type { CapacityMeshEdge, CapacityMeshNode } from "../../types/index"
 import type {
   HighDensityIntraNodeRoute,
   HighDensityIntraNodeRouteWithJumpers,
@@ -17,7 +17,7 @@ import { getConnectivityMapFromSimpleRouteJson } from "../../utils/getConnectivi
 import { AvailableSegmentPointSolver } from "../AvailableSegmentPointSolver/AvailableSegmentPointSolver"
 import { BaseSolver } from "../BaseSolver"
 import { CapacityMeshEdgeSolver2_NodeTreeOptimization } from "../CapacityMeshSolver/CapacityMeshEdgeSolver2_NodeTreeOptimization"
-import { MultiSectionPortPointOptimizer } from "../MultiSectionPortPointOptimizer"
+import { MultiSectionPortPointOptimizer } from "../MultiSectionPortPointOptimizer/index"
 import {
   HyperPortPointPathingSolver,
   HyperPortPointPathingSolverParams,

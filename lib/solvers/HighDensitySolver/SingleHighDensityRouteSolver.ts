@@ -9,8 +9,8 @@ import type { GraphicsObject } from "graphics-debug"
 import {
   Node,
   SingleRouteCandidatePriorityQueue,
-} from "lib/data-structures/SingleRouteCandidatePriorityQueue"
-import type { HighDensityIntraNodeRoute } from "lib/types/high-density-types"
+} from "../../data-structures/SingleRouteCandidatePriorityQueue"
+import type { HighDensityIntraNodeRoute } from "../../types/high-density-types"
 import { BaseSolver } from "../BaseSolver"
 import { HighDensityHyperParameters } from "./HighDensityHyperParameters"
 

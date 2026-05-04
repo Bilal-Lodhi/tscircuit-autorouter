@@ -1,5 +1,5 @@
 import type { GraphicsObject } from "graphics-debug"
-import { BaseSolver } from "lib/solvers/BaseSolver"
+import { BaseSolver } from "../../solvers/BaseSolver"
 import { computeProjectedRect } from "./geometry"
 import {
   getRequiredRoutingCorridorWidth,

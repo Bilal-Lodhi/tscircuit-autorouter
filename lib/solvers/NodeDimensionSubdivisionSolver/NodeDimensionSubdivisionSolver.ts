@@ -1,6 +1,6 @@
 import type { GraphicsObject } from "graphics-debug"
-import type { CapacityMeshNode } from "lib/types"
-import { BaseSolver } from "lib/solvers/BaseSolver"
+import type { CapacityMeshNode } from "../../types/index"
+import { BaseSolver } from "../BaseSolver"
 
 const DEFAULT_MIN_NODE_AREA = 0.1 ** 2
 

@@ -1,6 +1,6 @@
-import type { CapacityMeshNode } from "lib/types"
+import type { CapacityMeshNode } from "../../types/index"
 import { CapacityPathingSolver, type Candidate } from "./CapacityPathingSolver"
-import { getTunedTotalCapacity1 } from "lib/utils/getTunedTotalCapacity1"
+import { getTunedTotalCapacity1 } from "../../utils/getTunedTotalCapacity1"
 
 export class CapacityPathingSolver5 extends CapacityPathingSolver {
   override getSolverName(): string {

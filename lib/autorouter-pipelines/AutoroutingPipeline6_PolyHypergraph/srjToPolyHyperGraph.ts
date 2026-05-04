@@ -12,7 +12,7 @@ import type {
   Obstacle,
   SimpleRouteConnection,
   SimpleRouteJson,
-} from "lib/types"
+} from "../../types/index"
 
 type AnyObstacle = Omit<Obstacle, "type"> & {
   type: string

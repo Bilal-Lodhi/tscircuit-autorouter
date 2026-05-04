@@ -1,7 +1,7 @@
 import { expect, test, describe } from "bun:test"
-import { CapacityMeshSolver } from "../lib"
-import { SimpleRouteJson } from "lib/types"
-import { convertSrjToGraphicsObject } from "../lib"
+import { CapacityMeshSolver } from "../lib/index"
+import { SimpleRouteJson } from "../lib/types/index"
+import { convertSrjToGraphicsObject } from "../lib/index"
 import e2e8 from "fixtures/legacy/assets/e2e8.json" with { type: "json" }
 import { getLastStepSvg } from "./fixtures/getLastStepSvg"
 

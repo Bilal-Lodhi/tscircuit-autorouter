@@ -5,7 +5,7 @@ import { availableParallelism } from "node:os"
 import { calculateMse } from "./metrics/calculateMse.ts"
 import { runBenchmarkWithWorkers } from "./runBenchmarkWithWorkers/index.ts"
 import { formatSeconds } from "./runBenchmarkWithWorkers/shared.ts"
-import { NodeWithPortPoints } from "lib/types/high-density-types.ts"
+import { NodeWithPortPoints } from "../../lib/types/high-density-types"
 
 type CliOptions = {
   concurrency: number

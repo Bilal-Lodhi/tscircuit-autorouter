@@ -1,4 +1,4 @@
-import type { CapacityMeshNode, CapacityMeshNodeId } from "../../types"
+import type { CapacityMeshNode, CapacityMeshNodeId } from "../../types/index"
 import type { PortPointSection } from "./createPortPointSection"
 import type { PortPoint } from "../../types/high-density-types"
 

@@ -1,12 +1,12 @@
 import type { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { GraphicsObject } from "graphics-debug"
-import { BaseSolver } from "lib/solvers/BaseSolver"
-import type { Obstacle } from "lib/types"
+import { BaseSolver } from "../BaseSolver"
+import type { Obstacle } from "../../types/index"
 import type {
   HighDensityIntraNodeRoute,
   NodeWithPortPoints,
-} from "lib/types/high-density-types"
-import { createObjectsWithZLayers } from "lib/utils/createObjectsWithZLayers"
+} from "../../types/high-density-types"
+import { createObjectsWithZLayers } from "../../utils/createObjectsWithZLayers"
 
 type Point = { x: number; y: number; z?: number; rootConnectionName?: string }
 type Route = {

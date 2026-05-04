@@ -1,4 +1,4 @@
-import type { CapacityMeshNodeId } from "lib/types"
+import type { CapacityMeshNodeId } from "../../types/index"
 
 export type SegmentPointId = string
 export type SegmentId = string

@@ -1,16 +1,16 @@
 import { expect, test } from "bun:test"
 import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
 import type { AnyCircuitElement } from "circuit-json"
-import { getDrcErrors } from "lib/testing/getDrcErrors"
-import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
-import { createSrjFromNodeWithPortPoints } from "lib/utils/createSrjFromNodeWithPortPoints"
-import { HyperSingleIntraNodeSolver } from "lib/solvers/HyperHighDensitySolver/HyperSingleIntraNodeSolver"
-import { convertHdRouteToSimplifiedRoute } from "lib/utils/convertHdRouteToSimplifiedRoute"
+import { getDrcErrors } from "../../lib/testing/getDrcErrors"
+import { convertToCircuitJson } from "../../lib/testing/utils/convertToCircuitJson"
+import { createSrjFromNodeWithPortPoints } from "../../lib/utils/createSrjFromNodeWithPortPoints"
+import { HyperSingleIntraNodeSolver } from "../../lib/solvers/HyperHighDensitySolver/HyperSingleIntraNodeSolver"
+import { convertHdRouteToSimplifiedRoute } from "../../lib/utils/convertHdRouteToSimplifiedRoute"
 import input03 from "../../fixtures/features/via-high-density/via-high-density03-input.json" with {
   type: "json",
 }
-import { FixedTopologyHighDensityIntraNodeSolver } from "lib/solvers/FixedTopologyHighDensityIntraNodeSolver"
-import type { SimplifiedPcbTrace } from "lib/types"
+import { FixedTopologyHighDensityIntraNodeSolver } from "../../lib/solvers/FixedTopologyHighDensityIntraNodeSolver/index"
+import type { SimplifiedPcbTrace } from "../../lib/types/index"
 
 test("FixedTopologyHighDensityIntraNodeSolver test", () => {
   const solver = new FixedTopologyHighDensityIntraNodeSolver({

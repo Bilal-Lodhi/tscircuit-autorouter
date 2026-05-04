@@ -1,18 +1,21 @@
 import type { SerializedHyperGraph } from "@tscircuit/hypergraph"
 import type { GraphicsObject } from "graphics-debug"
-import { BaseSolver } from "lib/solvers/BaseSolver"
+import { BaseSolver } from "../../BaseSolver"
 import type {
   InputNodeWithPortPoints,
   InputPortPoint,
-} from "lib/solvers/PortPointPathingSolver/PortPointPathingSolver"
-import { calculateNodeProbabilityOfFailure } from "lib/solvers/UnravelSolver/calculateCrossingProbabilityOfFailure"
-import { type CapacityMeshNodeId, getConnectionPointLayers } from "lib/types"
+} from "../PortPointPathingSolver"
+import { calculateNodeProbabilityOfFailure } from "../../UnravelSolver/calculateCrossingProbabilityOfFailure"
+import {
+  type CapacityMeshNodeId,
+  getConnectionPointLayers,
+} from "../../../types/index"
 import type {
   NodeWithPortPoints,
   PortPoint,
-} from "lib/types/high-density-types"
-import { getIntraNodeCrossingsUsingCircle } from "lib/utils/getIntraNodeCrossingsUsingCircle"
-import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
+} from "../../../types/high-density-types"
+import { getIntraNodeCrossingsUsingCircle } from "../../../utils/getIntraNodeCrossingsUsingCircle"
+import { mapLayerNameToZ } from "../../../utils/mapLayerNameToZ"
 import {
   TinyHyperGraphSectionPipelineSolver,
   TinyHyperGraphSectionSolver,

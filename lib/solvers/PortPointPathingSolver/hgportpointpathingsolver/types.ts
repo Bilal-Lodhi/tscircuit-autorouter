@@ -12,7 +12,7 @@ import type {
   CapacityMeshNode,
   CapacityMeshNodeId,
   SimpleRouteConnection,
-} from "lib/types"
+} from "../../../types/index"
 
 export type RawPort = {
   portId: string

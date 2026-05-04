@@ -1,5 +1,5 @@
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
-import type { SimpleRouteJson } from "../types"
+import type { SimpleRouteJson } from "../types/index"
 import { transparentize } from "polished"
 
 export const COLORS = [

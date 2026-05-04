@@ -4,9 +4,9 @@ import {
   PointId,
   PointKey,
   ConnectionTempId,
-} from "lib/types"
-import { DSU } from "lib/utils/dsu"
-import { getPointKey } from "lib/utils/getPointKey"
+} from "../../types/index"
+import { DSU } from "../../utils/dsu"
+import { getPointKey } from "../../utils/getPointKey"
 
 /**
  * Merges SimpleRouteConnections that share common ConnectionPoints into single connections.

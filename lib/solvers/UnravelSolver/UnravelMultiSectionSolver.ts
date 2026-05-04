@@ -1,16 +1,16 @@
-import { CapacityMeshNode, CapacityMeshNodeId } from "lib/types"
-import { getTunedTotalCapacity1 } from "lib/utils/getTunedTotalCapacity1"
+import { CapacityMeshNode, CapacityMeshNodeId } from "../../types/index"
+import { getTunedTotalCapacity1 } from "../../utils/getTunedTotalCapacity1"
 import { SegmentWithAssignedPoints } from "../CapacityMeshSolver/CapacitySegmentToPointSolver"
 import { UnravelSectionSolver } from "./UnravelSectionSolver"
 import { CachedUnravelSectionSolver } from "./CachedUnravelSectionSolver"
-import { getIntraNodeCrossings } from "lib/utils/getIntraNodeCrossings"
-import { NodePortSegment } from "lib/types/capacity-edges-to-port-segments-types"
+import { getIntraNodeCrossings } from "../../utils/getIntraNodeCrossings"
+import { NodePortSegment } from "../../types/capacity-edges-to-port-segments-types"
 import { getDedupedSegments } from "./getDedupedSegments"
-import { getIntraNodeCrossingsFromSegments } from "lib/utils/getIntraNodeCrossingsFromSegments"
+import { getIntraNodeCrossingsFromSegments } from "../../utils/getIntraNodeCrossingsFromSegments"
 import { calculateNodeProbabilityOfFailure } from "./calculateCrossingProbabilityOfFailure"
 import { BaseSolver } from "../BaseSolver"
 import { GraphicsObject } from "graphics-debug"
-import { NodeWithPortPoints } from "lib/types/high-density-types"
+import { NodeWithPortPoints } from "../../types/high-density-types"
 import {
   PointModificationsMap,
   SegmentId,
@@ -19,9 +19,9 @@ import {
   SegmentPointMap,
 } from "./types"
 import { createSegmentPointMap } from "./createSegmentPointMap"
-import { getIntraNodeCrossingsFromSegmentPoints } from "lib/utils/getIntraNodeCrossingsFromSegmentPoints"
+import { getIntraNodeCrossingsFromSegmentPoints } from "../../utils/getIntraNodeCrossingsFromSegmentPoints"
 import { getNodesNearNode } from "./getNodesNearNode"
-import { CacheProvider } from "lib/cache/types"
+import { CacheProvider } from "../../cache/types"
 import { doSegmentsIntersect, distance } from "@tscircuit/math-utils"
 
 export class UnravelMultiSectionSolver extends BaseSolver {

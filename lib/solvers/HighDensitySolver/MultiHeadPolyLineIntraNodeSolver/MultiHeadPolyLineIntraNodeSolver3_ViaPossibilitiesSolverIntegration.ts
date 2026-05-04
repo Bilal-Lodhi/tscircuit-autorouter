@@ -1,5 +1,5 @@
 import { Point3, distance } from "@tscircuit/math-utils"
-import { ViaPossibilitiesSolver2 } from "lib/solvers/ViaPossibilitiesSolver/ViaPossibilitiesSolver2"
+import { ViaPossibilitiesSolver2 } from "../../ViaPossibilitiesSolver/ViaPossibilitiesSolver2"
 import { MultiHeadPolyLineIntraNodeSolver } from "./MultiHeadPolyLineIntraNodeSolver"
 import { MHPoint, PolyLine, Candidate } from "./types1"
 import { PolyLine2 } from "./types2"

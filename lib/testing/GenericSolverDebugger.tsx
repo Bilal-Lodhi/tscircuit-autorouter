@@ -3,9 +3,9 @@ import {
   InteractiveGraphics,
   InteractiveGraphicsCanvas,
 } from "graphics-debug/react"
-import { BaseSolver } from "lib/solvers/BaseSolver"
-import { combineVisualizations } from "lib/utils/combineVisualizations"
-import { prepareParamsForDownload } from "lib/testing/utils/prepareParamsForDownload"
+import { BaseSolver } from "../solvers/BaseSolver"
+import { combineVisualizations } from "../utils/combineVisualizations"
+import { prepareParamsForDownload } from "./utils/prepareParamsForDownload"
 import {
   Menubar,
   MenubarContent,
@@ -15,7 +15,7 @@ import {
   MenubarSubContent,
   MenubarSubTrigger,
   MenubarTrigger,
-} from "lib/testing/ui/menubar"
+} from "./ui/menubar"
 
 interface GenericSolverDebuggerProps {
   createSolver: () => BaseSolver

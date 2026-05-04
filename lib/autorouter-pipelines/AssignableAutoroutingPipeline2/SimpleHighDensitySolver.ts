@@ -1,5 +1,5 @@
 import type { GraphicsObject } from "graphics-debug"
-import { mergeRouteSegments } from "lib/utils/mergeRouteSegments"
+import { mergeRouteSegments } from "../../utils/mergeRouteSegments"
 import { BaseSolver } from "../../solvers/BaseSolver"
 import { safeTransparentize } from "../../solvers/colors"
 import type {

@@ -1,4 +1,4 @@
-import { PortPoint } from "lib/types/high-density-types"
+import { PortPoint } from "../../types/high-density-types"
 
 export type Side = "left" | "right" | "top" | "bottom"
 export type OwnerPair = [string, string]

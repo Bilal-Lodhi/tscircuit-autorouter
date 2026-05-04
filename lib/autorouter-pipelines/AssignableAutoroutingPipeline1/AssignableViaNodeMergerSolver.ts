@@ -1,8 +1,8 @@
-import { CapacityMeshNode, CapacityMeshNodeId } from "lib/types"
-import { BaseSolver } from "lib/solvers/BaseSolver"
+import { CapacityMeshNode, CapacityMeshNodeId } from "../../types/index"
+import { BaseSolver } from "../../solvers/BaseSolver"
 import { GraphicsObject } from "graphics-debug"
-import { createRectFromCapacityNode } from "lib/utils/createRectFromCapacityNode"
-import type { Obstacle } from "lib/types"
+import { createRectFromCapacityNode } from "../../utils/createRectFromCapacityNode"
+import type { Obstacle } from "../../types/index"
 
 /**
  * This solver merges nodes that represent the same assignable obstacle into a single node.

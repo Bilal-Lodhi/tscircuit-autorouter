@@ -4,7 +4,7 @@ import type {
   CapacityMeshNodeId,
   SimpleRouteConnection,
   SimpleRouteJson,
-} from "../../types"
+} from "../../types/index"
 import { mergeGraphics, type GraphicsObject, type Line } from "graphics-debug"
 import { distance, pointToSegmentDistance } from "@tscircuit/math-utils"
 import { calculateNodeProbabilityOfFailure } from "../UnravelSolver/calculateCrossingProbabilityOfFailure"
@@ -17,14 +17,14 @@ import { visualizePointPathSolver } from "./visualizePointPathSolver"
 import {
   cloneAndShuffleArray,
   seededRandom,
-} from "lib/utils/cloneAndShuffleArray"
-import { computeSectionScore } from "../MultiSectionPortPointOptimizer"
+} from "../../utils/cloneAndShuffleArray"
+import { computeSectionScore } from "../MultiSectionPortPointOptimizer/index"
 import {
   type PrecomputedInitialParams,
   clonePrecomputedMutableParams,
 } from "./precomputeSharedParams"
 import { getConnectionsWithNodes as getConnectionsWithNodesShared } from "./getConnectionsWithNodes"
-import { getIntraNodeCrossings } from "lib/utils/getIntraNodeCrossings"
+import { getIntraNodeCrossings } from "../../utils/getIntraNodeCrossings"
 import { computeSectionScoreWithJumpers } from "../MultiSectionPortPointOptimizer/computeSectionScoreWithJumpers"
 import { calculateNodeProbabilityOfFailureWithJumpers } from "../MultiSectionPortPointOptimizer/calculateNodeProbabilityOfFailureWithJumpers"
 

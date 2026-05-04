@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import { getSvgFromGraphicsObject } from "graphics-debug"
-import { JumperHighDensitySolver } from "lib/autorouter-pipelines/AssignableAutoroutingPipeline2/JumperHighDensitySolver"
-import type { NodeWithPortPoints } from "lib/types/high-density-types"
+import { JumperHighDensitySolver } from "../../lib/autorouter-pipelines/AssignableAutoroutingPipeline2/JumperHighDensitySolver"
+import type { NodeWithPortPoints } from "../../lib/types/high-density-types"
 import { getLastStepSvg } from "../fixtures/getLastStepSvg"
 
 const nodePortPoints: NodeWithPortPoints[] = [

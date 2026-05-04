@@ -1,5 +1,5 @@
-import { SimpleRouteJson } from "lib/types"
-import { NodeWithPortPoints } from "lib/types/high-density-types"
+import { SimpleRouteJson } from "../types/index"
+import { NodeWithPortPoints } from "../types/high-density-types"
 import { mapZToLayerName } from "./mapZToLayerName"
 
 export function createSrjFromNodeWithPortPoints(

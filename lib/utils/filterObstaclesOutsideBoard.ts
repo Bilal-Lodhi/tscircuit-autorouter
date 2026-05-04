@@ -4,7 +4,7 @@ import {
 } from "@tscircuit/math-utils"
 import { getBoardBounds } from "@tscircuit/circuit-json-util"
 import type { PcbBoard } from "circuit-json"
-import type { Obstacle, SimpleRouteJson } from "lib/types"
+import type { Obstacle, SimpleRouteJson } from "../types/index"
 
 const hasObstacleConnectivity = (obstacle: Obstacle) =>
   (obstacle.connectedTo?.length ?? 0) > 0 ||

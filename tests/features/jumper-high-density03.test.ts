@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test"
-import { HyperIntraNodeSolverWithJumpers } from "lib/solvers/HighDensitySolver/HyperIntraNodeSolverWithJumpers"
-import { IntraNodeSolverWithJumpers } from "lib/solvers/HighDensitySolver/IntraNodeSolverWithJumpers"
+import { HyperIntraNodeSolverWithJumpers } from "../../lib/solvers/HighDensitySolver/HyperIntraNodeSolverWithJumpers"
+import { IntraNodeSolverWithJumpers } from "../../lib/solvers/HighDensitySolver/IntraNodeSolverWithJumpers"
 import input from "../../fixtures/features/jumper-high-density/jumper-high-density03-input.json" with {
   type: "json",
 }

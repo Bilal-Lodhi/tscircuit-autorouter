@@ -1,4 +1,4 @@
-import type { SimpleRouteJson } from "lib/types"
+import type { SimpleRouteJson } from "../types/index"
 
 type ViaDimensionInput = Pick<
   SimpleRouteJson,

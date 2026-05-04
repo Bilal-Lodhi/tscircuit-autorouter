@@ -1,10 +1,10 @@
 import { expect, test } from "bun:test"
 import * as dataset01 from "@tscircuit/autorouting-dataset-01"
-import { convertSrjToGraphicsObject } from "../../lib"
-import { AutoroutingPipelineSolver4 } from "lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
-import type { Pipeline5HdCacheHighDensitySolver } from "lib/autorouter-pipelines/AutoroutingPipeline5_HdCache/Pipeline5HdCacheHighDensitySolver"
-import { AutoroutingPipelineSolver5 } from "lib/autorouter-pipelines/AutoroutingPipeline5_HdCache/AutoroutingPipelineSolver5_HdCache"
-import type { SimpleRouteJson } from "lib/types"
+import { convertSrjToGraphicsObject } from "../../lib/index"
+import { AutoroutingPipelineSolver4 } from "../../lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
+import type { Pipeline5HdCacheHighDensitySolver } from "../../lib/autorouter-pipelines/AutoroutingPipeline5_HdCache/Pipeline5HdCacheHighDensitySolver"
+import { AutoroutingPipelineSolver5 } from "../../lib/autorouter-pipelines/AutoroutingPipeline5_HdCache/AutoroutingPipelineSolver5_HdCache"
+import type { SimpleRouteJson } from "../../lib/types/index"
 
 const shouldAttemptRemoteSolve = (metadata: {
   pairCount: number

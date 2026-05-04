@@ -5,7 +5,7 @@ import type {
   CapacityMeshNodeId,
   SimpleRouteJson,
   SimpleRouteConnection,
-} from "../../types"
+} from "../../types/index"
 import type { GraphicsObject } from "graphics-debug"
 import type {
   InputNodeWithPortPoints,
@@ -34,7 +34,7 @@ import { visualizePointPathSolver } from "../PortPointPathingSolver/visualizePoi
 import { HyperPortPointPathingSolver } from "../PortPointPathingSolver/HyperPortPointPathingSolver"
 import { computeSectionScoreWithJumpers } from "./computeSectionScoreWithJumpers"
 import { calculateNodeProbabilityOfFailureWithJumpers } from "./calculateNodeProbabilityOfFailureWithJumpers"
-import { getIntraNodeCrossingsUsingCircle } from "lib/utils/getIntraNodeCrossingsUsingCircle"
+import { getIntraNodeCrossingsUsingCircle } from "../../utils/getIntraNodeCrossingsUsingCircle"
 
 export type HyperParameterScheduleEntry = PortPointPathingHyperParameters & {
   EXPANSION_DEGREES: number

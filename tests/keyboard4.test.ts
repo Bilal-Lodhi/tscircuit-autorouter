@@ -4,11 +4,11 @@ import type { AnyCircuitElement } from "circuit-json"
 import keyboard4 from "../fixtures/legacy/assets/keyboard4.json" with {
   type: "json",
 }
-import { CapacityMeshSolver } from "../lib"
-import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
-import { getDrcErrors } from "lib/testing/getDrcErrors"
-import type { SimpleRouteJson } from "lib/types"
-import { AutoroutingPipelineSolver2_PortPointPathing } from "lib/autorouter-pipelines"
+import { CapacityMeshSolver } from "../lib/index"
+import { convertToCircuitJson } from "../lib/testing/utils/convertToCircuitJson"
+import { getDrcErrors } from "../lib/testing/getDrcErrors"
+import type { SimpleRouteJson } from "../lib/types/index"
+import { AutoroutingPipelineSolver2_PortPointPathing } from "../lib/autorouter-pipelines/index"
 
 describe.skip("keyboard4 autorouting", () => {
   const keyboard4Srj = keyboard4 as unknown as SimpleRouteJson

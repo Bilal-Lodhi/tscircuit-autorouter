@@ -1,4 +1,4 @@
-import { CapacityMeshNodeId } from "lib/types"
+import { CapacityMeshNodeId } from "../../types/index"
 
 export function getNodesNearNode(params: {
   nodeId: CapacityMeshNodeId

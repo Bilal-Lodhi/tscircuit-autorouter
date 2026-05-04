@@ -1,5 +1,5 @@
 import { Bounds, getSegmentIntersection } from "@tscircuit/math-utils"
-import { NodeWithPortPoints } from "lib/types/high-density-types"
+import { NodeWithPortPoints } from "../../../types/high-density-types"
 import { getCentroidsFromInnerBoxIntersections } from "./getCentroidsFromInnerBoxIntersections"
 import { getViaCombinations } from "./viaCombinationGenerator"
 

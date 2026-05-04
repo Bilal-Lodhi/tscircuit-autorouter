@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
-import { HighDensitySolver } from "lib/solvers/HighDensitySolver/HighDensitySolver"
-import { generateColorMapFromNodeWithPortPoints } from "lib/utils/generateColorMapFromNodeWithPortPoints"
+import { HighDensitySolver } from "../../../lib/solvers/HighDensitySolver/HighDensitySolver"
+import { generateColorMapFromNodeWithPortPoints } from "../../../lib/utils/generateColorMapFromNodeWithPortPoints"
 import input from "fixtures/features/high-density-reentry/high-density-reentry01-input.json" with {
   type: "json",
 }

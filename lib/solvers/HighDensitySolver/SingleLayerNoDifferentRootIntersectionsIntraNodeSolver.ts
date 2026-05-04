@@ -8,7 +8,7 @@ import type {
   HighDensityIntraNodeRoute,
   NodeWithPortPoints,
   PortPoint,
-} from "lib/types/high-density-types"
+} from "../../types/high-density-types"
 import { BaseSolver } from "../BaseSolver"
 
 type Point3 = { x: number; y: number; z: number }

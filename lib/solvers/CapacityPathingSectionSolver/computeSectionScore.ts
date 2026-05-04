@@ -1,4 +1,4 @@
-import { CapacityMeshNode, CapacityMeshNodeId } from "lib/types"
+import { CapacityMeshNode, CapacityMeshNodeId } from "../../types/index"
 import { ConnectionPathWithNodes } from "../CapacityPathingSolver/CapacityPathingSolver"
 
 export const calculateNodeProbabilityOfFailure = (params: {

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { getHighDensityNodeDownloadData } from "lib/testing/utils/getHighDensityNodeDownloadData"
+import { getHighDensityNodeDownloadData } from "../lib/testing/utils/getHighDensityNodeDownloadData"
 
 test("getHighDensityNodeDownloadData finds pipeline 4 node data from solver outputs", () => {
   const solver = {

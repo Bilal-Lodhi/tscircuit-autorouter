@@ -1,4 +1,4 @@
-import { CapacityMeshNode } from "lib/types"
+import { CapacityMeshNode } from "../../types/index"
 import { CapacityPathingSolver5 } from "../CapacityPathingSolver/CapacityPathingSolver5"
 
 export class CapacityPathingGreedySolver extends CapacityPathingSolver5 {

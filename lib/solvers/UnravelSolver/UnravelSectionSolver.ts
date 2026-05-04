@@ -1,4 +1,4 @@
-import { CapacityMeshNode, CapacityMeshNodeId } from "lib/types"
+import { CapacityMeshNode, CapacityMeshNodeId } from "../../types/index"
 import { BaseSolver } from "../BaseSolver"
 import { SegmentWithAssignedPoints } from "../CapacityMeshSolver/CapacitySegmentToPointSolver"
 import {
@@ -18,7 +18,7 @@ import {
   createPointModificationsHash,
 } from "./createPointModificationsHash"
 import { getIssuesInSection } from "./getIssuesInSection"
-import { getTunedTotalCapacity1 } from "lib/utils/getTunedTotalCapacity1"
+import { getTunedTotalCapacity1 } from "../../utils/getTunedTotalCapacity1"
 import { applyOperationToPointModifications } from "./applyOperationToPointModifications"
 import {
   createSegmentPointMap,

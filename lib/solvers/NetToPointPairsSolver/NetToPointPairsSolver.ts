@@ -2,12 +2,12 @@ import {
   ConnectionPoint,
   SimpleRouteConnection,
   SimpleRouteJson,
-} from "lib/types"
+} from "../../types/index"
 import { BaseSolver } from "../BaseSolver"
 import { buildMinimumSpanningTree } from "./buildMinimumSpanningTree"
 import { GraphicsObject } from "graphics-debug"
 import { mergeConnections } from "./mergeConnections"
-import { seededRandom } from "lib/utils/cloneAndShuffleArray"
+import { seededRandom } from "../../utils/cloneAndShuffleArray"
 
 export const getExternalConnectionState = (
   connection: SimpleRouteConnection,

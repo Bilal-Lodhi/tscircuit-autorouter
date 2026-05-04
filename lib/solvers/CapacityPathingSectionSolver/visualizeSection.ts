@@ -3,10 +3,10 @@ import {
   CapacityMeshEdge,
   CapacityMeshNode,
   CapacityMeshNodeId,
-} from "lib/types"
+} from "../../types/index"
 import { safeTransparentize } from "../colors" // Added import
-import { createRectFromCapacityNode } from "lib/utils/createRectFromCapacityNode"
-import { getLinesBetweenNodes } from "lib/utils/getLinesBetweenNodes"
+import { createRectFromCapacityNode } from "../../utils/createRectFromCapacityNode"
+import { getLinesBetweenNodes } from "../../utils/getLinesBetweenNodes"
 import { calculateNodeProbabilityOfFailure } from "./computeSectionScore"
 
 interface VisualizeSectionParams {

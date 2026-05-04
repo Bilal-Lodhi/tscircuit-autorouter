@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
-import { CapacityMeshSolver } from "lib"
-import type { SimpleRouteJson } from "lib/types"
-import { doesSegmentCrossPolygonBoundary } from "lib/utils/polygonContainment"
+import { CapacityMeshSolver } from "../../lib/index"
+import type { SimpleRouteJson } from "../../lib/types/index"
+import { doesSegmentCrossPolygonBoundary } from "../../lib/utils/polygonContainment"
 
 const simpleRouteJson: SimpleRouteJson = {
   bounds: {

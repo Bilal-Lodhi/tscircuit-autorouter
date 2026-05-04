@@ -1,18 +1,18 @@
 import { expect, test } from "bun:test"
-import { AutoroutingPipelineSolver6 } from "lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/AutoroutingPipelineSolver6_PolyHypergraph"
-import { PolyHypergraphPortPointPathingSolver } from "lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/PolyHypergraphPortPointPathingSolver"
-import { PolySingleIntraNodeSolver } from "lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/PolySingleIntraNodeSolver"
-import { ProjectHighDensityToPolygonSolver } from "lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/ProjectHighDensityToPolygonSolver"
+import { AutoroutingPipelineSolver6 } from "../../lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/AutoroutingPipelineSolver6_PolyHypergraph"
+import { PolyHypergraphPortPointPathingSolver } from "../../lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/PolyHypergraphPortPointPathingSolver"
+import { PolySingleIntraNodeSolver } from "../../lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/PolySingleIntraNodeSolver"
+import { ProjectHighDensityToPolygonSolver } from "../../lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/ProjectHighDensityToPolygonSolver"
 import {
   applyMatrixToPoint,
   computeProjectedRect,
   getProjectedRectCorners,
   isPointInConvexPolygon,
   projectPointToRectBoundary,
-} from "lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/geometry"
-import type { PolyNodeWithPortPoints } from "lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/types"
-import type { SimpleRouteJson } from "lib/types"
-import { convertSrjToGraphicsObject } from "lib/utils/convertSrjToGraphicsObject"
+} from "../../lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/geometry"
+import type { PolyNodeWithPortPoints } from "../../lib/autorouter-pipelines/AutoroutingPipeline6_PolyHypergraph/types"
+import type { SimpleRouteJson } from "../../lib/types/index"
+import { convertSrjToGraphicsObject } from "../../lib/utils/convertSrjToGraphicsObject"
 import { loadScenarios } from "scripts/benchmark/scenarios"
 
 const expectClose = (actual: number, expected: number, tolerance = 1e-6) => {

@@ -3,19 +3,19 @@ import {
   CapacityMeshEdge,
   CapacityMeshNode,
   CapacityMeshNodeId,
-} from "lib/types"
+} from "../../types/index"
 import { BaseSolver } from "../BaseSolver"
 import { visualizeSection } from "./visualizeSection"
 import { getNodeEdgeMap } from "../CapacityMeshSolver/getNodeEdgeMap" // Added import
-import { getTunedTotalCapacity1 } from "lib/utils/getTunedTotalCapacity1" // Added import
+import { getTunedTotalCapacity1 } from "../../utils/getTunedTotalCapacity1" // Added import
 import { distance } from "@tscircuit/math-utils" // Added import
 import {
   computeSectionScore,
   calculateSingleNodeLogSuccessProbability,
 } from "./computeSectionScore" // Added import & calculateSingleNodeLogSuccessProbability
 import { safeTransparentize } from "../colors" // Added import
-import { createRectFromCapacityNode } from "lib/utils/createRectFromCapacityNode" // Added import
-import { cloneAndShuffleArray } from "lib/utils/cloneAndShuffleArray"
+import { createRectFromCapacityNode } from "../../utils/createRectFromCapacityNode" // Added import
+import { cloneAndShuffleArray } from "../../utils/cloneAndShuffleArray"
 
 // Copied from CapacityPathingSolver
 export type Candidate = {

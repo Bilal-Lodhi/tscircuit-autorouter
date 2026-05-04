@@ -1,4 +1,4 @@
-import { Obstacle } from "lib/types"
+import { Obstacle } from "../../types/index"
 import { SharedEdge } from "./types"
 
 const EPSILON = 1e-6

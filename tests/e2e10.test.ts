@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import { AssignableAutoroutingPipeline2 } from "../lib/autorouter-pipelines/AssignableAutoroutingPipeline2/AssignableAutoroutingPipeline2"
-import { SimpleRouteJson } from "lib/types"
-import { convertSrjToGraphicsObject } from "../lib"
+import { SimpleRouteJson } from "../lib/types/index"
+import { convertSrjToGraphicsObject } from "../lib/index"
 import e2e10 from "fixtures/legacy/assets/e2e10.json" with { type: "json" }
 
 test.skip("should solve e2e10 board using AssignableAutoroutingPipeline2", async () => {

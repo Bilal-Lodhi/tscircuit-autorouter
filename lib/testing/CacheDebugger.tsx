@@ -1,5 +1,5 @@
-import { getGlobalLocalStorageCache } from "lib/cache/setupGlobalCaches"
-import { CacheProvider } from "lib/cache/types"
+import { getGlobalLocalStorageCache } from "../cache/setupGlobalCaches"
+import { CacheProvider } from "../cache/types"
 import { useState } from "react"
 
 export const CacheDebugger = ({

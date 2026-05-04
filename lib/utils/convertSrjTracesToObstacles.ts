@@ -1,7 +1,11 @@
-import type { Obstacle, SimpleRouteJson, SimplifiedPcbTrace } from "lib/types"
-import { getViaDimensions } from "lib/utils/getViaDimensions"
-import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
-import { mapZToLayerName } from "lib/utils/mapZToLayerName"
+import type {
+  Obstacle,
+  SimpleRouteJson,
+  SimplifiedPcbTrace,
+} from "../types/index"
+import { getViaDimensions } from "./getViaDimensions"
+import { mapLayerNameToZ } from "./mapLayerNameToZ"
+import { mapZToLayerName } from "./mapZToLayerName"
 
 type RoutePoint = SimplifiedPcbTrace["route"][number]
 type WireRoutePoint = Extract<RoutePoint, { route_type: "wire" }>

@@ -89,7 +89,7 @@ try {
 
 const fixtureTemplate = `
 // @ts-nocheck
-import { AutoroutingPipelineDebugger } from "lib/testing/AutoroutingPipelineDebugger";
+import { AutoroutingPipelineDebugger } from "../lib/testing/AutoroutingPipelineDebugger";
 import bugReportJson from "./${jsonFileName}";
 export default () => {
   return <AutoroutingPipelineDebugger srj={bugReportJson.simple_route_json} />;
@@ -100,9 +100,9 @@ fs.writeFileSync(fixtureFilePath, fixtureTemplate)
 console.log(`Fixture file created at ${fixtureFilePath}`)
 
 const testTemplate = `import { expect, test } from "bun:test"
-import { AutoroutingPipelineSolver } from "lib"
+import { AutoroutingPipelineSolver } from "../lib/index"
 import bugReport from "../../fixtures/bug-reports/${dirName}/${jsonFileName}" with { type: "json" }
-import type { SimpleRouteJson } from "lib/types"
+import type { SimpleRouteJson } from "../lib/types/index"
 import { getLastStepSvg } from "../fixtures/getLastStepSvg"
 
 const srj = bugReport.simple_route_json as SimpleRouteJson

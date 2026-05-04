@@ -1,9 +1,9 @@
 import type { GraphicsObject } from "graphics-debug"
-import type { CapacityMeshEdge, CapacityMeshNode } from "lib/types"
-import type { Obstacle } from "lib/types/srj-types"
-import { BaseSolver } from "lib/solvers/BaseSolver"
-import { createNodeMap } from "lib/utils/createNodeMap"
-import { getMidpoint } from "lib/utils/getMidpoint"
+import type { CapacityMeshEdge, CapacityMeshNode } from "../../types/index"
+import type { Obstacle } from "../../types/srj-types"
+import { BaseSolver } from "../../solvers/BaseSolver"
+import { createNodeMap } from "../../utils/createNodeMap"
+import { getMidpoint } from "../../utils/getMidpoint"
 
 type AnimationState = "showing_nodes" | "showing_edges" | "done"
 

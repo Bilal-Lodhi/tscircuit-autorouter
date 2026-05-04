@@ -1,6 +1,10 @@
-import type { SimpleRouteJson, Obstacle, CapacityMeshNode } from "lib/types"
-import { CapacityMeshNodeSolver2_NodeUnderObstacle } from "lib/solvers/CapacityMeshSolver/CapacityMeshNodeSolver2_NodesUnderObstacles"
-import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
+import type {
+  SimpleRouteJson,
+  Obstacle,
+  CapacityMeshNode,
+} from "../../types/index"
+import { CapacityMeshNodeSolver2_NodeUnderObstacle } from "../../solvers/CapacityMeshSolver/CapacityMeshNodeSolver2_NodesUnderObstacles"
+import { mapLayerNameToZ } from "../../utils/mapLayerNameToZ"
 
 interface CapacityMeshNodeSolverOptions {
   capacityDepth?: number

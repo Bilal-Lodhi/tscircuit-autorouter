@@ -2,14 +2,14 @@ import { RectDiffPipeline } from "@tscircuit/rectdiff"
 import { GlobalDrcForceImproveSolver } from "high-density-repair03/lib"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { GraphicsObject, Line } from "graphics-debug"
-import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
-import { CacheProvider } from "lib/cache/types"
-import { MultiTargetNecessaryCrampedPortPointSolver } from "lib/solvers/NecessaryCrampedPortPointSolver/MultiTargetNecessaryCrampedPortPointSolver"
-import { NodeDimensionSubdivisionSolver } from "lib/solvers/NodeDimensionSubdivisionSolver/NodeDimensionSubdivisionSolver"
-import { buildHyperGraph } from "lib/solvers/PortPointPathingSolver/hgportpointpathingsolver"
-import { TinyHypergraphPortPointPathingSolver } from "lib/solvers/PortPointPathingSolver/tinyhypergraph/TinyHypergraphPortPointPathingSolver"
-import { UniformPortDistributionSolver } from "lib/solvers/UniformPortDistributionSolver/UniformPortDistributionSolver"
-import { getColorMap } from "lib/solvers/colors"
+import { getGlobalInMemoryCache } from "../../cache/setupGlobalCaches"
+import { CacheProvider } from "../../cache/types"
+import { MultiTargetNecessaryCrampedPortPointSolver } from "../../solvers/NecessaryCrampedPortPointSolver/MultiTargetNecessaryCrampedPortPointSolver"
+import { NodeDimensionSubdivisionSolver } from "../../solvers/NodeDimensionSubdivisionSolver/NodeDimensionSubdivisionSolver"
+import { buildHyperGraph } from "../../solvers/PortPointPathingSolver/hgportpointpathingsolver/index"
+import { TinyHypergraphPortPointPathingSolver } from "../../solvers/PortPointPathingSolver/tinyhypergraph/TinyHypergraphPortPointPathingSolver"
+import { UniformPortDistributionSolver } from "../../solvers/UniformPortDistributionSolver/UniformPortDistributionSolver"
+import { getColorMap } from "../../solvers/colors"
 import {
   CapacityMeshEdge,
   CapacityMeshNode,
@@ -17,23 +17,23 @@ import {
   SimpleRouteJson,
   SimplifiedPcbTrace,
   SimplifiedPcbTraces,
-} from "lib/types"
+} from "../../types/index"
 import {
   HighDensityRoute,
   NodeWithPortPoints,
-} from "lib/types/high-density-types"
-import { combineVisualizations } from "lib/utils/combineVisualizations"
-import { convertHdRouteToSimplifiedRoute } from "lib/utils/convertHdRouteToSimplifiedRoute"
-import { convertSrjToGraphicsObject } from "lib/utils/convertSrjToGraphicsObject"
-import { createObstacleLabelFormatter } from "lib/utils/formatObstacleLabel"
-import { filterObstaclesOutsideBoard } from "lib/utils/filterObstaclesOutsideBoard"
+} from "../../types/high-density-types"
+import { combineVisualizations } from "../../utils/combineVisualizations"
+import { convertHdRouteToSimplifiedRoute } from "../../utils/convertHdRouteToSimplifiedRoute"
+import { convertSrjToGraphicsObject } from "../../utils/convertSrjToGraphicsObject"
+import { createObstacleLabelFormatter } from "../../utils/formatObstacleLabel"
+import { filterObstaclesOutsideBoard } from "../../utils/filterObstaclesOutsideBoard"
 import {
   getGraphicsLayerForConnectionPoint,
   getGraphicsLayerForObstacle,
-} from "lib/utils/getGraphicsObjectLayer"
-import { getConnectivityMapFromSimpleRouteJson } from "lib/utils/getConnectivityMapFromSimpleRouteJson"
-import { calculateOptimalCapacityDepth } from "lib/utils/getTunedTotalCapacity1"
-import { getViaDimensions } from "lib/utils/getViaDimensions"
+} from "../../utils/getGraphicsObjectLayer"
+import { getConnectivityMapFromSimpleRouteJson } from "../../utils/getConnectivityMapFromSimpleRouteJson"
+import { calculateOptimalCapacityDepth } from "../../utils/getTunedTotalCapacity1"
+import { getViaDimensions } from "../../utils/getViaDimensions"
 import { AvailableSegmentPointSolver } from "../../solvers/AvailableSegmentPointSolver/AvailableSegmentPointSolver"
 import { BaseSolver } from "../../solvers/BaseSolver"
 import { CapacityMeshEdgeSolver } from "../../solvers/CapacityMeshSolver/CapacityMeshEdgeSolver"
@@ -44,7 +44,7 @@ import { HighDensityForceImproveSolver } from "high-density-repair01/lib/HighDen
 import { EscapeViaLocationSolver } from "../../solvers/EscapeViaLocationSolver/EscapeViaLocationSolver"
 import { Pipeline4HighDensityRepairSolver } from "../../solvers/HighDensityRepairSolver/Pipeline4HighDensityRepairSolver"
 import { HighDensitySolver } from "../../solvers/HighDensitySolver/HighDensitySolver"
-import { MultiSectionPortPointOptimizer } from "../../solvers/MultiSectionPortPointOptimizer"
+import { MultiSectionPortPointOptimizer } from "../../solvers/MultiSectionPortPointOptimizer/index"
 import { NetToPointPairsSolver } from "../../solvers/NetToPointPairsSolver/NetToPointPairsSolver"
 import { NetToPointPairsSolver2_OffBoardConnection } from "../../solvers/NetToPointPairsSolver2_OffBoardConnection/NetToPointPairsSolver2_OffBoardConnection"
 import { MultipleHighDensityRouteStitchSolver3 } from "../../solvers/RouteStitchingSolver/MultipleHighDensityRouteStitchSolver3"
@@ -52,7 +52,7 @@ import { SingleLayerNodeMergerSolver } from "../../solvers/SingleLayerNodeMerger
 import { StrawSolver } from "../../solvers/StrawSolver/StrawSolver"
 import { TraceSimplificationSolver } from "../../solvers/TraceSimplificationSolver/TraceSimplificationSolver"
 import { TraceWidthSolver } from "../../solvers/TraceWidthSolver/TraceWidthSolver"
-import { addApproximatingRectsToSrj } from "lib/utils/addApproximatingRectsToSrj"
+import { addApproximatingRectsToSrj } from "../../utils/addApproximatingRectsToSrj"
 
 interface CapacityMeshSolverOptions {
   capacityDepth?: number

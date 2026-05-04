@@ -1,6 +1,6 @@
-import type { CapacityMeshNode } from "lib/types"
-import type { NodeWithPortPoints } from "lib/types/high-density-types"
-import type { InputNodeWithPortPoints } from "lib/solvers/PortPointPathingSolver/PortPointPathingSolver"
+import type { CapacityMeshNode } from "../../types/index"
+import type { NodeWithPortPoints } from "../../types/high-density-types"
+import type { InputNodeWithPortPoints } from "../../solvers/PortPointPathingSolver/PortPointPathingSolver"
 
 type NodeLike = {
   capacityMeshNodeId: string

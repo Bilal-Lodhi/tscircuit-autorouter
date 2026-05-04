@@ -1,9 +1,9 @@
-import { CachableSolver, CacheProvider } from "lib/cache/types"
+import { CachableSolver, CacheProvider } from "../../cache/types"
 import { HyperCapacityPathingSingleSectionSolver } from "./HyperCapacityPathingSingleSectionSolver"
-import { CapacityMeshNode, CapacityMeshNodeId } from "lib/types"
+import { CapacityMeshNode, CapacityMeshNodeId } from "../../types/index"
 import objectHash from "object-hash"
-import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
-import { getTunedTotalCapacity1 } from "lib/utils/getTunedTotalCapacity1"
+import { getGlobalInMemoryCache } from "../../cache/setupGlobalCaches"
+import { getTunedTotalCapacity1 } from "../../utils/getTunedTotalCapacity1"
 import { GraphicsObject } from "graphics-debug"
 import { visualizeSection } from "./visualizeSection"
 

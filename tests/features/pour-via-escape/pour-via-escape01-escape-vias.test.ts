@@ -3,9 +3,9 @@ import { distance, pointToBoxDistance } from "@tscircuit/math-utils"
 import bugReport from "../../../fixtures/features/pour-via-escape/pour-via-escape01.json" with {
   type: "json",
 }
-import { AutoroutingPipelineSolver } from "../../../lib"
+import { AutoroutingPipelineSolver } from "../../../lib/index"
 import { EscapeViaLocationSolver } from "../../../lib/solvers/EscapeViaLocationSolver/EscapeViaLocationSolver"
-import type { SimpleRouteJson } from "../../../lib/types"
+import type { SimpleRouteJson } from "../../../lib/types/index"
 import { isPointInRect } from "../../../lib/utils/isPointInRect"
 import { mapLayerNameToZ } from "../../../lib/utils/mapLayerNameToZ"
 

@@ -1,9 +1,13 @@
 import type { AnyCircuitElement, PcbTrace, PcbVia } from "circuit-json"
-import { Obstacle, SimpleRouteJson, SimplifiedPcbTrace } from "lib/types"
-import { HighDensityRoute } from "lib/types/high-density-types"
-import { getConnectionPointLayers } from "lib/types/srj-types"
-import { getViaDimensions } from "lib/utils/getViaDimensions"
-import { LayerName, mapZToLayerName } from "lib/utils/mapZToLayerName"
+import {
+  Obstacle,
+  SimpleRouteJson,
+  SimplifiedPcbTrace,
+} from "../../types/index"
+import { HighDensityRoute } from "../../types/high-density-types"
+import { getConnectionPointLayers } from "../../types/srj-types"
+import { getViaDimensions } from "../../utils/getViaDimensions"
+import { LayerName, mapZToLayerName } from "../../utils/mapZToLayerName"
 import { pointToBoxDistance } from "@tscircuit/math-utils"
 
 /**

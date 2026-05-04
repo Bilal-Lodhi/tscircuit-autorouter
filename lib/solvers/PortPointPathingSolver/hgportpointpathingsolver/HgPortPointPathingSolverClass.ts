@@ -5,13 +5,13 @@ import {
   pointToSegmentDistance,
 } from "@tscircuit/math-utils"
 import { NodeWithPortPoints, PortPoint } from "@tscircuit/high-density-a01"
-import { cloneAndShuffleArray } from "lib/utils/cloneAndShuffleArray"
-import { getIntraNodeCrossingsUsingCircle } from "lib/utils/getIntraNodeCrossingsUsingCircle"
-import { calculateNodeProbabilityOfFailure } from "lib/solvers/UnravelSolver/calculateCrossingProbabilityOfFailure"
+import { cloneAndShuffleArray } from "../../../utils/cloneAndShuffleArray"
+import { getIntraNodeCrossingsUsingCircle } from "../../../utils/getIntraNodeCrossingsUsingCircle"
+import { calculateNodeProbabilityOfFailure } from "../../UnravelSolver/calculateCrossingProbabilityOfFailure"
 import type {
   InputNodeWithPortPoints,
   InputPortPoint,
-} from "lib/solvers/PortPointPathingSolver/PortPointPathingSolver"
+} from "../PortPointPathingSolver"
 import type { GraphicsObject } from "graphics-debug"
 import { assertDefined } from "./assertDefined"
 import { mergeGraphicsArray } from "./mergeGraphicsArray"

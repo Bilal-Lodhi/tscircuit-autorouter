@@ -2,7 +2,7 @@ import type {
   CapacityMeshEdge,
   CapacityMeshNode,
   CapacityMeshNodeId,
-} from "../../types"
+} from "../../types/index"
 import type {
   InputNodeWithPortPoints,
   InputPortPoint,

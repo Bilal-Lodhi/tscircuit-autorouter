@@ -1,11 +1,11 @@
 import { expect, test } from "bun:test"
 import { Circle, mergeGraphics, type GraphicsObject } from "graphics-debug"
-import { getDrcErrors } from "lib/testing/getDrcErrors"
-import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
-import type { SimpleRouteJson } from "lib/types"
+import { getDrcErrors } from "../../lib/testing/getDrcErrors"
+import { convertToCircuitJson } from "../../lib/testing/utils/convertToCircuitJson"
+import type { SimpleRouteJson } from "../../lib/types/index"
 import circuit101 from "./assets/circuit101.json" with { type: "json" }
 import { getLastStepGraphicsObject } from "tests/fixtures/getLastStepGraphicsObject"
-import { AutoroutingPipelineSolver2_PortPointPathing } from "lib/autorouter-pipelines"
+import { AutoroutingPipelineSolver2_PortPointPathing } from "../../lib/autorouter-pipelines/index"
 
 test("overlap detection between different nets", async () => {
   const srj = circuit101 as SimpleRouteJson

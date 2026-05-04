@@ -1,5 +1,8 @@
-import type { SegmentPortPoint } from "lib/solvers/AvailableSegmentPointSolver/AvailableSegmentPointSolver"
-import type { CapacityMeshNode, SimpleRouteConnection } from "lib/types"
+import type { SegmentPortPoint } from "../../AvailableSegmentPointSolver/AvailableSegmentPointSolver"
+import type {
+  CapacityMeshNode,
+  SimpleRouteConnection,
+} from "../../../types/index"
 import { assertDefined } from "./assertDefined"
 import { checkIfConnectionPointIsInRegion } from "./checkIfConnectionPointIsInRegion"
 import type { RawPort, ConnectionHg, HyperGraphHg, RegionPortHg } from "./types"

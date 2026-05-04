@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
-import type { Obstacle, SimpleRouteJson } from "lib/types"
-import { filterObstaclesOutsideBoard } from "lib/utils/filterObstaclesOutsideBoard"
+import type { Obstacle, SimpleRouteJson } from "../../lib/types/index"
+import { filterObstaclesOutsideBoard } from "../../lib/utils/filterObstaclesOutsideBoard"
 
 const createObstacle = (
   obstacle: Partial<Obstacle> & Pick<Obstacle, "center">,

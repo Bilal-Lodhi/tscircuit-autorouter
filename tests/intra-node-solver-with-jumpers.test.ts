@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test"
-import { IntraNodeSolverWithJumpers } from "lib/solvers/HighDensitySolver/IntraNodeSolverWithJumpers"
-import { SingleHighDensityRouteWithJumpersSolver } from "lib/solvers/HighDensitySolver/SingleHighDensityRouteWithJumpersSolver"
-import type { NodeWithPortPoints } from "lib/types/high-density-types"
+import { IntraNodeSolverWithJumpers } from "../lib/solvers/HighDensitySolver/IntraNodeSolverWithJumpers"
+import { SingleHighDensityRouteWithJumpersSolver } from "../lib/solvers/HighDensitySolver/SingleHighDensityRouteWithJumpersSolver"
+import type { NodeWithPortPoints } from "../lib/types/high-density-types"
 
 test("SingleHighDensityRouteWithJumpersSolver - simple route without obstacles", () => {
   const solver = new SingleHighDensityRouteWithJumpersSolver({

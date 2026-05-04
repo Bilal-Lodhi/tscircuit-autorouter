@@ -1,13 +1,13 @@
 import type { GraphicsObject } from "graphics-debug"
-import { BaseSolver } from "lib/solvers/BaseSolver"
+import { BaseSolver } from "../../solvers/BaseSolver"
 import type {
   InputNodeWithPortPoints,
   InputPortPoint,
-} from "lib/solvers/PortPointPathingSolver/PortPointPathingSolver"
-import { calculateNodeProbabilityOfFailure } from "lib/solvers/UnravelSolver/calculateCrossingProbabilityOfFailure"
-import type { CapacityMeshNodeId, SimpleRouteJson } from "lib/types"
-import type { PortPoint } from "lib/types/high-density-types"
-import { getIntraNodeCrossingsUsingCircle } from "lib/utils/getIntraNodeCrossingsUsingCircle"
+} from "../../solvers/PortPointPathingSolver/PortPointPathingSolver"
+import { calculateNodeProbabilityOfFailure } from "../../solvers/UnravelSolver/calculateCrossingProbabilityOfFailure"
+import type { CapacityMeshNodeId, SimpleRouteJson } from "../../types/index"
+import type { PortPoint } from "../../types/high-density-types"
+import { getIntraNodeCrossingsUsingCircle } from "../../utils/getIntraNodeCrossingsUsingCircle"
 import {
   type ConvexRegionsComputeResult,
   type LayerMergeMode,

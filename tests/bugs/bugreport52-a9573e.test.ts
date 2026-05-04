@@ -1,10 +1,10 @@
 import { expect, test } from "bun:test"
-import { AutoroutingPipelineSolver } from "lib"
+import { AutoroutingPipelineSolver } from "../../lib/index"
 import bugReport from "../../fixtures/bug-reports/bugreport52-a9573e/bugreport52-a9573e.json" with {
   type: "json",
 }
-import type { SimpleRouteJson } from "lib/types"
-import type { NodeWithPortPoints } from "lib/types/high-density-types"
+import type { SimpleRouteJson } from "../../lib/types/index"
+import type { NodeWithPortPoints } from "../../lib/types/high-density-types"
 import { getLastStepSvg } from "../fixtures/getLastStepSvg"
 
 const srj = bugReport.simple_route_json as SimpleRouteJson

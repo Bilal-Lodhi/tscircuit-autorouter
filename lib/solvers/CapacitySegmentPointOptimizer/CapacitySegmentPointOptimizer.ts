@@ -1,11 +1,11 @@
-import { CapacityMeshNode, CapacityMeshNodeId } from "lib/types"
+import { CapacityMeshNode, CapacityMeshNodeId } from "../../types/index"
 import { BaseSolver } from "../BaseSolver"
-import { NodePortSegment } from "lib/types/capacity-edges-to-port-segments-types"
+import { NodePortSegment } from "../../types/capacity-edges-to-port-segments-types"
 import { SegmentWithAssignedPoints } from "../CapacityMeshSolver/CapacitySegmentToPointSolver"
 import { GraphicsObject, Line, Rect } from "graphics-debug"
-import { getTunedTotalCapacity1 } from "lib/utils/getTunedTotalCapacity1"
-import { getIntraNodeCrossingsFromSegments } from "lib/utils/getIntraNodeCrossingsFromSegments"
-import { NodeWithPortPoints } from "lib/types/high-density-types"
+import { getTunedTotalCapacity1 } from "../../utils/getTunedTotalCapacity1"
+import { getIntraNodeCrossingsFromSegments } from "../../utils/getIntraNodeCrossingsFromSegments"
+import { NodeWithPortPoints } from "../../types/high-density-types"
 
 type NodePortSegmentId = string
 

@@ -1,7 +1,7 @@
-import { HighDensityIntraNodeRoute } from "lib/types/high-density-types"
+import { HighDensityIntraNodeRoute } from "../../types/high-density-types"
 import { BaseSolver } from "../BaseSolver"
-import { Obstacle } from "lib/types"
-import { calculate45DegreePaths } from "lib/utils/calculate45DegreePaths"
+import { Obstacle } from "../../types/index"
+import { calculate45DegreePaths } from "../../utils/calculate45DegreePaths"
 import { GraphicsObject } from "graphics-debug"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 

@@ -1,6 +1,6 @@
-import { CachableSolver, CacheProvider } from "lib/cache/types"
+import { CachableSolver, CacheProvider } from "../../cache/types"
 import { UnravelSectionSolver } from "./UnravelSectionSolver"
-import { InMemoryCache } from "lib/cache/InMemoryCache"
+import { InMemoryCache } from "../../cache/InMemoryCache"
 import {
   PointModificationsMap,
   SegmentPointId,
@@ -11,13 +11,13 @@ import { BaseSolver } from "../BaseSolver"
 import stableStringify from "fast-json-stable-stringify"
 import objectHash from "object-hash"
 import { getIssuesInSection } from "./getIssuesInSection"
-import { CapacityMeshNode, CapacityMeshNodeId } from "lib/types"
+import { CapacityMeshNode, CapacityMeshNodeId } from "../../types/index"
 import { SegmentId } from "./types"
-import { LocalStorageCache } from "lib/cache/LocalStorageCache"
+import { LocalStorageCache } from "../../cache/LocalStorageCache"
 import {
   getGlobalLocalStorageCache,
   setupGlobalCaches,
-} from "lib/cache/setupGlobalCaches"
+} from "../../cache/setupGlobalCaches"
 import {
   translate,
   type Matrix,

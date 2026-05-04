@@ -2,7 +2,7 @@ import { appendFile, mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { getPngBufferFromGraphicsObject } from "graphics-debug"
 import type { GraphicsObject } from "graphics-debug"
-import { BaseSolver } from "lib/solvers/BaseSolver"
+import { BaseSolver } from "../solvers/BaseSolver"
 
 type PipelineStepLike = {
   solverName: string

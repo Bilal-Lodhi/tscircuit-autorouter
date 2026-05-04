@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import * as dataset01 from "@tscircuit/autorouting-dataset-01"
-import { AutoroutingPipelineSolver4 } from "lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
-import { HyperSingleIntraNodeSolver } from "lib/solvers/HyperHighDensitySolver/HyperSingleIntraNodeSolver"
+import { AutoroutingPipelineSolver4 } from "../../lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
+import { HyperSingleIntraNodeSolver } from "../../lib/solvers/HyperHighDensitySolver/HyperSingleIntraNodeSolver"
 
 test("pipeline4 circuit011 cmn_6 routes the disconnected multipoint branch", () => {
   const pipeline = new AutoroutingPipelineSolver4(

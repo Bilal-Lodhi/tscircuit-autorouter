@@ -1,4 +1,4 @@
-import type { NodeWithPortPoints } from "lib/types/high-density-types"
+import type { NodeWithPortPoints } from "../../types/high-density-types"
 
 export const buildColorMapFromPortPoints = (
   nodeWithPortPoints: NodeWithPortPoints,

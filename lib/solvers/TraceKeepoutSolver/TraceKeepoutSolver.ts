@@ -1,9 +1,13 @@
 import { BaseSolver } from "../BaseSolver"
-import { HighDensityRoute, Jumper } from "lib/types/high-density-types"
-import { Obstacle, SimpleRouteJson, Jumper as SrjJumper } from "lib/types"
+import { HighDensityRoute, Jumper } from "../../types/high-density-types"
+import {
+  Obstacle,
+  SimpleRouteJson,
+  Jumper as SrjJumper,
+} from "../../types/index"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
-import { ObstacleSpatialHashIndex } from "lib/data-structures/ObstacleTree"
-import { HighDensityRouteSpatialIndex } from "lib/data-structures/HighDensityRouteSpatialIndex"
+import { ObstacleSpatialHashIndex } from "../../data-structures/ObstacleTree"
+import { HighDensityRouteSpatialIndex } from "../../data-structures/HighDensityRouteSpatialIndex"
 import { GraphicsObject } from "graphics-debug"
 import {
   computeDrawPositionFromCollisions,
@@ -20,10 +24,10 @@ import {
   doSegmentsIntersect,
 } from "@tscircuit/math-utils"
 import { smoothHdRoutes } from "./smoothLines"
-import { cloneAndShuffleArray } from "lib/utils/cloneAndShuffleArray"
+import { cloneAndShuffleArray } from "../../utils/cloneAndShuffleArray"
 import { removeSelfIntersections } from "./removeSelfIntersections"
-import { getJumpersGraphics } from "lib/utils/getJumperGraphics"
-import { createObjectsWithZLayers } from "lib/utils/createObjectsWithZLayers"
+import { getJumpersGraphics } from "../../utils/getJumperGraphics"
+import { createObjectsWithZLayers } from "../../utils/createObjectsWithZLayers"
 
 /** Tolerance for comparing floating point coordinates */
 const COORD_TOLERANCE = 0.0001

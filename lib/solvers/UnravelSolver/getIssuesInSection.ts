@@ -1,4 +1,4 @@
-import { CapacityMeshNode, CapacityMeshNodeId } from "lib/types"
+import { CapacityMeshNode, CapacityMeshNodeId } from "../../types/index"
 import {
   UnravelSection,
   UnravelIssue,
@@ -9,8 +9,8 @@ import {
   UnravelSingleTransitionCrossingIssue,
   UnravelDoubleTransitionCrossingIssue,
 } from "./types"
-import { getIntraNodeCrossingsFromSegments } from "lib/utils/getIntraNodeCrossingsFromSegments"
-import { getTunedTotalCapacity1 } from "lib/utils/getTunedTotalCapacity1"
+import { getIntraNodeCrossingsFromSegments } from "../../utils/getIntraNodeCrossingsFromSegments"
+import { getTunedTotalCapacity1 } from "../../utils/getTunedTotalCapacity1"
 import { doSegmentsIntersect } from "@tscircuit/math-utils"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import { hasZRangeOverlap } from "./hasZRangeOverlap"

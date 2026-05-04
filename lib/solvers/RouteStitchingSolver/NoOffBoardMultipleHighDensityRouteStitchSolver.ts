@@ -1,6 +1,6 @@
-import { SimpleRouteConnection } from "lib/types"
-import { getConnectionPointLayer } from "lib/types/srj-types"
-import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
+import { SimpleRouteConnection } from "../../types/index"
+import { getConnectionPointLayer } from "../../types/srj-types"
+import { mapLayerNameToZ } from "../../utils/mapLayerNameToZ"
 import { MultipleHighDensityRouteStitchSolver } from "./MultipleHighDensityRouteStitchSolver"
 
 /**

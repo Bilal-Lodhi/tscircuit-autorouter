@@ -1,5 +1,5 @@
-import { CapacityMeshNode } from "lib/types"
-import { getTunedTotalCapacity1 } from "lib/utils/getTunedTotalCapacity1"
+import { CapacityMeshNode } from "../../types/index"
+import { getTunedTotalCapacity1 } from "../../utils/getTunedTotalCapacity1"
 
 export const calculateNodeProbabilityOfFailure = (
   node: CapacityMeshNode,

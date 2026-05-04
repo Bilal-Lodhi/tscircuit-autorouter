@@ -1,4 +1,4 @@
-import { NodeWithPortPoints } from "lib/types/high-density-types"
+import { NodeWithPortPoints } from "../types/high-density-types"
 
 export function getBoundsFromNodeWithPortPoints(
   nodeWithPortPoints: NodeWithPortPoints,

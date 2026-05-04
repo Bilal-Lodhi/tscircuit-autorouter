@@ -1,15 +1,15 @@
 import { expect, test } from "bun:test"
-import { AutoroutingPipelineSolver } from "lib"
-import { TraceSimplificationSolver } from "lib/solvers/TraceSimplificationSolver/TraceSimplificationSolver"
-import { getDrcErrors } from "lib/testing/getDrcErrors"
-import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
+import { AutoroutingPipelineSolver } from "../../lib/index"
+import { TraceSimplificationSolver } from "../../lib/solvers/TraceSimplificationSolver/TraceSimplificationSolver"
+import { getDrcErrors } from "../../lib/testing/getDrcErrors"
+import { convertToCircuitJson } from "../../lib/testing/utils/convertToCircuitJson"
 import type {
   SimpleRouteJson,
   SimplifiedPcbTrace,
   SimplifiedPcbTraces,
-} from "lib/types"
-import type { HighDensityRoute } from "lib/types/high-density-types"
-import { convertHdRouteToSimplifiedRoute } from "lib/utils/convertHdRouteToSimplifiedRoute"
+} from "../../lib/types/index"
+import type { HighDensityRoute } from "../../lib/types/high-density-types"
+import { convertHdRouteToSimplifiedRoute } from "../../lib/utils/convertHdRouteToSimplifiedRoute"
 import bugReport from "../../fixtures/bug-reports/simplification-trace-overlap-repro/simplification-trace-overlap-repro.json" with {
   type: "json",
 }

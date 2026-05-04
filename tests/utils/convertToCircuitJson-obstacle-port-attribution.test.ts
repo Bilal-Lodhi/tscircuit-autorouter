@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
-import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
-import type { SimpleRouteJson, SimplifiedPcbTrace } from "lib/types"
+import { convertToCircuitJson } from "../../lib/testing/utils/convertToCircuitJson"
+import type { SimpleRouteJson, SimplifiedPcbTrace } from "../../lib/types/index"
 
 test("obstacles use the nearest pcb_port_id instead of the first connected port", () => {
   const srj: SimpleRouteJson = {

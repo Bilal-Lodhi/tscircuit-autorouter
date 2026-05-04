@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
-import { AutoroutingPipelineSolver5 } from "lib/autorouter-pipelines/AutoroutingPipeline5_HdCache/AutoroutingPipelineSolver5_HdCache"
-import { prepareParamsForDownload } from "lib/testing/utils/prepareParamsForDownload"
-import type { SimpleRouteJson } from "lib/types"
+import { AutoroutingPipelineSolver5 } from "../lib/autorouter-pipelines/AutoroutingPipeline5_HdCache/AutoroutingPipelineSolver5_HdCache"
+import { prepareParamsForDownload } from "../lib/testing/utils/prepareParamsForDownload"
+import type { SimpleRouteJson } from "../lib/types/index"
 import srj from "./repro/dip16-basic.json" with { type: "json" }
 
 test.skip("sanitizeParamsForDownload makes pipeline5 portPointPathing input JSON serializable", async () => {

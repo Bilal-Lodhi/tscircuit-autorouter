@@ -1,10 +1,10 @@
 import { InteractiveGraphics } from "graphics-debug/react"
-import { IntraNodeRouteSolver } from "lib/solvers/HighDensitySolver/IntraNodeSolver"
-import { combineVisualizations } from "lib/utils/combineVisualizations"
-import { generateColorMapFromNodeWithPortPoints } from "lib/utils/generateColorMapFromNodeWithPortPoints"
+import { IntraNodeRouteSolver } from "../solvers/HighDensitySolver/IntraNodeSolver"
+import { combineVisualizations } from "../utils/combineVisualizations"
+import { generateColorMapFromNodeWithPortPoints } from "../utils/generateColorMapFromNodeWithPortPoints"
 import { useState, useRef, useEffect } from "react"
 import type { NodeWithPortPoints } from "../types/high-density-types"
-import { HighDensityHyperParameters } from "lib/solvers/HighDensitySolver/HighDensityHyperParameters"
+import { HighDensityHyperParameters } from "../solvers/HighDensitySolver/HighDensityHyperParameters"
 
 interface HighDensityDebuggerProps {
   startSeed?: number

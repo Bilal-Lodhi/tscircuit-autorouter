@@ -1,4 +1,4 @@
-import { SimpleRouteJson } from "lib/types"
+import { SimpleRouteJson } from "../types/index"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import { mapLayerNameToZ } from "./mapLayerNameToZ"
 

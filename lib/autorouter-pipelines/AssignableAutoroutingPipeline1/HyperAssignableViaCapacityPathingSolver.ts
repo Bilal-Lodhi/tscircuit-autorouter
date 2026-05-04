@@ -1,5 +1,5 @@
-import { HyperParameterSupervisorSolver } from "lib/solvers/HyperParameterSupervisorSolver"
-import type { CapacityHyperParameters } from "lib/solvers/CapacityHyperParameters"
+import { HyperParameterSupervisorSolver } from "../../solvers/HyperParameterSupervisorSolver"
+import type { CapacityHyperParameters } from "../../solvers/CapacityHyperParameters"
 import { AssignableViaCapacityPathingSolver_DirectiveSubOptimal } from "./AssignableViaCapacityPathing/AssignableViaCapacityPathingSolver_DirectiveSubOptimal"
 
 export type AssignableViaCapacityPathingParams = ConstructorParameters<

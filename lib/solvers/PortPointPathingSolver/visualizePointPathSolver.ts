@@ -6,8 +6,8 @@ import type { PortPointCandidate } from "./PortPointPathingSolver"
 import type { PortPoint } from "../../types/high-density-types"
 import { calculateNodeProbabilityOfFailure } from "../UnravelSolver/calculateCrossingProbabilityOfFailure"
 import { calculateNodeProbabilityOfFailureWithJumpers } from "../MultiSectionPortPointOptimizer/calculateNodeProbabilityOfFailureWithJumpers"
-import type { MultiSectionPortPointOptimizer } from "../MultiSectionPortPointOptimizer"
-import { getIntraNodeCrossingsUsingCircle } from "lib/utils/getIntraNodeCrossingsUsingCircle"
+import type { MultiSectionPortPointOptimizer } from "../MultiSectionPortPointOptimizer/index"
+import { getIntraNodeCrossingsUsingCircle } from "../../utils/getIntraNodeCrossingsUsingCircle"
 
 type Edge = "top" | "right" | "bottom" | "left" | "interior"
 

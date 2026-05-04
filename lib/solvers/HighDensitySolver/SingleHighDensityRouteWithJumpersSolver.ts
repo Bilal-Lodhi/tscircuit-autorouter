@@ -2,7 +2,7 @@ import { BaseSolver } from "../BaseSolver"
 import type {
   HighDensityIntraNodeRouteWithJumpers,
   Jumper,
-} from "lib/types/high-density-types"
+} from "../../types/high-density-types"
 import {
   distance,
   pointToSegmentDistance,
@@ -14,7 +14,7 @@ import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import {
   Node,
   SingleRouteCandidatePriorityQueue,
-} from "lib/data-structures/SingleRouteCandidatePriorityQueue"
+} from "../../data-structures/SingleRouteCandidatePriorityQueue"
 
 export type FutureConnection = {
   connectionName: string

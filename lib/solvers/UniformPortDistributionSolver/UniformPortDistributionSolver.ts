@@ -1,8 +1,8 @@
 import { BaseSolver } from "@tscircuit/solver-utils"
 import { GraphicsObject } from "graphics-debug"
-import { Obstacle } from "lib/types"
-import { NodeWithPortPoints } from "lib/types/high-density-types"
-import { getBoundsFromNodeWithPortPoints } from "lib/utils/getBoundsFromNodeWithPortPoints"
+import { Obstacle } from "../../types/index"
+import { NodeWithPortPoints } from "../../types/high-density-types"
+import { getBoundsFromNodeWithPortPoints } from "../../utils/getBoundsFromNodeWithPortPoints"
 import { InputNodeWithPortPoints } from "../PortPointPathingSolver/PortPointPathingSolver"
 import {
   Bounds,

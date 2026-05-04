@@ -1,5 +1,5 @@
-import { CapacityPathingGreedySolver } from "lib/solvers/CapacityPathingSectionSolver/CapacityPathingGreedySolver"
-import type { CapacityHyperParameters } from "lib/solvers/CapacityHyperParameters"
+import { CapacityPathingGreedySolver } from "../../../solvers/CapacityPathingSectionSolver/CapacityPathingGreedySolver"
+import type { CapacityHyperParameters } from "../../../solvers/CapacityHyperParameters"
 import type {
   CapacityMeshEdge,
   CapacityMeshNode,
@@ -7,17 +7,17 @@ import type {
   SimpleRouteConnection,
   SimpleRouteJson,
   CapacityPath,
-} from "lib/types"
-import { BaseSolver } from "lib/solvers/BaseSolver"
-import { getNodeEdgeMap } from "lib/solvers/CapacityMeshSolver/getNodeEdgeMap"
+} from "../../../types/index"
+import { BaseSolver } from "../../../solvers/BaseSolver"
+import { getNodeEdgeMap } from "../../../solvers/CapacityMeshSolver/getNodeEdgeMap"
 import {
   cloneAndShuffleArray,
   seededRandom,
-} from "lib/utils/cloneAndShuffleArray"
-import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
+} from "../../../utils/cloneAndShuffleArray"
+import { mapLayerNameToZ } from "../../../utils/mapLayerNameToZ"
 import { GraphicsObject } from "graphics-debug"
-import { createRectFromCapacityNode } from "lib/utils/createRectFromCapacityNode"
-import { safeTransparentize } from "lib/solvers/colors"
+import { createRectFromCapacityNode } from "../../../utils/createRectFromCapacityNode"
+import { safeTransparentize } from "../../../solvers/colors"
 import { distance } from "@tscircuit/math-utils"
 
 const seededRandomDecision = (seeds: number[], chance: number) => {

@@ -1,4 +1,4 @@
-import type { Obstacle, SimpleRouteJson } from "lib/types"
+import type { Obstacle, SimpleRouteJson } from "../types/index"
 
 const getUniqueValues = (values: readonly string[]) => {
   const seen = new Set<string>()

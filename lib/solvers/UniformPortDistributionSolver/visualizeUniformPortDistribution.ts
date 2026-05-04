@@ -1,6 +1,6 @@
 import { GraphicsObject, Line, Rect } from "graphics-debug"
-import { Obstacle } from "lib/types"
-import { NodeWithPortPoints } from "lib/types/high-density-types"
+import { Obstacle } from "../../types/index"
+import { NodeWithPortPoints } from "../../types/high-density-types"
 import {
   Bounds,
   OwnerPairKey,

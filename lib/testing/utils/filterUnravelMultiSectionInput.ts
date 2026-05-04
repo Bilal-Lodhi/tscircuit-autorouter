@@ -1,5 +1,5 @@
-import { UnravelSectionSolver } from "lib/solvers/UnravelSolver/UnravelSectionSolver"
-import { CapacityMeshNodeId } from "lib/types"
+import { UnravelSectionSolver } from "../../solvers/UnravelSolver/UnravelSectionSolver"
+import { CapacityMeshNodeId } from "../../types/index"
 
 /**
  * Filter verboseInput to only include content related to the given relevant node IDs

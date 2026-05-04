@@ -1,7 +1,7 @@
 import { BaseSolver } from "../BaseSolver"
 import type { GraphicsObject } from "graphics-debug"
 import type { InputNodeWithPortPoints } from "../PortPointPathingSolver/PortPointPathingSolver"
-import type { CapacityMeshNodeId } from "../../types"
+import type { CapacityMeshNodeId } from "../../types/index"
 import type { ConnectivityMap } from "circuit-json-to-connectivity-map"
 
 export interface RemoveUnnecessaryJumpersSolverParams {

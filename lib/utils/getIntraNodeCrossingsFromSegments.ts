@@ -1,6 +1,6 @@
 import { doSegmentsIntersect } from "@tscircuit/math-utils"
-import { SegmentWithAssignedPoints } from "lib/solvers/CapacityMeshSolver/CapacitySegmentToPointSolver"
-import { NodeWithPortPoints } from "lib/types/high-density-types"
+import { SegmentWithAssignedPoints } from "../solvers/CapacityMeshSolver/CapacitySegmentToPointSolver"
+import { NodeWithPortPoints } from "../types/high-density-types"
 
 /**
  * Get the number of crossings between segments on the same node

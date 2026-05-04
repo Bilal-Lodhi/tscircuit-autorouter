@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
-import { AssignableAutoroutingPipeline1Solver } from "lib/autorouter-pipelines/AssignableAutoroutingPipeline1/AssignableAutoroutingPipeline1Solver"
-import type { SimpleRouteJson } from "lib/types"
+import { AssignableAutoroutingPipeline1Solver } from "../../lib/autorouter-pipelines/AssignableAutoroutingPipeline1/AssignableAutoroutingPipeline1Solver"
+import type { SimpleRouteJson } from "../../lib/types/index"
 import { simpleRouteJson } from "../../fixtures/unassigned-obstacles/AssignableViaAutoroutingPipelineSolver/AssignableViaAutoroutingPipelineSolver03.fixture"
 
 test(

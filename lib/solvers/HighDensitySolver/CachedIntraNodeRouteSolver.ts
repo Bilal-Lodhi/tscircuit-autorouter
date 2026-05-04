@@ -4,8 +4,8 @@ import type { HighDensityIntraNodeRoute } from "../../types/high-density-types"
 import {
   getGlobalInMemoryCache,
   setupGlobalCaches,
-} from "lib/cache/setupGlobalCaches"
-import { CachableSolver, CacheProvider } from "lib/cache/types"
+} from "../../cache/setupGlobalCaches"
+import { CachableSolver, CacheProvider } from "../../cache/types"
 
 import { IntraNodeRouteSolver } from "./IntraNodeSolver"
 

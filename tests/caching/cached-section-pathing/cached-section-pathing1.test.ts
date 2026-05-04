@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from "bun:test"
-import { InMemoryCache } from "lib/cache/InMemoryCache"
-import { CachedHyperCapacityPathingSingleSectionSolver } from "lib/solvers/CapacityPathingSectionSolver/CachedHyperCapacityPathingSingleSectionSolver"
+import { InMemoryCache } from "../../../lib/cache/InMemoryCache"
+import { CachedHyperCapacityPathingSingleSectionSolver } from "../../../lib/solvers/CapacityPathingSectionSolver/CachedHyperCapacityPathingSingleSectionSolver"
 import {
   sectionNodes,
   sectionConnectionTerminals,
@@ -9,8 +9,8 @@ import {
   sectionEdges,
 } from "./problem1"
 import { getSvgFromGraphicsObject } from "graphics-debug"
-import { CapacityPathingMultiSectionSolver } from "lib/solvers/CapacityPathingSectionSolver/CapacityPathingMultiSectionSolver"
-import { CapacityPathingSingleSectionPathingSolver } from "lib/solvers/CapacityPathingSectionSolver/CapacityPathingSingleSectionSolver"
+import { CapacityPathingMultiSectionSolver } from "../../../lib/solvers/CapacityPathingSectionSolver/CapacityPathingMultiSectionSolver"
+import { CapacityPathingSingleSectionPathingSolver } from "../../../lib/solvers/CapacityPathingSectionSolver/CapacityPathingSingleSectionSolver"
 
 describe("CachedHyperCapacityPathingSingleSectionSolver Test 1", () => {
   const cache = new InMemoryCache()

@@ -6,24 +6,24 @@ import type {
   CapacityMeshNodeId,
   Obstacle,
   SimpleRouteJson,
-} from "../../types"
+} from "../../types/index"
 import {
   getConnectionPointLayer,
   getConnectionPointLayers,
-} from "lib/types/srj-types"
+} from "../../types/srj-types"
 import {
   isRectCompletelyInsidePolygon,
   isRectOverlappingPolygon,
   type Polygon,
 } from "@tscircuit/math-utils"
 import { COLORS } from "../colors"
-import { isPointInRect } from "lib/utils/isPointInRect"
-import { doRectsOverlap } from "lib/utils/doRectsOverlap"
-import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
-import { getTunedTotalCapacity1 } from "lib/utils/getTunedTotalCapacity1"
-import { ObstacleSpatialHashIndex } from "lib/data-structures/ObstacleTree"
-import { TargetTree } from "lib/data-structures/TargetTree"
-import { createObjectsWithZLayers } from "lib/utils/createObjectsWithZLayers"
+import { isPointInRect } from "../../utils/isPointInRect"
+import { doRectsOverlap } from "../../utils/doRectsOverlap"
+import { mapLayerNameToZ } from "../../utils/mapLayerNameToZ"
+import { getTunedTotalCapacity1 } from "../../utils/getTunedTotalCapacity1"
+import { ObstacleSpatialHashIndex } from "../../data-structures/ObstacleTree"
+import { TargetTree } from "../../data-structures/TargetTree"
+import { createObjectsWithZLayers } from "../../utils/createObjectsWithZLayers"
 
 interface CapacityMeshNodeSolverOptions {
   capacityDepth?: number

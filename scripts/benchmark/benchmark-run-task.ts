@@ -1,4 +1,4 @@
-import * as autorouterModule from "../../lib"
+import * as autorouterModule from "../../lib/index"
 import { KrtAutoroutingPipelineSolver } from "../../lib/testing/KrtAutoroutingPipelineSolver"
 import { getDrcErrors } from "../../lib/testing/getDrcErrors"
 import { RELAXED_DRC_OPTIONS } from "../../lib/testing/drcPresets"

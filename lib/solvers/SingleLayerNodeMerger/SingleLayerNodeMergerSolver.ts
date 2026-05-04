@@ -1,9 +1,9 @@
-import { CapacityMeshNode, CapacityMeshNodeId } from "lib/types"
+import { CapacityMeshNode, CapacityMeshNodeId } from "../../types/index"
 import { BaseSolver } from "../BaseSolver"
-import { areNodesBordering } from "lib/utils/areNodesBordering"
+import { areNodesBordering } from "../../utils/areNodesBordering"
 import { GraphicsObject } from "graphics-debug"
-import { createRectFromCapacityNode } from "lib/utils/createRectFromCapacityNode"
-import { CapacityNodeTree } from "lib/data-structures/CapacityNodeTree"
+import { createRectFromCapacityNode } from "../../utils/createRectFromCapacityNode"
+import { CapacityNodeTree } from "../../data-structures/CapacityNodeTree"
 
 const EPSILON = 0.005
 

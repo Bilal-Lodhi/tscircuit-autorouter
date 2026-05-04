@@ -2,7 +2,7 @@ import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { HyperPortPointPathingSolver } from "../PortPointPathingSolver/HyperPortPointPathingSolver"
 import type { InputNodeWithPortPoints } from "../PortPointPathingSolver/PortPointPathingSolver"
 import type { PrepatternJumper } from "./patterns/alternatingGrid"
-import type { SimpleRouteJson } from "../../types"
+import type { SimpleRouteJson } from "../../types/index"
 import { updateConnMapWithOffboardObstacleConnections } from "../../autorouter-pipelines/AssignableAutoroutingPipeline2/updateConnMapWithOffboardObstacleConnections"
 
 export interface ProcessPathingSolverResultsParams {

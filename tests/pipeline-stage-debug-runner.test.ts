@@ -10,9 +10,9 @@ import {
 } from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import { AutoroutingPipelineSolver4 } from "lib"
-import { PipelineStageDebugRunner } from "lib/testing/PipelineStageDebugRunner"
-import type { SimpleRouteJson } from "lib/types"
+import { AutoroutingPipelineSolver4 } from "../lib/index"
+import { PipelineStageDebugRunner } from "../lib/testing/PipelineStageDebugRunner"
+import type { SimpleRouteJson } from "../lib/types/index"
 import {
   loadScenarioBySampleNumber,
   parseDatasetName,

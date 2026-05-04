@@ -4,7 +4,7 @@ import type {
   CapacityMeshNode,
   CapacityMeshNodeId,
   SimpleRouteJson,
-} from "../../types"
+} from "../../types/index"
 import type { GraphicsObject } from "graphics-debug"
 import { getNodeEdgeMap } from "../CapacityMeshSolver/getNodeEdgeMap"
 

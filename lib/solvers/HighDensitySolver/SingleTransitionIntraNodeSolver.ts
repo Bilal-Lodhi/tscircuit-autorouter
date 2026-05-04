@@ -1,10 +1,10 @@
 import { clamp } from "@tscircuit/math-utils"
 import type { GraphicsObject } from "graphics-debug"
-import { BaseSolver } from "lib/solvers/BaseSolver"
+import { BaseSolver } from "../BaseSolver"
 import {
   HighDensityIntraNodeRoute,
   NodeWithPortPoints,
-} from "lib/types/high-density-types"
+} from "../../types/high-density-types"
 
 type Point = { x: number; y: number; z?: number }
 type Route = {

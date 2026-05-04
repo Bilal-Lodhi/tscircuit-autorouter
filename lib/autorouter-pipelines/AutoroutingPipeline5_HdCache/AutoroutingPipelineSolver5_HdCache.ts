@@ -1,6 +1,6 @@
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
-import type { CapacityMeshNodeId } from "lib/types/capacity-mesh-types"
-import { getPendingEffectsFromSolverTree } from "lib/solvers/getPendingEffectsFromSolverTree"
+import type { CapacityMeshNodeId } from "../../types/capacity-mesh-types"
+import { getPendingEffectsFromSolverTree } from "../../solvers/getPendingEffectsFromSolverTree"
 import {
   AutoroutingPipelineSolver4_TinyHypergraph,
   type AutoroutingPipelineSolverOptions,

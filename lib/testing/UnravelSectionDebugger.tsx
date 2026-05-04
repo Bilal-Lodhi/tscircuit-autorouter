@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react"
 import { InteractiveGraphics } from "graphics-debug/react"
-import { UnravelSectionSolver } from "lib/solvers/UnravelSolver/UnravelSectionSolver"
-import { UnravelCandidate } from "lib/solvers/UnravelSolver/types"
-import { combineVisualizations } from "lib/utils/combineVisualizations"
+import { UnravelSectionSolver } from "../solvers/UnravelSolver/UnravelSectionSolver"
+import { UnravelCandidate } from "../solvers/UnravelSolver/types"
+import { combineVisualizations } from "../utils/combineVisualizations"
 import {
   LineChart,
   Line,

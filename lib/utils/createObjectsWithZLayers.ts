@@ -1,4 +1,4 @@
-import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
+import { mapLayerNameToZ } from "./mapLayerNameToZ"
 
 type LayerMappedObject = {
   zLayers?: number[]

@@ -1,4 +1,4 @@
-import { NodePortSegment } from "lib/types/capacity-edges-to-port-segments-types"
+import { NodePortSegment } from "../../types/capacity-edges-to-port-segments-types"
 import { SegmentWithAssignedPoints } from "../CapacityMeshSolver/CapacitySegmentToPointSolver"
 
 /**

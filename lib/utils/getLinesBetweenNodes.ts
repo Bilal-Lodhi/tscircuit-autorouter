@@ -1,4 +1,4 @@
-import { CapacityMeshNode } from "lib/types"
+import { CapacityMeshNode } from "../types/index"
 
 // Helper interfaces
 interface Point {

@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test"
-import { HyperPortPointPathingSolver } from "lib/solvers/PortPointPathingSolver/HyperPortPointPathingSolver"
+import { HyperPortPointPathingSolver } from "../../lib/solvers/PortPointPathingSolver/HyperPortPointPathingSolver"
 import input from "../../fixtures/features/portpointpathing/portpointpathing01-input.json" with {
   type: "json",
 }

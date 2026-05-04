@@ -1,4 +1,4 @@
-import { PortPoint } from "lib/types/high-density-types"
+import { PortPoint } from "../../types/high-density-types"
 import { InputNodeWithPortPoints } from "../PortPointPathingSolver/PortPointPathingSolver"
 import { OwnerPair } from "./types"
 

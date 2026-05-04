@@ -1,11 +1,11 @@
 import { expect, test } from "bun:test"
 import { Circle, mergeGraphics, type GraphicsObject } from "graphics-debug"
-import { getDrcErrors } from "lib/testing/getDrcErrors"
-import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
-import type { SimpleRouteJson } from "lib/types"
+import { getDrcErrors } from "../../lib/testing/getDrcErrors"
+import { convertToCircuitJson } from "../../lib/testing/utils/convertToCircuitJson"
+import type { SimpleRouteJson } from "../../lib/types/index"
 import circuit101 from "./assets/circuit101.json" with { type: "json" }
 import { getLastStepGraphicsObject } from "tests/fixtures/getLastStepGraphicsObject"
-import { AutoroutingPipelineSolver } from "lib/index"
+import { AutoroutingPipelineSolver } from "../../lib/index"
 
 test.skip("pipeline4 failing on github actions", async () => {
   const srj = circuit101 as SimpleRouteJson

@@ -1,7 +1,10 @@
 import { distance } from "@tscircuit/math-utils"
 import { GraphicsObject } from "graphics-debug"
-import { HighDensityIntraNodeRoute, Jumper } from "lib/types/high-density-types"
-import { getJumpersGraphics } from "lib/utils/getJumperGraphics"
+import {
+  HighDensityIntraNodeRoute,
+  Jumper,
+} from "../../types/high-density-types"
+import { getJumpersGraphics } from "../../utils/getJumperGraphics"
 import { BaseSolver } from "../BaseSolver"
 
 const VIA_PENALTY = 1000

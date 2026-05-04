@@ -1,7 +1,7 @@
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { GraphicsObject } from "graphics-debug"
-import { getIntraNodeCrossingsUsingCircle } from "lib/utils/getIntraNodeCrossingsUsingCircle"
-import { mergeRouteSegments } from "lib/utils/mergeRouteSegments"
+import { getIntraNodeCrossingsUsingCircle } from "../../utils/getIntraNodeCrossingsUsingCircle"
+import { mergeRouteSegments } from "../../utils/mergeRouteSegments"
 import { BaseSolver } from "../../solvers/BaseSolver"
 import {
   type AdjacentObstacle,

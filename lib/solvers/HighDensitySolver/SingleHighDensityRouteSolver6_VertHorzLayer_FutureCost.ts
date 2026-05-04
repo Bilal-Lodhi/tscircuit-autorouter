@@ -1,6 +1,6 @@
 import { distance, pointToSegmentDistance } from "@tscircuit/math-utils"
 import { SingleHighDensityRouteSolver } from "./SingleHighDensityRouteSolver"
-import { Node } from "lib/data-structures/SingleRouteCandidatePriorityQueue"
+import { Node } from "../../data-structures/SingleRouteCandidatePriorityQueue"
 
 export class SingleHighDensityRouteSolver6_VertHorzLayer_FutureCost extends SingleHighDensityRouteSolver {
   FUTURE_CONNECTION_PROX_TRACE_PENALTY_FACTOR = 2

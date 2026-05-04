@@ -1,5 +1,5 @@
 import type { GraphicsObject } from "graphics-debug"
-import { CachableSolver, CacheProvider } from "lib/cache/types"
+import { CachableSolver, CacheProvider } from "../cache/types"
 
 export type PendingEffect = {
   name: string

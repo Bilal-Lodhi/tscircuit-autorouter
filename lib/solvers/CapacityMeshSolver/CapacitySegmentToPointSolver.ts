@@ -2,7 +2,7 @@ import { BaseSolver } from "../BaseSolver"
 import type { NodePortSegment } from "../../types/capacity-edges-to-port-segments-types"
 import type { GraphicsObject, Line } from "graphics-debug"
 import type { NodeWithPortPoints } from "../../types/high-density-types"
-import type { CapacityMeshNode, CapacityMeshNodeId } from "lib/types"
+import type { CapacityMeshNode, CapacityMeshNodeId } from "../../types/index"
 
 export interface SegmentWithAssignedPoints extends NodePortSegment {
   assignedPoints?: {

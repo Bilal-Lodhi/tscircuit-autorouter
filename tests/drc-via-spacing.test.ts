@@ -2,7 +2,7 @@ import { expect, test } from "bun:test"
 import {
   MIN_VIA_TO_VIA_CLEARANCE,
   getDrcErrors,
-} from "lib/testing/getDrcErrors"
+} from "../lib/testing/getDrcErrors"
 
 const VIA_OUTER_DIAMETER = 0.3
 const VIA_HOLE_DIAMETER = 0.15

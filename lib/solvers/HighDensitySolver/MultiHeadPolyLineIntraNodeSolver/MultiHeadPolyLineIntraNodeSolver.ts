@@ -9,14 +9,14 @@ import {
 } from "@tscircuit/math-utils"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import { GraphicsObject } from "graphics-debug"
-import { BaseSolver } from "lib/solvers/BaseSolver"
-import { safeTransparentize } from "lib/solvers/colors"
+import { BaseSolver } from "../../BaseSolver"
+import { safeTransparentize } from "../../colors"
 import {
   HighDensityIntraNodeRoute,
   NodeWithPortPoints,
-} from "lib/types/high-density-types"
-import { generateColorMapFromNodeWithPortPoints } from "lib/utils/generateColorMapFromNodeWithPortPoints"
-import { getIntraNodeCrossings } from "lib/utils/getIntraNodeCrossings"
+} from "../../../types/high-density-types"
+import { generateColorMapFromNodeWithPortPoints } from "../../../utils/generateColorMapFromNodeWithPortPoints"
+import { getIntraNodeCrossings } from "../../../utils/getIntraNodeCrossings"
 import { HighDensityHyperParameters } from "../HighDensityHyperParameters"
 import { computeViaCountVariants } from "./computeViaCountVariants"
 import { constructMiddlePointsWithViaPositions } from "./constructMiddlePointsWithViaPositions"

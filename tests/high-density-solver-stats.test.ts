@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { HighDensitySolver } from "lib/solvers/HighDensitySolver/HighDensitySolver"
+import { HighDensitySolver } from "../lib/solvers/HighDensitySolver/HighDensitySolver"
 
 test("HighDensitySolver tracks solver counts and difficult node pfs", () => {
   const solver = new HighDensitySolver({

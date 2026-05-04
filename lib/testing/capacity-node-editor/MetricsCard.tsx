@@ -1,4 +1,4 @@
-import { getIntraNodeCrossings } from "lib/utils/getIntraNodeCrossings"
+import { getIntraNodeCrossings } from "../../utils/getIntraNodeCrossings"
 
 type MetricsCardProps = ReturnType<typeof getIntraNodeCrossings> & {
   probabilityOfFailure: number

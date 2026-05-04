@@ -4,12 +4,12 @@ import {
   pointToSegmentDistance,
 } from "@tscircuit/math-utils"
 import type { GraphicsObject } from "graphics-debug"
-import { BaseSolver } from "lib/solvers/BaseSolver"
+import { BaseSolver } from "../../BaseSolver"
 import {
   HighDensityIntraNodeRoute,
   NodeWithPortPoints,
-} from "lib/types/high-density-types"
-import { getIntraNodeCrossings } from "lib/utils/getIntraNodeCrossings"
+} from "../../../types/high-density-types"
+import { getIntraNodeCrossings } from "../../../utils/getIntraNodeCrossings"
 import { computeDumbbellPaths } from "./computeDumbbellPaths"
 import { findCircleLineIntersections } from "./findCircleLineIntersections"
 

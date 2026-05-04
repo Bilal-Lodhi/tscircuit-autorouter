@@ -1,4 +1,4 @@
-import { Obstacle } from "lib/types"
+import { Obstacle } from "../types/index"
 import { ISpatialIndex } from "./SpatialIndex"
 import { RbushIndex } from "./RbushIndex"
 import { FlatbushIndex } from "./FlatbushIndex"

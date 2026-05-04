@@ -1,5 +1,5 @@
 import { doSegmentsIntersect, Point3 } from "@tscircuit/math-utils" // Assuming this is available and correct
-import type { Jumper } from "lib/types/high-density-types"
+import type { Jumper } from "../types/high-density-types"
 
 // --- Interfaces and Types (Unchanged) ---
 

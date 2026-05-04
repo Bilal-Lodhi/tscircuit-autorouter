@@ -1,4 +1,4 @@
-import type { CapacityMeshNode } from "lib/types"
+import type { CapacityMeshNode } from "../types/index"
 
 /**
  * Creates a Map from an array of capacity nodes, keyed by capacityMeshNodeId.

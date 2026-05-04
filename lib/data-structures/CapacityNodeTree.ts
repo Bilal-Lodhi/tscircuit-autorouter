@@ -1,4 +1,4 @@
-import { CapacityMeshNode, CapacityMeshNodeId } from "lib/types"
+import { CapacityMeshNode, CapacityMeshNodeId } from "../types/index"
 
 export type BucketCoordinate = `${number}x${number}`
 

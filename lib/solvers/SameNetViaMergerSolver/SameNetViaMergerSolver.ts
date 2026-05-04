@@ -1,15 +1,15 @@
-import { ObstacleSpatialHashIndex } from "lib/data-structures/ObstacleTree"
+import { ObstacleSpatialHashIndex } from "../../data-structures/ObstacleTree"
 import { BaseSolver } from "../BaseSolver"
 import {
   HighDensityIntraNodeRoute,
   HighDensityRoute,
-} from "lib/types/high-density-types"
-import { Obstacle } from "lib/types"
+} from "../../types/high-density-types"
+import { Obstacle } from "../../types/index"
 import { GraphicsObject } from "graphics-debug"
-import { HighDensityRouteSpatialIndex } from "lib/data-structures/HighDensityRouteSpatialIndex"
+import { HighDensityRouteSpatialIndex } from "../../data-structures/HighDensityRouteSpatialIndex"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
-import { getJumpersGraphics } from "lib/utils/getJumperGraphics"
-import { createObjectsWithZLayers } from "lib/utils/createObjectsWithZLayers"
+import { getJumpersGraphics } from "../../utils/getJumperGraphics"
+import { createObjectsWithZLayers } from "../../utils/createObjectsWithZLayers"
 
 export interface SameNetViaMergerSolverInput {
   inputHdRoutes: HighDensityRoute[]

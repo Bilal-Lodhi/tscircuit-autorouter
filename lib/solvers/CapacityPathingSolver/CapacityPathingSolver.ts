@@ -6,13 +6,13 @@ import type {
   CapacityPath,
   SimpleRouteConnection,
   SimpleRouteJson,
-} from "../../types"
+} from "../../types/index"
 import { getNodeEdgeMap } from "../CapacityMeshSolver/getNodeEdgeMap"
 import { distance } from "@tscircuit/math-utils"
 import { CapacityHyperParameters } from "../CapacityHyperParameters"
 import { GraphicsObject } from "graphics-debug"
 import { safeTransparentize } from "../colors"
-import { createRectFromCapacityNode } from "lib/utils/createRectFromCapacityNode"
+import { createRectFromCapacityNode } from "../../utils/createRectFromCapacityNode"
 
 export type Candidate = {
   prevCandidate: Candidate | null

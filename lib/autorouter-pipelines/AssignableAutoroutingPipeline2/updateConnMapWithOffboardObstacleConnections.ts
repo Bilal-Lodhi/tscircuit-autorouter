@@ -1,5 +1,5 @@
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
-import type { SimpleRouteJson } from "lib/types"
+import type { SimpleRouteJson } from "../../types/index"
 
 export const updateConnMapWithOffboardObstacleConnections = ({
   connMap,

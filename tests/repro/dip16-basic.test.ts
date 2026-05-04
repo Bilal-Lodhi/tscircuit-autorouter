@@ -1,8 +1,8 @@
 import { test, expect } from "bun:test"
 import reproJson from "./dip16-basic.json"
-import type { SimpleRouteJson } from "lib/types"
+import type { SimpleRouteJson } from "../../lib/types/index"
 import { getLastStepSvg } from "../fixtures/getLastStepSvg"
-import { AssignableAutoroutingPipeline3 } from "lib/index"
+import { AssignableAutoroutingPipeline3 } from "../../lib/index"
 
 test("dip16 basic", () => {
   const solver = new AssignableAutoroutingPipeline3(

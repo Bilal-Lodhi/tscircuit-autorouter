@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test"
-import { CapacityMeshSolver } from "../lib"
+import { CapacityMeshSolver } from "../lib/index"
 import {
   calculateOptimalCapacityDepth,
   getTunedTotalCapacity1,

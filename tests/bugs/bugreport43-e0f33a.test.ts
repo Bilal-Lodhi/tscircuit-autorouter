@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test"
-import { AssignableAutoroutingPipeline3 } from "lib"
+import { AssignableAutoroutingPipeline3 } from "../../lib/index"
 import bugReport from "../../fixtures/bug-reports/bugreport43-e0f33a/bugreport43-e0f33a.json" with {
   type: "json",
 }
-import type { SimpleRouteJson } from "lib/types"
+import type { SimpleRouteJson } from "../../lib/types/index"
 import { getLastStepSvg } from "../fixtures/getLastStepSvg"
 
 const srj = bugReport.simple_route_json as SimpleRouteJson

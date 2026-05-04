@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react"
-import { computeDumbbellPaths } from "lib/solvers/HighDensitySolver/TwoRouteHighDensitySolver/computeDumbbellPaths"
+import { computeDumbbellPaths } from "../solvers/HighDensitySolver/TwoRouteHighDensitySolver/computeDumbbellPaths"
 
 interface Point {
   x: number

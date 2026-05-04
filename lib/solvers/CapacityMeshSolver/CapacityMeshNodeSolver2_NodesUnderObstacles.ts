@@ -6,17 +6,17 @@ import type {
   CapacityMeshNodeId,
   Obstacle,
   SimpleRouteJson,
-} from "../../types"
+} from "../../types/index"
 import {
   isRectCompletelyInsidePolygon,
   isRectOverlappingPolygon,
 } from "@tscircuit/math-utils"
 import { COLORS } from "../colors"
-import { isPointInRect } from "lib/utils/isPointInRect"
-import { doRectsOverlap } from "lib/utils/doRectsOverlap"
-import { getViaDimensions } from "lib/utils/getViaDimensions"
+import { isPointInRect } from "../../utils/isPointInRect"
+import { doRectsOverlap } from "../../utils/doRectsOverlap"
+import { getViaDimensions } from "../../utils/getViaDimensions"
 import { CapacityMeshNodeSolver } from "./CapacityMeshNodeSolver1"
-import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
+import { mapLayerNameToZ } from "../../utils/mapLayerNameToZ"
 
 interface CapacityMeshNodeSolverOptions {
   capacityDepth?: number

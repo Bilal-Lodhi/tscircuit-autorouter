@@ -1,4 +1,4 @@
-import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
+import { convertToCircuitJson } from "../utils/convertToCircuitJson"
 
 type SolverLike = {
   netToPointPairsSolver?: {

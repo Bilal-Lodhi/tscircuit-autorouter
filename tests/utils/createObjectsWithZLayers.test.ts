@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
-import type { SimpleRouteJson } from "lib/types"
-import { createObjectsWithZLayers } from "lib/utils/createObjectsWithZLayers"
+import type { SimpleRouteJson } from "../../lib/types/index"
+import { createObjectsWithZLayers } from "../../lib/utils/createObjectsWithZLayers"
 
 test("preserves obstacle ccwRotationDegrees while normalizing zLayers", () => {
   const srj: SimpleRouteJson = {

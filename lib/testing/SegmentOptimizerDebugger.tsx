@@ -3,9 +3,9 @@ import { InteractiveGraphics } from "graphics-debug/react"
 import {
   CapacitySegmentToPointSolver,
   SegmentWithAssignedPoints,
-} from "lib/solvers/CapacityMeshSolver/CapacitySegmentToPointSolver"
-import { CapacitySegmentPointOptimizer } from "lib/solvers/CapacitySegmentPointOptimizer/CapacitySegmentPointOptimizer"
-import { combineVisualizations } from "lib/utils/combineVisualizations"
+} from "../solvers/CapacityMeshSolver/CapacitySegmentToPointSolver"
+import { CapacitySegmentPointOptimizer } from "../solvers/CapacitySegmentPointOptimizer/CapacitySegmentPointOptimizer"
+import { combineVisualizations } from "../utils/combineVisualizations"
 import {
   LineChart,
   Line,
@@ -15,7 +15,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts"
-import { CapacityMeshNode } from "lib/types"
+import { CapacityMeshNode } from "../types/index"
 
 /**
  * Simplified SegmentToPoint component that visualizes point optimization

@@ -1,4 +1,4 @@
-import { NodeWithPortPoints } from "lib/types/high-density-types"
+import { NodeWithPortPoints } from "../types/high-density-types"
 
 /**
  * Maps a boundary point to a 1D perimeter coordinate.

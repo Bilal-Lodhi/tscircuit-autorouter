@@ -1,7 +1,7 @@
 import {
   CapacityMeshNode,
   CapacityMeshNodeId,
-} from "lib/types/capacity-mesh-types"
+} from "../../types/capacity-mesh-types"
 import { ExploredPortPoint } from "./types"
 import { SegmentPortPoint } from "../AvailableSegmentPointSolver/AvailableSegmentPointSolver"
 import { BaseSolver } from "@tscircuit/solver-utils"

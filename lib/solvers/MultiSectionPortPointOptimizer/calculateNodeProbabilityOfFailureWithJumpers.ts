@@ -1,4 +1,4 @@
-import { CapacityMeshNode } from "lib/types"
+import { CapacityMeshNode } from "../../types/index"
 
 // 1206x4
 const JUMPER_SIZE_WIDTH_WITH_PADDING = 1.6

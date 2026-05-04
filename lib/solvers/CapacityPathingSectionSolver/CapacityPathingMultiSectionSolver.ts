@@ -4,7 +4,7 @@ import {
   CapacityMeshNodeId,
   CapacityPath,
   SimpleRouteJson,
-} from "lib/types"
+} from "../../types/index"
 import { BaseSolver } from "../BaseSolver"
 import {
   CapacityPathingSolver,
@@ -12,7 +12,7 @@ import {
 } from "../CapacityPathingSolver/CapacityPathingSolver"
 import { CapacityPathingGreedySolver } from "./CapacityPathingGreedySolver"
 import { HyperCapacityPathingSingleSectionSolver } from "./HyperCapacityPathingSingleSectionSolver"
-import { getTunedTotalCapacity1 } from "lib/utils/getTunedTotalCapacity1"
+import { getTunedTotalCapacity1 } from "../../utils/getTunedTotalCapacity1"
 import { visualizeSection } from "./visualizeSection"
 import {
   calculateNodeProbabilityOfFailure,
@@ -29,7 +29,7 @@ import {
 } from "./computeSectionNodesTerminalsAndEdges"
 import { getNodeEdgeMap } from "../CapacityMeshSolver/getNodeEdgeMap"
 import { CachedHyperCapacityPathingSingleSectionSolver } from "./CachedHyperCapacityPathingSingleSectionSolver"
-import { CacheProvider } from "lib/cache/types"
+import { CacheProvider } from "../../cache/types"
 
 type CapacityMeshEdgeId = string
 

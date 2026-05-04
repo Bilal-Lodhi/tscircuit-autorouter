@@ -1,4 +1,4 @@
-import type { Jumper } from "lib/types/high-density-types"
+import type { Jumper } from "../../types/high-density-types"
 
 interface Point2D {
   x: number

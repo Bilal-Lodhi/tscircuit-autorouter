@@ -4,12 +4,12 @@ import type {
   DatasetSample,
   HdRoute as RepairHdRoute,
 } from "high-density-repair02"
-import type { Obstacle } from "lib/types/srj-types"
-import { ObstacleSpatialHashIndex } from "lib/data-structures/ObstacleTree"
+import type { Obstacle } from "../../types/srj-types"
+import { ObstacleSpatialHashIndex } from "../../data-structures/ObstacleTree"
 import type {
   HighDensityRoute,
   NodeWithPortPoints,
-} from "lib/types/high-density-types"
+} from "../../types/high-density-types"
 import { safeTransparentize } from "../colors"
 import { BaseSolver } from "../BaseSolver"
 

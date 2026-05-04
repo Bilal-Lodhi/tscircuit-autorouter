@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
-import type { Pipeline5HdCacheHighDensitySolver } from "lib/autorouter-pipelines/AutoroutingPipeline5_HdCache/Pipeline5HdCacheHighDensitySolver"
-import { AutoroutingPipelineSolver5 } from "lib/autorouter-pipelines/AutoroutingPipeline5_HdCache/AutoroutingPipelineSolver5_HdCache"
-import type { SimpleRouteJson } from "lib/types"
+import type { Pipeline5HdCacheHighDensitySolver } from "../../lib/autorouter-pipelines/AutoroutingPipeline5_HdCache/Pipeline5HdCacheHighDensitySolver"
+import { AutoroutingPipelineSolver5 } from "../../lib/autorouter-pipelines/AutoroutingPipeline5_HdCache/AutoroutingPipelineSolver5_HdCache"
+import type { SimpleRouteJson } from "../../lib/types/index"
 import bugReport from "../../fixtures/bug-reports/bugreport46-ac4337/bugreport46-ac4337-arduino-uno.json" with {
   type: "json",
 }

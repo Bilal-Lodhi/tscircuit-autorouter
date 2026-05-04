@@ -6,8 +6,8 @@ import {
   type SimplifiedPcbTraces,
   type SingleLayerConnectionPoint,
   isSingleLayerConnectionPoint,
-} from "lib/types"
-import { HighDensityIntraNodeRoute, Jumper } from "lib/types/high-density-types"
+} from "../types/index"
+import { HighDensityIntraNodeRoute, Jumper } from "../types/high-density-types"
 import { mapZToLayerName } from "./mapZToLayerName"
 
 type Point = {

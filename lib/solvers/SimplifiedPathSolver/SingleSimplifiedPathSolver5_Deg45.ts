@@ -2,21 +2,24 @@ import {
   doSegmentsIntersect,
   pointToSegmentDistance,
 } from "@tscircuit/math-utils"
-import { HighDensityIntraNodeRoute, Jumper } from "lib/types/high-density-types"
+import {
+  HighDensityIntraNodeRoute,
+  Jumper,
+} from "../../types/high-density-types"
 import { BaseSolver } from "../BaseSolver"
-import { Obstacle } from "lib/types"
+import { Obstacle } from "../../types/index"
 import { GraphicsObject } from "graphics-debug"
 import { SingleSimplifiedPathSolver } from "./SingleSimplifiedPathSolver"
-import { calculate45DegreePaths } from "lib/utils/calculate45DegreePaths"
-import { minimumDistanceBetweenSegments } from "lib/utils/minimumDistanceBetweenSegments"
-import { SegmentTree } from "lib/data-structures/SegmentTree"
+import { calculate45DegreePaths } from "../../utils/calculate45DegreePaths"
+import { minimumDistanceBetweenSegments } from "../../utils/minimumDistanceBetweenSegments"
+import { SegmentTree } from "../../data-structures/SegmentTree"
 import {
   segmentToBoxMinDistance,
   computeGapBetweenBoxes,
   segmentToBoundsMinDistance,
 } from "@tscircuit/math-utils"
-import { doesSegmentCrossPolygonBoundary } from "lib/utils/polygonContainment"
-import { JUMPER_DIMENSIONS } from "lib/utils/jumperSizes"
+import { doesSegmentCrossPolygonBoundary } from "../../utils/polygonContainment"
+import { JUMPER_DIMENSIONS } from "../../utils/jumperSizes"
 
 interface Point {
   x: number

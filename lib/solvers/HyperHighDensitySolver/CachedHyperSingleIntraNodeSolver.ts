@@ -1,14 +1,14 @@
-import { CachableSolver, CacheProvider } from "lib/cache/types"
+import { CachableSolver, CacheProvider } from "../../cache/types"
 import {
   getGlobalInMemoryCache,
   setupGlobalCaches,
-} from "lib/cache/setupGlobalCaches"
+} from "../../cache/setupGlobalCaches"
 import { HyperSingleIntraNodeSolver } from "./HyperSingleIntraNodeSolver"
 import type {
   HighDensityIntraNodeRoute,
   NodeWithPortPoints,
   PortPoint,
-} from "lib/types/high-density-types"
+} from "../../types/high-density-types"
 import type { HighDensityHyperParameters } from "../HighDensitySolver/HighDensityHyperParameters"
 import type { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import objectHash from "object-hash"

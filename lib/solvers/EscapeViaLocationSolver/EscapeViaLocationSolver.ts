@@ -11,17 +11,17 @@ import {
   type SimpleRouteConnection,
   type SimpleRouteJson,
   isSingleLayerConnectionPoint,
-} from "lib/types"
-import { minimumDistanceBetweenSegments } from "lib/utils/minimumDistanceBetweenSegments"
-import { isPointInRect } from "lib/utils/isPointInRect"
-import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
-import { mapZToLayerName } from "lib/utils/mapZToLayerName"
-import { getPointKey } from "lib/utils/getPointKey"
-import { getViaDimensions } from "lib/utils/getViaDimensions"
+} from "../../types/index"
+import { minimumDistanceBetweenSegments } from "../../utils/minimumDistanceBetweenSegments"
+import { isPointInRect } from "../../utils/isPointInRect"
+import { mapLayerNameToZ } from "../../utils/mapLayerNameToZ"
+import { mapZToLayerName } from "../../utils/mapZToLayerName"
+import { getPointKey } from "../../utils/getPointKey"
+import { getViaDimensions } from "../../utils/getViaDimensions"
 import {
   doesSegmentCrossPolygonBoundary,
   isPointInOrOnPolygon,
-} from "lib/utils/polygonContainment"
+} from "../../utils/polygonContainment"
 import { BaseSolver } from "../BaseSolver"
 import { mergeConnections } from "../NetToPointPairsSolver/mergeConnections"
 import { obstacleToSegments } from "../TraceKeepoutSolver/obstacleToSegments"

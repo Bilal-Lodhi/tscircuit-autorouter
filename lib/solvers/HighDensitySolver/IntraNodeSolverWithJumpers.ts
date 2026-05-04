@@ -8,10 +8,10 @@ import { BaseSolver } from "../BaseSolver"
 import { SingleHighDensityRouteWithJumpersSolver } from "./SingleHighDensityRouteWithJumpersSolver"
 import { safeTransparentize } from "../colors"
 import { HighDensityHyperParameters } from "./HighDensityHyperParameters"
-import { cloneAndShuffleArray } from "lib/utils/cloneAndShuffleArray"
+import { cloneAndShuffleArray } from "../../utils/cloneAndShuffleArray"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
-import { getBoundsFromNodeWithPortPoints } from "lib/utils/getBoundsFromNodeWithPortPoints"
-import { getMinDistBetweenEnteringPoints } from "lib/utils/getMinDistBetweenEnteringPoints"
+import { getBoundsFromNodeWithPortPoints } from "../../utils/getBoundsFromNodeWithPortPoints"
+import { getMinDistBetweenEnteringPoints } from "../../utils/getMinDistBetweenEnteringPoints"
 
 /**
  * 0603 footprint dimensions in mm for visualization

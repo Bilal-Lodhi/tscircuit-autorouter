@@ -1,4 +1,4 @@
-import { CapacityMeshNodeId, CapacityMeshNode } from "lib/types"
+import { CapacityMeshNodeId, CapacityMeshNode } from "../../types/index"
 import { ExploredPortPoint } from "./types"
 
 type Input = {

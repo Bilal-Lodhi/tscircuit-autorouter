@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test"
-import { MultiHeadPolyLineIntraNodeSolver } from "lib/solvers/HighDensitySolver/MultiHeadPolyLineIntraNodeSolver/MultiHeadPolyLineIntraNodeSolver"
+import { MultiHeadPolyLineIntraNodeSolver } from "../../lib/solvers/HighDensitySolver/MultiHeadPolyLineIntraNodeSolver/MultiHeadPolyLineIntraNodeSolver"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import "graphics-debug/matcher"
 

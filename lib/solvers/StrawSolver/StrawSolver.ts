@@ -1,7 +1,7 @@
-import { CapacityMeshNode } from "lib/types/capacity-mesh-types"
+import { CapacityMeshNode } from "../../types/capacity-mesh-types"
 import { BaseSolver } from "../BaseSolver"
 import { GraphicsObject } from "graphics-debug"
-import { getTunedTotalCapacity1 } from "lib/utils/getTunedTotalCapacity1"
+import { getTunedTotalCapacity1 } from "../../utils/getTunedTotalCapacity1"
 
 export class StrawSolver extends BaseSolver {
   override getSolverName(): string {

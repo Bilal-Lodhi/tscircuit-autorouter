@@ -1,4 +1,4 @@
-import { HighDensityRoute } from "lib/types/high-density-types"
+import { HighDensityRoute } from "../../types/high-density-types"
 
 interface Point3D {
   x: number

@@ -1,10 +1,10 @@
 import { expect, test } from "bun:test"
 import { Circle, mergeGraphics } from "graphics-debug"
 import * as dataset01 from "@tscircuit/autorouting-dataset-01"
-import { AutoroutingPipelineSolver } from "lib/autorouter-pipelines"
-import { getDrcErrors } from "lib/testing/getDrcErrors"
-import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
-import type { SimpleRouteJson } from "lib/types"
+import { AutoroutingPipelineSolver } from "../../lib/autorouter-pipelines/index"
+import { getDrcErrors } from "../../lib/testing/getDrcErrors"
+import { convertToCircuitJson } from "../../lib/testing/utils/convertToCircuitJson"
+import type { SimpleRouteJson } from "../../lib/types/index"
 import { getLastStepGraphicsObject } from "tests/fixtures/getLastStepGraphicsObject"
 
 const circuit15 = (dataset01 as Record<string, unknown>)

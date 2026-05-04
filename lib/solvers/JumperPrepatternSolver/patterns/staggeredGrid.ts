@@ -1,5 +1,5 @@
 import type { JumperPrepatternSolver } from "../JumperPrepatternSolver"
-import { JUMPER_DIMENSIONS, JumperFootprint } from "lib/utils/jumperSizes"
+import { JUMPER_DIMENSIONS, JumperFootprint } from "../../../utils/jumperSizes"
 import type {
   PatternResult,
   PrepatternJumper,

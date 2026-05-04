@@ -1,4 +1,4 @@
-import { CapacityMeshNode } from "lib/types/capacity-mesh-types"
+import { CapacityMeshNode } from "../types/capacity-mesh-types"
 
 /**
  * Calculate the capacity of a node based on its width

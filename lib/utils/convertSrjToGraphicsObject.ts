@@ -1,16 +1,16 @@
 import { Circle, Line, Point, Rect } from "graphics-debug"
-import { getColorMap, safeTransparentize } from "lib/solvers/colors"
-import { SimpleRouteJson } from "lib/types"
-import { getConnectionPointLayers } from "lib/types/srj-types"
-import { createObstacleLabelFormatter } from "lib/utils/formatObstacleLabel"
+import { getColorMap, safeTransparentize } from "../solvers/colors"
+import { SimpleRouteJson } from "../types/index"
+import { getConnectionPointLayers } from "../types/srj-types"
+import { createObstacleLabelFormatter } from "./formatObstacleLabel"
 import {
   getGraphicsLayerForConnectionPoint,
   getGraphicsLayerForObstacle,
   getGraphicsLayerFromLayerNames,
-} from "lib/utils/getGraphicsObjectLayer"
-import { getViaDimensions } from "lib/utils/getViaDimensions"
-import { JUMPER_DIMENSIONS } from "lib/utils/jumperSizes"
-import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
+} from "./getGraphicsObjectLayer"
+import { getViaDimensions } from "./getViaDimensions"
+import { JUMPER_DIMENSIONS } from "./jumperSizes"
+import { mapLayerNameToZ } from "./mapLayerNameToZ"
 
 export const convertSrjToGraphicsObject = (srj: SimpleRouteJson) => {
   const lines: Line[] = []

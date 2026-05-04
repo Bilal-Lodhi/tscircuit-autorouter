@@ -2,7 +2,7 @@ import {
   CapacityMeshEdge,
   CapacityMeshNode,
   CapacityMeshNodeId,
-} from "lib/types"
+} from "../../types/index"
 import { ConnectionPathWithNodes } from "../CapacityPathingSolver/CapacityPathingSolver"
 
 export interface SectionConnectionTerminal {

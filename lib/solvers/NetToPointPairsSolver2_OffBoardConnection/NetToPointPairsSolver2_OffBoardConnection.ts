@@ -2,8 +2,8 @@ import {
   SimpleRouteConnection,
   SimpleRouteJson,
   ConnectionPoint,
-} from "lib/types"
-import { DSU } from "lib/utils/dsu"
+} from "../../types/index"
+import { DSU } from "../../utils/dsu"
 import {
   areExternallyConnected,
   getExternalConnectionState,

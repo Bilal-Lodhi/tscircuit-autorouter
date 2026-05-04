@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test"
-import { InMemoryCache } from "lib/cache/InMemoryCache"
-import { CachedHyperCapacityPathingSingleSectionSolver } from "lib/solvers/CapacityPathingSectionSolver/CachedHyperCapacityPathingSingleSectionSolver"
+import { InMemoryCache } from "../../../lib/cache/InMemoryCache"
+import { CachedHyperCapacityPathingSingleSectionSolver } from "../../../lib/solvers/CapacityPathingSectionSolver/CachedHyperCapacityPathingSingleSectionSolver"
 import * as problem1 from "./problem1"
 import * as problem1Flipped from "./problem1-flip-connections"
-import { CapacityPathingSingleSectionPathingSolver } from "lib/solvers/CapacityPathingSectionSolver/CapacityPathingSingleSectionSolver"
+import { CapacityPathingSingleSectionPathingSolver } from "../../../lib/solvers/CapacityPathingSectionSolver/CapacityPathingSingleSectionSolver"
 import { getSvgFromGraphicsObject } from "graphics-debug"
 
 describe("CachedHyperCapacityPathingSingleSectionSolver Connection Flip Invariance", () => {

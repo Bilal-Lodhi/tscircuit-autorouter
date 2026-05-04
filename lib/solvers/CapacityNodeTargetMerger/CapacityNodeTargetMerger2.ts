@@ -2,15 +2,15 @@ import {
   CapacityMeshNode,
   CapacityMeshNodeId,
   SimpleRouteConnection,
-} from "lib/types"
-import { Obstacle } from "lib/types"
+} from "../../types/index"
+import { Obstacle } from "../../types/index"
 import { BaseSolver } from "../BaseSolver"
 import { GraphicsObject } from "graphics-debug"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
-import { doRectsOverlap } from "lib/utils/doRectsOverlap"
-import { isPointInRect } from "lib/utils/isPointInRect"
-import { createRectFromCapacityNode } from "lib/utils/createRectFromCapacityNode"
-import { areNodesBordering } from "lib/utils/areNodesBordering"
+import { doRectsOverlap } from "../../utils/doRectsOverlap"
+import { isPointInRect } from "../../utils/isPointInRect"
+import { createRectFromCapacityNode } from "../../utils/createRectFromCapacityNode"
+import { areNodesBordering } from "../../utils/areNodesBordering"
 
 export class CapacityNodeTargetMerger2 extends BaseSolver {
   override getSolverName(): string {

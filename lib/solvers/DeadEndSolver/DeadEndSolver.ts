@@ -2,7 +2,7 @@ import {
   CapacityMeshEdge,
   CapacityMeshNode,
   CapacityMeshNodeId,
-} from "lib/types"
+} from "../../types/index"
 import { BaseSolver } from "../BaseSolver"
 import { GraphicsObject } from "graphics-debug"
 import { safeTransparentize } from "../colors"

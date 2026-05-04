@@ -1,4 +1,4 @@
-import { CacheProvider } from "lib/cache/types"
+import { CacheProvider } from "../cache/types"
 import {
   Menubar,
   MenubarContent,
@@ -10,7 +10,7 @@ import {
   MenubarSubContent,
   MenubarSubTrigger,
   MenubarTrigger,
-} from "lib/testing/ui/menubar" // Assuming shadcn components are here
+} from "./ui/menubar" // Assuming shadcn components are here
 import {
   type CacheProviderName,
   SPEED_DEFINITIONS,

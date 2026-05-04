@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
-import type { SimpleRouteJson, SimplifiedPcbTrace } from "lib/types"
-import { convertToCircuitJson } from "lib/testing/utils/convertToCircuitJson"
+import type { SimpleRouteJson, SimplifiedPcbTrace } from "../../lib/types/index"
+import { convertToCircuitJson } from "../../lib/testing/utils/convertToCircuitJson"
 
 const createSrj = (minViaDiameter?: number): SimpleRouteJson => ({
   layerCount: 2,

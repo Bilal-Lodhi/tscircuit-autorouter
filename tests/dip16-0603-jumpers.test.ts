@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
-import { AssignableAutoroutingPipeline3 } from "../lib"
-import { SimpleRouteJson } from "lib/types"
-import { convertSrjToGraphicsObject } from "../lib"
+import { AssignableAutoroutingPipeline3 } from "../lib/index"
+import { SimpleRouteJson } from "../lib/types/index"
+import { convertSrjToGraphicsObject } from "../lib/index"
 import dip16CrossingTraces from "./repro/dip16-crossing-traces.json" with {
   type: "json",
 }

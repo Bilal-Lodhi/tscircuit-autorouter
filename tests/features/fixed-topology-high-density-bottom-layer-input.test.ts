@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { FixedTopologyHighDensityIntraNodeSolver } from "../../lib/solvers/FixedTopologyHighDensityIntraNodeSolver"
+import { FixedTopologyHighDensityIntraNodeSolver } from "../../lib/solvers/FixedTopologyHighDensityIntraNodeSolver/index"
 import input01 from "../../fixtures/features/via-high-density/via-high-density01-input.json" with {
   type: "json",
 }

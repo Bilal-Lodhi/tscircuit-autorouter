@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { getConnectivityMapFromSimpleRouteJson } from "lib/utils/getConnectivityMapFromSimpleRouteJson"
-import type { SimpleRouteJson } from "lib/types"
+import { getConnectivityMapFromSimpleRouteJson } from "../../lib/utils/getConnectivityMapFromSimpleRouteJson"
+import type { SimpleRouteJson } from "../../lib/types/index"
 
 describe("getConnectivityMapFromSimpleRouteJson", () => {
   test("includes off-board obstacle connections", () => {

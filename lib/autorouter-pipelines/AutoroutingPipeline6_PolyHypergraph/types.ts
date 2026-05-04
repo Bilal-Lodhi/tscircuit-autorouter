@@ -1,7 +1,7 @@
 import type {
   NodeWithPortPoints,
   PortPoint,
-} from "lib/types/high-density-types"
+} from "../../types/high-density-types"
 import type { Point, ProjectedRect } from "./geometry"
 
 export type PolyPortPoint = PortPoint & {

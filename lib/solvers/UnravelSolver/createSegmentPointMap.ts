@@ -1,4 +1,4 @@
-import { CapacityMeshNodeId } from "lib/types"
+import { CapacityMeshNodeId } from "../../types/index"
 import { SegmentWithAssignedPoints } from "../CapacityMeshSolver/CapacitySegmentToPointSolver"
 import {
   SegmentId,

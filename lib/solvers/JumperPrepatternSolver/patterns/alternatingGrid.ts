@@ -1,6 +1,6 @@
 import type { JumperPrepatternSolver } from "../JumperPrepatternSolver"
-import type { SimpleRouteJson } from "../../../types"
-import { JUMPER_DIMENSIONS, JumperFootprint } from "lib/utils/jumperSizes"
+import type { SimpleRouteJson } from "../../../types/index"
+import { JUMPER_DIMENSIONS, JumperFootprint } from "../../../utils/jumperSizes"
 
 /**
  * Maximum number of jumpers allowed. If exceeded, padding and margin are

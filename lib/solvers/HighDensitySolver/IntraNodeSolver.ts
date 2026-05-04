@@ -1,9 +1,9 @@
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { GraphicsObject } from "graphics-debug"
-import { HighDensityRouteSpatialIndex } from "lib/data-structures/HighDensityRouteSpatialIndex"
-import { cloneAndShuffleArray } from "lib/utils/cloneAndShuffleArray"
-import { getBoundsFromNodeWithPortPoints } from "lib/utils/getBoundsFromNodeWithPortPoints"
-import { getMinDistBetweenEnteringPoints } from "lib/utils/getMinDistBetweenEnteringPoints"
+import { HighDensityRouteSpatialIndex } from "../../data-structures/HighDensityRouteSpatialIndex"
+import { cloneAndShuffleArray } from "../../utils/cloneAndShuffleArray"
+import { getBoundsFromNodeWithPortPoints } from "../../utils/getBoundsFromNodeWithPortPoints"
+import { getMinDistBetweenEnteringPoints } from "../../utils/getMinDistBetweenEnteringPoints"
 import type {
   HighDensityIntraNodeRoute,
   NodeWithPortPoints,

@@ -6,7 +6,7 @@ import type {
 } from "../../types/capacity-mesh-types"
 import { BaseSolver } from "../BaseSolver"
 import { distance } from "@tscircuit/math-utils"
-import { areNodesBordering } from "lib/utils/areNodesBordering"
+import { areNodesBordering } from "../../utils/areNodesBordering"
 
 export class CapacityMeshEdgeSolver extends BaseSolver {
   override getSolverName(): string {

@@ -3,17 +3,17 @@ import {
   type KiCadRoutingToolsAutorouterOptions,
 } from "@tscircuit/krt-wasm"
 import type { GraphicsObject } from "graphics-debug"
-import { BaseSolver } from "lib/solvers/BaseSolver"
+import { BaseSolver } from "../solvers/BaseSolver"
 import type {
   ConnectionPoint,
   SimpleRouteJson,
   SimplifiedPcbTrace,
   SimplifiedPcbTraces,
-} from "lib/types"
-import { addApproximatingRectsToSrj } from "lib/utils/addApproximatingRectsToSrj"
-import { combineVisualizations } from "lib/utils/combineVisualizations"
-import { convertSrjToGraphicsObject } from "lib/utils/convertSrjToGraphicsObject"
-import { filterObstaclesOutsideBoard } from "lib/utils/filterObstaclesOutsideBoard"
+} from "../types/index"
+import { addApproximatingRectsToSrj } from "../utils/addApproximatingRectsToSrj"
+import { combineVisualizations } from "../utils/combineVisualizations"
+import { convertSrjToGraphicsObject } from "../utils/convertSrjToGraphicsObject"
+import { filterObstaclesOutsideBoard } from "../utils/filterObstaclesOutsideBoard"
 
 export interface KrtAutoroutingPipelineSolverOptions {
   effort?: number

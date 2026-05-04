@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import * as dataset01 from "@tscircuit/autorouting-dataset-01"
-import { AutoroutingPipelineSolver4 } from "lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
-import type { SimpleRouteJson } from "lib/types"
+import { AutoroutingPipelineSolver4 } from "../../lib/autorouter-pipelines/AutoroutingPipeline4_TinyHypergraph/AutoroutingPipelineSolver4_TinyHypergraph"
+import type { SimpleRouteJson } from "../../lib/types/index"
 
 const approxEqual = (a: number, b: number, epsilon = 1e-6) =>
   Math.abs(a - b) < epsilon
