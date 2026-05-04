@@ -51,7 +51,7 @@
     "circuit-json-to-connectivity-map": "^0.0.19",
     "circuit-to-svg": "^0.0.220",
     "clsx": "^2.1.1",
-    "dataset-srj11-45-degree": "git+https://github.com/tscircuit/dataset-srj11-45-degree.git#d829d7d8b3f03a43aedf0b37857acbc39519e189",
+    "dataset-srj11-45-degree": "git+https://github.com/tscircuit/dataset-srj11-45-degree.git#0add61e6a0e6b59f6defc36f257052f773e2d685",
     "flatbush": "^4.4.0",
     "graphics-debug": "0.0.94",
     "high-density-dataset-z04": "git+https://github.com/tscircuit/high-density-dataset-z04.git#b9128ed52f5a50102b6526319be1d4ec33dca2c2",
