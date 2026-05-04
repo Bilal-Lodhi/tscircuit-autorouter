@@ -62,6 +62,9 @@ interface CapacityMeshSolverOptions {
   maxNodeDimension?: number
   maxNodeRatio?: number
   minNodeArea?: number
+  overrides?: {
+    RectDiffPipelineClass?: typeof RectDiffPipeline
+  }
 }
 export type AutoroutingPipelineSolverOptions = CapacityMeshSolverOptions
 
@@ -141,7 +144,10 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
   highDensityNodePortPoints?: NodeWithPortPoints[]
 
   cacheProvider: CacheProvider | null = null
-  pipelineDef = [
+  pipelineDef = [] as PipelineStep<any>[]
+
+  protected createPipelineDef() {
+    return [
     definePipelineStep(
       "escapeViaLocationSolver",
       EscapeViaLocationSolver,
@@ -177,7 +183,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
     ),
     definePipelineStep(
       "nodeSolver",
-      RectDiffPipeline,
+      this.getRectDiffPipelineClass(),
       (cms) => [{ simpleRouteJson: cms.srjWithPointPairs! as any }],
       {
         onSolved: (cms) => {
@@ -418,7 +424,8 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
         },
       ],
     ),
-  ]
+    ]
+  }
 
   constructor(
     public readonly srj: SimpleRouteJson,
@@ -461,6 +468,11 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
     this.startTimeOfPhase = {}
     this.endTimeOfPhase = {}
     this.timeSpentOnPhase = {}
+    this.pipelineDef = this.createPipelineDef()
+  }
+
+  protected getRectDiffPipelineClass() {
+    return this.opts.overrides?.RectDiffPipelineClass ?? RectDiffPipeline
   }
 
   getConstructorParams() {
