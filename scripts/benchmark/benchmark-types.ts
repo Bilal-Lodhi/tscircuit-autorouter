@@ -3,6 +3,7 @@ import type { SimpleRouteJson } from "../../lib/types/srj-types"
 export type BenchmarkTask = {
   solverName: string
   scenarioName: string
+  sampleNumber: number
   scenario: SimpleRouteJson
 }
 
@@ -14,10 +15,13 @@ export type WorkerTaskMessage = {
 export type WorkerResult = {
   solverName: string
   scenarioName: string
+  sampleNumber: number
   elapsedTimeMs: number
   didSolve: boolean
   didTimeout: boolean
   relaxedDrcPassed: boolean
+  errorPhaseName?: string
+  errorSolverName?: string
   error?: string
 }
 

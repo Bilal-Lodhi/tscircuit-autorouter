@@ -395,6 +395,34 @@ jobs:
               if (!test.didSolve) return '❌'
               return test.relaxedDrcPassed ? '✅' : '❌'
             }
+            const escapeHtml = (value) =>
+              String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/\|/g, '&#124;')
+            const formatSolverName = (solverName) =>
+              String(solverName ?? '').replace(/^AutoroutingPipelineSolver(\d+).*$/, 'Pipeline$1')
+            const getSampleLabel = (test) => {
+              if (typeof test?.sampleNumber === 'number' && Number.isFinite(test.sampleNumber)) {
+                return String(test.sampleNumber)
+              }
+              const match = String(test?.scenarioName ?? '').match(/\d+/)
+              return match ? String(Number.parseInt(match[0], 10)) : String(test?.scenarioName ?? '')
+            }
+            const getErrorCell = (test) => {
+              if (!test?.error) return ''
+              const label = test.errorSolverName || test.errorPhaseName || (test.didTimeout ? 'Timeout' : 'Error')
+              const detailLines = [
+                test.errorPhaseName && test.errorSolverName && test.errorPhaseName !== test.errorSolverName
+                  ? `Phase: ${test.errorPhaseName}`
+                  : '',
+                test.error,
+              ].filter(Boolean)
+              const details = escapeHtml(detailLines.join('\n')).replace(/\r?\n/g, '<br>')
+              return `<details><summary>${escapeHtml(label)}</summary><code>${details}</code></details>`
+            }
             const renderSummary = (report) => {
               if (!Array.isArray(report?.summary) || report.summary.length === 0) {
                 return []
@@ -407,7 +435,7 @@ jobs:
                 '| Solver | Completed % | Relaxed DRC Pass % | Timed Out | P50 Time | P95 Time |',
                 '| --- | --- | --- | --- | --- | --- |',
                 ...report.summary.map((row) =>
-                  `| ${row.solverName} | ${row.completedRateLabel} | ${row.relaxedDrcRateLabel} | ${row.timedOutLabel} | ${formatTime(row.p50TimeMs)} | ${formatTime(row.p95TimeMs)} |`,
+                  `| ${formatSolverName(row.solverName)} | ${row.completedRateLabel} | ${row.relaxedDrcRateLabel} | ${row.timedOutLabel} | ${formatTime(row.p50TimeMs)} | ${formatTime(row.p95TimeMs)} |`,
                 ),
               ]
             }
@@ -444,19 +472,19 @@ jobs:
               }
               const header = includeDelta
                 ? [
-                    '| Solver | Scenario | Status | Time | Relaxed DRC | Delta |',
-                    '| --- | --- | --- | --- | --- | --- |',
+                    '| Solver | Sample | Status | Time | Relaxed DRC | Error | Delta |',
+                    '| --- | --- | --- | --- | --- | --- | --- |',
                   ]
                 : [
-                    '| Solver | Scenario | Status | Time | Relaxed DRC |',
-                    '| --- | --- | --- | --- | --- |',
+                    '| Solver | Sample | Status | Time | Relaxed DRC | Error |',
+                    '| --- | --- | --- | --- | --- | --- |',
                   ]
               return [
                 ...header,
                 ...report.tests.map((test) =>
                   includeDelta
-                    ? `| ${test.solverName} | ${test.scenarioName} | ${getStatus(test)} | ${formatTime(test.elapsedTimeMs)} | ${getDrc(test)} | ${getDelta(test, mainIndex)} |`
-                    : `| ${test.solverName} | ${test.scenarioName} | ${getStatus(test)} | ${formatTime(test.elapsedTimeMs)} | ${getDrc(test)} |`,
+                    ? `| ${formatSolverName(test.solverName)} | ${getSampleLabel(test)} | ${getStatus(test)} | ${formatTime(test.elapsedTimeMs)} | ${getDrc(test)} | ${getErrorCell(test)} | ${getDelta(test, mainIndex)} |`
+                    : `| ${formatSolverName(test.solverName)} | ${getSampleLabel(test)} | ${getStatus(test)} | ${formatTime(test.elapsedTimeMs)} | ${getDrc(test)} | ${getErrorCell(test)} |`,
                 ),
               ]
             }
@@ -748,6 +776,34 @@ jobs:
               if (!test.didSolve) return '❌'
               return test.relaxedDrcPassed ? '✅' : '❌'
             }
+            const escapeHtml = (value) =>
+              String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/\|/g, '&#124;')
+            const formatSolverName = (solverName) =>
+              String(solverName ?? '').replace(/^AutoroutingPipelineSolver(\d+).*$/, 'Pipeline$1')
+            const getSampleLabel = (test) => {
+              if (typeof test?.sampleNumber === 'number' && Number.isFinite(test.sampleNumber)) {
+                return String(test.sampleNumber)
+              }
+              const match = String(test?.scenarioName ?? '').match(/\d+/)
+              return match ? String(Number.parseInt(match[0], 10)) : String(test?.scenarioName ?? '')
+            }
+            const getErrorCell = (test) => {
+              if (!test?.error) return ''
+              const label = test.errorSolverName || test.errorPhaseName || (test.didTimeout ? 'Timeout' : 'Error')
+              const detailLines = [
+                test.errorPhaseName && test.errorSolverName && test.errorPhaseName !== test.errorSolverName
+                  ? `Phase: ${test.errorPhaseName}`
+                  : '',
+                test.error,
+              ].filter(Boolean)
+              const details = escapeHtml(detailLines.join('\n')).replace(/\r?\n/g, '<br>')
+              return `<details><summary>${escapeHtml(label)}</summary><code>${details}</code></details>`
+            }
             const renderSummary = (report) => {
               if (!Array.isArray(report?.summary) || report.summary.length === 0) {
                 return []
@@ -760,7 +816,7 @@ jobs:
                 '| Solver | Completed % | Relaxed DRC Pass % | Timed Out | P50 Time | P95 Time |',
                 '| --- | --- | --- | --- | --- | --- |',
                 ...report.summary.map((row) =>
-                  `| ${row.solverName} | ${row.completedRateLabel} | ${row.relaxedDrcRateLabel} | ${row.timedOutLabel} | ${formatTime(row.p50TimeMs)} | ${formatTime(row.p95TimeMs)} |`,
+                  `| ${formatSolverName(row.solverName)} | ${row.completedRateLabel} | ${row.relaxedDrcRateLabel} | ${row.timedOutLabel} | ${formatTime(row.p50TimeMs)} | ${formatTime(row.p95TimeMs)} |`,
                 ),
               ]
             }
@@ -797,19 +853,19 @@ jobs:
               }
               const header = includeDelta
                 ? [
-                    '| Solver | Scenario | Status | Time | Relaxed DRC | Delta |',
-                    '| --- | --- | --- | --- | --- | --- |',
+                    '| Solver | Sample | Status | Time | Relaxed DRC | Error | Delta |',
+                    '| --- | --- | --- | --- | --- | --- | --- |',
                   ]
                 : [
-                    '| Solver | Scenario | Status | Time | Relaxed DRC |',
-                    '| --- | --- | --- | --- | --- |',
+                    '| Solver | Sample | Status | Time | Relaxed DRC | Error |',
+                    '| --- | --- | --- | --- | --- | --- |',
                   ]
               return [
                 ...header,
                 ...report.tests.map((test) =>
                   includeDelta
-                    ? `| ${test.solverName} | ${test.scenarioName} | ${getStatus(test)} | ${formatTime(test.elapsedTimeMs)} | ${getDrc(test)} | ${getDelta(test, mainIndex)} |`
-                    : `| ${test.solverName} | ${test.scenarioName} | ${getStatus(test)} | ${formatTime(test.elapsedTimeMs)} | ${getDrc(test)} |`,
+                    ? `| ${formatSolverName(test.solverName)} | ${getSampleLabel(test)} | ${getStatus(test)} | ${formatTime(test.elapsedTimeMs)} | ${getDrc(test)} | ${getErrorCell(test)} | ${getDelta(test, mainIndex)} |`
+                    : `| ${formatSolverName(test.solverName)} | ${getSampleLabel(test)} | ${getStatus(test)} | ${formatTime(test.elapsedTimeMs)} | ${getDrc(test)} | ${getErrorCell(test)} |`,
                 ),
               ]
             }
