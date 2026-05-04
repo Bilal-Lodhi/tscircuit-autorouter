@@ -55,3 +55,10 @@ export type {
   SimpleRouteJson,
   SimplifiedPcbTrace,
 } from "high-density-repair03/lib"
+
+export { EscapeViaLocationSolver } from "./solvers/EscapeViaLocationSolver/EscapeViaLocationSolver"
+export { NetToPointPairsSolver2_OffBoardConnection } from "./solvers/NetToPointPairsSolver2_OffBoardConnection/NetToPointPairsSolver2_OffBoardConnection"
+export { CapacityMeshEdgeSolver2_NodeTreeOptimization } from "./solvers/CapacityMeshSolver/CapacityMeshEdgeSolver2_NodeTreeOptimization"
+export { AvailableSegmentPointSolver } from "./solvers/AvailableSegmentPointSolver/AvailableSegmentPointSolver"
+export { NodeDimensionSubdivisionSolver } from "./solvers/NodeDimensionSubdivisionSolver/NodeDimensionSubdivisionSolver"
+export { MultiTargetNecessaryCrampedPortPointSolver } from "./solvers/NecessaryCrampedPortPointSolver/MultiTargetNecessaryCrampedPortPointSolver"
