@@ -7,6 +7,7 @@ export const DATASET_NAMES = [
   "srj11",
   "srj12",
   "srj13",
+  "srj14",
 ] as const
 
 export type DatasetName = (typeof DATASET_NAMES)[number]
@@ -14,7 +15,7 @@ export type DatasetName = (typeof DATASET_NAMES)[number]
 type DatasetModule = Record<string, unknown>
 
 export const DATASET_OPTIONS_LABEL =
-  "1/dataset01, zdwiel, 5/srj05, 11/srj11, 12/srj12, 13/srj13"
+  "1/dataset01, zdwiel, 5/srj05, 11/srj11, 12/srj12, 13/srj13, 14/srj14"
 
 const datasetAliases: Record<string, DatasetName> = {
   "1": "dataset01",
@@ -37,6 +38,9 @@ const datasetAliases: Record<string, DatasetName> = {
   srj13: "srj13",
   "dataset-srj13": "srj13",
   "@tsci/seveibar.dataset-srj13": "srj13",
+  "14": "srj14",
+  srj14: "srj14",
+  "dataset-srj14": "srj14",
   zdwiel: "zdwiel",
 }
 
@@ -87,6 +91,35 @@ const datasetLoaders: Record<DatasetName, () => Promise<DatasetModule>> = {
     }),
   srj13: async () =>
     (await import("@tsci/seveibar.dataset-srj13")) as DatasetModule,
+  srj14: async () =>
+    loadNumberedJsonDatasetModule({
+      sampleCount: 20,
+      getSpecifier: (sampleId) => {
+        const sampleFileNames = [
+          "sample01-source_net_5_mst1_0.srj.json",
+          "sample02-source_net_3_mst0_0.srj.json",
+          "sample03-source_net_5_mst0_0.srj.json",
+          "sample04-source_net_20_mst0_0.srj.json",
+          "sample05-source_net_20_mst2_0.srj.json",
+          "sample06-source_net_14_mst0_0.srj.json",
+          "sample07-source_net_23_mst1_0.srj.json",
+          "sample08-source_net_24_mst1_0.srj.json",
+          "sample09-source_net_19_mst1_0.srj.json",
+          "sample10-source_net_0_mst2_0.srj.json",
+          "sample11-source_net_11_0.srj.json",
+          "sample12-source_net_15_mst1_0.srj.json",
+          "sample13-source_net_15_mst2_0.srj.json",
+          "sample14-source_net_22_0.srj.json",
+          "sample15-source_net_1_mst2_0.srj.json",
+          "sample16-source_net_7_mst0_0.srj.json",
+          "sample17-source_net_13_mst0_0.srj.json",
+          "sample18-source_net_26_0.srj.json",
+          "sample19-source_net_12_mst0_0.srj.json",
+          "sample20-source_net_2_mst1_0.srj.json",
+        ]
+        return `../../fixtures/datasets/dataset-srj14/${sampleFileNames[Number(sampleId) - 1]}`
+      },
+    }),
 }
 
 const datasetScenarioKeyPatterns: Record<DatasetName, RegExp> = {
@@ -96,6 +129,7 @@ const datasetScenarioKeyPatterns: Record<DatasetName, RegExp> = {
   srj11: /^sample\d{3}Circuit$/,
   srj12: /^sample\d{3}Circuit$/,
   srj13: /^example_\d+$/,
+  srj14: /^sample\d{3}Circuit$/,
 }
 
 export const toSimpleRouteJson = (value: unknown): SimpleRouteJson | null => {
