@@ -15,8 +15,9 @@ const SAMPLE_COUNT = 10
 const RANDOM_SEED = 219_015
 const MIN_REGION_SIZE = 10
 const MAX_REGION_SIZE = 20
-const MAX_REGION_ATTEMPTS = 10_000
-const MAX_RIPPED_CONNECTIONS_PER_SAMPLE = 4
+const MAX_REGION_ATTEMPTS = 100
+const GRID_COLUMNS = 5
+const GRID_ROWS = 2
 
 const getCircuit219 = () =>
   (dataset01 as Record<string, unknown>).circuit219 as SimpleRouteJson
@@ -35,15 +36,22 @@ const createSeededRandom = (seed: number) => {
 
 const stringifyJson = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`
 
-const getRandomRegion = (
+const getStratifiedRandomRegion = (
   bounds: SimpleRouteJson["bounds"],
   random: () => number,
+  sampleIndex: number,
 ): RerouteRectRegion => {
   const width = MIN_REGION_SIZE + random() * (MAX_REGION_SIZE - MIN_REGION_SIZE)
   const height =
     MIN_REGION_SIZE + random() * (MAX_REGION_SIZE - MIN_REGION_SIZE)
-  const minX = bounds.minX + random() * (bounds.maxX - bounds.minX - width)
-  const minY = bounds.minY + random() * (bounds.maxY - bounds.minY - height)
+  const column = sampleIndex % GRID_COLUMNS
+  const row = Math.floor(sampleIndex / GRID_COLUMNS) % GRID_ROWS
+  const cellWidth = (bounds.maxX - bounds.minX) / GRID_COLUMNS
+  const cellHeight = (bounds.maxY - bounds.minY) / GRID_ROWS
+  const centerX = bounds.minX + (column + random()) * cellWidth
+  const centerY = bounds.minY + (row + random()) * cellHeight
+  const minX = centerX - width / 2
+  const minY = centerY - height / 2
 
   return {
     shape: "rect",
@@ -61,34 +69,6 @@ const roundRegion = (region: RerouteRectRegion): RerouteRectRegion => ({
   minY: Number(region.minY.toFixed(3)),
   maxY: Number(region.maxY.toFixed(3)),
 })
-
-const hasReroutePointInsideRegion = (
-  srj: SimpleRouteJson,
-  region: RerouteRectRegion,
-) =>
-  srj.connections.some((connection) =>
-    connection.pointsToConnect.some(
-      (point) =>
-        point.x > region.minX &&
-        point.x < region.maxX &&
-        point.y > region.minY &&
-        point.y < region.maxY,
-    ),
-  )
-
-const canSolveSample = (srj: SimpleRouteJson) => {
-  const originalConsoleError = console.error
-  try {
-    console.error = () => {}
-    const solver = new AutoroutingPipelineSolver4(structuredClone(srj))
-    solver.solve()
-    return solver.solved && !solver.failed
-  } catch {
-    return false
-  } finally {
-    console.error = originalConsoleError
-  }
-}
 
 const main = async () => {
   const inputSrj = structuredClone(getCircuit219())
@@ -116,16 +96,11 @@ const main = async () => {
 
     for (let attempt = 0; attempt < MAX_REGION_ATTEMPTS; attempt++) {
       const candidateRegion = roundRegion(
-        getRandomRegion(solvedSrj.bounds, random),
+        getStratifiedRandomRegion(solvedSrj.bounds, random, sampleIndex),
       )
       const candidateSrj = getRerouteSimpleRouteJson(solvedSrj, candidateRegion)
 
       if (candidateSrj.connections.length === 0) continue
-      if (candidateSrj.connections.length > MAX_RIPPED_CONNECTIONS_PER_SAMPLE) {
-        continue
-      }
-      if (hasReroutePointInsideRegion(candidateSrj, candidateRegion)) continue
-      if (!canSolveSample(candidateSrj)) continue
 
       sampleSrj = candidateSrj
       region = candidateRegion
@@ -160,8 +135,8 @@ const main = async () => {
       sampleCount: SAMPLE_COUNT,
       minRegionSize: MIN_REGION_SIZE,
       maxRegionSize: MAX_REGION_SIZE,
-      maxRippedConnectionsPerSample: MAX_RIPPED_CONNECTIONS_PER_SAMPLE,
-      validatedWith: "AutoroutingPipelineSolver4",
+      gridColumns: GRID_COLUMNS,
+      gridRows: GRID_ROWS,
       samples,
     }),
   )
