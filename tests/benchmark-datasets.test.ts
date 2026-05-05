@@ -14,12 +14,15 @@ test("benchmark dataset aliases resolve to canonical dataset names", () => {
   expect(parseDatasetName("dataset-srj12-bus-routing")).toBe("srj12")
   expect(parseDatasetName("13")).toBe("srj13")
   expect(parseDatasetName("dataset-srj13")).toBe("srj13")
+  expect(parseDatasetName("15")).toBe("srj15")
+  expect(parseDatasetName("dataset-srj15")).toBe("srj15")
 })
 
-test("srj11, srj12, and srj13 benchmark datasets load in sample order", async () => {
+test("srj11, srj12, srj13, and srj15 benchmark datasets load in sample order", async () => {
   const srj11Scenarios = await loadScenarios("srj11")
   const srj12Scenarios = await loadScenarios("srj12")
   const srj13Scenarios = await loadScenarios("srj13")
+  const srj15Scenarios = await loadScenarios("srj15")
 
   expect(srj11Scenarios).toHaveLength(20)
   expect(srj11Scenarios[0][0]).toBe("sample001Circuit")
@@ -35,6 +38,11 @@ test("srj11, srj12, and srj13 benchmark datasets load in sample order", async ()
   expect(srj13Scenarios[0][0]).toBe("example_01")
   expect(srj13Scenarios[49][0]).toBe("example_50")
   expect(srj13Scenarios[0][1].bounds).toBeDefined()
+
+  expect(srj15Scenarios).toHaveLength(10)
+  expect(srj15Scenarios[0][0]).toBe("sample001Circuit")
+  expect(srj15Scenarios[9][0]).toBe("sample010Circuit")
+  expect(srj15Scenarios[0][1].connections.length).toBeGreaterThan(0)
 
   const sample11 = await loadScenarioBySampleNumber("srj11", 11)
   expect(sample11.scenarioName).toBe("sample011Circuit")
