@@ -5,6 +5,13 @@ const normalizeRotation = (rotationDegrees: number) =>
 
 const QUARTER_TURN_TOLERANCE_DEGREES = 0.01
 const TRACE_OBSTACLE_MAX_APPROX_RECT_LENGTH = 0.75
+const ROTATED_OBSTACLE_MAX_APPROX_RECT_LENGTH = 0.4
+const SLENDER_OBSTACLE_MAX_APPROX_RECT_LENGTH = 0.75
+const SLENDER_OBSTACLE_ASPECT_RATIO = 2
+const WIDE_SLENDER_OBSTACLE_MIN_SHORT_SIDE = 0.9
+const CENTERLINE_APPROX_RECT_SIZE_FACTOR = 0.75
+const MANY_CONNECTED_ROTATED_OBSTACLES_THRESHOLD = 20
+const SPARSE_CENTERLINE_STEP_FACTOR = 2
 
 const isAxisAlignedRotation = (rotationDegrees: number) => {
   const normalizedRotation = normalizeRotation(rotationDegrees)
@@ -136,19 +143,155 @@ export function generateApproximatingRects(
   return rects
 }
 
-const getApproximationRectCount = (obstacle: Obstacle): number => {
-  if (!obstacle.obstacleId?.startsWith("trace_obstacle_")) return 2
+const generateGridApproximatingRects = (
+  rotatedRect: RotatedRect,
+  maxLocalRectLength: number,
+): Rect[] => {
+  const { center, width, height, rotation } = rotatedRect
+  const xCount = Math.max(1, Math.ceil(width / maxLocalRectLength))
+  const yCount = Math.max(1, Math.ceil(height / maxLocalRectLength))
+  const cellWidth = width / xCount
+  const cellHeight = height / yCount
+  const angleRad = (rotation * Math.PI) / 180
+  const cosAngle = Math.cos(angleRad)
+  const sinAngle = Math.sin(angleRad)
+  const rects: Rect[] = []
+
+  for (let ix = 0; ix < xCount; ix++) {
+    const localX = (ix - xCount / 2 + 0.5) * cellWidth
+
+    for (let iy = 0; iy < yCount; iy++) {
+      const localY = (iy - yCount / 2 + 0.5) * cellHeight
+
+      rects.push({
+        center: {
+          x: center.x + localX * cosAngle - localY * sinAngle,
+          y: center.y + localX * sinAngle + localY * cosAngle,
+        },
+        width: Math.abs(cellWidth * cosAngle) + Math.abs(cellHeight * sinAngle),
+        height:
+          Math.abs(cellWidth * sinAngle) + Math.abs(cellHeight * cosAngle),
+      })
+    }
+  }
+
+  return rects
+}
+
+const generateCenterlineApproximatingRects = (
+  rotatedRect: RotatedRect,
+  rectCount: number,
+): Rect[] => {
+  const { center, width, height, rotation } = rotatedRect
+  const longSide = Math.max(width, height)
+  const shortSide = Math.min(width, height)
+  const clampedRectCount = Math.max(1, Math.ceil(rectCount))
+  const stepLength = longSide / clampedRectCount
+  const angleRad = (rotation * Math.PI) / 180
+  const cosAngle = Math.cos(angleRad)
+  const sinAngle = Math.sin(angleRad)
+  const rectSize = Math.max(
+    stepLength,
+    shortSide * CENTERLINE_APPROX_RECT_SIZE_FACTOR,
+  )
+  const rects: Rect[] = []
+
+  for (let i = 0; i < clampedRectCount; i++) {
+    const localOffset = (i - clampedRectCount / 2 + 0.5) * stepLength
+    const rotatedX =
+      width >= height ? localOffset * cosAngle : -localOffset * sinAngle
+    const rotatedY =
+      width >= height ? localOffset * sinAngle : localOffset * cosAngle
+
+    rects.push({
+      center: {
+        x: center.x + rotatedX,
+        y: center.y + rotatedY,
+      },
+      width: rectSize,
+      height: rectSize,
+    })
+  }
+
+  return rects
+}
+
+const generateSparseCenterlineApproximatingRects = (
+  rotatedRect: RotatedRect,
+): Rect[] => {
+  const { center, width, height, rotation } = rotatedRect
+  const longSide = Math.max(width, height)
+  const shortSide = Math.min(width, height)
+  const rectCount = Math.max(
+    1,
+    Math.ceil(longSide / (shortSide * SPARSE_CENTERLINE_STEP_FACTOR)),
+  )
+  const stepLength = longSide / rectCount
+  const angleRad = (rotation * Math.PI) / 180
+  const cosAngle = Math.cos(angleRad)
+  const sinAngle = Math.sin(angleRad)
+  const rects: Rect[] = []
+
+  for (let i = 0; i < rectCount; i++) {
+    const localOffset = (i - rectCount / 2 + 0.5) * stepLength
+    const rotatedX =
+      width >= height ? localOffset * cosAngle : -localOffset * sinAngle
+    const rotatedY =
+      width >= height ? localOffset * sinAngle : localOffset * cosAngle
+
+    rects.push({
+      center: {
+        x: center.x + rotatedX,
+        y: center.y + rotatedY,
+      },
+      width: shortSide,
+      height: shortSide,
+    })
+  }
+
+  return rects
+}
+
+const getMaxLocalApproximationRectLength = (obstacle: Obstacle): number => {
+  if (obstacle.obstacleId?.startsWith("trace_obstacle_")) {
+    return TRACE_OBSTACLE_MAX_APPROX_RECT_LENGTH
+  }
+
+  return ROTATED_OBSTACLE_MAX_APPROX_RECT_LENGTH
+}
+
+const getRotatedObstacleApproximationRectCount = (
+  obstacle: Obstacle,
+): number | null => {
+  const longSide = Math.max(obstacle.width, obstacle.height)
+  const shortSide = Math.min(obstacle.width, obstacle.height)
+
+  if (obstacle.obstacleId?.startsWith("trace_obstacle_")) {
+    return Math.max(
+      2,
+      Math.ceil(longSide / TRACE_OBSTACLE_MAX_APPROX_RECT_LENGTH),
+    )
+  }
+
+  if (shortSide <= 0) return 2
+
+  if (
+    longSide / shortSide < SLENDER_OBSTACLE_ASPECT_RATIO ||
+    shortSide >= WIDE_SLENDER_OBSTACLE_MIN_SHORT_SIDE
+  ) {
+    return null
+  }
 
   return Math.max(
     2,
-    Math.ceil(
-      Math.max(obstacle.width, obstacle.height) /
-        TRACE_OBSTACLE_MAX_APPROX_RECT_LENGTH,
-    ),
+    Math.ceil(longSide / SLENDER_OBSTACLE_MAX_APPROX_RECT_LENGTH),
   )
 }
 
-const convertObstacleToOldFormat = (obstacle: Obstacle): Obstacle[] => {
+const convertObstacleToOldFormat = (
+  obstacle: Obstacle,
+  opts: { useSparseCenterlineApproximation?: boolean } = {},
+): Obstacle[] => {
   const rotationDegrees = obstacle.ccwRotationDegrees
 
   if (
@@ -167,16 +310,48 @@ const convertObstacleToOldFormat = (obstacle: Obstacle): Obstacle[] => {
     ...obstacleWithoutRotation
   } = obstacle
 
-  return generateApproximatingRects(
-    {
-      center: obstacle.center,
-      width: obstacle.width,
-      height: obstacle.height,
-      rotation: rotationDegrees,
-    },
-    getApproximationRectCount(obstacle),
-  ).map((rect) => ({
+  const rotatedRect = {
+    center: obstacle.center,
+    width: obstacle.width,
+    height: obstacle.height,
+    rotation: rotationDegrees,
+  }
+  const rectCount = getRotatedObstacleApproximationRectCount(obstacle)
+  const rects = opts.useSparseCenterlineApproximation
+    ? generateSparseCenterlineApproximatingRects(rotatedRect)
+    : rectCount === null
+      ? generateGridApproximatingRects(
+          rotatedRect,
+          getMaxLocalApproximationRectLength(obstacle),
+        )
+      : obstacle.obstacleId?.startsWith("trace_obstacle_")
+        ? generateApproximatingRects(rotatedRect, rectCount)
+        : generateCenterlineApproximatingRects(rotatedRect, rectCount)
+  const connectedRectIndex =
+    obstacle.connectedTo.length > 0
+      ? rects.reduce((closestIndex, rect, index) => {
+          const closestRect = rects[closestIndex]!
+          const closestDistance =
+            (closestRect.center.x - obstacle.center.x) ** 2 +
+            (closestRect.center.y - obstacle.center.y) ** 2
+          const distance =
+            (rect.center.x - obstacle.center.x) ** 2 +
+            (rect.center.y - obstacle.center.y) ** 2
+
+          return distance < closestDistance ? index : closestIndex
+        }, 0)
+      : -1
+
+  return rects.map((rect, index) => ({
     ...obstacleWithoutRotation,
+    obstacleId:
+      index === connectedRectIndex
+        ? obstacleWithoutRotation.obstacleId
+        : obstacleWithoutRotation.obstacleId
+          ? `${obstacleWithoutRotation.obstacleId}_approx_${index}`
+          : undefined,
+    connectedTo:
+      index === connectedRectIndex ? obstacleWithoutRotation.connectedTo : [],
     center: rect.center,
     width: rect.width,
     height: rect.height,
@@ -186,15 +361,47 @@ const convertObstacleToOldFormat = (obstacle: Obstacle): Obstacle[] => {
 export const addApproximatingRectsToSrj = (
   srj: SimpleRouteJson,
 ): SimpleRouteJson => {
-  const obstacles = [] as Obstacle[]
+  const obstaclesByRect = new Map<string, Obstacle>()
+  const connectedRotatedObstacleCount = srj.obstacles.filter(
+    (obstacle) =>
+      obstacle.connectedTo.length > 0 &&
+      typeof obstacle.ccwRotationDegrees === "number" &&
+      Number.isFinite(obstacle.ccwRotationDegrees) &&
+      !isAxisAlignedRotation(obstacle.ccwRotationDegrees),
+  ).length
+  const useSparseCenterlineApproximation =
+    connectedRotatedObstacleCount > MANY_CONNECTED_ROTATED_OBSTACLES_THRESHOLD
 
   for (const obstacle of srj.obstacles) {
-    const convertedObstacle = convertObstacleToOldFormat(obstacle)
-    obstacles.push(...convertedObstacle)
+    const convertedObstacle = convertObstacleToOldFormat(obstacle, {
+      useSparseCenterlineApproximation:
+        useSparseCenterlineApproximation &&
+        obstacle.connectedTo.length > 0 &&
+        !obstacle.obstacleId?.startsWith("trace_obstacle_"),
+    })
+    for (const converted of convertedObstacle) {
+      const key = [
+        converted.center.x.toFixed(6),
+        converted.center.y.toFixed(6),
+        converted.width.toFixed(6),
+        converted.height.toFixed(6),
+        converted.layers.join(","),
+      ].join(":")
+      const existingObstacle = obstaclesByRect.get(key)
+
+      if (!existingObstacle) {
+        obstaclesByRect.set(key, converted)
+        continue
+      }
+
+      existingObstacle.connectedTo = [
+        ...new Set([...existingObstacle.connectedTo, ...converted.connectedTo]),
+      ]
+    }
   }
 
   return {
     ...srj,
-    obstacles,
+    obstacles: [...obstaclesByRect.values()],
   }
 }
