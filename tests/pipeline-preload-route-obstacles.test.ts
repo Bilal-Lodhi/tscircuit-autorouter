@@ -38,6 +38,34 @@ const srjWithPreloadedRoute: SimpleRouteJson = {
   ],
 }
 
+const srjWithLongDiagonalRoute: SimpleRouteJson = {
+  ...srjWithPreloadedRoute,
+  bounds: { minX: -1, minY: -1, maxX: 12, maxY: 12 },
+  traces: [
+    {
+      type: "pcb_trace",
+      pcb_trace_id: "long_diagonal_trace",
+      connection_name: "source_net_0",
+      route: [
+        {
+          route_type: "wire",
+          x: 0,
+          y: 0,
+          width: 0.2,
+          layer: "top",
+        },
+        {
+          route_type: "wire",
+          x: 10,
+          y: 10,
+          width: 0.2,
+          layer: "top",
+        },
+      ],
+    },
+  ],
+}
+
 const countTraceRouteObstacles = (srj: SimpleRouteJson) => {
   let obstacleCount = 0
 
@@ -77,7 +105,7 @@ const countTraceRouteObstacles = (srj: SimpleRouteJson) => {
   return obstacleCount
 }
 
-test("pipeline4 preloads SRJ traces as route obstacles before approximating rotated obstacles", () => {
+test("pipeline4 preloads SRJ traces as non-rotated approximating obstacles", () => {
   const solver = new AutoroutingPipelineSolver4(srjWithPreloadedRoute)
   const traceObstacles = solver.srj.obstacles.filter((obstacle) =>
     obstacle.obstacleId?.startsWith("trace_obstacle_source_trace_0"),
@@ -89,7 +117,7 @@ test("pipeline4 preloads SRJ traces as route obstacles before approximating rota
       (obstacle) =>
         obstacle.layers.length === 1 &&
         obstacle.layers[0] === "top" &&
-        obstacle.ccwRotationDegrees === 45,
+        obstacle.ccwRotationDegrees === undefined,
     ),
   ).toBe(true)
 })
@@ -111,6 +139,22 @@ test("pipeline6 preloads SRJ traces as rotated route obstacles in the constructo
   expect(traceObstacle!.width).toBeCloseTo(Math.SQRT2)
 })
 
+test("pipeline4 slices long diagonal route obstacles into smaller non-rotated approximations", () => {
+  const solver = new AutoroutingPipelineSolver4(srjWithLongDiagonalRoute)
+  const traceObstacles = solver.srj.obstacles.filter((obstacle) =>
+    obstacle.obstacleId?.startsWith("trace_obstacle_long_diagonal_trace"),
+  )
+
+  expect(traceObstacles.length).toBeGreaterThan(2)
+  expect(
+    traceObstacles.every(
+      (obstacle) =>
+        obstacle.ccwRotationDegrees === undefined &&
+        Math.max(obstacle.width, obstacle.height) < 1,
+    ),
+  ).toBe(true)
+})
+
 test("pipeline4 and pipeline6 preload dataset-srj14 route obstacles during construction", () => {
   const sample = datasetSrj14Sample01 as SimpleRouteJson
   const expectedTraceObstacleCount = countTraceRouteObstacles(sample)
@@ -123,10 +167,17 @@ test("pipeline4 and pipeline6 preload dataset-srj14 route obstacles during const
   const pipeline6TraceObstacleCount = pipeline6Solver.srj.obstacles.filter(
     (obstacle) => obstacle.obstacleId?.startsWith("trace_obstacle_"),
   ).length
+  const pipeline4RotatedTraceObstacleCount =
+    pipeline4Solver.srj.obstacles.filter(
+      (obstacle) =>
+        obstacle.obstacleId?.startsWith("trace_obstacle_") &&
+        typeof obstacle.ccwRotationDegrees === "number",
+    ).length
 
   expect(expectedTraceObstacleCount).toBeGreaterThan(0)
   expect(pipeline4TraceObstacleCount).toBeGreaterThanOrEqual(
     expectedTraceObstacleCount,
   )
+  expect(pipeline4RotatedTraceObstacleCount).toBe(0)
   expect(pipeline6TraceObstacleCount).toBe(expectedTraceObstacleCount)
 })
