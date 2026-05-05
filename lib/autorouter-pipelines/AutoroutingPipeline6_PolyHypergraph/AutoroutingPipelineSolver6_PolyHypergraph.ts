@@ -1,15 +1,15 @@
-import { GlobalDrcForceImproveSolver } from "high-density-repair03/lib"
 import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { GraphicsObject, Line } from "graphics-debug"
+import { GlobalDrcForceImproveSolver } from "high-density-repair03/lib"
 import { getGlobalInMemoryCache } from "lib/cache/setupGlobalCaches"
 import { CacheProvider } from "lib/cache/types"
+import { BaseSolver } from "lib/solvers/BaseSolver"
 import { EscapeViaLocationSolver } from "lib/solvers/EscapeViaLocationSolver/EscapeViaLocationSolver"
 import { NetToPointPairsSolver } from "lib/solvers/NetToPointPairsSolver/NetToPointPairsSolver"
 import { NetToPointPairsSolver2_OffBoardConnection } from "lib/solvers/NetToPointPairsSolver2_OffBoardConnection/NetToPointPairsSolver2_OffBoardConnection"
 import { MultipleHighDensityRouteStitchSolver3 } from "lib/solvers/RouteStitchingSolver/MultipleHighDensityRouteStitchSolver3"
 import { TraceSimplificationSolver } from "lib/solvers/TraceSimplificationSolver/TraceSimplificationSolver"
 import { TraceWidthSolver } from "lib/solvers/TraceWidthSolver/TraceWidthSolver"
-import { BaseSolver } from "lib/solvers/BaseSolver"
 import { getColorMap } from "lib/solvers/colors"
 import type {
   SimpleRouteJson,
@@ -20,12 +20,13 @@ import type { HighDensityRoute } from "lib/types/high-density-types"
 import { combineVisualizations } from "lib/utils/combineVisualizations"
 import { convertHdRouteToSimplifiedRoute } from "lib/utils/convertHdRouteToSimplifiedRoute"
 import { convertSrjToGraphicsObject } from "lib/utils/convertSrjToGraphicsObject"
+import { convertSrjTracesToObstacles } from "lib/utils/convertSrjTracesToObstacles"
 import { createObstacleLabelFormatter } from "lib/utils/formatObstacleLabel"
+import { getConnectivityMapFromSimpleRouteJson } from "lib/utils/getConnectivityMapFromSimpleRouteJson"
 import {
   getGraphicsLayerForConnectionPoint,
   getGraphicsLayerForObstacle,
 } from "lib/utils/getGraphicsObjectLayer"
-import { getConnectivityMapFromSimpleRouteJson } from "lib/utils/getConnectivityMapFromSimpleRouteJson"
 import { calculateOptimalCapacityDepth } from "lib/utils/getTunedTotalCapacity1"
 import { getViaDimensions } from "lib/utils/getViaDimensions"
 import { AttachProjectedRectsSolver } from "./AttachProjectedRectsSolver"
@@ -285,13 +286,13 @@ export class AutoroutingPipelineSolver6_PolyHypergraph extends BaseSolver {
     public readonly opts: CapacityMeshSolverOptions = {},
   ) {
     super()
-    this.srj = srj
+    this.srj = convertSrjTracesToObstacles(srj) ?? srj
     this.opts = { ...opts }
     this.MAX_ITERATIONS = 100e6
-    const viaDimensions = getViaDimensions(srj)
+    const viaDimensions = getViaDimensions(this.srj)
     this.viaDiameter = viaDimensions.padDiameter
     this.viaHoleDiameter = viaDimensions.holeDiameter
-    this.minTraceWidth = srj.minTraceWidth
+    this.minTraceWidth = this.srj.minTraceWidth
     const mutableOpts = this.opts
     this.effort = mutableOpts.effort ?? 1
     this.maxNodeDimension = mutableOpts.maxNodeDimension ?? 16
@@ -303,8 +304,8 @@ export class AutoroutingPipelineSolver6_PolyHypergraph extends BaseSolver {
       mutableOpts.minProjectedRectDimension ?? this.minTraceWidth * 3
 
     if (mutableOpts.capacityDepth === undefined) {
-      const boundsWidth = srj.bounds.maxX - srj.bounds.minX
-      const boundsHeight = srj.bounds.maxY - srj.bounds.minY
+      const boundsWidth = this.srj.bounds.maxX - this.srj.bounds.minX
+      const boundsHeight = this.srj.bounds.maxY - this.srj.bounds.minY
       const maxWidthHeight = Math.max(boundsWidth, boundsHeight)
       const targetMinCapacity = mutableOpts.targetMinCapacity ?? 0.5
       mutableOpts.capacityDepth = calculateOptimalCapacityDepth(
@@ -313,8 +314,8 @@ export class AutoroutingPipelineSolver6_PolyHypergraph extends BaseSolver {
       )
     }
 
-    this.connMap = getConnectivityMapFromSimpleRouteJson(srj)
-    this.colorMap = getColorMap(srj, this.connMap)
+    this.connMap = getConnectivityMapFromSimpleRouteJson(this.srj)
+    this.colorMap = getColorMap(this.srj, this.connMap)
     this.cacheProvider =
       mutableOpts.cacheProvider === undefined
         ? getGlobalInMemoryCache()

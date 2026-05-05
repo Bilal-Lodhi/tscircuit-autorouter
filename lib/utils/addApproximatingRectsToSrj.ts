@@ -4,6 +4,8 @@ const normalizeRotation = (rotationDegrees: number) =>
   ((rotationDegrees % 360) + 360) % 360
 
 const QUARTER_TURN_TOLERANCE_DEGREES = 0.01
+const TRACE_OBSTACLE_MAX_APPROX_RECT_LENGTH = 0.75
+
 const isAxisAlignedRotation = (rotationDegrees: number) => {
   const normalizedRotation = normalizeRotation(rotationDegrees)
   const axisAlignedAngles = [0, 90, 180, 270] as const
@@ -16,6 +18,43 @@ const isAxisAlignedRotation = (rotationDegrees: number) => {
 
     return angularDistance <= QUARTER_TURN_TOLERANCE_DEGREES
   })
+}
+
+const getNearestAxisAlignedRotation = (rotationDegrees: number) => {
+  const normalizedRotation = normalizeRotation(rotationDegrees)
+  const axisAlignedAngles = [0, 90, 180, 270] as const
+
+  for (const angle of axisAlignedAngles) {
+    const angularDistance = Math.min(
+      Math.abs(normalizedRotation - angle),
+      360 - Math.abs(normalizedRotation - angle),
+    )
+
+    if (angularDistance <= QUARTER_TURN_TOLERANCE_DEGREES) return angle
+  }
+
+  return null
+}
+
+const removeAxisAlignedRotation = (
+  obstacle: Obstacle,
+  rotationDegrees: number,
+): Obstacle => {
+  const {
+    ccwRotationDegrees: _ccwRotationDegrees,
+    ...obstacleWithoutRotation
+  } = obstacle
+  const axisAlignedRotation = getNearestAxisAlignedRotation(rotationDegrees)
+
+  if (axisAlignedRotation === 90 || axisAlignedRotation === 270) {
+    return {
+      ...obstacleWithoutRotation,
+      width: obstacle.height,
+      height: obstacle.width,
+    }
+  }
+
+  return obstacleWithoutRotation
 }
 
 interface Point {
@@ -105,28 +144,50 @@ export function generateApproximatingRects(
   return rects
 }
 
+const getApproximationRectCount = (obstacle: Obstacle): number => {
+  if (!obstacle.obstacleId?.startsWith("trace_obstacle_")) return 2
+
+  return Math.max(
+    2,
+    Math.ceil(
+      Math.max(obstacle.width, obstacle.height) /
+        TRACE_OBSTACLE_MAX_APPROX_RECT_LENGTH,
+    ),
+  )
+}
+
 const convertObstacleToOldFormat = (obstacle: Obstacle): Obstacle[] => {
   const rotationDegrees = obstacle.ccwRotationDegrees
 
   if (
     typeof rotationDegrees !== "number" ||
-    !Number.isFinite(rotationDegrees) ||
-    isAxisAlignedRotation(rotationDegrees)
+    !Number.isFinite(rotationDegrees)
   ) {
     return [obstacle]
   }
 
-  return generateApproximatingRects({
-    center: obstacle.center,
-    width: obstacle.width,
-    height: obstacle.height,
-    rotation: rotationDegrees,
-  }).map((rect) => ({
-    ...obstacle,
+  if (isAxisAlignedRotation(rotationDegrees)) {
+    return [removeAxisAlignedRotation(obstacle, rotationDegrees)]
+  }
+
+  const {
+    ccwRotationDegrees: _ccwRotationDegrees,
+    ...obstacleWithoutRotation
+  } = obstacle
+
+  return generateApproximatingRects(
+    {
+      center: obstacle.center,
+      width: obstacle.width,
+      height: obstacle.height,
+      rotation: rotationDegrees,
+    },
+    getApproximationRectCount(obstacle),
+  ).map((rect) => ({
+    ...obstacleWithoutRotation,
     center: rect.center,
     width: rect.width,
     height: rect.height,
-    ccwRotationDegrees: rotationDegrees,
   }))
 }
 
