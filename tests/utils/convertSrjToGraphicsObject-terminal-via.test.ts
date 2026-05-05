@@ -107,3 +107,33 @@ test("convertSrjToGraphicsObject uses per-via diameter before legacy srj minViaD
   expect(graphics.circles?.[0]?.radius).toBe(0.26)
   expect(graphics.circles?.[1]?.radius).toBe(0.75)
 })
+
+test("convertSrjToGraphicsObject preserves obstacle rotation", () => {
+  const graphics = convertSrjToGraphicsObject({
+    layerCount: 2,
+    minTraceWidth: 0.15,
+    minViaDiameter: 0.3,
+    obstacles: [
+      {
+        type: "rect",
+        center: { x: 1, y: 2 },
+        width: 4.1,
+        height: 1,
+        layers: ["top"],
+        connectedTo: [],
+        ccwRotationDegrees: 45,
+      },
+    ],
+    connections: [],
+    bounds: {
+      minX: -5,
+      maxX: 5,
+      minY: -5,
+      maxY: 5,
+    },
+    traces: [],
+  })
+
+  expect(graphics.rects).toHaveLength(1)
+  expect(graphics.rects?.[0]?.ccwRotationDegrees).toBe(45)
+})
