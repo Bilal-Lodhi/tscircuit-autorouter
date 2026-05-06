@@ -126,7 +126,7 @@ const datasetLoaders: Record<DatasetName, () => Promise<DatasetModule>> = {
     }),
   srj15: async () =>
     loadNumberedJsonDatasetModule({
-      sampleCount: 10,
+      sampleCount: 25,
       getSpecifier: (sampleId) =>
         `../../fixtures/datasets/dataset-srj15/sample${sampleId.slice(1)}-region-reroute.srj.json`,
     }),

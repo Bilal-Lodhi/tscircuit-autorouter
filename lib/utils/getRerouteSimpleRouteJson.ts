@@ -1,5 +1,6 @@
 import type {
   ConnectionPoint,
+  Obstacle,
   SimpleRouteConnection,
   SimpleRouteJson,
   SimplifiedPcbTrace,
@@ -35,6 +36,11 @@ type LocatedPoint = {
   y: number
   layer: string
   width: number
+}
+
+type RerouteConnectionResult = {
+  connection: SimpleRouteConnection
+  endpointObstacles: Obstacle[]
 }
 
 const EPSILON = 1e-9
@@ -231,6 +237,27 @@ const createRerouteConnection = ({
   ],
 })
 
+const createRerouteEndpointObstacle = ({
+  connection,
+  point,
+  endpointIndex,
+}: {
+  connection: SimpleRouteConnection
+  point: LocatedPoint
+  endpointIndex: number
+}): Obstacle => ({
+  obstacleId: `${connection.name}_route_endpoint_${endpointIndex}`,
+  type: "rect",
+  layers: [point.layer],
+  center: { x: point.x, y: point.y },
+  width: point.width,
+  height: point.width,
+  connectedTo: [
+    connection.name,
+    connection.rootConnectionName ?? connection.name,
+  ],
+})
+
 const maybeCreateRerouteConnection = ({
   trace,
   ripIndex,
@@ -247,7 +274,7 @@ const maybeCreateRerouteConnection = ({
   region: RerouteRectRegion
   allowInteriorStart?: boolean
   allowInteriorEnd?: boolean
-}): SimpleRouteConnection | null => {
+}): RerouteConnectionResult | null => {
   if (
     !(allowInteriorStart || isPointOnRegionBoundary(start, region)) ||
     !(allowInteriorEnd || isPointOnRegionBoundary(end, region))
@@ -255,7 +282,21 @@ const maybeCreateRerouteConnection = ({
     return null
   }
 
-  return createRerouteConnection({ trace, ripIndex, start, end })
+  const connection = createRerouteConnection({ trace, ripIndex, start, end })
+  const endpointObstacles: Obstacle[] = [
+    createRerouteEndpointObstacle({
+      connection,
+      point: start,
+      endpointIndex: 0,
+    }),
+    createRerouteEndpointObstacle({
+      connection,
+      point: end,
+      endpointIndex: 1,
+    }),
+  ]
+
+  return { connection, endpointObstacles }
 }
 
 const getClippedTracePieces = (
@@ -265,6 +306,7 @@ const getClippedTracePieces = (
 ) => {
   const keptTraces: SimplifiedPcbTrace[] = []
   const rerouteConnections: SimpleRouteConnection[] = []
+  const rerouteEndpointObstacles: Obstacle[] = []
   let activeRipStart: LocatedPoint | null = null
   let activeRipStartAllowsInterior = false
   let keptSegmentIndex = 0
@@ -339,7 +381,8 @@ const getClippedTracePieces = (
         allowInteriorStart: activeRipStartAllowsInterior,
       })
       if (rerouteConnection) {
-        rerouteConnections.push(rerouteConnection)
+        rerouteConnections.push(rerouteConnection.connection)
+        rerouteEndpointObstacles.push(...rerouteConnection.endpointObstacles)
       }
       activeRipStart = null
       activeRipStartAllowsInterior = false
@@ -377,12 +420,18 @@ const getClippedTracePieces = (
         allowInteriorEnd: true,
       })
       if (rerouteConnection) {
-        rerouteConnections.push(rerouteConnection)
+        rerouteConnections.push(rerouteConnection.connection)
+        rerouteEndpointObstacles.push(...rerouteConnection.endpointObstacles)
       }
     }
   }
 
-  return { keptTraces, rerouteConnections, hadIntersection }
+  return {
+    keptTraces,
+    rerouteConnections,
+    rerouteEndpointObstacles,
+    hadIntersection,
+  }
 }
 
 export const getRerouteSimpleRouteJson = (
@@ -392,6 +441,7 @@ export const getRerouteSimpleRouteJson = (
   const nextSrj = structuredClone(simpleRouteJson)
   const nextTraces: SimplifiedPcbTrace[] = []
   const rerouteConnections: SimpleRouteConnection[] = []
+  const rerouteEndpointObstacles: Obstacle[] = []
 
   for (const trace of simpleRouteJson.traces ?? []) {
     const clippedPieces = getClippedTracePieces(
@@ -412,6 +462,7 @@ export const getRerouteSimpleRouteJson = (
 
     nextTraces.push(...clippedPieces.keptTraces)
     rerouteConnections.push(...clippedPieces.rerouteConnections)
+    rerouteEndpointObstacles.push(...clippedPieces.rerouteEndpointObstacles)
   }
 
   return {
@@ -422,6 +473,7 @@ export const getRerouteSimpleRouteJson = (
       minY: region.minY,
       maxY: region.maxY,
     },
+    obstacles: [...nextSrj.obstacles, ...rerouteEndpointObstacles],
     traces: nextTraces,
     connections: rerouteConnections,
   }

@@ -62,7 +62,32 @@ test("getRerouteSimpleRouteJson clips traces out of a rectangular region", () =>
     { x: -1, y: 0, layer: "top" },
     { x: 1, y: 0, layer: "top" },
   ])
-  expect(rerouted.obstacles).toEqual(srj.obstacles)
+  expect(
+    rerouted.obstacles.filter((obstacle) =>
+      obstacle.obstacleId?.startsWith(
+        "source_net_0_reroute_source_net_0_0_0_route_endpoint_",
+      ),
+    ),
+  ).toEqual([
+    {
+      obstacleId: "source_net_0_reroute_source_net_0_0_0_route_endpoint_0",
+      type: "rect",
+      layers: ["top"],
+      center: { x: -1, y: 0 },
+      width: 0.15,
+      height: 0.15,
+      connectedTo: ["source_net_0_reroute_source_net_0_0_0", "source_net_0"],
+    },
+    {
+      obstacleId: "source_net_0_reroute_source_net_0_0_0_route_endpoint_1",
+      type: "rect",
+      layers: ["top"],
+      center: { x: 1, y: 0 },
+      width: 0.15,
+      height: 0.15,
+      connectedTo: ["source_net_0_reroute_source_net_0_0_0", "source_net_0"],
+    },
+  ])
 
   const affectedTracePieces = rerouted.traces?.filter((trace) =>
     trace.pcb_trace_id.startsWith("source_net_0_0_keep_"),
@@ -102,6 +127,27 @@ test("getRerouteSimpleRouteJson keeps trace endpoints inside the region connecta
   expect(rerouted.connections[0]?.pointsToConnect).toEqual([
     { x: -0.5, y: 0, layer: "top" },
     { x: 0.5, y: 0, layer: "top" },
+  ])
+  expect(
+    rerouted.obstacles.map((obstacle) => ({
+      center: obstacle.center,
+      width: obstacle.width,
+      height: obstacle.height,
+      layers: obstacle.layers,
+    })),
+  ).toEqual([
+    {
+      center: { x: -0.5, y: 0 },
+      width: 0.15,
+      height: 0.15,
+      layers: ["top"],
+    },
+    {
+      center: { x: 0.5, y: 0 },
+      width: 0.15,
+      height: 0.15,
+      layers: ["top"],
+    },
   ])
   expect(rerouted.traces).toHaveLength(0)
 })

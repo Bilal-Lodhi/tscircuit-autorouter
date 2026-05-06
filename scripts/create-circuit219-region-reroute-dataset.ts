@@ -11,13 +11,13 @@ import {
 import type { SimpleRouteJson } from "../lib/types"
 
 const OUTPUT_DIR = path.join(process.cwd(), "fixtures/datasets/dataset-srj15")
-const SAMPLE_COUNT = 10
-const RANDOM_SEED = 219_019
+const SAMPLE_COUNT = 25
+const RANDOM_SEED = 219_015
 const MIN_REGION_SIZE = 10
 const MAX_REGION_SIZE = 20
 const MAX_REGION_ATTEMPTS = 100
 const GRID_COLUMNS = 5
-const GRID_ROWS = 2
+const GRID_ROWS = 5
 
 const getCircuit219 = () =>
   (dataset01 as Record<string, unknown>).circuit219 as SimpleRouteJson

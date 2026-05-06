@@ -39,9 +39,9 @@ test("srj11, srj12, srj13, and srj15 benchmark datasets load in sample order", a
   expect(srj13Scenarios[49][0]).toBe("example_50")
   expect(srj13Scenarios[0][1].bounds).toBeDefined()
 
-  expect(srj15Scenarios).toHaveLength(10)
+  expect(srj15Scenarios).toHaveLength(25)
   expect(srj15Scenarios[0][0]).toBe("sample001Circuit")
-  expect(srj15Scenarios[9][0]).toBe("sample010Circuit")
+  expect(srj15Scenarios[24][0]).toBe("sample025Circuit")
   expect(srj15Scenarios[0][1].connections.length).toBeGreaterThan(0)
 
   const sample11 = await loadScenarioBySampleNumber("srj11", 11)
