@@ -34,6 +34,11 @@ export * from "./cache/setupGlobalCaches"
 export * from "./cache/types"
 export * from "./autorouter-pipelines/AssignableAutoroutingPipeline1/AssignableAutoroutingPipeline1Solver"
 export { convertSrjToGraphicsObject } from "./utils/convertSrjToGraphicsObject"
+export {
+  getRerouteSimpleRouteJson,
+  reconnectReroutedSimpleRouteJsonRegion,
+} from "./utils/getRerouteSimpleRouteJson"
+export type { RerouteRectRegion } from "./utils/getRerouteSimpleRouteJson"
 
 // Jumper-based solvers for single-layer PCBs
 export { IntraNodeSolverWithJumpers } from "./solvers/HighDensitySolver/IntraNodeSolverWithJumpers"

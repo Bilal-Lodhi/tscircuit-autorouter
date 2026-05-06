@@ -8,6 +8,7 @@ export const DATASET_NAMES = [
   "srj12",
   "srj13",
   "srj14",
+  "srj15",
 ] as const
 
 export type DatasetName = (typeof DATASET_NAMES)[number]
@@ -15,7 +16,7 @@ export type DatasetName = (typeof DATASET_NAMES)[number]
 type DatasetModule = Record<string, unknown>
 
 export const DATASET_OPTIONS_LABEL =
-  "1/dataset01, zdwiel, 5/srj05, 11/srj11, 12/srj12, 13/srj13, 14/srj14"
+  "1/dataset01, zdwiel, 5/srj05, 11/srj11, 12/srj12, 13/srj13, 14/srj14, 15/srj15"
 
 const datasetAliases: Record<string, DatasetName> = {
   "1": "dataset01",
@@ -41,6 +42,9 @@ const datasetAliases: Record<string, DatasetName> = {
   "14": "srj14",
   srj14: "srj14",
   "dataset-srj14": "srj14",
+  "15": "srj15",
+  srj15: "srj15",
+  "dataset-srj15": "srj15",
   zdwiel: "zdwiel",
 }
 
@@ -120,6 +124,12 @@ const datasetLoaders: Record<DatasetName, () => Promise<DatasetModule>> = {
         return `../../fixtures/datasets/dataset-srj14/${sampleFileNames[Number(sampleId) - 1]}`
       },
     }),
+  srj15: async () =>
+    loadNumberedJsonDatasetModule({
+      sampleCount: 25,
+      getSpecifier: (sampleId) =>
+        `../../fixtures/datasets/dataset-srj15/sample${sampleId.slice(1)}-region-reroute.srj.json`,
+    }),
 }
 
 const datasetScenarioKeyPatterns: Record<DatasetName, RegExp> = {
@@ -130,6 +140,7 @@ const datasetScenarioKeyPatterns: Record<DatasetName, RegExp> = {
   srj12: /^sample\d{3}Circuit$/,
   srj13: /^example_\d+$/,
   srj14: /^sample\d{3}Circuit$/,
+  srj15: /^sample\d{3}Circuit$/,
 }
 
 export const toSimpleRouteJson = (value: unknown): SimpleRouteJson | null => {
