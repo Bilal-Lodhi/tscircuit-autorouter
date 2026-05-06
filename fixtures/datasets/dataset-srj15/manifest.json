@@ -3,7 +3,7 @@
   "sourceCircuit": "circuit219",
   "generatedWith": "AutoroutingPipelineSolver4",
   "rerouteMethod": "getRerouteSimpleRouteJson",
-  "randomSeed": 219015,
+  "randomSeed": 219019,
   "sampleCount": 10,
   "minRegionSize": 10,
   "maxRegionSize": 20,
@@ -14,121 +14,121 @@
       "file": "sample01-region-reroute.srj.json",
       "region": {
         "shape": "rect",
-        "minX": -27.489,
-        "maxX": -17.208,
-        "minY": -11.564,
-        "maxY": 3.368
+        "minX": -27.987,
+        "maxX": -9.592,
+        "minY": -19.342,
+        "maxY": -2.575
       },
       "rippedConnectionCount": 11,
-      "retainedTraceCount": 102
+      "retainedTraceCount": 133
     },
     {
       "file": "sample02-region-reroute.srj.json",
       "region": {
         "shape": "rect",
-        "minX": -20.949,
-        "maxX": -1.702,
-        "minY": -15.336,
-        "maxY": -1.817
+        "minX": -14.758,
+        "maxX": 0.374,
+        "minY": -15.981,
+        "maxY": 2.553
       },
-      "rippedConnectionCount": 16,
-      "retainedTraceCount": 177
+      "rippedConnectionCount": 21,
+      "retainedTraceCount": 224
     },
     {
       "file": "sample03-region-reroute.srj.json",
       "region": {
         "shape": "rect",
-        "minX": -5.987,
-        "maxX": 6.905,
-        "minY": -10.956,
-        "maxY": 1.332
+        "minX": -5.15,
+        "maxX": 4.983,
+        "minY": -7.405,
+        "maxY": 6.571
       },
-      "rippedConnectionCount": 12,
-      "retainedTraceCount": 195
+      "rippedConnectionCount": 15,
+      "retainedTraceCount": 238
     },
     {
       "file": "sample04-region-reroute.srj.json",
       "region": {
         "shape": "rect",
-        "minX": 1.928,
-        "maxX": 18.461,
-        "minY": -26.81,
-        "maxY": -13.144
+        "minX": 1.349,
+        "maxX": 19.694,
+        "minY": -14.376,
+        "maxY": -4.1
       },
-      "rippedConnectionCount": 2,
-      "retainedTraceCount": 79
+      "rippedConnectionCount": 8,
+      "retainedTraceCount": 116
     },
     {
       "file": "sample05-region-reroute.srj.json",
       "region": {
         "shape": "rect",
-        "minX": 13.996,
-        "maxX": 24.516,
-        "minY": -18.381,
-        "maxY": -3.542
+        "minX": 14.607,
+        "maxX": 29.882,
+        "minY": -14.202,
+        "maxY": 2.124
       },
-      "rippedConnectionCount": 3,
-      "retainedTraceCount": 75
+      "rippedConnectionCount": 2,
+      "retainedTraceCount": 64
     },
     {
       "file": "sample06-region-reroute.srj.json",
       "region": {
         "shape": "rect",
-        "minX": -26.465,
-        "maxX": -6.594,
-        "minY": 4.572,
-        "maxY": 20.764
+        "minX": -31.337,
+        "maxX": -15.077,
+        "minY": 0.264,
+        "maxY": 16.354
       },
-      "rippedConnectionCount": 31,
-      "retainedTraceCount": 218
+      "rippedConnectionCount": 20,
+      "retainedTraceCount": 128
     },
     {
       "file": "sample07-region-reroute.srj.json",
       "region": {
         "shape": "rect",
-        "minX": -12.133,
-        "maxX": 0.236,
-        "minY": 2.01,
-        "maxY": 12.684
+        "minX": -17.73,
+        "maxX": -6.659,
+        "minY": -3.497,
+        "maxY": 14.927
       },
-      "rippedConnectionCount": 25,
-      "retainedTraceCount": 242
+      "rippedConnectionCount": 43,
+      "retainedTraceCount": 322
     },
     {
       "file": "sample08-region-reroute.srj.json",
       "region": {
         "shape": "rect",
-        "minX": -8.182,
-        "maxX": 3.081,
-        "minY": -7.16,
-        "maxY": 11.672
+        "minX": -8.481,
+        "maxX": 7.241,
+        "minY": 12.82,
+        "maxY": 27.381
       },
-      "rippedConnectionCount": 18,
-      "retainedTraceCount": 204
+      "rippedConnectionCount": 6,
+      "retainedTraceCount": 107
     },
     {
       "file": "sample09-region-reroute.srj.json",
       "region": {
         "shape": "rect",
-        "minX": 0.586,
-        "maxX": 14.698,
-        "minY": 10.47,
-        "maxY": 27.424
+        "minX": 6.03,
+        "maxX": 16.313,
+        "minY": 7.457,
+        "maxY": 26.831
       },
-      "rippedConnectionCount": 6,
-      "retainedTraceCount": 125
+      "rippedConnectionCount": 11,
+      "retainedTraceCount": 179
     },
     {
       "file": "sample10-region-reroute.srj.json",
       "region": {
         "shape": "rect",
-        "minX": 11.648,
-        "maxX": 28.123,
-        "minY": 8.739,
-        "maxY": 25.116
+        "minX": 15.288,
+        "maxX": 27.419,
+        "minY": 13.177,
+        "maxY": 25.455
       },
-      "rippedConnectionCount": 4,
-      "retainedTraceCount": 109
+      "rippedConnectionCount": 1,
+      "retainedTraceCount": 58
     }
   ]
 }

@@ -12,7 +12,7 @@ import type { SimpleRouteJson } from "../lib/types"
 
 const OUTPUT_DIR = path.join(process.cwd(), "fixtures/datasets/dataset-srj15")
 const SAMPLE_COUNT = 10
-const RANDOM_SEED = 219_015
+const RANDOM_SEED = 219_019
 const MIN_REGION_SIZE = 10
 const MAX_REGION_SIZE = 20
 const MAX_REGION_ATTEMPTS = 100

@@ -120,6 +120,14 @@ const getRouteRootConnectionName = (routeMetadata: RouteMetadata) =>
 const getRoutePoint = (routeMetadata: RouteMetadata, endpointIndex: 0 | 1) =>
   routeMetadata.simpleRouteConnection?.pointsToConnect[endpointIndex]
 
+const usesSyntheticTerminalConnectionEndpoints = (connection: {
+  connectionId: string
+  simpleRouteConnection?: { name?: string; rootConnectionName?: string }
+}) =>
+  connection.connectionId.includes("_reroute_") ||
+  connection.simpleRouteConnection?.name?.includes("_reroute_") ||
+  connection.simpleRouteConnection?.rootConnectionName?.includes("_reroute_")
+
 const getSharedConnectionZ = (params: {
   routeMetadata: RouteMetadata
   endpointIndex: 0 | 1
@@ -159,17 +167,7 @@ const buildSerializedTinyGraph = (
     }),
   )
 
-  const connections: SerializedTinyConnection[] = params.connections.map(
-    (connection) => ({
-      connectionId: connection.connectionId,
-      mutuallyConnectedNetworkId:
-        connection.mutuallyConnectedNetworkId ?? connection.connectionId,
-      startRegionId: connection.startRegion.regionId,
-      endRegionId: connection.endRegion.regionId,
-      simpleRouteConnection: connection.simpleRouteConnection,
-    }),
-  )
-
+  const connections: SerializedTinyConnection[] = []
   const solvedRoutes: SerializedTinySolvedRoute[] = []
 
   for (const connection of params.connections) {
@@ -202,6 +200,25 @@ const buildSerializedTinyGraph = (
     const endTerminalRegionId = `tiny-terminal:end-region:${connection.connectionId}`
     const startTerminalPortId = `tiny-terminal:start-port:${connection.connectionId}`
     const endTerminalPortId = `tiny-terminal:end-port:${connection.connectionId}`
+    const connectionStartRegionId = usesSyntheticTerminalConnectionEndpoints(
+      connection,
+    )
+      ? startTerminalRegionId
+      : connection.startRegion.regionId
+    const connectionEndRegionId = usesSyntheticTerminalConnectionEndpoints(
+      connection,
+    )
+      ? endTerminalRegionId
+      : connection.endRegion.regionId
+
+    connections.push({
+      connectionId: connection.connectionId,
+      mutuallyConnectedNetworkId:
+        connection.mutuallyConnectedNetworkId ?? connection.connectionId,
+      startRegionId: connectionStartRegionId,
+      endRegionId: connectionEndRegionId,
+      simpleRouteConnection: connection.simpleRouteConnection,
+    } as SerializedTinyConnection)
 
     regions.push({
       regionId: startTerminalRegionId,
@@ -336,6 +353,12 @@ class TinyHyperGraphSectionPipelineWithTerminalNetIds extends TinyHyperGraphSect
   constructor(inputProblem: TinyHyperGraphSectionPipelineInput) {
     super(inputProblem)
     this.MAX_ITERATIONS = getTinyHyperGraphPipelineMaxIterations(inputProblem)
+  }
+
+  override loadHyperGraph(serializedHyperGraph: SerializedHyperGraph) {
+    const loaded = super.loadHyperGraph(serializedHyperGraph)
+    applyTerminalRegionNetIds(loaded)
+    return loaded
   }
 
   override _step() {
