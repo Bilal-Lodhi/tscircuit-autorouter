@@ -2679,40 +2679,6 @@
         "pcb_plated_hole_11",
         "pcb_port_89"
       ]
-    },
-    {
-      "obstacleId": "source_net_21_reroute_source_net_21_mst0_0_0_reroute_endpoint_0",
-      "type": "rect",
-      "layers": [
-        "top"
-      ],
-      "center": {
-        "x": 17.61,
-        "y": 14.37
-      },
-      "width": 0.05,
-      "height": 0.05,
-      "connectedTo": [
-        "source_net_21_reroute_source_net_21_mst0_0_0",
-        "source_net_21"
-      ]
-    },
-    {
-      "obstacleId": "source_net_21_reroute_source_net_21_mst0_0_0_reroute_endpoint_1",
-      "type": "rect",
-      "layers": [
-        "top"
-      ],
-      "center": {
-        "x": 15.288,
-        "y": 15.32382230550599
-      },
-      "width": 0.05,
-      "height": 0.05,
-      "connectedTo": [
-        "source_net_21_reroute_source_net_21_mst0_0_0",
-        "source_net_21"
-      ]
     }
   ],
   "connections": [

@@ -1,6 +1,5 @@
 import type {
   ConnectionPoint,
-  Obstacle,
   SimpleRouteConnection,
   SimpleRouteJson,
   SimplifiedPcbTrace,
@@ -39,7 +38,6 @@ type LocatedPoint = {
 }
 
 const EPSILON = 1e-9
-const SYNTHETIC_REROUTE_OBSTACLE_SIZE = 0.05
 
 const isWireRoutePoint = (point: RoutePoint): point is WireRoutePoint =>
   point.route_type === "wire"
@@ -260,31 +258,6 @@ const maybeCreateRerouteConnection = ({
   return createRerouteConnection({ trace, ripIndex, start, end })
 }
 
-const createRerouteEndpointObstacle = ({
-  point,
-  connection,
-  endpointIndex,
-}: {
-  point: ConnectionPoint
-  connection: SimpleRouteConnection
-  endpointIndex: number
-}): Obstacle => {
-  const layers = "layers" in point ? point.layers : [point.layer]
-
-  return {
-    obstacleId: `${connection.name}_reroute_endpoint_${endpointIndex}`,
-    type: "rect",
-    layers,
-    center: { x: point.x, y: point.y },
-    width: SYNTHETIC_REROUTE_OBSTACLE_SIZE,
-    height: SYNTHETIC_REROUTE_OBSTACLE_SIZE,
-    connectedTo: [
-      connection.name,
-      connection.rootConnectionName ?? connection.name,
-    ],
-  }
-}
-
 const getClippedTracePieces = (
   trace: SimplifiedPcbTrace,
   region: RerouteRectRegion,
@@ -419,7 +392,6 @@ export const getRerouteSimpleRouteJson = (
   const nextSrj = structuredClone(simpleRouteJson)
   const nextTraces: SimplifiedPcbTrace[] = []
   const rerouteConnections: SimpleRouteConnection[] = []
-  const rerouteEndpointObstacles: Obstacle[] = []
 
   for (const trace of simpleRouteJson.traces ?? []) {
     const clippedPieces = getClippedTracePieces(
@@ -442,18 +414,6 @@ export const getRerouteSimpleRouteJson = (
     rerouteConnections.push(...clippedPieces.rerouteConnections)
   }
 
-  for (const connection of rerouteConnections) {
-    connection.pointsToConnect.forEach((point, endpointIndex) => {
-      rerouteEndpointObstacles.push(
-        createRerouteEndpointObstacle({
-          point,
-          connection,
-          endpointIndex,
-        }),
-      )
-    })
-  }
-
   return {
     ...nextSrj,
     bounds: {
@@ -462,7 +422,6 @@ export const getRerouteSimpleRouteJson = (
       minY: region.minY,
       maxY: region.maxY,
     },
-    obstacles: [...nextSrj.obstacles, ...rerouteEndpointObstacles],
     traces: nextTraces,
     connections: rerouteConnections,
   }

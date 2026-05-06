@@ -62,13 +62,7 @@ test("getRerouteSimpleRouteJson clips traces out of a rectangular region", () =>
     { x: -1, y: 0, layer: "top" },
     { x: 1, y: 0, layer: "top" },
   ])
-  expect(
-    rerouted.obstacles.filter((obstacle) =>
-      obstacle.obstacleId?.startsWith(
-        "source_net_0_reroute_source_net_0_0_0_reroute_endpoint_",
-      ),
-    ),
-  ).toHaveLength(2)
+  expect(rerouted.obstacles).toEqual(srj.obstacles)
 
   const affectedTracePieces = rerouted.traces?.filter((trace) =>
     trace.pcb_trace_id.startsWith("source_net_0_0_keep_"),
