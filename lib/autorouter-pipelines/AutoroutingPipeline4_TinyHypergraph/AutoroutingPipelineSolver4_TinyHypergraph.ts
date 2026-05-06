@@ -259,6 +259,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
           cms.availableSegmentPointSolver!.getOutput()
         const { graph, connections } = buildHyperGraph({
           capacityMeshNodes: cms.capacityNodes!,
+          bounds: cms.srj.bounds,
           layerCount: cms.srj.layerCount,
           segmentPortPoints: sharedEdgeSegments.flatMap(
             (seg) => seg.portPoints,

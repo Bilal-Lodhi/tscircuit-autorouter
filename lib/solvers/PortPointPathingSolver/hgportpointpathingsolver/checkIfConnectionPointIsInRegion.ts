@@ -4,13 +4,15 @@ import { mapLayerNameToZ } from "lib/utils/mapLayerNameToZ"
 import { sharedZLayers } from "./sharedZLayers"
 import type { RegionHg } from "./types"
 
+const REGION_MATCH_EPS = 1e-8
+
 /** Checks whether a connection endpoint lies inside a region on at least one shared layer. */
 export function checkIfConnectionPointIsInRegion(params: {
   point: ConnectionPoint
   region: RegionHg
   layerCount: number
 }): boolean {
-  if (pointToBoxDistance(params.point, params.region.d) === 0) {
+  if (pointToBoxDistance(params.point, params.region.d) <= REGION_MATCH_EPS) {
     const layers =
       "layers" in params.point ? params.point.layers : [params.point.layer]
     const intLayers = layers.map((layer) => {
