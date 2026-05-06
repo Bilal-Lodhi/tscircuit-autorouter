@@ -97,142 +97,6 @@ function definePipelineStep<
   }
 }
 
-const getRouteEndpointDistance = (
-  routePoint: HighDensityRoute["route"][number],
-  endpoint: SimpleRouteConnection["pointsToConnect"][number],
-) => Math.hypot(routePoint.x - endpoint.x, routePoint.y - endpoint.y)
-
-const reverseHdRoute = (route: HighDensityRoute): HighDensityRoute => ({
-  ...route,
-  route: [...route.route].reverse(),
-})
-
-const stitchHdRoutesForConnection = (
-  hdRoutes: HighDensityRoute[],
-  connection: SimpleRouteConnection,
-): HighDensityRoute[] => {
-  if (hdRoutes.length <= 1) return hdRoutes
-
-  const remainingRoutes = [...hdRoutes]
-  const startPoint = connection.pointsToConnect[0]
-  const endPoint = connection.pointsToConnect[1]
-  let bestRouteIndex = 0
-  let bestRouteShouldReverse = false
-  let bestDistance = Number.POSITIVE_INFINITY
-
-  for (let i = 0; i < remainingRoutes.length; i++) {
-    const route = remainingRoutes[i]!
-    const firstPoint = route.route[0]
-    const lastPoint = route.route.at(-1)
-    if (!firstPoint || !lastPoint) continue
-
-    const firstDistance = getRouteEndpointDistance(firstPoint, startPoint)
-    if (firstDistance < bestDistance) {
-      bestDistance = firstDistance
-      bestRouteIndex = i
-      bestRouteShouldReverse = false
-    }
-
-    const lastDistance = getRouteEndpointDistance(lastPoint, startPoint)
-    if (lastDistance < bestDistance) {
-      bestDistance = lastDistance
-      bestRouteIndex = i
-      bestRouteShouldReverse = true
-    }
-  }
-
-  let stitchedRoute = remainingRoutes.splice(bestRouteIndex, 1)[0]!
-  if (bestRouteShouldReverse) stitchedRoute = reverseHdRoute(stitchedRoute)
-
-  let endRoute: HighDensityRoute | null = null
-  if (remainingRoutes.length > 0) {
-    let endRouteIndex = 0
-    let endRouteShouldReverse = false
-    let endDistance = Number.POSITIVE_INFINITY
-
-    for (let i = 0; i < remainingRoutes.length; i++) {
-      const route = remainingRoutes[i]!
-      const firstPoint = route.route[0]
-      const lastPoint = route.route.at(-1)
-      if (!firstPoint || !lastPoint) continue
-
-      const firstDistance = getRouteEndpointDistance(firstPoint, endPoint)
-      if (firstDistance < endDistance) {
-        endDistance = firstDistance
-        endRouteIndex = i
-        endRouteShouldReverse = true
-      }
-
-      const lastDistance = getRouteEndpointDistance(lastPoint, endPoint)
-      if (lastDistance < endDistance) {
-        endDistance = lastDistance
-        endRouteIndex = i
-        endRouteShouldReverse = false
-      }
-    }
-
-    endRoute = remainingRoutes.splice(endRouteIndex, 1)[0]!
-    if (endRouteShouldReverse) endRoute = reverseHdRoute(endRoute)
-  }
-
-  while (remainingRoutes.length > 0) {
-    const currentEnd = stitchedRoute.route.at(-1)
-    if (!currentEnd) break
-
-    let nextRouteIndex = 0
-    let nextRouteShouldReverse = false
-    let nextDistance = Number.POSITIVE_INFINITY
-
-    for (let i = 0; i < remainingRoutes.length; i++) {
-      const route = remainingRoutes[i]!
-      const firstPoint = route.route[0]
-      const lastPoint = route.route.at(-1)
-      if (!firstPoint || !lastPoint) continue
-
-      const firstDistance = Math.hypot(
-        currentEnd.x - firstPoint.x,
-        currentEnd.y - firstPoint.y,
-      )
-      if (firstDistance < nextDistance) {
-        nextDistance = firstDistance
-        nextRouteIndex = i
-        nextRouteShouldReverse = false
-      }
-
-      const lastDistance = Math.hypot(
-        currentEnd.x - lastPoint.x,
-        currentEnd.y - lastPoint.y,
-      )
-      if (lastDistance < nextDistance) {
-        nextDistance = lastDistance
-        nextRouteIndex = i
-        nextRouteShouldReverse = true
-      }
-    }
-
-    let nextRoute = remainingRoutes.splice(nextRouteIndex, 1)[0]!
-    if (nextRouteShouldReverse) nextRoute = reverseHdRoute(nextRoute)
-
-    stitchedRoute = {
-      ...stitchedRoute,
-      route: [...stitchedRoute.route, ...nextRoute.route],
-      vias: [...(stitchedRoute.vias ?? []), ...(nextRoute.vias ?? [])],
-      jumpers: [...(stitchedRoute.jumpers ?? []), ...(nextRoute.jumpers ?? [])],
-    }
-  }
-
-  if (endRoute) {
-    stitchedRoute = {
-      ...stitchedRoute,
-      route: [...stitchedRoute.route, ...endRoute.route],
-      vias: [...(stitchedRoute.vias ?? []), ...(endRoute.vias ?? [])],
-      jumpers: [...(stitchedRoute.jumpers ?? []), ...(endRoute.jumpers ?? [])],
-    }
-  }
-
-  return [stitchedRoute]
-}
-
 export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
   preprocessSimpleRouteJsonSolver?: PreprocessSimpleRouteJsonSolver
   escapeViaLocationSolver?: EscapeViaLocationSolver
@@ -866,10 +730,9 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
       const hdRoutes = allHdRoutes.filter(
         (r) => r.connectionName === connection.name,
       )
-      const stitchedHdRoutes = stitchHdRoutesForConnection(hdRoutes, connection)
 
-      for (let i = 0; i < stitchedHdRoutes.length; i++) {
-        const hdRoute = stitchedHdRoutes[i]
+      for (let i = 0; i < hdRoutes.length; i++) {
+        const hdRoute = hdRoutes[i]
         const simplifiedPcbTrace: SimplifiedPcbTrace = {
           type: "pcb_trace",
           pcb_trace_id: `${connection.name}_${i}`,
