@@ -866,10 +866,7 @@ export class AutoroutingPipelineSolver4_TinyHypergraph extends BaseSolver {
       const hdRoutes = allHdRoutes.filter(
         (r) => r.connectionName === connection.name,
       )
-      const stitchedHdRoutes = stitchHdRoutesForConnection(
-        hdRoutes,
-        connection,
-      )
+      const stitchedHdRoutes = stitchHdRoutesForConnection(hdRoutes, connection)
 
       for (let i = 0; i < stitchedHdRoutes.length; i++) {
         const hdRoute = stitchedHdRoutes[i]
