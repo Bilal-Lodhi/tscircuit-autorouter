@@ -51,10 +51,16 @@ test("getRerouteSimpleRouteJson clips traces out of a rectangular region", () =>
   })
 
   expect(rerouted.connections).toHaveLength(1)
+  expect(rerouted.bounds).toEqual({
+    minX: -1,
+    maxX: 1,
+    minY: -1,
+    maxY: 1,
+  })
   expect(rerouted.connections[0]?.rootConnectionName).toBe("source_net_0")
   expect(rerouted.connections[0]?.pointsToConnect).toEqual([
-    { x: -1.0099999999999998, y: 0, layer: "top" },
-    { x: 1.0099999999999998, y: 0, layer: "top" },
+    { x: -1, y: 0, layer: "top" },
+    { x: 1, y: 0, layer: "top" },
   ])
 
   const affectedTracePieces = rerouted.traces?.filter((trace) =>

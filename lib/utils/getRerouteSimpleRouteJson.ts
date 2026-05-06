@@ -38,7 +38,6 @@ type LocatedPoint = {
 }
 
 const EPSILON = 1e-9
-const CONNECTION_POINT_NUDGE_DISTANCE = 0.01
 
 const isWireRoutePoint = (point: RoutePoint): point is WireRoutePoint =>
   point.route_type === "wire"
@@ -103,29 +102,6 @@ const getInterpolatedPoint = (
   layer,
   width,
 })
-
-const getPointOutsideClippedInterval = (
-  start: LocatableRoutePoint,
-  end: LocatableRoutePoint,
-  boundaryT: number,
-  direction: -1 | 1,
-  layer: string,
-  width: number,
-) => {
-  const segmentLength = Math.hypot(end.x - start.x, end.y - start.y)
-  if (segmentLength <= EPSILON) {
-    return getInterpolatedPoint(start, end, boundaryT, layer, width)
-  }
-
-  const nudgeT = CONNECTION_POINT_NUDGE_DISTANCE / segmentLength
-  return getInterpolatedPoint(
-    start,
-    end,
-    Math.max(0, Math.min(1, boundaryT + direction * nudgeT)),
-    layer,
-    width,
-  )
-}
 
 const locatedPointToConnectionPoint = ({
   x,
@@ -275,19 +251,17 @@ const getClippedTracePieces = (
       layer,
       width,
     )
-    const rerouteStart = getPointOutsideClippedInterval(
+    const rerouteStart = getInterpolatedPoint(
       start,
       end,
       interval.startT,
-      -1,
       layer,
       width,
     )
-    const rerouteEnd = getPointOutsideClippedInterval(
+    const rerouteEnd = getInterpolatedPoint(
       start,
       end,
       interval.endT,
-      1,
       layer,
       width,
     )
@@ -370,6 +344,12 @@ export const getRerouteSimpleRouteJson = (
 
   return {
     ...nextSrj,
+    bounds: {
+      minX: region.minX,
+      maxX: region.maxX,
+      minY: region.minY,
+      maxY: region.maxY,
+    },
     traces: nextTraces,
     connections: rerouteConnections,
   }
