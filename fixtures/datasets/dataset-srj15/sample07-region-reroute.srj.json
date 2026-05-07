@@ -1,9 +1,9 @@
 {
   "bounds": {
-    "minX": -12.283,
-    "maxX": 0.386,
-    "minY": -15.331,
-    "maxY": -4.356999999999999
+    "minX": -17.133,
+    "maxX": 5.236,
+    "minY": -20.180999999999997,
+    "maxY": 0.4930000000000003
   },
   "obstacles": [
     {
@@ -2690,8 +2690,8 @@
         "x": -4.489,
         "y": -15.181
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_25_reroute_source_net_25_mst2_0_0",
         "source_net_25"
@@ -2707,8 +2707,8 @@
         "x": -12.133,
         "y": -5.159381747436496
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_25_reroute_source_net_25_mst2_0_0",
         "source_net_25"
@@ -2724,8 +2724,8 @@
         "x": 0.236,
         "y": -7.6278946723445085
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_18_reroute_source_net_18_mst1_0_0",
         "source_net_18"
@@ -2741,8 +2741,8 @@
         "x": -0.501,
         "y": -4.507
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_18_reroute_source_net_18_mst1_0_0",
         "source_net_18"
@@ -2758,8 +2758,8 @@
         "x": -12.133,
         "y": -13.813850022703331
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_15_reroute_source_net_15_mst1_0_0",
         "source_net_15"
@@ -2775,8 +2775,8 @@
         "x": -12.133,
         "y": -11.026
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_15_reroute_source_net_15_mst1_0_0",
         "source_net_15"
@@ -2792,8 +2792,8 @@
         "x": 0.236,
         "y": -13.064
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_15_reroute_source_net_15_mst2_0_0",
         "source_net_15"
@@ -2809,8 +2809,8 @@
         "x": -12.133,
         "y": -13.783
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_15_reroute_source_net_15_mst2_0_0",
         "source_net_15"
@@ -2826,8 +2826,8 @@
         "x": 0.236,
         "y": -7.241708941911142
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_12_reroute_source_net_12_mst1_0_0",
         "source_net_12"
@@ -2843,8 +2843,8 @@
         "x": -4.66193557424914,
         "y": -4.507
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_12_reroute_source_net_12_mst1_0_0",
         "source_net_12"
@@ -2860,8 +2860,8 @@
         "x": -3.4994148763423865,
         "y": -15.181
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_5_reroute_source_net_5_mst1_0_0",
         "source_net_5"
@@ -2877,8 +2877,8 @@
         "x": -12.133,
         "y": -10.572
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_5_reroute_source_net_5_mst1_0_0",
         "source_net_5"
@@ -2894,8 +2894,8 @@
         "x": 0.236,
         "y": -10.017880917729762
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_2_reroute_source_net_2_mst1_0_0",
         "source_net_2"
@@ -2911,8 +2911,8 @@
         "x": -5.274880917729764,
         "y": -4.507
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_2_reroute_source_net_2_mst1_0_0",
         "source_net_2"

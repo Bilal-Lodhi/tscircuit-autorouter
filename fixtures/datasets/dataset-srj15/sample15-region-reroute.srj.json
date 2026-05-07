@@ -1,9 +1,9 @@
 {
   "bounds": {
-    "minX": 11.964,
-    "maxX": 31.868,
-    "minY": -12.536,
-    "maxY": 6.345000000000001
+    "minX": 7.114000000000001,
+    "maxX": 36.718,
+    "minY": -17.386,
+    "maxY": 11.195
   },
   "obstacles": [
     {
@@ -2690,8 +2690,8 @@
         "x": 17.625,
         "y": 6.195
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_26_reroute_source_net_26_0_0",
         "source_net_26"
@@ -2707,8 +2707,8 @@
         "x": 12.114,
         "y": 3.42
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_26_reroute_source_net_26_0_0",
         "source_net_26"
@@ -2724,8 +2724,8 @@
         "x": 14.76,
         "y": 6.195
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_10_reroute_source_net_10_mst1_0_0",
         "source_net_10"
@@ -2741,8 +2741,8 @@
         "x": 18.073,
         "y": -6.07
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_10_reroute_source_net_10_mst1_0_0",
         "source_net_10"
@@ -2758,8 +2758,8 @@
         "x": 16.300003396666604,
         "y": 6.195
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_7_reroute_source_net_7_mst0_0_0",
         "source_net_7"
@@ -2775,8 +2775,8 @@
         "x": 16.247,
         "y": -6.07
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_7_reroute_source_net_7_mst0_0_0",
         "source_net_7"

@@ -60,8 +60,8 @@ test("srj11, srj12, srj13, and srj15 benchmark datasets load in sample order", a
 const isRerouteEndpointObstacle = (obstacle: Obstacle) =>
   obstacle.obstacleId?.includes("route_endpoint_") === true
 
-const DEFAULT_SRJ15_BOUNDS_EXPANSION = 0.15
-const DEFAULT_SRJ15_MIN_OBSTACLE_DIMENSION = 0.3
+const DEFAULT_SRJ15_BOUNDS_EXPANSION = 5
+const DEFAULT_SRJ15_MIN_OBSTACLE_DIMENSION = 0
 
 test("srj15 reroute endpoint obstacles stay fully inside sample bounds", async () => {
   const srj15Scenarios = await loadScenarios("srj15")

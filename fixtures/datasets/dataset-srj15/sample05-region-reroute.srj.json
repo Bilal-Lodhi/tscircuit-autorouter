@@ -1,9 +1,9 @@
 {
   "bounds": {
-    "minX": 13.846,
-    "maxX": 24.665999999999997,
-    "minY": -24.737,
-    "maxY": -9.597999999999999
+    "minX": 8.996,
+    "maxX": 29.516,
+    "minY": -29.587,
+    "maxY": -4.747999999999999
   },
   "obstacles": [
     {
@@ -2690,8 +2690,8 @@
         "x": 14.69,
         "y": -17.46
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_18_reroute_source_net_18_mst1_0_0",
         "source_net_18"
@@ -2707,8 +2707,8 @@
         "x": 13.996,
         "y": -16.766000000000002
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_18_reroute_source_net_18_mst1_0_0",
         "source_net_18"

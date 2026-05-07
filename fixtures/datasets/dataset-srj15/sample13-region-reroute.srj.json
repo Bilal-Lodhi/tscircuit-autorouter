@@ -1,9 +1,9 @@
 {
   "bounds": {
-    "minX": -7.865,
-    "maxX": 10.706,
-    "minY": -12.16,
-    "maxY": 7.986000000000001
+    "minX": -12.715,
+    "maxX": 15.556,
+    "minY": -17.009999999999998,
+    "maxY": 12.836
   },
   "obstacles": [
     {
@@ -2690,8 +2690,8 @@
         "x": 10.556,
         "y": 3.42
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_26_reroute_source_net_26_0_0",
         "source_net_26"
@@ -2707,8 +2707,8 @@
         "x": 8.9,
         "y": 3.42
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_26_reroute_source_net_26_0_0",
         "source_net_26"
@@ -2724,8 +2724,8 @@
         "x": 4.744476180203877,
         "y": 7.836
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_25_reroute_source_net_25_mst0_0_0",
         "source_net_25"
@@ -2741,8 +2741,8 @@
         "x": 0.19,
         "y": 6.35
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_25_reroute_source_net_25_mst0_0_0",
         "source_net_25"
@@ -2758,8 +2758,8 @@
         "x": 0.19,
         "y": 6.35
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_25_reroute_source_net_25_mst1_0_0",
         "source_net_25"
@@ -2775,8 +2775,8 @@
         "x": -7.715,
         "y": -1.7602255768974342
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_25_reroute_source_net_25_mst1_0_0",
         "source_net_25"
@@ -2792,8 +2792,8 @@
         "x": -5.2792807337635255,
         "y": -12.01
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_25_reroute_source_net_25_mst2_0_0",
         "source_net_25"
@@ -2809,8 +2809,8 @@
         "x": -7.715,
         "y": -9.584151371439408
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_25_reroute_source_net_25_mst2_0_0",
         "source_net_25"
@@ -2826,8 +2826,8 @@
         "x": -3.7990000000000004,
         "y": 7.836
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_21_reroute_source_net_21_mst1_0_0",
         "source_net_21"
@@ -2843,8 +2843,8 @@
         "x": -7.715,
         "y": 2.8560000000000003
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_21_reroute_source_net_21_mst1_0_0",
         "source_net_21"
@@ -2860,8 +2860,8 @@
         "x": 10.556,
         "y": 7.34087867324546
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_19_reroute_source_net_19_mst1_0_0",
         "source_net_19"
@@ -2877,8 +2877,8 @@
         "x": -7.715,
         "y": -0.42799999999999994
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_19_reroute_source_net_19_mst1_0_0",
         "source_net_19"
@@ -2894,8 +2894,8 @@
         "x": -1.805,
         "y": -2.66
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_18_reroute_source_net_18_mst0_0_0",
         "source_net_18"
@@ -2911,8 +2911,8 @@
         "x": -7.178628394089391,
         "y": 7.836
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_18_reroute_source_net_18_mst0_0_0",
         "source_net_18"
@@ -2928,8 +2928,8 @@
         "x": 9.239999999999998,
         "y": -12.01
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_18_reroute_source_net_18_mst1_0_0",
         "source_net_18"
@@ -2945,8 +2945,8 @@
         "x": -1.805,
         "y": -2.66
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_18_reroute_source_net_18_mst1_0_0",
         "source_net_18"
@@ -2962,8 +2962,8 @@
         "x": 9.35,
         "y": -11.39
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_15_reroute_source_net_15_mst2_0_0",
         "source_net_15"
@@ -2979,8 +2979,8 @@
         "x": 10.2,
         "y": -12.01
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_15_reroute_source_net_15_mst2_0_0",
         "source_net_15"
@@ -2996,8 +2996,8 @@
         "x": 9.35,
         "y": -10.44
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_14_reroute_source_net_14_mst1_0_0",
         "source_net_14"
@@ -3013,8 +3013,8 @@
         "x": 6.8,
         "y": 3.42
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_14_reroute_source_net_14_mst1_0_0",
         "source_net_14"
@@ -3030,8 +3030,8 @@
         "x": 6.8,
         "y": 3.42
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_14_reroute_source_net_14_mst2_0_0",
         "source_net_14"
@@ -3047,8 +3047,8 @@
         "x": -7.715,
         "y": -1.1745521195591815
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_14_reroute_source_net_14_mst2_0_0",
         "source_net_14"
@@ -3064,8 +3064,8 @@
         "x": 10.556,
         "y": -3.3040000000000003
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_12_reroute_source_net_12_mst1_0_0",
         "source_net_12"
@@ -3081,8 +3081,8 @@
         "x": -7.715,
         "y": -2.1773923409688716
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_12_reroute_source_net_12_mst1_0_0",
         "source_net_12"
@@ -3098,8 +3098,8 @@
         "x": -3.2213212184245417,
         "y": 7.836
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_10_reroute_source_net_10_mst2_0_0",
         "source_net_10"
@@ -3115,8 +3115,8 @@
         "x": -7.715,
         "y": 4.848242227875729
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_10_reroute_source_net_10_mst2_0_0",
         "source_net_10"
@@ -3132,8 +3132,8 @@
         "x": -5.940358331417026,
         "y": 7.836
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_9_reroute_source_net_9_0_0",
         "source_net_9"
@@ -3149,8 +3149,8 @@
         "x": -7.715,
         "y": 6.0613583314170265
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_9_reroute_source_net_9_0_0",
         "source_net_9"
@@ -3166,8 +3166,8 @@
         "x": 0.6312262610393691,
         "y": 7.836
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_8_reroute_source_net_8_mst0_0_0",
         "source_net_8"
@@ -3183,8 +3183,8 @@
         "x": -0.155,
         "y": -2.66
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_8_reroute_source_net_8_mst0_0_0",
         "source_net_8"
@@ -3200,8 +3200,8 @@
         "x": -2.8172175852187493,
         "y": 7.836
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_7_reroute_source_net_7_mst1_0_0",
         "source_net_7"
@@ -3217,8 +3217,8 @@
         "x": -7.715,
         "y": 2.270739496925093
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_7_reroute_source_net_7_mst1_0_0",
         "source_net_7"
@@ -3234,8 +3234,8 @@
         "x": 5.95,
         "y": -2.83
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_6_reroute_source_net_6_mst1_0_0",
         "source_net_6"
@@ -3251,8 +3251,8 @@
         "x": -7.715,
         "y": 0.7881318849181912
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_6_reroute_source_net_6_mst1_0_0",
         "source_net_6"
@@ -3268,8 +3268,8 @@
         "x": -4.8124411277074755,
         "y": -12.01
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_5_reroute_source_net_5_mst1_0_0",
         "source_net_5"
@@ -3285,8 +3285,8 @@
         "x": -7.715,
         "y": -9.169379987924405
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_5_reroute_source_net_5_mst1_0_0",
         "source_net_5"
@@ -3302,8 +3302,8 @@
         "x": 2.2281190822702364,
         "y": -12.01
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_2_reroute_source_net_2_mst1_0_0",
         "source_net_2"
@@ -3319,8 +3319,8 @@
         "x": -7.715,
         "y": 5.334639356581542
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_2_reroute_source_net_2_mst1_0_0",
         "source_net_2"
@@ -3336,8 +3336,8 @@
         "x": 9.801867985251649,
         "y": 7.836
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_1_reroute_source_net_1_mst0_0_0",
         "source_net_1"
@@ -3353,8 +3353,8 @@
         "x": -1.91,
         "y": 6.35
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_1_reroute_source_net_1_mst0_0_0",
         "source_net_1"
@@ -3370,8 +3370,8 @@
         "x": -1.91,
         "y": 6.35
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_1_reroute_source_net_1_mst1_0_0",
         "source_net_1"
@@ -3387,8 +3387,8 @@
         "x": -2.1809619291944395,
         "y": 7.836
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_1_reroute_source_net_1_mst1_0_0",
         "source_net_1"
@@ -3404,8 +3404,8 @@
         "x": 9.094,
         "y": -12.01
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_0_reroute_source_net_0_mst2_0_0",
         "source_net_0"
@@ -3421,8 +3421,8 @@
         "x": -7.715,
         "y": 7.404
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_0_reroute_source_net_0_mst2_0_0",
         "source_net_0"

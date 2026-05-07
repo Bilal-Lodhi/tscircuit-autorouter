@@ -1,9 +1,9 @@
 {
   "bounds": {
-    "minX": 4.346,
-    "maxX": 18.854,
-    "minY": 11.926,
-    "maxY": 26.755
+    "minX": -0.5039999999999996,
+    "maxX": 23.704,
+    "minY": 7.0760000000000005,
+    "maxY": 31.605
   },
   "obstacles": [
     {
@@ -2690,8 +2690,8 @@
         "x": 17.61,
         "y": 14.37
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_21_reroute_source_net_21_mst0_0_0",
         "source_net_21"
@@ -2707,8 +2707,8 @@
         "x": 5.363,
         "y": 13.63
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_21_reroute_source_net_21_mst0_0_0",
         "source_net_21"
@@ -2724,8 +2724,8 @@
         "x": 5.363,
         "y": 13.63
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_21_reroute_source_net_21_mst1_0_0",
         "source_net_21"
@@ -2741,8 +2741,8 @@
         "x": 4.496,
         "y": 13.624
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_21_reroute_source_net_21_mst1_0_0",
         "source_net_21"
@@ -2758,8 +2758,8 @@
         "x": 12.53,
         "y": 14.37
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_7_reroute_source_net_7_mst0_0_0",
         "source_net_7"
@@ -2775,8 +2775,8 @@
         "x": 14.815567446064046,
         "y": 12.076
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_7_reroute_source_net_7_mst0_0_0",
         "source_net_7"
@@ -2792,8 +2792,8 @@
         "x": 12.53,
         "y": 14.37
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_7_reroute_source_net_7_mst1_0_0",
         "source_net_7"
@@ -2809,8 +2809,8 @@
         "x": 8.719525964354053,
         "y": 12.076
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_7_reroute_source_net_7_mst1_0_0",
         "source_net_7"

@@ -18,8 +18,8 @@ const MAX_REGION_SIZE = 20
 const MAX_REGION_ATTEMPTS = 100
 const GRID_COLUMNS = 5
 const GRID_ROWS = 5
-const DEFAULT_BOUNDS_EXPANSION = 0.15
-const DEFAULT_MIN_OBSTACLE_DIMENSION = 0.3
+const DEFAULT_BOUNDS_EXPANSION = 5
+const DEFAULT_MIN_OBSTACLE_DIMENSION = 0
 
 const getCircuit219 = () =>
   (dataset01 as Record<string, unknown>).circuit219 as SimpleRouteJson

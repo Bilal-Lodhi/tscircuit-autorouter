@@ -1,9 +1,9 @@
 {
   "bounds": {
-    "minX": -26.615,
-    "maxX": -6.444,
-    "minY": -15.962,
-    "maxY": 0.53
+    "minX": -31.465,
+    "maxX": -1.5940000000000003,
+    "minY": -20.811999999999998,
+    "maxY": 5.38
   },
   "obstacles": [
     {
@@ -2690,8 +2690,8 @@
         "x": -6.594,
         "y": -0.9762386274440571
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_25_reroute_source_net_25_mst1_0_0",
         "source_net_25"
@@ -2707,8 +2707,8 @@
         "x": -14.34,
         "y": -0.428
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_25_reroute_source_net_25_mst1_0_0",
         "source_net_25"
@@ -2724,8 +2724,8 @@
         "x": -6.594,
         "y": -10.695280733763525
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_25_reroute_source_net_25_mst2_0_0",
         "source_net_25"
@@ -2741,8 +2741,8 @@
         "x": -14.34,
         "y": -0.428
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_25_reroute_source_net_25_mst2_0_0",
         "source_net_25"
@@ -2758,8 +2758,8 @@
         "x": -15.34,
         "y": -0.428
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_22_reroute_source_net_22_0_0",
         "source_net_22"
@@ -2775,8 +2775,8 @@
         "x": -18.49,
         "y": -0.428
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_22_reroute_source_net_22_0_0",
         "source_net_22"
@@ -2792,8 +2792,8 @@
         "x": -17.34,
         "y": -0.428
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_20_reroute_source_net_20_mst0_0_0",
         "source_net_20"
@@ -2809,8 +2809,8 @@
         "x": -21.376589077502103,
         "y": 0.38
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_20_reroute_source_net_20_mst0_0_0",
         "source_net_20"
@@ -2826,8 +2826,8 @@
         "x": -17.247421016850957,
         "y": 0.38
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_20_reroute_source_net_20_mst1_0_0",
         "source_net_20"
@@ -2843,8 +2843,8 @@
         "x": -17.34,
         "y": -0.428
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_20_reroute_source_net_20_mst1_0_0",
         "source_net_20"
@@ -2860,8 +2860,8 @@
         "x": -20.142,
         "y": -9.86
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_20_reroute_source_net_20_mst2_0_0",
         "source_net_20"
@@ -2877,8 +2877,8 @@
         "x": -17.34,
         "y": -0.428
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_20_reroute_source_net_20_mst2_0_0",
         "source_net_20"
@@ -2894,8 +2894,8 @@
         "x": -12.84,
         "y": 0.38
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_19_reroute_source_net_19_mst0_0_0",
         "source_net_19"
@@ -2911,8 +2911,8 @@
         "x": -12.84,
         "y": -0.428
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_19_reroute_source_net_19_mst0_0_0",
         "source_net_19"
@@ -2928,8 +2928,8 @@
         "x": -6.594,
         "y": -0.42799999999999994
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_19_reroute_source_net_19_mst1_0_0",
         "source_net_19"
@@ -2945,8 +2945,8 @@
         "x": -12.690000000000001,
         "y": -0.428
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_19_reroute_source_net_19_mst1_0_0",
         "source_net_19"
@@ -2962,8 +2962,8 @@
         "x": -14.217,
         "y": -9.86
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_16_reroute_source_net_16_0_0",
         "source_net_16"
@@ -2979,8 +2979,8 @@
         "x": -13.84,
         "y": -0.428
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_16_reroute_source_net_16_0_0",
         "source_net_16"
@@ -2996,8 +2996,8 @@
         "x": -14.84,
         "y": 0.38
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_15_reroute_source_net_15_mst0_0_0",
         "source_net_15"
@@ -3013,8 +3013,8 @@
         "x": -14.84,
         "y": -0.428
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_15_reroute_source_net_15_mst0_0_0",
         "source_net_15"
@@ -3030,8 +3030,8 @@
         "x": -14.16,
         "y": -15.81
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_15_reroute_source_net_15_mst1_0_0",
         "source_net_15"
@@ -3047,8 +3047,8 @@
         "x": -14.84,
         "y": -0.428
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_15_reroute_source_net_15_mst1_0_0",
         "source_net_15"
@@ -3064,8 +3064,8 @@
         "x": -6.594,
         "y": -13.064
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_15_reroute_source_net_15_mst2_0_0",
         "source_net_15"
@@ -3081,8 +3081,8 @@
         "x": -14.16,
         "y": -15.81
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_15_reroute_source_net_15_mst2_0_0",
         "source_net_15"
@@ -3098,8 +3098,8 @@
         "x": -17.84,
         "y": -0.428
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_14_reroute_source_net_14_mst0_0_0",
         "source_net_14"
@@ -3115,8 +3115,8 @@
         "x": -19.97697899788957,
         "y": 0.38
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_14_reroute_source_net_14_mst0_0_0",
         "source_net_14"
@@ -3132,8 +3132,8 @@
         "x": -6.594,
         "y": -1.1749320490174322
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_14_reroute_source_net_14_mst2_0_0",
         "source_net_14"
@@ -3149,8 +3149,8 @@
         "x": -17.84,
         "y": -0.428
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_14_reroute_source_net_14_mst2_0_0",
         "source_net_14"
@@ -3166,8 +3166,8 @@
         "x": -14.85,
         "y": -15.812
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_13_reroute_source_net_13_mst1_0_0",
         "source_net_13"
@@ -3183,8 +3183,8 @@
         "x": -15.84,
         "y": -0.428
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_13_reroute_source_net_13_mst1_0_0",
         "source_net_13"
@@ -3200,8 +3200,8 @@
         "x": -13.398533638774246,
         "y": 0.38
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_12_reroute_source_net_12_mst0_0_0",
         "source_net_12"
@@ -3217,8 +3217,8 @@
         "x": -13.34,
         "y": -0.428
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_12_reroute_source_net_12_mst0_0_0",
         "source_net_12"
@@ -3234,8 +3234,8 @@
         "x": -6.594,
         "y": -2.5749355742491398
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_12_reroute_source_net_12_mst1_0_0",
         "source_net_12"
@@ -3251,8 +3251,8 @@
         "x": -13.34,
         "y": -0.428
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_12_reroute_source_net_12_mst1_0_0",
         "source_net_12"
@@ -3268,8 +3268,8 @@
         "x": -9.606251879744953,
         "y": 0.38
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_7_reroute_source_net_7_mst1_0_0",
         "source_net_7"
@@ -3285,8 +3285,8 @@
         "x": -16.84,
         "y": -0.428
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_7_reroute_source_net_7_mst1_0_0",
         "source_net_7"
@@ -3302,8 +3302,8 @@
         "x": -20.326549094430547,
         "y": 0.38
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_5_reroute_source_net_5_mst0_0_0",
         "source_net_5"
@@ -3319,8 +3319,8 @@
         "x": -16.34,
         "y": -0.428
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_5_reroute_source_net_5_mst0_0_0",
         "source_net_5"
@@ -3336,8 +3336,8 @@
         "x": -6.594,
         "y": -10.225674268841122
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_5_reroute_source_net_5_mst1_0_0",
         "source_net_5"
@@ -3353,8 +3353,8 @@
         "x": -16.34,
         "y": -0.428
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_5_reroute_source_net_5_mst1_0_0",
         "source_net_5"
@@ -3370,8 +3370,8 @@
         "x": -6.594,
         "y": -3.187880917729764
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_2_reroute_source_net_2_mst1_0_0",
         "source_net_2"
@@ -3387,8 +3387,8 @@
         "x": -7.347383084480086,
         "y": 0.38
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_2_reroute_source_net_2_mst1_0_0",
         "source_net_2"

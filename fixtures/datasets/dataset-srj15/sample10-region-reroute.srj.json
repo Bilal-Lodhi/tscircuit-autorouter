@@ -1,9 +1,9 @@
 {
   "bounds": {
-    "minX": 11.498,
-    "maxX": 28.273,
-    "minY": -14.351,
-    "maxY": 2.326
+    "minX": 6.648,
+    "maxX": 33.123000000000005,
+    "minY": -19.201,
+    "maxY": 7.176
   },
   "obstacles": [
     {
@@ -2690,8 +2690,8 @@
         "x": 14.90061447544839,
         "y": 2.176
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_10_reroute_source_net_10_mst1_0_0",
         "source_net_10"
@@ -2707,8 +2707,8 @@
         "x": 18.073,
         "y": -6.07
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_10_reroute_source_net_10_mst1_0_0",
         "source_net_10"
@@ -2724,8 +2724,8 @@
         "x": 17.525,
         "y": 2.176
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_7_reroute_source_net_7_mst0_0_0",
         "source_net_7"
@@ -2741,8 +2741,8 @@
         "x": 16.247,
         "y": -6.07
       },
-      "width": 0.3,
-      "height": 0.3,
+      "width": 0.15,
+      "height": 0.15,
       "connectedTo": [
         "source_net_7_reroute_source_net_7_mst0_0_0",
         "source_net_7"
