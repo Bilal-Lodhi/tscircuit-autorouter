@@ -18,7 +18,8 @@ const MAX_REGION_SIZE = 20
 const MAX_REGION_ATTEMPTS = 100
 const GRID_COLUMNS = 5
 const GRID_ROWS = 5
-const DEFAULT_BOUNDS_EXPANSION = 0.5
+const DEFAULT_BOUNDS_EXPANSION = 0.15
+const DEFAULT_MIN_OBSTACLE_DIMENSION = 0.3
 
 const getCircuit219 = () =>
   (dataset01 as Record<string, unknown>).circuit219 as SimpleRouteJson
@@ -71,7 +72,7 @@ const roundRegion = (region: RerouteRectRegion): RerouteRectRegion => ({
   maxY: Number(region.maxY.toFixed(3)),
 })
 
-const expandBoundsByDefaultMargin = (
+const normalizeSampleSrj = (
   sampleSrj: SimpleRouteJson,
 ): SimpleRouteJson => {
   return {
@@ -82,6 +83,11 @@ const expandBoundsByDefaultMargin = (
       minY: sampleSrj.bounds.minY - DEFAULT_BOUNDS_EXPANSION,
       maxY: sampleSrj.bounds.maxY + DEFAULT_BOUNDS_EXPANSION,
     },
+    obstacles: sampleSrj.obstacles.map((obstacle) => ({
+      ...obstacle,
+      width: Math.max(obstacle.width, DEFAULT_MIN_OBSTACLE_DIMENSION),
+      height: Math.max(obstacle.height, DEFAULT_MIN_OBSTACLE_DIMENSION),
+    })),
   }
 }
 
@@ -117,7 +123,7 @@ const main = async () => {
 
       if (candidateSrj.connections.length === 0) continue
 
-      sampleSrj = expandBoundsByDefaultMargin(candidateSrj)
+      sampleSrj = normalizeSampleSrj(candidateSrj)
       region = candidateRegion
       break
     }

@@ -60,7 +60,8 @@ test("srj11, srj12, srj13, and srj15 benchmark datasets load in sample order", a
 const isRerouteEndpointObstacle = (obstacle: Obstacle) =>
   obstacle.obstacleId?.includes("route_endpoint_") === true
 
-const DEFAULT_SRJ15_BOUNDS_EXPANSION = 0.5
+const DEFAULT_SRJ15_BOUNDS_EXPANSION = 0.15
+const DEFAULT_SRJ15_MIN_OBSTACLE_DIMENSION = 0.3
 
 test("srj15 reroute endpoint obstacles stay fully inside sample bounds", async () => {
   const srj15Scenarios = await loadScenarios("srj15")
@@ -109,5 +110,20 @@ test("srj15 sample bounds expand the manifest region by the default margin", asy
     expect(scenario.bounds.maxY).toBe(
       manifestSample.region.maxY + DEFAULT_SRJ15_BOUNDS_EXPANSION,
     )
+  }
+})
+
+test("srj15 sample obstacles respect the configured minimum obstacle dimension", async () => {
+  const srj15Scenarios = await loadScenarios("srj15")
+
+  for (const [, scenario] of srj15Scenarios) {
+    for (const obstacle of scenario.obstacles) {
+      expect(obstacle.width).toBeGreaterThanOrEqual(
+        DEFAULT_SRJ15_MIN_OBSTACLE_DIMENSION,
+      )
+      expect(obstacle.height).toBeGreaterThanOrEqual(
+        DEFAULT_SRJ15_MIN_OBSTACLE_DIMENSION,
+      )
+    }
   }
 })

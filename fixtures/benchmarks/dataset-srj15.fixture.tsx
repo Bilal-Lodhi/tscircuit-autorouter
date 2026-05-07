@@ -8,8 +8,8 @@ import manifest from "../datasets/dataset-srj15/manifest.json" with {
 import { useMemo, useState } from "react"
 
 const samplePathPattern = /\/sample(\d+)-region-reroute\.srj\.json$/
-const DEFAULT_BOUNDS_EXPANSION = 0.5
-const DEFAULT_MIN_OBSTACLE_DIMENSION = 0
+const DEFAULT_BOUNDS_EXPANSION = 0.15
+const DEFAULT_MIN_OBSTACLE_DIMENSION = 0.3
 
 const applyBoundsMargin = (
   srj: DatasetCircuit["srj"],
