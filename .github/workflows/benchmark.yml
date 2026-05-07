@@ -33,7 +33,7 @@ on:
         default: false
         type: boolean
       dataset_name:
-        description: 'Dataset to benchmark (optional: dataset01, zdwiel, or srj05)'
+        description: 'Dataset to benchmark (optional: dataset01, zdwiel, srj05, srj11, srj12, srj13, srj14, srj15, or srj16)'
         required: false
         type: string
       profile_solvers:
@@ -318,19 +318,96 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Run benchmark (PR)
+      - name: Load main branch benchmark datasets
+        id: main-datasets
+        if: github.event_name == 'push' && github.ref_name == 'main'
+        run: |
+          DATASETS_JSON="$(bun --eval 'import { getMainBranchBenchmarkDatasets } from "./scripts/benchmark/main-branch-datasets"; console.log(JSON.stringify(getMainBranchBenchmarkDatasets()))')"
+          echo "datasets_json=${DATASETS_JSON}" >> "$GITHUB_OUTPUT"
+          echo "Main branch benchmark datasets: ${DATASETS_JSON}"
+
+      - name: Run benchmark
         env:
           BENCHMARK_ARGS_JSON: ${{ steps.parse.outputs.benchmark_args_json }}
           BENCHMARK_CONCURRENCY: ${{ steps.parse.outputs.benchmark_concurrency }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          MAIN_BRANCH_BENCHMARK_DATASETS_JSON: ${{ steps.main-datasets.outputs.datasets_json }}
           BENCHMARK_TASK_TIMEOUT_PER_EFFORT_MS: ${{ vars.BENCHMARK_TASK_TIMEOUT_PER_EFFORT_MS || vars.BENCHMARK_TASK_TIMEOUT_MS || '60000' }}
           BENCHMARK_HEARTBEAT_INTERVAL_MS: ${{ vars.BENCHMARK_HEARTBEAT_INTERVAL_MS || '30000' }}
           BENCHMARK_TERMINATE_TIMEOUT_MS: ${{ vars.BENCHMARK_TERMINATE_TIMEOUT_MS || '1000' }}
         run: |
           chmod +x ./benchmark.sh
           node <<'NODE'
+          const fs = require('node:fs')
           const { spawnSync } = require('node:child_process')
 
           const args = JSON.parse(process.env.BENCHMARK_ARGS_JSON || '[]')
+          const mainBranchDatasets = JSON.parse(process.env.MAIN_BRANCH_BENCHMARK_DATASETS_JSON || '[]')
+          const isMainPush = process.env.GITHUB_EVENT_NAME === 'push' && process.env.GITHUB_REF_NAME === 'main'
+
+          const withDataset = (baseArgs, datasetName) => {
+            const nextArgs = []
+            for (let i = 0; i < baseArgs.length; i += 1) {
+              const arg = baseArgs[i]
+              if (arg === '--dataset') {
+                i += 1
+                continue
+              }
+              nextArgs.push(arg)
+            }
+            nextArgs.push('--dataset', datasetName)
+            return nextArgs
+          }
+
+          const runBenchmark = (benchmarkArgs) => {
+            const renderedArgs = benchmarkArgs.map((arg) => JSON.stringify(arg)).join(' ')
+            console.log(`Running benchmark command: ./benchmark.sh${renderedArgs ? ` ${renderedArgs}` : ''}`)
+
+            const result = spawnSync('./benchmark.sh', benchmarkArgs, {
+              stdio: 'inherit',
+              env: process.env,
+            })
+
+            if (result.error) {
+              throw result.error
+            }
+
+            if ((result.status ?? 1) !== 0) {
+              process.exit(result.status ?? 1)
+            }
+          }
+
+          if (isMainPush && mainBranchDatasets.length > 0) {
+            const reports = []
+            const textReports = []
+
+            for (const datasetName of mainBranchDatasets) {
+              runBenchmark(withDataset(args, datasetName))
+
+              const report = JSON.parse(fs.readFileSync('benchmark-result.json', 'utf8'))
+              const text = fs.readFileSync('benchmark-result.txt', 'utf8').trim()
+              reports.push(report)
+              textReports.push(`## Dataset: ${report.datasetName || datasetName}\n\n${text}`)
+            }
+
+            fs.writeFileSync(
+              'benchmark-result.json',
+              JSON.stringify(
+                {
+                  version: 2,
+                  kind: 'benchmark-report-collection',
+                  generatedFor: 'main',
+                  reports,
+                },
+                null,
+                2,
+              ),
+            )
+            fs.writeFileSync('benchmark-result.txt', `${textReports.join('\n\n---\n\n')}\n`)
+            process.exit(0)
+          }
+
           const renderedArgs = args.map((arg) => JSON.stringify(arg)).join(' ')
           console.log(`Running benchmark command: ./benchmark.sh${renderedArgs ? ` ${renderedArgs}` : ''}`)
 
@@ -502,6 +579,31 @@ jobs:
                 '</details>',
               ]
             }
+            const getBenchmarkReports = (report) => {
+              if (Array.isArray(report?.reports)) {
+                return report.reports.filter(Boolean)
+              }
+              return report ? [report] : []
+            }
+            const getMainReportForDataset = (mainReport, datasetName) => {
+              if (!datasetName) return null
+              return getBenchmarkReports(mainReport).find((report) => report?.datasetName === datasetName) ?? null
+            }
+            const renderReportCollection = (report, fallbackText, options = {}) => {
+              const reports = getBenchmarkReports(report)
+              if (reports.length === 0) {
+                return renderReport(null, fallbackText, options)
+              }
+              if (reports.length === 1) {
+                return renderReport(reports[0], fallbackText, options)
+              }
+              return reports.flatMap((datasetReport, index) => [
+                ...(index === 0 ? [] : ['']),
+                `### ${escapeHtml(datasetReport.datasetName ?? `Dataset ${index + 1}`)}`,
+                '',
+                ...renderReport(datasetReport, fallbackText, options),
+              ])
+            }
             const readJson = (path) => {
               if (!fs.existsSync(path)) return null
               const raw = fs.readFileSync(path, 'utf8').trim()
@@ -518,7 +620,7 @@ jobs:
             const mainText = readText('benchmark-result-main.txt') ?? '(not available)'
             const prReport = readJson('benchmark-result-pr.json') ?? readJson('benchmark-result.json')
             const mainReport = readJson('benchmark-result-main.json')
-            const mainIndex = buildMainIndex(mainReport)
+            const mainIndex = buildMainIndex(getMainReportForDataset(mainReport, prReport?.datasetName))
             const runUrl = `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
             const profileEnabled = '${{ steps.parse.outputs.profile_solvers }}' === 'true'
 
@@ -534,7 +636,7 @@ jobs:
               '<details>',
               '<summary>📊 Main Branch Results</summary>',
               '',
-              ...renderReport(mainReport, mainText),
+              ...renderReportCollection(mainReport, mainText),
               '</details>',
               '',
               '<details open>',
@@ -884,6 +986,31 @@ jobs:
                 '</details>',
               ]
             }
+            const getBenchmarkReports = (report) => {
+              if (Array.isArray(report?.reports)) {
+                return report.reports.filter(Boolean)
+              }
+              return report ? [report] : []
+            }
+            const getMainReportForDataset = (mainReport, datasetName) => {
+              if (!datasetName) return null
+              return getBenchmarkReports(mainReport).find((report) => report?.datasetName === datasetName) ?? null
+            }
+            const renderReportCollection = (report, fallbackText, options = {}) => {
+              const reports = getBenchmarkReports(report)
+              if (reports.length === 0) {
+                return renderReport(null, fallbackText, options)
+              }
+              if (reports.length === 1) {
+                return renderReport(reports[0], fallbackText, options)
+              }
+              return reports.flatMap((datasetReport, index) => [
+                ...(index === 0 ? [] : ['']),
+                `### ${escapeHtml(datasetReport.datasetName ?? `Dataset ${index + 1}`)}`,
+                '',
+                ...renderReport(datasetReport, fallbackText, options),
+              ])
+            }
             const readJson = (path) => {
               if (!fs.existsSync(path)) return null
               const raw = fs.readFileSync(path, 'utf8').trim()
@@ -1002,7 +1129,7 @@ jobs:
             const mainProfileSolversReport = readJson('profile-solvers-main.json')
             const prReport = readJson('benchmark-result-pr.json') ?? readJson('benchmark-result.json')
             const mainReport = readJson('benchmark-result-main.json')
-            const mainIndex = buildMainIndex(mainReport)
+            const mainIndex = buildMainIndex(getMainReportForDataset(mainReport, prReport?.datasetName))
             const runUrl = `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
             const jobStatus = '${{ job.status }}'
             const benchmarkFailed = jobStatus !== 'success'
@@ -1036,7 +1163,7 @@ jobs:
               '<details>',
               '<summary>📊 Main Branch Results</summary>',
               '',
-              ...renderReport(mainReport, mainText),
+              ...renderReportCollection(mainReport, mainText),
               ...(hasProfileSolvers
                 ? renderProfileSolversDetails(
                     renderMainProfileSolvers(mainProfileSolversReport),
