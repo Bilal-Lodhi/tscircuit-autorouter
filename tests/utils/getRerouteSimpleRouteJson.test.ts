@@ -1,9 +1,11 @@
 import { expect, test } from "bun:test"
+import { getBoundingBox } from "@tscircuit/math-utils"
 import {
   getRerouteSimpleRouteJson,
   reconnectReroutedSimpleRouteJsonRegion,
 } from "lib/utils/getRerouteSimpleRouteJson"
 import type { SimpleRouteJson } from "lib/types"
+import { convertSrjTracesToObstacles } from "lib/utils/convertSrjTracesToObstacles"
 
 const srj: SimpleRouteJson = {
   layerCount: 2,
@@ -52,8 +54,8 @@ test("getRerouteSimpleRouteJson clips traces out of a rectangular region", () =>
 
   expect(rerouted.connections).toHaveLength(1)
   expect(rerouted.bounds).toEqual({
-    minX: -1,
-    maxX: 1,
+    minX: -1.075,
+    maxX: 1.075,
     minY: -1,
     maxY: 1,
   })
@@ -150,6 +152,64 @@ test("getRerouteSimpleRouteJson keeps trace endpoints inside the region connecta
     },
   ])
   expect(rerouted.traces).toHaveLength(0)
+})
+
+test("getRerouteSimpleRouteJson expands bounds for clipped trace segment obstacles", () => {
+  const rerouted = getRerouteSimpleRouteJson(
+    {
+      ...srj,
+      traces: [
+        {
+          type: "pcb_trace",
+          pcb_trace_id: "source_net_0_tiny_segments",
+          connection_name: "source_net_0",
+          route: [
+            {
+              route_type: "wire",
+              x: -1.1,
+              y: -0.1,
+              width: 0.15,
+              layer: "top",
+            },
+            { route_type: "wire", x: -0.2, y: 0.8, width: 0.15, layer: "top" },
+          ],
+        },
+      ],
+    },
+    {
+      shape: "rect",
+      minX: -1,
+      maxX: 1,
+      minY: -1,
+      maxY: 1,
+    },
+  )
+
+  expect(rerouted.bounds.minX).toBeLessThan(-1.075)
+  expect(rerouted.bounds.maxX).toBe(1)
+  expect(rerouted.bounds.minY).toBe(-1)
+  expect(rerouted.bounds.maxY).toBe(1)
+
+  const reroutedWithTraceObstacles = convertSrjTracesToObstacles(rerouted)
+  const traceObstacles =
+    reroutedWithTraceObstacles?.obstacles.filter((obstacle) =>
+      obstacle.obstacleId?.startsWith(
+        "trace_obstacle_source_net_0_tiny_segments",
+      ),
+    ) ?? []
+
+  expect(traceObstacles).toHaveLength(1)
+  expect(
+    traceObstacles.every((obstacle) => {
+      const obstacleBounds = getBoundingBox(obstacle)
+      return (
+        obstacleBounds.minX >= rerouted.bounds.minX - 1e-9 &&
+        obstacleBounds.maxX <= rerouted.bounds.maxX + 1e-9 &&
+        obstacleBounds.minY >= rerouted.bounds.minY - 1e-9 &&
+        obstacleBounds.maxY <= rerouted.bounds.maxY + 1e-9
+      )
+    }),
+  ).toBe(true)
 })
 
 test("reconnectReroutedSimpleRouteJsonRegion restores original connections", () => {

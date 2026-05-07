@@ -32,7 +32,7 @@
         "maxY": -9.454
       },
       "rippedConnectionCount": 9,
-      "retainedTraceCount": 93
+      "retainedTraceCount": 97
     },
     {
       "file": "sample03-region-reroute.srj.json",
@@ -43,8 +43,8 @@
         "minY": -20.852,
         "maxY": -8.564
       },
-      "rippedConnectionCount": 7,
-      "retainedTraceCount": 124
+      "rippedConnectionCount": 6,
+      "retainedTraceCount": 108
     },
     {
       "file": "sample04-region-reroute.srj.json",
@@ -56,7 +56,7 @@
         "maxY": -13.941
       },
       "rippedConnectionCount": 2,
-      "retainedTraceCount": 77
+      "retainedTraceCount": 72
     },
     {
       "file": "sample05-region-reroute.srj.json",
@@ -68,7 +68,7 @@
         "maxY": -9.748
       },
       "rippedConnectionCount": 1,
-      "retainedTraceCount": 61
+      "retainedTraceCount": 62
     },
     {
       "file": "sample06-region-reroute.srj.json",
@@ -80,7 +80,7 @@
         "maxY": 0.38
       },
       "rippedConnectionCount": 21,
-      "retainedTraceCount": 196
+      "retainedTraceCount": 194
     },
     {
       "file": "sample07-region-reroute.srj.json",
@@ -92,7 +92,7 @@
         "maxY": -4.507
       },
       "rippedConnectionCount": 7,
-      "retainedTraceCount": 112
+      "retainedTraceCount": 127
     },
     {
       "file": "sample08-region-reroute.srj.json",
@@ -103,8 +103,8 @@
         "minY": -21.297,
         "maxY": -2.465
       },
-      "rippedConnectionCount": 9,
-      "retainedTraceCount": 135
+      "rippedConnectionCount": 10,
+      "retainedTraceCount": 144
     },
     {
       "file": "sample09-region-reroute.srj.json",
@@ -116,7 +116,7 @@
         "maxY": 3.273
       },
       "rippedConnectionCount": 9,
-      "retainedTraceCount": 139
+      "retainedTraceCount": 148
     },
     {
       "file": "sample10-region-reroute.srj.json",
@@ -139,8 +139,8 @@
         "minY": -13.739,
         "maxY": 6.109
       },
-      "rippedConnectionCount": 25,
-      "retainedTraceCount": 211
+      "rippedConnectionCount": 26,
+      "retainedTraceCount": 189
     },
     {
       "file": "sample12-region-reroute.srj.json",
@@ -152,7 +152,7 @@
         "maxY": 4.195
       },
       "rippedConnectionCount": 34,
-      "retainedTraceCount": 253
+      "retainedTraceCount": 241
     },
     {
       "file": "sample13-region-reroute.srj.json",
@@ -163,8 +163,8 @@
         "minY": -12.01,
         "maxY": 7.836
       },
-      "rippedConnectionCount": 23,
-      "retainedTraceCount": 245
+      "rippedConnectionCount": 22,
+      "retainedTraceCount": 215
     },
     {
       "file": "sample14-region-reroute.srj.json",
@@ -176,7 +176,7 @@
         "maxY": 5.829
       },
       "rippedConnectionCount": 7,
-      "retainedTraceCount": 113
+      "retainedTraceCount": 128
     },
     {
       "file": "sample15-region-reroute.srj.json",
@@ -199,8 +199,8 @@
         "minY": -1.798,
         "maxY": 11.022
       },
-      "rippedConnectionCount": 32,
-      "retainedTraceCount": 205
+      "rippedConnectionCount": 31,
+      "retainedTraceCount": 189
     },
     {
       "file": "sample17-region-reroute.srj.json",
@@ -211,8 +211,8 @@
         "minY": -0.195,
         "maxY": 10.551
       },
-      "rippedConnectionCount": 32,
-      "retainedTraceCount": 272
+      "rippedConnectionCount": 30,
+      "retainedTraceCount": 229
     },
     {
       "file": "sample18-region-reroute.srj.json",
@@ -224,7 +224,7 @@
         "maxY": 16.376
       },
       "rippedConnectionCount": 17,
-      "retainedTraceCount": 207
+      "retainedTraceCount": 187
     },
     {
       "file": "sample19-region-reroute.srj.json",
@@ -235,8 +235,8 @@
         "minY": -0.839,
         "maxY": 11.8
       },
-      "rippedConnectionCount": 13,
-      "retainedTraceCount": 201
+      "rippedConnectionCount": 11,
+      "retainedTraceCount": 155
     },
     {
       "file": "sample20-region-reroute.srj.json",
@@ -248,7 +248,7 @@
         "maxY": 14.703
       },
       "rippedConnectionCount": 15,
-      "retainedTraceCount": 172
+      "retainedTraceCount": 170
     },
     {
       "file": "sample21-region-reroute.srj.json",
@@ -260,7 +260,7 @@
         "maxY": 19.492
       },
       "rippedConnectionCount": 17,
-      "retainedTraceCount": 177
+      "retainedTraceCount": 195
     },
     {
       "file": "sample22-region-reroute.srj.json",
@@ -272,7 +272,7 @@
         "maxY": 29.022
       },
       "rippedConnectionCount": 12,
-      "retainedTraceCount": 128
+      "retainedTraceCount": 131
     },
     {
       "file": "sample23-region-reroute.srj.json",
@@ -283,8 +283,8 @@
         "minY": 8.352,
         "maxY": 27.823
       },
-      "rippedConnectionCount": 12,
-      "retainedTraceCount": 205
+      "rippedConnectionCount": 9,
+      "retainedTraceCount": 135
     },
     {
       "file": "sample24-region-reroute.srj.json",
@@ -296,7 +296,7 @@
         "maxY": 26.605
       },
       "rippedConnectionCount": 4,
-      "retainedTraceCount": 114
+      "retainedTraceCount": 97
     },
     {
       "file": "sample25-region-reroute.srj.json",
@@ -308,7 +308,7 @@
         "maxY": 23.985
       },
       "rippedConnectionCount": 5,
-      "retainedTraceCount": 131
+      "retainedTraceCount": 118
     }
   ]
 }

@@ -1,3 +1,4 @@
+import { getBoundingBox } from "@tscircuit/math-utils"
 import type {
   ConnectionPoint,
   Obstacle,
@@ -218,6 +219,40 @@ const appendClippedTraceSegment = (
   })
 }
 
+const createClippedTraceSegmentObstacle = ({
+  obstacleId,
+  start,
+  end,
+  layer,
+  width,
+}: {
+  obstacleId: string
+  start: LocatedPoint
+  end: LocatedPoint
+  layer: string
+  width: number
+}): Obstacle | null => {
+  const dx = end.x - start.x
+  const dy = end.y - start.y
+  const length = Math.hypot(dx, dy)
+
+  if (length > width + EPSILON) return null
+
+  return {
+    obstacleId,
+    type: "rect",
+    layers: [layer],
+    center: {
+      x: (start.x + end.x) / 2,
+      y: (start.y + end.y) / 2,
+    },
+    width: length,
+    height: width,
+    ccwRotationDegrees: (Math.atan2(dy, dx) * 180) / Math.PI,
+    connectedTo: [],
+  }
+}
+
 const createRerouteConnection = ({
   trace,
   ripIndex,
@@ -257,6 +292,28 @@ const createRerouteEndpointObstacle = ({
     connection.rootConnectionName ?? connection.name,
   ],
 })
+
+const expandRegionToContainObstacles = (
+  region: RerouteRectRegion,
+  obstacles: Obstacle[],
+): SimpleRouteJson["bounds"] => {
+  const bounds: SimpleRouteJson["bounds"] = {
+    minX: region.minX,
+    maxX: region.maxX,
+    minY: region.minY,
+    maxY: region.maxY,
+  }
+
+  for (const obstacle of obstacles) {
+    const obstacleBounds = getBoundingBox(obstacle)
+    bounds.minX = Math.min(bounds.minX, obstacleBounds.minX)
+    bounds.maxX = Math.max(bounds.maxX, obstacleBounds.maxX)
+    bounds.minY = Math.min(bounds.minY, obstacleBounds.minY)
+    bounds.maxY = Math.max(bounds.maxY, obstacleBounds.maxY)
+  }
+
+  return bounds
+}
 
 const maybeCreateRerouteConnection = ({
   trace,
@@ -307,6 +364,7 @@ const getClippedTracePieces = (
   const keptTraces: SimplifiedPcbTrace[] = []
   const rerouteConnections: SimpleRouteConnection[] = []
   const rerouteEndpointObstacles: Obstacle[] = []
+  const clippedTraceSegmentObstacles: Obstacle[] = []
   let activeRipStart: LocatedPoint | null = null
   let activeRipStartAllowsInterior = false
   let keptSegmentIndex = 0
@@ -340,12 +398,29 @@ const getClippedTracePieces = (
     hadIntersection = true
 
     if (interval.startT > EPSILON) {
+      const keptEnd = getInterpolatedPoint(
+        start,
+        end,
+        interval.startT,
+        layer,
+        width,
+      )
+      const clippedTraceSegmentObstacle = createClippedTraceSegmentObstacle({
+        obstacleId: `${trace.pcb_trace_id}_keep_${keptSegmentIndex}_bounds`,
+        start: segmentStart,
+        end: keptEnd,
+        layer,
+        width,
+      })
+      if (clippedTraceSegmentObstacle) {
+        clippedTraceSegmentObstacles.push(clippedTraceSegmentObstacle)
+      }
       appendClippedTraceSegment(
         keptTraces,
         trace,
         keptSegmentIndex++,
         segmentStart,
-        getInterpolatedPoint(start, end, interval.startT, layer, width),
+        keptEnd,
       )
     }
 
@@ -386,6 +461,16 @@ const getClippedTracePieces = (
       }
       activeRipStart = null
       activeRipStartAllowsInterior = false
+      const clippedTraceSegmentObstacle = createClippedTraceSegmentObstacle({
+        obstacleId: `${trace.pcb_trace_id}_keep_${keptSegmentIndex}_bounds`,
+        start: rippedEnd,
+        end: segmentEnd,
+        layer,
+        width,
+      })
+      if (clippedTraceSegmentObstacle) {
+        clippedTraceSegmentObstacles.push(clippedTraceSegmentObstacle)
+      }
       appendClippedTraceSegment(
         keptTraces,
         trace,
@@ -430,6 +515,7 @@ const getClippedTracePieces = (
     keptTraces,
     rerouteConnections,
     rerouteEndpointObstacles,
+    clippedTraceSegmentObstacles,
     hadIntersection,
   }
 }
@@ -442,6 +528,7 @@ export const getRerouteSimpleRouteJson = (
   const nextTraces: SimplifiedPcbTrace[] = []
   const rerouteConnections: SimpleRouteConnection[] = []
   const rerouteEndpointObstacles: Obstacle[] = []
+  const clippedTraceSegmentObstacles: Obstacle[] = []
 
   for (const trace of simpleRouteJson.traces ?? []) {
     const clippedPieces = getClippedTracePieces(
@@ -463,16 +550,19 @@ export const getRerouteSimpleRouteJson = (
     nextTraces.push(...clippedPieces.keptTraces)
     rerouteConnections.push(...clippedPieces.rerouteConnections)
     rerouteEndpointObstacles.push(...clippedPieces.rerouteEndpointObstacles)
+    clippedTraceSegmentObstacles.push(
+      ...clippedPieces.clippedTraceSegmentObstacles,
+    )
   }
+
+  const bounds = expandRegionToContainObstacles(region, [
+    ...rerouteEndpointObstacles,
+    ...clippedTraceSegmentObstacles,
+  ])
 
   return {
     ...nextSrj,
-    bounds: {
-      minX: region.minX,
-      maxX: region.maxX,
-      minY: region.minY,
-      maxY: region.maxY,
-    },
+    bounds,
     obstacles: [...nextSrj.obstacles, ...rerouteEndpointObstacles],
     traces: nextTraces,
     connections: rerouteConnections,
