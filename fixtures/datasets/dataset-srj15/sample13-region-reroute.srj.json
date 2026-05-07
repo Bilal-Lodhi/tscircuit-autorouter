@@ -1,9 +1,9 @@
 {
   "bounds": {
-    "minX": -7.715,
-    "maxX": 10.556,
-    "minY": -12.01,
-    "maxY": 7.836
+    "minX": -8.215,
+    "maxX": 11.056,
+    "minY": -12.51,
+    "maxY": 8.336
   },
   "obstacles": [
     {

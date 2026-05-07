@@ -1,9 +1,13 @@
 import { expect, test } from "bun:test"
+import srj15Manifest from "../fixtures/datasets/dataset-srj15/manifest.json" with {
+  type: "json",
+}
 import {
   loadScenarioBySampleNumber,
   loadScenarios,
   parseDatasetName,
 } from "../scripts/benchmark/scenarios"
+import type { Obstacle } from "../lib/types"
 
 test("benchmark dataset aliases resolve to canonical dataset names", () => {
   expect(parseDatasetName("1")).toBe("dataset01")
@@ -51,4 +55,59 @@ test("srj11, srj12, srj13, and srj15 benchmark datasets load in sample order", a
   const sample13 = await loadScenarioBySampleNumber("srj13", 13)
   expect(sample13.scenarioName).toBe("example_13")
   expect(sample13.totalSamples).toBe(50)
+})
+
+const isRerouteEndpointObstacle = (obstacle: Obstacle) =>
+  obstacle.obstacleId?.includes("route_endpoint_") === true
+
+const DEFAULT_SRJ15_BOUNDS_EXPANSION = 0.5
+
+test("srj15 reroute endpoint obstacles stay fully inside sample bounds", async () => {
+  const srj15Scenarios = await loadScenarios("srj15")
+  let rerouteEndpointCount = 0
+
+  for (const [, scenario] of srj15Scenarios) {
+    for (const obstacle of scenario.obstacles) {
+      if (!isRerouteEndpointObstacle(obstacle)) {
+        continue
+      }
+
+      rerouteEndpointCount += 1
+
+      const minX = obstacle.center.x - obstacle.width / 2
+      const maxX = obstacle.center.x + obstacle.width / 2
+      const minY = obstacle.center.y - obstacle.height / 2
+      const maxY = obstacle.center.y + obstacle.height / 2
+
+      expect(minX).toBeGreaterThanOrEqual(scenario.bounds.minX)
+      expect(maxX).toBeLessThanOrEqual(scenario.bounds.maxX)
+      expect(minY).toBeGreaterThanOrEqual(scenario.bounds.minY)
+      expect(maxY).toBeLessThanOrEqual(scenario.bounds.maxY)
+    }
+  }
+
+  expect(rerouteEndpointCount).toBeGreaterThan(0)
+})
+
+test("srj15 sample bounds expand the manifest region by the default margin", async () => {
+  const srj15Scenarios = await loadScenarios("srj15")
+
+  expect(srj15Scenarios).toHaveLength(srj15Manifest.samples.length)
+
+  for (const [index, [, scenario]] of srj15Scenarios.entries()) {
+    const manifestSample = srj15Manifest.samples[index]
+
+    expect(scenario.bounds.minX).toBe(
+      manifestSample.region.minX - DEFAULT_SRJ15_BOUNDS_EXPANSION,
+    )
+    expect(scenario.bounds.maxX).toBe(
+      manifestSample.region.maxX + DEFAULT_SRJ15_BOUNDS_EXPANSION,
+    )
+    expect(scenario.bounds.minY).toBe(
+      manifestSample.region.minY - DEFAULT_SRJ15_BOUNDS_EXPANSION,
+    )
+    expect(scenario.bounds.maxY).toBe(
+      manifestSample.region.maxY + DEFAULT_SRJ15_BOUNDS_EXPANSION,
+    )
+  }
 })

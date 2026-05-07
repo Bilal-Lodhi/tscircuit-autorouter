@@ -18,6 +18,7 @@ const MAX_REGION_SIZE = 20
 const MAX_REGION_ATTEMPTS = 100
 const GRID_COLUMNS = 5
 const GRID_ROWS = 5
+const DEFAULT_BOUNDS_EXPANSION = 0.5
 
 const getCircuit219 = () =>
   (dataset01 as Record<string, unknown>).circuit219 as SimpleRouteJson
@@ -70,6 +71,20 @@ const roundRegion = (region: RerouteRectRegion): RerouteRectRegion => ({
   maxY: Number(region.maxY.toFixed(3)),
 })
 
+const expandBoundsByDefaultMargin = (
+  sampleSrj: SimpleRouteJson,
+): SimpleRouteJson => {
+  return {
+    ...sampleSrj,
+    bounds: {
+      minX: sampleSrj.bounds.minX - DEFAULT_BOUNDS_EXPANSION,
+      maxX: sampleSrj.bounds.maxX + DEFAULT_BOUNDS_EXPANSION,
+      minY: sampleSrj.bounds.minY - DEFAULT_BOUNDS_EXPANSION,
+      maxY: sampleSrj.bounds.maxY + DEFAULT_BOUNDS_EXPANSION,
+    },
+  }
+}
+
 const main = async () => {
   const inputSrj = structuredClone(getCircuit219())
   const solver = new AutoroutingPipelineSolver4(inputSrj)
@@ -102,7 +117,7 @@ const main = async () => {
 
       if (candidateSrj.connections.length === 0) continue
 
-      sampleSrj = candidateSrj
+      sampleSrj = expandBoundsByDefaultMargin(candidateSrj)
       region = candidateRegion
       break
     }

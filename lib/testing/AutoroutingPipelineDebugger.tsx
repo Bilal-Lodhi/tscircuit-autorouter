@@ -453,6 +453,7 @@ export const AutoroutingPipelineDebugger = ({
   const isSolvingToBreakpointRef = useRef(false) // Ref to track breakpoint solving state
   const autoSolvedSolverRef = useRef<any>(null)
   const autoRanDrcForSolveRef = useRef(false)
+  const previousSrjRef = useRef(srj)
 
   const stepSolver = async (solverToStep: AsyncPipelineDebuggerSolver) => {
     if (solverSupportsAsyncStep(solverToStep)) {
@@ -518,6 +519,24 @@ export const AutoroutingPipelineDebugger = ({
     autoRanDrcForSolveRef.current = false
     isSolvingToBreakpointRef.current = false // Stop breakpoint solving on reset
   }
+
+  useEffect(() => {
+    if (previousSrjRef.current === srj) {
+      return
+    }
+
+    previousSrjRef.current = srj
+    setSolver(createNewSolver())
+    setPcbSvgMarkup(null)
+    setDrcErrors(null)
+    setDrcErrorCount(0)
+    setLastDrcMode(null)
+    setSolveTime(null)
+    autoSolvedSolverRef.current = null
+    autoRanDrcForSolveRef.current = false
+    isSolvingToBreakpointRef.current = false
+    setIsAnimating(false)
+  }, [srj])
 
   // Animation effect
   useEffect(() => {
