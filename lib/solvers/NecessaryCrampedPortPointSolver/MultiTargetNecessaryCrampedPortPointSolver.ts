@@ -38,6 +38,7 @@ export class MultiTargetNecessaryCrampedPortPointSolver extends BaseSolver {
   private currentTarget: CapacityMeshNode | undefined
 
   private crampedPortPointsToKeep: Set<SegmentPortPoint> = new Set()
+  private capacityMeshNodesThatRequireCrampedPorts = new Set<CapacityMeshNodeId>()
   private candidatesAtDepth: ExploredPortPoint[] = []
   private isRunningCrampedPass = false
 
@@ -106,6 +107,18 @@ export class MultiTargetNecessaryCrampedPortPointSolver extends BaseSolver {
             segmentPortPoint,
           ])
         }
+      }
+    }
+
+    for (const [
+      capacityMeshNodeId,
+      segmentPortPoints,
+    ] of this.mapOfCapacityMeshNodeIdToSegmentPortPoints.entries()) {
+      const hasNonCrampedPortPoint = segmentPortPoints.some(
+        (segmentPortPoint) => !segmentPortPoint.cramped,
+      )
+      if (!hasNonCrampedPortPoint) {
+        this.capacityMeshNodesThatRequireCrampedPorts.add(capacityMeshNodeId)
       }
     }
   }
@@ -232,7 +245,14 @@ export class MultiTargetNecessaryCrampedPortPointSolver extends BaseSolver {
       ...segment,
       portPoints: segment.portPoints.filter((portPoint) => {
         if (portPoint.cramped) {
-          return this.crampedPortPointsToKeep.has(portPoint)
+          return (
+            this.crampedPortPointsToKeep.has(portPoint) ||
+            portPoint.nodeIds.some((capacityMeshNodeId) =>
+              this.capacityMeshNodesThatRequireCrampedPorts.has(
+                capacityMeshNodeId,
+              ),
+            )
+          )
         }
         return true
       }),
