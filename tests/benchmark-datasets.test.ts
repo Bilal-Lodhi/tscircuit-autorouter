@@ -1,5 +1,7 @@
 import { expect, test } from "bun:test"
+import { getMainBranchBenchmarkDatasets } from "../scripts/benchmark/main-branch-datasets"
 import {
+  DATASET_NAMES,
   loadScenarioBySampleNumber,
   loadScenarios,
   parseDatasetName,
@@ -15,9 +17,21 @@ test("benchmark dataset aliases resolve to canonical dataset names", () => {
   expect(parseDatasetName("13")).toBe("srj13")
   expect(parseDatasetName("dataset-srj13")).toBe("srj13")
   expect(parseDatasetName("15")).toBe("srj15")
+  expect(parseDatasetName("dataset15")).toBe("srj15")
   expect(parseDatasetName("dataset-srj15")).toBe("srj15")
   expect(parseDatasetName("16")).toBe("srj16")
+  expect(parseDatasetName("dataset16")).toBe("srj16")
   expect(parseDatasetName("dataset-srj16-bga-breakouts")).toBe("srj16")
+})
+
+test("main branch benchmark dataset config resolves to canonical dataset names", () => {
+  const datasets = getMainBranchBenchmarkDatasets()
+
+  expect(datasets.length).toBeGreaterThan(0)
+  expect(new Set(datasets).size).toBe(datasets.length)
+  for (const dataset of datasets) {
+    expect(DATASET_NAMES).toContain(dataset)
+  }
 })
 
 test("srj11, srj12, srj13, srj15, and srj16 benchmark datasets load in sample order", async () => {
