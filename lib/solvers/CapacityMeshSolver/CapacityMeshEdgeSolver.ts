@@ -93,13 +93,6 @@ export class CapacityMeshEdgeSolver extends BaseSolver {
     }
   }
 
-  doNodesHaveSharedLayer(
-    node1: CapacityMeshNode,
-    node2: CapacityMeshNode,
-  ): boolean {
-    return node1.availableZ.some((z) => node2.availableZ.includes(z))
-  }
-
   visualize(): GraphicsObject {
     const edgeCount = new Map<string, number>()
 

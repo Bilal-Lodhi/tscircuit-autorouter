@@ -3,7 +3,7 @@ import { CapacityMeshEdgeSolver } from "./CapacityMeshEdgeSolver"
 import { CapacityNodeTree } from "lib/data-structures/CapacityNodeTree"
 import {
   areRoutingAdjacent,
-  getMaxRoutingAdjacencyGap,
+  MAX_ROUTING_ADJACENCY_GAP,
 } from "./areRoutingAdjacent"
 
 export class CapacityMeshEdgeSolver2_NodeTreeOptimization extends CapacityMeshEdgeSolver {
@@ -38,8 +38,8 @@ export class CapacityMeshEdgeSolver2_NodeTreeOptimization extends CapacityMeshEd
     const maybeAdjNodes = this.nodeTree.getNodesInArea(
       A.center.x,
       A.center.y,
-      A.width + this.maxNodeWidth + getMaxRoutingAdjacencyGap() * 2,
-      A.height + this.maxNodeHeight + getMaxRoutingAdjacencyGap() * 2,
+      A.width + this.maxNodeWidth + MAX_ROUTING_ADJACENCY_GAP * 2,
+      A.height + this.maxNodeHeight + MAX_ROUTING_ADJACENCY_GAP * 2,
     )
 
     for (const B of maybeAdjNodes) {
