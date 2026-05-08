@@ -38,7 +38,8 @@ export class MultiTargetNecessaryCrampedPortPointSolver extends BaseSolver {
   private currentTarget: CapacityMeshNode | undefined
 
   private crampedPortPointsToKeep: Set<SegmentPortPoint> = new Set()
-  private capacityMeshNodesThatRequireCrampedPorts = new Set<CapacityMeshNodeId>()
+  private capacityMeshNodesThatRequireCrampedPorts =
+    new Set<CapacityMeshNodeId>()
   private candidatesAtDepth: ExploredPortPoint[] = []
   private isRunningCrampedPass = false
 

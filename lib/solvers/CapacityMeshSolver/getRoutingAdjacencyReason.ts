@@ -1,38 +1,32 @@
+import { getBoundFromCenteredRect, type Bounds } from "@tscircuit/math-utils"
 import type { CapacityMeshNode } from "lib/types"
 import { areNodesBordering } from "lib/utils/areNodesBordering"
 
 export type RoutingAdjacencyReason = "strict_border" | "overlap" | "small_gap"
 
-type Bounds = {
-  left: number
-  right: number
-  top: number
-  bottom: number
-}
-
 const OVERLAP_EPSILON = 1e-6
 const MAX_ROUTING_ADJACENCY_GAP = 0.2
 
-const getBounds = (node: CapacityMeshNode): Bounds => ({
-  left: node.center.x - node.width / 2,
-  right: node.center.x + node.width / 2,
-  top: node.center.y - node.height / 2,
-  bottom: node.center.y + node.height / 2,
-})
+const getNodeBounds = (node: CapacityMeshNode): Bounds =>
+  getBoundFromCenteredRect({
+    center: node.center,
+    width: node.width,
+    height: node.height,
+  })
 
-const getPositiveOverlap = (
-  aMin: number,
-  aMax: number,
-  bMin: number,
-  bMax: number,
-) => Math.min(aMax, bMax) - Math.max(aMin, bMin)
+const getOverlapDimensions = (bounds1: Bounds, bounds2: Bounds) => {
+  return {
+    x:
+      Math.min(bounds1.maxX, bounds2.maxX) -
+      Math.max(bounds1.minX, bounds2.minX),
+    y:
+      Math.min(bounds1.maxY, bounds2.maxY) -
+      Math.max(bounds1.minY, bounds2.minY),
+  }
+}
 
-const getPositiveGap = (
-  aMin: number,
-  aMax: number,
-  bMin: number,
-  bMax: number,
-) => Math.max(0, Math.max(aMin - bMax, bMin - aMax))
+const getAxisGap = (aMin: number, aMax: number, bMin: number, bMax: number) =>
+  Math.max(0, Math.max(aMin - bMax, bMin - aMax))
 
 const getAdaptiveGapThreshold = (
   node1: CapacityMeshNode,
@@ -40,8 +34,7 @@ const getAdaptiveGapThreshold = (
 ) =>
   Math.min(
     MAX_ROUTING_ADJACENCY_GAP,
-    0.5 *
-      Math.min(node1.width, node1.height, node2.width, node2.height),
+    0.5 * Math.min(node1.width, node1.height, node2.width, node2.height),
   )
 
 const getRequiredOrthogonalOverlap = (
@@ -61,42 +54,34 @@ export const getRoutingAdjacencyReason = (
     return "strict_border"
   }
 
-  const bounds1 = getBounds(node1)
-  const bounds2 = getBounds(node2)
-  const xOverlap = getPositiveOverlap(
-    bounds1.left,
-    bounds1.right,
-    bounds2.left,
-    bounds2.right,
-  )
-  const yOverlap = getPositiveOverlap(
-    bounds1.top,
-    bounds1.bottom,
-    bounds2.top,
-    bounds2.bottom,
-  )
+  const bounds1 = getNodeBounds(node1)
+  const bounds2 = getNodeBounds(node2)
+  const { x: xOverlap, y: yOverlap } = getOverlapDimensions(bounds1, bounds2)
 
   if (xOverlap > OVERLAP_EPSILON && yOverlap > OVERLAP_EPSILON) {
     return "overlap"
   }
 
   const gapThreshold = getAdaptiveGapThreshold(node1, node2)
-  const requiredXOverlap = getRequiredOrthogonalOverlap(node1.width, node2.width)
+  const requiredXOverlap = getRequiredOrthogonalOverlap(
+    node1.width,
+    node2.width,
+  )
   const requiredYOverlap = getRequiredOrthogonalOverlap(
     node1.height,
     node2.height,
   )
-  const xGap = getPositiveGap(
-    bounds1.left,
-    bounds1.right,
-    bounds2.left,
-    bounds2.right,
+  const xGap = getAxisGap(
+    bounds1.minX,
+    bounds1.maxX,
+    bounds2.minX,
+    bounds2.maxX,
   )
-  const yGap = getPositiveGap(
-    bounds1.top,
-    bounds1.bottom,
-    bounds2.top,
-    bounds2.bottom,
+  const yGap = getAxisGap(
+    bounds1.minY,
+    bounds1.maxY,
+    bounds2.minY,
+    bounds2.maxY,
   )
 
   if (

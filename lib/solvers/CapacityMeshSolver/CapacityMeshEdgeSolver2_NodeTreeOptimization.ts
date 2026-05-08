@@ -2,9 +2,9 @@ import type { CapacityMeshNode } from "../../types/capacity-mesh-types"
 import { CapacityMeshEdgeSolver } from "./CapacityMeshEdgeSolver"
 import { CapacityNodeTree } from "lib/data-structures/CapacityNodeTree"
 import {
+  areRoutingAdjacent,
   getMaxRoutingAdjacencyGap,
-  getRoutingAdjacencyReason,
-} from "./getRoutingAdjacencyReason"
+} from "./areRoutingAdjacent"
 
 export class CapacityMeshEdgeSolver2_NodeTreeOptimization extends CapacityMeshEdgeSolver {
   override getSolverName(): string {
@@ -47,20 +47,15 @@ export class CapacityMeshEdgeSolver2_NodeTreeOptimization extends CapacityMeshEd
         A._strawNode &&
         B._strawNode &&
         A._strawParentCapacityMeshNodeId === B._strawParentCapacityMeshNodeId
-      const adjacencyReason = getRoutingAdjacencyReason(A, B)
       if (
         A.capacityMeshNodeId !== B.capacityMeshNodeId && // Don't connect a node to itself
         !strawNodesWithSameParent &&
-        adjacencyReason &&
+        areRoutingAdjacent(A, B) &&
         !this.edgeSet.has(`${A.capacityMeshNodeId}-${B.capacityMeshNodeId}`)
       ) {
         this.edgeSet.add(`${A.capacityMeshNodeId}-${B.capacityMeshNodeId}`)
         this.edgeSet.add(`${B.capacityMeshNodeId}-${A.capacityMeshNodeId}`)
-        this.addEdgeWithReason(
-          A.capacityMeshNodeId,
-          B.capacityMeshNodeId,
-          adjacencyReason,
-        )
+        this.addEdge(A.capacityMeshNodeId, B.capacityMeshNodeId)
       }
     }
 

@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test"
 import { CapacityMeshEdgeSolver2_NodeTreeOptimization } from "lib/solvers/CapacityMeshSolver/CapacityMeshEdgeSolver2_NodeTreeOptimization"
+import { areRoutingAdjacent } from "lib/solvers/CapacityMeshSolver/areRoutingAdjacent"
 import {
   getRoutingAdjacencyReason,
   getMaxRoutingAdjacencyGap,
@@ -28,6 +29,7 @@ test("routing adjacency treats overlapping same-layer regions as neighbors", () 
   const nodeB = createNode("b", { x: 0.1, y: 0 }, 0.9, 0.18, [0])
 
   expect(getRoutingAdjacencyReason(nodeA, nodeB)).toBe("overlap")
+  expect(areRoutingAdjacent(nodeA, nodeB)).toBe(true)
 })
 
 test("routing adjacency treats small same-layer gaps as neighbors", () => {
@@ -35,6 +37,7 @@ test("routing adjacency treats small same-layer gaps as neighbors", () => {
   const nodeB = createNode("b", { x: 0.215, y: 0 }, 0.14, 0.18, [0])
 
   expect(getRoutingAdjacencyReason(nodeA, nodeB)).toBe("small_gap")
+  expect(areRoutingAdjacent(nodeA, nodeB)).toBe(true)
 })
 
 test("routing adjacency rejects large same-layer gaps", () => {
@@ -49,6 +52,7 @@ test("routing adjacency rejects large same-layer gaps", () => {
   )
 
   expect(getRoutingAdjacencyReason(nodeA, nodeB)).toBeNull()
+  expect(areRoutingAdjacent(nodeA, nodeB)).toBe(false)
 })
 
 test("routing adjacency rejects close regions without shared layers", () => {
@@ -56,6 +60,7 @@ test("routing adjacency rejects close regions without shared layers", () => {
   const nodeB = createNode("b", { x: 0.215, y: 0 }, 0.14, 0.18, [1])
 
   expect(getRoutingAdjacencyReason(nodeA, nodeB)).toBeNull()
+  expect(areRoutingAdjacent(nodeA, nodeB)).toBe(false)
 })
 
 test("optimized capacity edge solver adds overlap and small-gap edges", () => {
@@ -73,12 +78,14 @@ test("optimized capacity edge solver adds overlap and small-gap edges", () => {
   expect(
     solver.edges.some(
       (edge) =>
-        edge.nodeIds.includes("overlap_a") && edge.nodeIds.includes("overlap_b"),
+        edge.nodeIds.includes("overlap_a") &&
+        edge.nodeIds.includes("overlap_b"),
     ),
   ).toBe(true)
   expect(
     solver.edges.some(
-      (edge) => edge.nodeIds.includes("gap_a") && edge.nodeIds.includes("gap_b"),
+      (edge) =>
+        edge.nodeIds.includes("gap_a") && edge.nodeIds.includes("gap_b"),
     ),
   ).toBe(true)
   expect(
