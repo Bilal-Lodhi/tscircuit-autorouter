@@ -1,13 +1,10 @@
-import type { GraphicsObject } from "graphics-debug"
-import type {
-  CapacityMeshEdge,
-  CapacityMeshNode,
-} from "../../types/capacity-mesh-types"
-import { BaseSolver } from "../BaseSolver"
-import { distance } from "@tscircuit/math-utils"
-import { areNodesBordering } from "lib/utils/areNodesBordering"
+import type { CapacityMeshNode } from "../../types/capacity-mesh-types"
 import { CapacityMeshEdgeSolver } from "./CapacityMeshEdgeSolver"
 import { CapacityNodeTree } from "lib/data-structures/CapacityNodeTree"
+import {
+  getMaxRoutingAdjacencyGap,
+  getRoutingAdjacencyReason,
+} from "./getRoutingAdjacencyReason"
 
 export class CapacityMeshEdgeSolver2_NodeTreeOptimization extends CapacityMeshEdgeSolver {
   override getSolverName(): string {
@@ -17,6 +14,8 @@ export class CapacityMeshEdgeSolver2_NodeTreeOptimization extends CapacityMeshEd
   private nodeTree: CapacityNodeTree
   private currentNodeIndex: number
   private edgeSet: Set<string>
+  private maxNodeWidth: number
+  private maxNodeHeight: number
 
   constructor(public nodes: CapacityMeshNode[]) {
     super(nodes)
@@ -24,6 +23,8 @@ export class CapacityMeshEdgeSolver2_NodeTreeOptimization extends CapacityMeshEd
     this.nodeTree = new CapacityNodeTree(this.nodes)
     this.currentNodeIndex = 0
     this.edgeSet = new Set<string>()
+    this.maxNodeWidth = Math.max(...this.nodes.map((node) => node.width), 0)
+    this.maxNodeHeight = Math.max(...this.nodes.map((node) => node.height), 0)
   }
 
   _step() {
@@ -37,29 +38,29 @@ export class CapacityMeshEdgeSolver2_NodeTreeOptimization extends CapacityMeshEd
     const maybeAdjNodes = this.nodeTree.getNodesInArea(
       A.center.x,
       A.center.y,
-      A.width * 2,
-      A.height * 2,
+      A.width + this.maxNodeWidth + getMaxRoutingAdjacencyGap() * 2,
+      A.height + this.maxNodeHeight + getMaxRoutingAdjacencyGap() * 2,
     )
 
     for (const B of maybeAdjNodes) {
-      const areBordering = areNodesBordering(A, B)
-      if (!areBordering) continue
       const strawNodesWithSameParent =
         A._strawNode &&
         B._strawNode &&
         A._strawParentCapacityMeshNodeId === B._strawParentCapacityMeshNodeId
+      const adjacencyReason = getRoutingAdjacencyReason(A, B)
       if (
         A.capacityMeshNodeId !== B.capacityMeshNodeId && // Don't connect a node to itself
         !strawNodesWithSameParent &&
-        this.doNodesHaveSharedLayer(A, B) &&
+        adjacencyReason &&
         !this.edgeSet.has(`${A.capacityMeshNodeId}-${B.capacityMeshNodeId}`)
       ) {
         this.edgeSet.add(`${A.capacityMeshNodeId}-${B.capacityMeshNodeId}`)
         this.edgeSet.add(`${B.capacityMeshNodeId}-${A.capacityMeshNodeId}`)
-        this.edges.push({
-          capacityMeshEdgeId: this.getNextCapacityMeshEdgeId(),
-          nodeIds: [A.capacityMeshNodeId, B.capacityMeshNodeId],
-        })
+        this.addEdgeWithReason(
+          A.capacityMeshNodeId,
+          B.capacityMeshNodeId,
+          adjacencyReason,
+        )
       }
     }
 

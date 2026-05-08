@@ -6,7 +6,10 @@ import type {
 } from "../../types/capacity-mesh-types"
 import { BaseSolver } from "../BaseSolver"
 import { distance } from "@tscircuit/math-utils"
-import { areNodesBordering } from "lib/utils/areNodesBordering"
+import {
+  getRoutingAdjacencyReason,
+  type RoutingAdjacencyReason,
+} from "./getRoutingAdjacencyReason"
 
 export class CapacityMeshEdgeSolver extends BaseSolver {
   override getSolverName(): string {
@@ -14,6 +17,7 @@ export class CapacityMeshEdgeSolver extends BaseSolver {
   }
 
   public edges: Array<CapacityMeshEdge>
+  adjacencyReasonByNodePair: Map<string, RoutingAdjacencyReason>
 
   /** Only used for visualization, dynamically instantiated if necessary */
   nodeMap?: Map<CapacityMeshNodeId, CapacityMeshNode>
@@ -21,14 +25,32 @@ export class CapacityMeshEdgeSolver extends BaseSolver {
   constructor(public nodes: CapacityMeshNode[]) {
     super()
     this.edges = []
+    this.adjacencyReasonByNodePair = new Map()
   }
 
   getNextCapacityMeshEdgeId() {
     return `ce${this.edges.length}`
   }
 
+  getNodePairKey(nodeId1: CapacityMeshNodeId, nodeId2: CapacityMeshNodeId) {
+    return [nodeId1, nodeId2].sort().join("::")
+  }
+
+  addEdgeWithReason(
+    nodeId1: CapacityMeshNodeId,
+    nodeId2: CapacityMeshNodeId,
+    reason: RoutingAdjacencyReason,
+  ) {
+    this.edges.push({
+      capacityMeshEdgeId: this.getNextCapacityMeshEdgeId(),
+      nodeIds: [nodeId1, nodeId2],
+    })
+    this.adjacencyReasonByNodePair.set(this.getNodePairKey(nodeId1, nodeId2), reason)
+  }
+
   _step() {
     this.edges = []
+    this.adjacencyReasonByNodePair.clear()
     for (let i = 0; i < this.nodes.length; i++) {
       for (let j = i + 1; j < this.nodes.length; j++) {
         const strawNodesWithSameParent =
@@ -36,18 +58,19 @@ export class CapacityMeshEdgeSolver extends BaseSolver {
           this.nodes[j]._strawNode &&
           this.nodes[i]._strawParentCapacityMeshNodeId ===
             this.nodes[j]._strawParentCapacityMeshNodeId
+        const adjacencyReason = getRoutingAdjacencyReason(
+          this.nodes[i],
+          this.nodes[j],
+        )
         if (
           !strawNodesWithSameParent &&
-          areNodesBordering(this.nodes[i], this.nodes[j]) &&
-          this.doNodesHaveSharedLayer(this.nodes[i], this.nodes[j])
+          adjacencyReason
         ) {
-          this.edges.push({
-            capacityMeshEdgeId: this.getNextCapacityMeshEdgeId(),
-            nodeIds: [
-              this.nodes[i].capacityMeshNodeId,
-              this.nodes[j].capacityMeshNodeId,
-            ],
-          })
+          this.addEdgeWithReason(
+            this.nodes[i].capacityMeshNodeId,
+            this.nodes[j].capacityMeshNodeId,
+            adjacencyReason,
+          )
         }
       }
     }
@@ -74,6 +97,8 @@ export class CapacityMeshEdgeSolver extends BaseSolver {
       for (const node of this.nodes) {
         if (node._containsObstacle) continue
         if (node._containsTarget) continue
+        const adjacencyReason = getRoutingAdjacencyReason(targetNode, node)
+        if (!adjacencyReason) continue
         const dist = distance(targetNode.center, node.center)
         if (dist < nearestDistance) {
           nearestDistance = dist
@@ -81,13 +106,11 @@ export class CapacityMeshEdgeSolver extends BaseSolver {
         }
       }
       if (nearestNode) {
-        this.edges.push({
-          capacityMeshEdgeId: this.getNextCapacityMeshEdgeId(),
-          nodeIds: [
-            targetNode.capacityMeshNodeId,
-            nearestNode.capacityMeshNodeId,
-          ],
-        })
+        this.addEdgeWithReason(
+          targetNode.capacityMeshNodeId,
+          nearestNode.capacityMeshNodeId,
+          getRoutingAdjacencyReason(targetNode, nearestNode)!,
+        )
       }
     }
   }
@@ -169,9 +192,15 @@ export class CapacityMeshEdgeSolver extends BaseSolver {
           layer: `z${availableZ.join(",")}`,
           points: [nodeCenter1Adj, nodeCenter2Adj],
           strokeDash:
-            node1.availableZ.join(",") === node2.availableZ.join(",")
+            this.adjacencyReasonByNodePair.get(
+              this.getNodePairKey(node1.capacityMeshNodeId, node2.capacityMeshNodeId),
+            ) === "strict_border"
               ? undefined
               : "10 5",
+          label:
+            this.adjacencyReasonByNodePair.get(
+              this.getNodePairKey(node1.capacityMeshNodeId, node2.capacityMeshNodeId),
+            ) ?? "unknown",
         })
       }
     }
