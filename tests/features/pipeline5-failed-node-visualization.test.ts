@@ -50,35 +50,35 @@ test.skip("pipeline5 visualizes failed high-density nodes with a visible red mar
 
   const visualization = solver.visualize()
   const failedRects =
-    visualization.rects?.filter((rect) =>
+    visualization.rects?.filter((rect: any) =>
       rect.label?.includes("node: cmn_fail"),
     ) ?? []
   const failedCrossLines =
     visualization.lines?.filter(
-      (line) =>
+      (line: any) =>
         line.layer === "hd_node_markers" &&
         line.label?.includes("node: cmn_fail"),
     ) ?? []
   const failedGuideLines =
     visualization.lines?.filter(
-      (line) =>
+      (line: any) =>
         line.layer === "hd_failed_node_guides" &&
         line.label?.includes("node: cmn_fail"),
     ) ?? []
   const failedCircles =
     visualization.circles?.filter(
-      (circle) =>
+      (circle: any) =>
         circle.layer === "hd_node_markers" &&
         circle.label?.includes("node: cmn_fail"),
     ) ?? []
   const failedBoundaryLines =
     visualization.lines?.filter(
-      (line) =>
+      (line: any) =>
         line.layer === "hd_node_boundaries" &&
         line.label?.includes("node: cmn_fail"),
     ) ?? []
   const failedPoints =
-    visualization.points?.filter((point) =>
+    visualization.points?.filter((point: any) =>
       point.label?.includes("node: cmn_fail"),
     ) ?? []
 
@@ -98,16 +98,18 @@ test.skip("pipeline5 visualizes failed high-density nodes with a visible red mar
     { x: 10, y: 20 },
   ])
   expect(failedCrossLines).toHaveLength(2)
-  expect(failedCrossLines.every((line) => line.strokeColor === "red")).toBe(
+  expect(
+    failedCrossLines.every((line: any) => line.strokeColor === "red"),
+  ).toBe(true)
+  expect(failedCrossLines.every((line: any) => line.strokeWidth === 0.16)).toBe(
     true,
   )
-  expect(failedCrossLines.every((line) => line.strokeWidth === 0.16)).toBe(true)
   expect(failedBoundaryLines).toHaveLength(4)
-  expect(failedBoundaryLines.every((line) => line.strokeColor === "red")).toBe(
-    true,
-  )
-  expect(failedBoundaryLines.every((line) => line.strokeWidth === 0.08)).toBe(
-    true,
-  )
+  expect(
+    failedBoundaryLines.every((line: any) => line.strokeColor === "red"),
+  ).toBe(true)
+  expect(
+    failedBoundaryLines.every((line: any) => line.strokeWidth === 0.08),
+  ).toBe(true)
   expect(failedPoints).toHaveLength(0)
 })

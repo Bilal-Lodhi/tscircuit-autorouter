@@ -70,7 +70,7 @@ test.skip(
     const remoteNodeMetadata = remoteNodeEntry?.[1]
     const remoteNodeMarker = highDensitySolver
       ?.visualize()
-      .points?.find((point) =>
+      .points?.find((point: any) =>
         remoteNodeId ? point.label?.includes(`node: ${remoteNodeId}`) : false,
       )
     const remoteNodeMarkerLabel = remoteNodeMarker?.label

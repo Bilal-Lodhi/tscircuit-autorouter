@@ -54,14 +54,16 @@ test.skip(
       highDensitySolver?.nodeSolveMetadataById.values() ?? [],
     )
     const markerPoints = highDensitySolver?.visualize().points ?? []
-    const markerLabels = markerPoints.map((point) => point.label ?? "")
+    const markerLabels = markerPoints.map((point: any) => point.label ?? "")
 
     expect(nodeSolveMetadata.length).toBeGreaterThan(0)
     expect(nodeSolveMetadata.length).toBe(
       pipeline5Solver.highDensityNodePortPoints?.length ?? 0,
     )
     expect(markerLabels.length).toBe(nodeSolveMetadata.length)
-    expect(markerPoints.every((point) => point.color === "blue")).toBe(true)
+    expect(markerPoints.every((point: any) => point.color === "blue")).toBe(
+      true,
+    )
     expect(highDensitySolver?.stats.localFallbackNodeCount).toBe(
       nodeSolveMetadata.filter(
         (metadata) => metadata.resolution === "local-fallback",

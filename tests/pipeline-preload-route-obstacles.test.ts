@@ -148,7 +148,7 @@ const getPreloadedRouteLine = (visualization: {
   }>
 }) =>
   visualization.lines?.find(
-    (line) =>
+    (line: any) =>
       line.strokeWidth === 0.2 &&
       line.points.length === 2 &&
       line.points[0]?.x === 0 &&
@@ -240,7 +240,7 @@ test("solved pipeline visualization includes faded pre-supplied routes and gener
 
   const visualization = solver.visualize()
   const generatedRouteLine = visualization.lines?.find(
-    (line) =>
+    (line: any) =>
       line.strokeWidth === 0.15 &&
       line.points.length === 2 &&
       line.points[0]?.x === 0 &&

@@ -37,7 +37,7 @@ test.skip("AssignableViaCapacityPathingSolver_DirectiveSubOptimal should complet
 
   // Verify visualization contains edges (light gray lines)
   const edgeLines = graphics.lines!.filter(
-    (line) => line.strokeColor === "rgba(150, 150, 150, 0.2)",
+    (line: any) => line.strokeColor === "rgba(150, 150, 150, 0.2)",
   )
   expect(edgeLines.length).toBeGreaterThan(0)
 
@@ -46,19 +46,20 @@ test.skip("AssignableViaCapacityPathingSolver_DirectiveSubOptimal should complet
 
   // Verify visualization contains route endpoint points
   const routeEndpointPoints = graphics.points!.filter(
-    (point) => point.label?.includes("START:") || point.label?.includes("END:"),
+    (point: any) =>
+      point.label?.includes("START:") || point.label?.includes("END:"),
   )
   expect(routeEndpointPoints.length).toBeGreaterThan(0)
 
   // Verify visualization contains used nodes (green stroke rectangles)
   const usedNodeRects = graphics.rects!.filter(
-    (rect) => rect.stroke === "green",
+    (rect: any) => rect.stroke === "green",
   )
   expect(usedNodeRects.length).toBeGreaterThan(0)
 
   // Verify visualization contains solved route lines (thick lines with strokeWidth: 3)
   const solvedRouteLines = graphics.lines!.filter(
-    (line) => line.strokeWidth === 3,
+    (line: any) => line.strokeWidth === 3,
   )
   expect(solvedRouteLines.length).toBeGreaterThan(0)
 
