@@ -1,5 +1,7 @@
-type ConnectivityMap = any;
-type GraphicsObject = any;
+type ConnectivityMap =
+  any
+type GraphicsObject =
+  any
 import type { CapacityMeshNodeId } from "lib/types/capacity-mesh-types"
 import { mergeRouteSegments } from "lib/utils/mergeRouteSegments"
 import { BaseSolver, type PendingEffect } from "../../solvers/BaseSolver"
