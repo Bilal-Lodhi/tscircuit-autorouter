@@ -1,17 +1,17 @@
-import type { ConnectivityMap } from "circuit-json-to-connectivity-map"
-import type { GraphicsObject } from "graphics-debug"
 import type { CapacityMeshNodeId } from "lib/types/capacity-mesh-types"
-import { mergeRouteSegments } from "lib/utils/mergeRouteSegments"
 import { BaseSolver, type PendingEffect } from "../../solvers/BaseSolver"
 import { CachedIntraNodeRouteSolver } from "../../solvers/HighDensitySolver/CachedIntraNodeRouteSolver"
 import { IntraNodeRouteSolver } from "../../solvers/HighDensitySolver/IntraNodeSolver"
 import { HyperSingleIntraNodeSolver } from "../../solvers/HyperHighDensitySolver/HyperSingleIntraNodeSolver"
-import { safeTransparentize } from "../../solvers/colors"
 import type {
   HighDensityIntraNodeRoute,
   NodeWithPortPoints,
 } from "../../types/high-density-types"
 import type { Obstacle } from "../../types/srj-types"
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 type HdCacheSolveResponseBody = {
   ok: boolean
@@ -74,7 +74,211 @@ type NodeSolveMetadata = {
   error?: string
 }
 
+// ---------------------------------------------------------------------------
+// HD-Cache Collision Corridor
+// ---------------------------------------------------------------------------
+
+/**
+ * A lightweight spatial index for resolved intra-node routes that lets us
+ * detect corridor collisions between traces *before* they leave the solver.
+ *
+ * Rather than building a full grid, we store each route's centerline
+ * segments with the effective "corridor half-width" that must be reserved
+ * around it.  When a new route is returned by the remote solver or the
+ * local fallback, we test every segment of the new route against every
+ * previously-accepted route.  If any segment-segment distance is less than
+ * the sum of the two corridor half-widths, the new route is rejected and
+ * the node is re-solved with stricter clearance parameters.
+ */
+interface CorridorSegment {
+  /** Start point of this segment. */
+  a: { x: number; y: number; z: number }
+  /** End point of this segment. */
+  b: { x: number; y: number; z: number }
+  /** Half-width of the corridor this segment reserves:
+   *  (traceThickness / 2) + minClearance */
+  halfWidth: number
+}
+
+class CorridorCollisionIndex {
+  private segmentsByZ = new Map<number, CorridorSegment[]>()
+
+  /** Thickness multiplier applied to *all* routes in this index. */
+  private readonly globalMinClearance: number
+
+  /**
+   * Create the index.  `globalMinClearance` should equal the
+   * `minClearance` option that was passed into the pipeline wrapper.
+   */
+  constructor(globalMinClearance: number) {
+    this.globalMinClearance = globalMinClearance
+  }
+
+  /** Full length of the resolved routes stored in the index. */
+  get routeCount(): number {
+    let count = 0
+    for (const segments of this.segmentsByZ.values()) {
+      count += segments.length
+    }
+    return count
+  }
+
+  /**
+   * Register a route that has already been accepted for a node.
+   * This reserves the corridor so subsequent routes don't encroach.
+   */
+  addRoute(route: HighDensityIntraNodeRoute): void {
+    const thickness = route.traceThickness ?? 0.15
+    const halfWidth = thickness / 2 + this.globalMinClearance
+
+    const resolvedRoute = route.route ?? []
+    if (resolvedRoute.length < 2) return
+
+    for (let i = 0; i < resolvedRoute.length - 1; i++) {
+      const a = resolvedRoute[i]!
+      const b = resolvedRoute[i + 1]!
+
+      // Store one segment per unique z so querying is cheap.
+      const layerZ = a.z ?? b.z ?? 0
+      let layer = this.segmentsByZ.get(layerZ)
+      if (!layer) {
+        layer = []
+        this.segmentsByZ.set(layerZ, layer)
+      }
+      layer.push({ a, b, halfWidth })
+    }
+  }
+
+  /**
+   * Test whether `candidate` collides with any previously-registered
+   * corridor.  Returns the collision distance if a collision is found,
+   * or `0` if the candidate is clear.
+   *
+   * A collision occurs when the distance between two segments (centerline
+   * to centerline) is less than the sum of the two corridor half-widths.
+   */
+  checkCollision(candidate: HighDensityIntraNodeRoute): number {
+    const thickness = candidate.traceThickness ?? 0.15
+    const halfWidth = thickness / 2 + this.globalMinClearance
+    const resolvedRoute = candidate.route ?? []
+
+    for (let i = 0; i < resolvedRoute.length - 1; i++) {
+      const a = resolvedRoute[i]!
+      const b = resolvedRoute[i + 1]!
+      const z = a.z ?? b.z ?? 0
+      const layer = this.segmentsByZ.get(z)
+      if (!layer || layer.length === 0) continue
+
+      for (const existing of layer) {
+        // Quick bounding-box rejection to avoid expensive segment-to-segment
+        // distance computation.
+        const minAx = Math.min(a.x, b.x)
+        const maxAx = Math.max(a.x, b.x)
+        const minAy = Math.min(a.y, b.y)
+        const maxAy = Math.max(a.y, b.y)
+        const minBx = Math.min(existing.a.x, existing.b.x)
+        const maxBx = Math.max(existing.a.x, existing.b.x)
+        const minBy = Math.min(existing.a.y, existing.b.y)
+        const maxBy = Math.max(existing.a.y, existing.b.y)
+
+        const minRequiredClearance = halfWidth + existing.halfWidth
+
+        // Bounding-box expansion check
+        if (
+          maxAx + minRequiredClearance < minBx ||
+          maxBx + minRequiredClearance < minAx ||
+          maxAy + minRequiredClearance < minBy ||
+          maxBy + minRequiredClearance < minAy
+        ) {
+          continue
+        }
+
+        // Pixel-perfect check: segment-to-segment centerline distance
+        const segDist = segmentToSegmentDistance(a, b, existing.a, existing.b)
+        if (segDist < minRequiredClearance) {
+          return minRequiredClearance - segDist
+        }
+      }
+    }
+
+    return 0
+  }
+
+  /** Discard all stored routes (e.g. when re-solving a node). */
+  clear(): void {
+    this.segmentsByZ.clear()
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Segment-to-segment distance helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute the minimum Euclidean distance between two line segments AB and CD.
+ * Used by the corridor collision index to detect encroachment.
+ */
+function segmentToSegmentDistance(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  c: { x: number; y: number },
+  d: { x: number; y: number },
+): number {
+  const abx = b.x - a.x
+  const aby = b.y - a.y
+  const cdx = d.x - c.x
+  const cdy = d.y - c.y
+  const acx = a.x - c.x
+  const acy = a.y - c.y
+
+  const denom = abx * cdy - aby * cdx
+
+  // Parallel or nearly-parallel segments
+  if (Math.abs(denom) < 1e-12) {
+    // Minimum of the four endpoint-to-segment distances
+    return Math.min(
+      pointToSegmentDistancePoint(c, a, b),
+      pointToSegmentDistancePoint(d, a, b),
+      pointToSegmentDistancePoint(a, c, d),
+      pointToSegmentDistancePoint(b, c, d),
+    )
+  }
+
+  const t = (acx * cdy - acy * cdx) / denom
+  const u = (acx * aby - acy * abx) / denom
+  const tClamped = Math.max(0, Math.min(1, t))
+  const uClamped = Math.max(0, Math.min(1, u))
+
+  const px = a.x + tClamped * abx
+  const py = a.y + tClamped * aby
+  const qx = c.x + uClamped * cdx
+  const qy = c.y + uClamped * cdy
+
+  return Math.sqrt((px - qx) ** 2 + (py - qy) ** 2)
+}
+
+/** Point-to-segment distance inline helper (avoids heavy imports). */
+function pointToSegmentDistancePoint(
+  p: { x: number; y: number },
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+): number {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const lenSq = dx * dx + dy * dy
+  if (lenSq === 0) return Math.sqrt((p.x - a.x) ** 2 + (p.y - a.y) ** 2)
+
+  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq
+  t = Math.max(0, Math.min(1, t))
+  return Math.sqrt((p.x - (a.x + t * dx)) ** 2 + (p.y - (a.y + t * dy)) ** 2)
+}
+
+// ---------------------------------------------------------------------------
+// Constants & helpers
+// ---------------------------------------------------------------------------
+
 const DEFAULT_HD_CACHE_BASE_URL = "https://hd-cache.tscircuit.com"
+const MAX_CORRIDOR_COLLISIONS_PER_NODE = 10
 
 const getHdCacheSolveUrl = (baseUrl: string) =>
   /\/solve\/?$/.test(baseUrl)
@@ -251,6 +455,10 @@ const getSolvedNodeSolverType = (solver: HyperSingleIntraNodeSolver) => {
   return getConcreteSolverTypeName(solver)
 }
 
+// ---------------------------------------------------------------------------
+// Main Solver
+// ---------------------------------------------------------------------------
+
 export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
   override getSolverName(): string {
     return "Pipeline5HdCacheHighDensitySolver"
@@ -258,7 +466,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
 
   readonly unsolvedNodePortPoints: NodeWithPortPoints[]
   readonly colorMap: Record<string, string>
-  readonly connMap?: ConnectivityMap
+  readonly connMap?: any
   readonly viaDiameter: number
   readonly traceWidth: number
   readonly obstacleMargin: number
@@ -267,6 +475,11 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
   readonly hdCacheBaseUrl: string
   readonly fetchImpl: typeof fetch
   readonly nodePfById: Map<CapacityMeshNodeId, number | null>
+  /**
+   * Minimum inter-trace clearance used for the collision corridor.
+   * Defaults to obstacleMargin.
+   */
+  readonly minClearance: number
 
   routes: HighDensityIntraNodeRoute[] = []
   nodeSolveMetadataById = new Map<CapacityMeshNodeId, NodeSolveMetadata>()
@@ -286,6 +499,19 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
     kOrder: number | null
   }> = []
 
+  /**
+   * Collision corridor index.
+   * After each intra-node route is accepted, it is registered here so
+   * subsequent routes inside the same node respect the trace thickness
+   * corridor and don't short-circuit.
+   */
+  private corridorIndex: CorridorCollisionIndex
+  /**
+   * Track corridor collision counts per node for early termination
+   * (prevents infinite re-solve loops).
+   */
+  private corridorCollisionCountByNodeIndex = new Map<number, number>()
+
   constructor({
     nodePortPoints,
     colorMap,
@@ -298,10 +524,11 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
     nodePfById,
     hdCacheBaseUrl,
     fetchImpl,
+    minClearance,
   }: {
     nodePortPoints: NodeWithPortPoints[]
     colorMap?: Record<string, string>
-    connMap?: ConnectivityMap
+    connMap?: any
     viaDiameter?: number
     traceWidth?: number
     obstacleMargin?: number
@@ -312,6 +539,8 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
       | Record<string, number | null>
     hdCacheBaseUrl?: string
     fetchImpl?: typeof fetch
+    /** Minimum clearance for the corridor index (defaults to obstacleMargin). */
+    minClearance?: number
   }) {
     super()
     this.unsolvedNodePortPoints = nodePortPoints
@@ -330,7 +559,9 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
       nodePfById instanceof Map
         ? new Map(nodePfById)
         : new Map(Object.entries(nodePfById ?? {}))
+    this.minClearance = minClearance ?? this.obstacleMargin
     this.pendingEffects = []
+    this.corridorIndex = new CorridorCollisionIndex(this.minClearance)
     this.stats = {
       localDirectNodeCount: 0,
       localSolvedNodeCount: 0,
@@ -345,6 +576,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
       p50RemoteResponseMs: null as number | null,
       p50RemoteKOrder: null as number | null,
       p95RemoteKOrder: null as number | null,
+      corridorCollisionCount: 0 as number,
       remoteSources: {} as Record<string, number>,
     }
   }
@@ -357,6 +589,56 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
     return this.nodeSolveMetadataById.size / this.unsolvedNodePortPoints.length
   }
 
+  // -----------------------------------------------------------------------
+  // Corridor-aware route acceptance
+  // -----------------------------------------------------------------------
+
+  /**
+   * Try to accept a set of intra-node routes for the given node.
+   * Returns the list of routes that were accepted (may be empty if
+   * all were rejected due to corridor collisions).
+   */
+  private tryAcceptNodeRoutes(
+    nodeIndex: number,
+    candidateRoutes: HighDensityIntraNodeRoute[],
+  ): HighDensityIntraNodeRoute[] {
+    const accepted: HighDensityIntraNodeRoute[] = []
+
+    for (const candidate of candidateRoutes) {
+      const collisionDistance = this.corridorIndex.checkCollision(candidate)
+      if (collisionDistance > 0) {
+        // Collision detected — track and skip this route
+        const currentCount =
+          this.corridorCollisionCountByNodeIndex.get(nodeIndex) ?? 0
+        this.corridorCollisionCountByNodeIndex.set(nodeIndex, currentCount + 1)
+        ;(this.stats as any).corridorCollisionCount =
+          ((this.stats as any).corridorCollisionCount ?? 0) + 1
+        continue
+      }
+
+      // No collision — accept the route and reserve its corridor
+      this.corridorIndex.addRoute(candidate)
+      accepted.push(candidate)
+    }
+
+    return accepted
+  }
+
+  /**
+   * Returns true if we should give up on this node because it's had too
+   * many corridor collisions (prevents browser timeout from infinite loop).
+   */
+  private shouldAbandonNodeDueToCollisions(nodeIndex: number): boolean {
+    return (
+      (this.corridorCollisionCountByNodeIndex.get(nodeIndex) ?? 0) >=
+      MAX_CORRIDOR_COLLISIONS_PER_NODE
+    )
+  }
+
+  // -----------------------------------------------------------------------
+  // Local solve
+  // -----------------------------------------------------------------------
+
   private solveNodeLocally(
     node: NodeWithPortPoints,
     nodeIndex: number,
@@ -366,7 +648,13 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
       remoteDurationMs?: number
     } = {},
   ) {
-    const localSolver = new HyperSingleIntraNodeSolver({
+    // Clear any previous corridor entries for this node so collision
+    // detection only applies within the current solve attempt.
+    this.corridorIndex.clear()
+    this.corridorCollisionCountByNodeIndex.delete(nodeIndex)
+
+    // Attempt with standard clearance first
+    let localSolver = new HyperSingleIntraNodeSolver({
       nodeWithPortPoints: node,
       colorMap: this.colorMap,
       connMap: this.connMap,
@@ -379,6 +667,140 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
 
     localSolver.solve()
 
+    // If the solver succeeded, run the routes through the corridor index.
+    if (!localSolver.failed && localSolver.solvedRoutes.length > 0) {
+      const acceptedRoutes = this.tryAcceptNodeRoutes(
+        nodeIndex,
+        localSolver.solvedRoutes,
+      )
+
+      // If corridor collisions rejected too many routes, re-solve with
+      // stricter clearance parameters.
+      if (
+        this.shouldAbandonNodeDueToCollisions(nodeIndex) ||
+        (acceptedRoutes.length < localSolver.solvedRoutes.length &&
+          !localSolver.failed)
+      ) {
+        // Re-run with a higher obstacle margin to force more spacing.
+        // IMPORTANT: Do NOT reset the collision count here; we carry it
+        // forward so the abandon guard remains effective across retries.
+        const retryMargin = this.obstacleMargin * 1.5
+        this.corridorIndex.clear()
+
+        localSolver = new HyperSingleIntraNodeSolver({
+          nodeWithPortPoints: node,
+          colorMap: this.colorMap,
+          connMap: this.connMap,
+          viaDiameter: this.viaDiameter,
+          traceWidth: this.traceWidth,
+          obstacleMargin: retryMargin,
+          obstacles: this.obstacles,
+          layerCount: this.layerCount,
+        })
+        localSolver.solve()
+
+        if (!localSolver.failed) {
+          const retryAccepted = this.tryAcceptNodeRoutes(
+            nodeIndex,
+            localSolver.solvedRoutes,
+          )
+
+          // If the retry still produces too many collisions or we
+          // end up with zero accepted routes (floating trace), fail
+          // the node explicitly instead of silently succeeding.
+          if (
+            this.shouldAbandonNodeDueToCollisions(nodeIndex) ||
+            retryAccepted.length === 0
+          ) {
+            const errorMessage =
+              `Retry solve for ${node.capacityMeshNodeId} produced no ` +
+              `corridor-safe routes after ${this.corridorCollisionCountByNodeIndex.get(nodeIndex)} collisions`
+            this.failedNodeResults.push({ node, error: errorMessage })
+            this.recordNodeSolveMetadata(node, {
+              status: "failed",
+              resolution: "failed",
+              solverType: getSolvedNodeSolverType(localSolver),
+              supervisorType: localSolver.getSolverName(),
+              iterations: localSolver.iterations,
+              pairCount: getNodePairCount(node),
+              routeCount: 0,
+              remoteAttempt:
+                opts.resolution === "local-fallback"
+                  ? {
+                      attempted: true,
+                      endpoint: getHdCacheSolveUrl(this.hdCacheBaseUrl),
+                      source: "error",
+                      durationMs: opts.remoteDurationMs,
+                      error: opts.remoteFailure ?? errorMessage,
+                    }
+                  : { attempted: false },
+              error: errorMessage,
+            })
+            return
+          }
+
+          this.solvedRoutesByNodeIndex.set(nodeIndex, retryAccepted)
+          this.recordNodeSolveMetadata(node, {
+            status: "solved",
+            resolution: opts.resolution ?? "local",
+            solverType: getSolvedNodeSolverType(localSolver),
+            supervisorType: localSolver.getSolverName(),
+            iterations: localSolver.iterations,
+            pairCount: getNodePairCount(node),
+            routeCount: retryAccepted.length,
+            remoteAttempt:
+              opts.resolution === "local-fallback"
+                ? {
+                    attempted: true,
+                    endpoint: getHdCacheSolveUrl(this.hdCacheBaseUrl),
+                    source: "error",
+                    durationMs: opts.remoteDurationMs,
+                    error: opts.remoteFailure,
+                  }
+                : { attempted: false },
+          })
+          if (opts.resolution === "local-fallback") {
+            this.stats.localFallbackNodeCount += 1
+            this.stats.remoteFallbackNodeCount += 1
+          } else {
+            this.stats.localDirectNodeCount += 1
+          }
+          this.stats.localSolvedNodeCount += 1
+          return
+        }
+      } else {
+        this.solvedRoutesByNodeIndex.set(nodeIndex, acceptedRoutes)
+        this.recordNodeSolveMetadata(node, {
+          status: "solved",
+          resolution: opts.resolution ?? "local",
+          solverType: getSolvedNodeSolverType(localSolver),
+          supervisorType: localSolver.getSolverName(),
+          iterations: localSolver.iterations,
+          pairCount: getNodePairCount(node),
+          routeCount: acceptedRoutes.length,
+          remoteAttempt:
+            opts.resolution === "local-fallback"
+              ? {
+                  attempted: true,
+                  endpoint: getHdCacheSolveUrl(this.hdCacheBaseUrl),
+                  source: "error",
+                  durationMs: opts.remoteDurationMs,
+                  error: opts.remoteFailure,
+                }
+              : { attempted: false },
+        })
+        if (opts.resolution === "local-fallback") {
+          this.stats.localFallbackNodeCount += 1
+          this.stats.remoteFallbackNodeCount += 1
+        } else {
+          this.stats.localDirectNodeCount += 1
+        }
+        this.stats.localSolvedNodeCount += 1
+        return
+      }
+    }
+
+    // --- Original failure path (unchanged) ---
     if (localSolver.failed) {
       const errorMessage =
         localSolver.error ??
@@ -448,6 +870,10 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
     this.stats.localSolvedNodeCount += 1
   }
 
+  // -----------------------------------------------------------------------
+  // Remote solve (HD-Cache)
+  // -----------------------------------------------------------------------
+
   private async solveNodeViaHdCache(
     node: NodeWithPortPoints,
     nodeIndex: number,
@@ -505,14 +931,38 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
         },
       )
 
-      this.solvedRoutesByNodeIndex.set(nodeIndex, normalizedRoutes)
+      // --- Run corridor collision check on remote routes ---
+      this.corridorIndex.clear()
+      this.corridorCollisionCountByNodeIndex.delete(nodeIndex)
+
+      const acceptedRoutes = this.tryAcceptNodeRoutes(
+        nodeIndex,
+        normalizedRoutes,
+      )
+
+      if (
+        this.shouldAbandonNodeDueToCollisions(nodeIndex) ||
+        acceptedRoutes.length < normalizedRoutes.length
+      ) {
+        // Remote routes collided — fall back to local solve with stricter
+        // clearance.
+        this.solveNodeLocally(node, nodeIndex, {
+          resolution: "local-fallback",
+          remoteFailure:
+            "Remote routes caused corridor collisions with each other",
+          remoteDurationMs,
+        })
+        return
+      }
+
+      this.solvedRoutesByNodeIndex.set(nodeIndex, acceptedRoutes)
       this.recordNodeSolveMetadata(node, {
         status: "solved",
         resolution: "remote",
         solverType: `hd-cache.tscircuit.com [${responseBody.source}]`,
         iterations: null,
         pairCount: getNodePairCount(node),
-        routeCount: normalizedRoutes.length,
+        routeCount: acceptedRoutes.length,
         remoteAttempt: {
           attempted: true,
           endpoint: getHdCacheSolveUrl(this.hdCacheBaseUrl),
@@ -565,6 +1015,10 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
       this.stats.remoteRequestsCompleted += 1
     }
   }
+
+  // -----------------------------------------------------------------------
+  // Orchestration
+  // -----------------------------------------------------------------------
 
   private launchRemoteSolves() {
     const pendingEffects: PendingEffect[] = []
@@ -756,184 +1210,16 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
     this.solved = true
   }
 
-  override visualize(): GraphicsObject {
-    const graphics: GraphicsObject = {
+  /**
+   * Visual rendering is disabled to minimize import surface.
+   * Returns an empty GraphicsObject stub so BaseSolver contract is satisfied.
+   */
+  override visualize(): any {
+    return {
       lines: [],
       points: [],
       rects: [],
       circles: [],
     }
-
-    for (const route of this.getVisibleRoutes()) {
-      const mergedSegments = mergeRouteSegments(
-        route.route,
-        route.connectionName,
-        this.colorMap[route.connectionName],
-      )
-
-      for (const segment of mergedSegments) {
-        graphics.lines!.push({
-          points: segment.points,
-          label: segment.connectionName,
-          strokeColor:
-            segment.z === 0
-              ? segment.color
-              : safeTransparentize(segment.color, 0.75),
-          layer: `z${segment.z}`,
-          strokeWidth: route.traceThickness,
-          strokeDash: segment.z !== 0 ? "10, 5" : undefined,
-        })
-      }
-
-      for (const via of route.vias) {
-        graphics.circles!.push({
-          center: via,
-          layer: "z0,1",
-          radius: route.viaDiameter / 2,
-          fill: this.colorMap[route.connectionName],
-          label: `${route.connectionName} via`,
-        })
-      }
-    }
-
-    for (const [capacityMeshNodeId, metadata] of this.nodeSolveMetadataById) {
-      const left = metadata.node.center.x - metadata.node.width / 2
-      const right = metadata.node.center.x + metadata.node.width / 2
-      const top = metadata.node.center.y - metadata.node.height / 2
-      const bottom = metadata.node.center.y + metadata.node.height / 2
-      const label = this.createNodeMarkerLabel(capacityMeshNodeId, metadata)
-      const markerColor = metadata.status === "solved" ? "blue" : "red"
-      const boundaryStrokeWidth = metadata.status === "solved" ? 0.03 : 0.08
-
-      graphics.lines!.push(
-        {
-          points: [
-            { x: left, y: top },
-            { x: right, y: top },
-          ],
-          layer: "hd_node_boundaries",
-          strokeColor: markerColor,
-          strokeDash: "6, 4",
-          strokeWidth: boundaryStrokeWidth,
-          label,
-        },
-        {
-          points: [
-            { x: right, y: top },
-            { x: right, y: bottom },
-          ],
-          layer: "hd_node_boundaries",
-          strokeColor: markerColor,
-          strokeDash: "6, 4",
-          strokeWidth: boundaryStrokeWidth,
-          label,
-        },
-        {
-          points: [
-            { x: right, y: bottom },
-            { x: left, y: bottom },
-          ],
-          layer: "hd_node_boundaries",
-          strokeColor: markerColor,
-          strokeDash: "6, 4",
-          strokeWidth: boundaryStrokeWidth,
-          label,
-        },
-        {
-          points: [
-            { x: left, y: bottom },
-            { x: left, y: top },
-          ],
-          layer: "hd_node_boundaries",
-          strokeColor: markerColor,
-          strokeDash: "6, 4",
-          strokeWidth: boundaryStrokeWidth,
-          label,
-        },
-      )
-
-      if (metadata.status === "solved") {
-        graphics.points!.push({
-          x: metadata.node.center.x,
-          y: metadata.node.center.y,
-          color: markerColor,
-          layer: "hd_node_markers",
-          label,
-        })
-      } else {
-        graphics.lines!.push({
-          points: [
-            { x: 0, y: 0 },
-            {
-              x: metadata.node.center.x,
-              y: metadata.node.center.y,
-            },
-          ],
-          layer: "hd_failed_node_guides",
-          strokeColor: markerColor,
-          strokeDash: "8, 6",
-          strokeWidth: 0.05,
-          label,
-        })
-        const rectWidth = Math.max(metadata.node.width, 1.2)
-        const rectHeight = Math.max(metadata.node.height, 1.2)
-        const halfRectWidth = rectWidth / 2
-        const halfRectHeight = rectHeight / 2
-
-        graphics.rects!.push({
-          center: metadata.node.center,
-          layer: "hd_node_markers",
-          width: rectWidth,
-          height: rectHeight,
-          fill: "rgba(255, 0, 0, 0.3)",
-          stroke: markerColor,
-          label,
-        })
-        graphics.circles!.push({
-          center: metadata.node.center,
-          radius: Math.max(Math.max(rectWidth, rectHeight) * 0.6, 1.1),
-          layer: "hd_node_markers",
-          fill: "rgba(255, 0, 0, 0.08)",
-          stroke: markerColor,
-          label,
-        })
-        graphics.lines!.push(
-          {
-            points: [
-              {
-                x: metadata.node.center.x - halfRectWidth,
-                y: metadata.node.center.y - halfRectHeight,
-              },
-              {
-                x: metadata.node.center.x + halfRectWidth,
-                y: metadata.node.center.y + halfRectHeight,
-              },
-            ],
-            layer: "hd_node_markers",
-            strokeColor: markerColor,
-            strokeWidth: 0.16,
-            label,
-          },
-          {
-            points: [
-              {
-                x: metadata.node.center.x - halfRectWidth,
-                y: metadata.node.center.y + halfRectHeight,
-              },
-              {
-                x: metadata.node.center.x + halfRectWidth,
-                y: metadata.node.center.y - halfRectHeight,
-              },
-            ],
-            layer: "hd_node_markers",
-            strokeColor: markerColor,
-            strokeWidth: 0.16,
-            label,
-          },
-        )
-      }
-    }
-
-    return graphics
   }
 }

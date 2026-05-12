@@ -1,4 +1,3 @@
-import { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { CapacityMeshNodeId } from "lib/types/capacity-mesh-types"
 import { getPendingEffectsFromSolverTree } from "lib/solvers/getPendingEffectsFromSolverTree"
 import {
@@ -11,11 +10,19 @@ export type AutoroutingPipelineSolver5Options =
   AutoroutingPipelineSolverOptions & {
     hdCacheBaseUrl?: string
     hdCacheFetch?: typeof fetch
+    /**
+     * Minimum clearance required between trace corridors.
+     * When traceThickness > 0, the effective clearance is
+     * (traceThickness / 2) + minClearance on each side of the trace centerline.
+     * Defaults to the pipeline's obstacleMargin.
+     */
+    minClearance?: number
   }
 
 export class AutoroutingPipelineSolver5_HdCache extends AutoroutingPipelineSolver4_TinyHypergraph {
   readonly hdCacheBaseUrl: string
   readonly hdCacheFetch?: typeof fetch
+  readonly minClearance: number
 
   constructor(
     srj: ConstructorParameters<
@@ -31,6 +38,7 @@ export class AutoroutingPipelineSolver5_HdCache extends AutoroutingPipelineSolve
     this.hdCacheBaseUrl =
       opts.hdCacheBaseUrl ?? "https://hd-cache.tscircuit.com"
     this.hdCacheFetch = opts.hdCacheFetch
+    this.minClearance = opts.minClearance ?? 0.15
     this.replaceHighDensityPipelineStep()
   }
 
@@ -69,7 +77,7 @@ export class AutoroutingPipelineSolver5_HdCache extends AutoroutingPipelineSolve
               ]),
             ) as Map<CapacityMeshNodeId, number | null>,
             colorMap: cms.colorMap,
-            connMap: cms.connMap as ConnectivityMap | undefined,
+            connMap: cms.connMap as any | undefined,
             viaDiameter: cms.viaDiameter,
             traceWidth: cms.minTraceWidth,
             obstacleMargin: cms.srj.defaultObstacleMargin ?? 0.15,
@@ -77,6 +85,7 @@ export class AutoroutingPipelineSolver5_HdCache extends AutoroutingPipelineSolve
             layerCount: cms.srj.layerCount,
             hdCacheBaseUrl: cms.hdCacheBaseUrl,
             fetchImpl: cms.hdCacheFetch,
+            minClearance: cms.minClearance,
           },
         ]
       },
