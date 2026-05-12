@@ -1215,7 +1215,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
   }
 
   override visualize(): GraphicsObject {
-    const graphics: GraphicsObject = {
+    return {
       lines: [],
       points: [],
       rects: [],
