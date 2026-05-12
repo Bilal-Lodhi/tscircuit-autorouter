@@ -1,6 +1,5 @@
 import { calculate45DegreePaths } from "lib/utils/calculate45DegreePaths"
 import React, { useState, useEffect, useRef } from "react"
-import type Konva from "konva"
 import { Stage, Layer, Circle, Line, Text } from "react-konva"
 
 interface Point {
@@ -22,10 +21,7 @@ const Construct45DegreePathFixture: React.FC = () => {
     setPaths(calculate45DegreePaths(pointA, pointB))
   }, [pointA, pointB])
 
-  const handleDragMove = (
-    e: Konva.KonvaEventObject<DragEvent>,
-    point: "A" | "B",
-  ) => {
+  const handleDragMove = (e: any, point: "A" | "B") => {
     const pos = e.target.position()
     if (point === "A") {
       setPointA({ x: pos.x, y: pos.y })
@@ -78,9 +74,7 @@ const Construct45DegreePathFixture: React.FC = () => {
             radius={8}
             fill="blue"
             draggable
-            onDragMove={(e: Konva.KonvaEventObject<DragEvent>) =>
-              handleDragMove(e, "A")
-            }
+            onDragMove={(e: any) => handleDragMove(e, "A")}
           />
           <Text
             x={pointA.x + 10}
@@ -97,9 +91,7 @@ const Construct45DegreePathFixture: React.FC = () => {
             radius={8}
             fill="red"
             draggable
-            onDragMove={(e: Konva.KonvaEventObject<DragEvent>) =>
-              handleDragMove(e, "B")
-            }
+            onDragMove={(e: any) => handleDragMove(e, "B")}
           />
           <Text
             x={pointB.x + 10}
