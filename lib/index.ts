@@ -35,10 +35,16 @@ export * from "./cache/types"
 export * from "./autorouter-pipelines/AssignableAutoroutingPipeline1/AssignableAutoroutingPipeline1Solver"
 export { convertSrjToGraphicsObject } from "./utils/convertSrjToGraphicsObject"
 export {
+  DEFAULT_REROUTE_BOUNDS_MARGIN,
+  DEFAULT_REROUTE_BOUNDS_MARGIN_CONNECTION_THRESHOLD,
   getRerouteSimpleRouteJson,
   reconnectReroutedSimpleRouteJsonRegion,
 } from "./utils/getRerouteSimpleRouteJson"
-export type { RerouteRectRegion } from "./utils/getRerouteSimpleRouteJson"
+export type {
+  ReconnectReroutedSimpleRouteJsonRegionOptions,
+  RerouteRectRegion,
+  RerouteSimpleRouteJsonOptions,
+} from "./utils/getRerouteSimpleRouteJson"
 
 // Jumper-based solvers for single-layer PCBs
 export { IntraNodeSolverWithJumpers } from "./solvers/HighDensitySolver/IntraNodeSolverWithJumpers"

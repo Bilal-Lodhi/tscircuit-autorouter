@@ -44,20 +44,24 @@ const srj: SimpleRouteJson = {
 }
 
 test("getRerouteSimpleRouteJson clips traces out of a rectangular region", () => {
-  const rerouted = getRerouteSimpleRouteJson(srj, {
-    shape: "rect",
-    minX: -1,
-    maxX: 1,
-    minY: -1,
-    maxY: 1,
-  })
+  const rerouted = getRerouteSimpleRouteJson(
+    srj,
+    {
+      shape: "rect",
+      minX: -1,
+      maxX: 1,
+      minY: -1,
+      maxY: 1,
+    },
+    { boundsMargin: 0.25 },
+  )
 
   expect(rerouted.connections).toHaveLength(1)
   expect(rerouted.bounds).toEqual({
-    minX: -1.075,
-    maxX: 1.075,
-    minY: -1,
-    maxY: 1,
+    minX: -1.325,
+    maxX: 1.325,
+    minY: -1.25,
+    maxY: 1.25,
   })
   expect(rerouted.connections[0]?.rootConnectionName).toBe("source_net_0")
   expect(rerouted.connections[0]?.pointsToConnect).toEqual([
@@ -95,6 +99,21 @@ test("getRerouteSimpleRouteJson clips traces out of a rectangular region", () =>
     trace.pcb_trace_id.startsWith("source_net_0_0_keep_"),
   )
   expect(affectedTracePieces).toHaveLength(2)
+  expect(affectedTracePieces?.map((trace) => trace.route)).toEqual([
+    [
+      { route_type: "wire", x: -5, y: 0, layer: "top", width: 0.15 },
+      { route_type: "wire", x: -1, y: 0, layer: "top", width: 0.15 },
+    ],
+    [
+      { route_type: "wire", x: 1, y: 0, layer: "top", width: 0.15 },
+      { route_type: "wire", x: 5, y: 0, layer: "top", width: 0.15 },
+    ],
+  ])
+  expect(
+    rerouted.obstacles.some((obstacle) =>
+      obstacle.obstacleId?.includes("_margin_"),
+    ),
+  ).toBe(false)
   expect(
     rerouted.traces?.some((trace) => trace.pcb_trace_id === "source_net_1_0"),
   ).toBe(true)
@@ -123,6 +142,7 @@ test("getRerouteSimpleRouteJson keeps trace endpoints inside the region connecta
       minY: -1,
       maxY: 1,
     },
+    { boundsMargin: 0.25 },
   )
 
   expect(rerouted.connections).toHaveLength(1)
@@ -154,7 +174,7 @@ test("getRerouteSimpleRouteJson keeps trace endpoints inside the region connecta
   expect(rerouted.traces).toHaveLength(0)
 })
 
-test("getRerouteSimpleRouteJson expands bounds for clipped trace segment obstacles", () => {
+test("getRerouteSimpleRouteJson keeps clipped trace stubs inside expanded routing bounds", () => {
   const rerouted = getRerouteSimpleRouteJson(
     {
       ...srj,
@@ -183,12 +203,13 @@ test("getRerouteSimpleRouteJson expands bounds for clipped trace segment obstacl
       minY: -1,
       maxY: 1,
     },
+    { boundsMargin: 0.25 },
   )
 
-  expect(rerouted.bounds.minX).toBeLessThan(-1.075)
-  expect(rerouted.bounds.maxX).toBe(1)
-  expect(rerouted.bounds.minY).toBe(-1)
-  expect(rerouted.bounds.maxY).toBe(1)
+  expect(rerouted.bounds.minX).toBeLessThan(-1.325)
+  expect(rerouted.bounds.maxX).toBe(1.25)
+  expect(rerouted.bounds.minY).toBe(-1.25)
+  expect(rerouted.bounds.maxY).toBe(1.25)
 
   const reroutedWithTraceObstacles = convertSrjTracesToObstacles(rerouted)
   const traceObstacles =
@@ -198,6 +219,7 @@ test("getRerouteSimpleRouteJson expands bounds for clipped trace segment obstacl
       ),
     ) ?? []
 
+  expect(rerouted.traces).toHaveLength(1)
   expect(traceObstacles).toHaveLength(1)
   expect(
     traceObstacles.every((obstacle) => {
@@ -212,14 +234,58 @@ test("getRerouteSimpleRouteJson expands bounds for clipped trace segment obstacl
   ).toBe(true)
 })
 
-test("reconnectReroutedSimpleRouteJsonRegion restores original connections", () => {
-  const rerouted = getRerouteSimpleRouteJson(srj, {
+test("getRerouteSimpleRouteJson automatically expands dense reroute regions", () => {
+  const denseSrj: SimpleRouteJson = {
+    ...srj,
+    traces: Array.from({ length: 20 }, (_, index) => ({
+      type: "pcb_trace",
+      pcb_trace_id: `source_net_${index}_0`,
+      connection_name: `source_net_${index}`,
+      route: [
+        {
+          route_type: "wire",
+          x: -5,
+          y: -0.9 + index * 0.09,
+          width: 0.15,
+          layer: "top",
+        },
+        {
+          route_type: "wire",
+          x: 5,
+          y: -0.9 + index * 0.09,
+          width: 0.15,
+          layer: "top",
+        },
+      ],
+    })),
+  }
+
+  const rerouted = getRerouteSimpleRouteJson(denseSrj, {
     shape: "rect",
     minX: -1,
     maxX: 1,
     minY: -1,
     maxY: 1,
   })
+
+  expect(rerouted.connections).toHaveLength(20)
+  expect(rerouted.bounds).toEqual({
+    minX: -2.075,
+    maxX: 2.075,
+    minY: -2,
+    maxY: 2,
+  })
+})
+
+test("reconnectReroutedSimpleRouteJsonRegion restores original connections", () => {
+  const region = {
+    shape: "rect",
+    minX: -1,
+    maxX: 1,
+    minY: -1,
+    maxY: 1,
+  } as const
+  const rerouted = getRerouteSimpleRouteJson(srj, region)
   rerouted.traces?.push({
     type: "pcb_trace",
     pcb_trace_id: "rerouted_trace_0",
@@ -230,12 +296,22 @@ test("reconnectReroutedSimpleRouteJsonRegion restores original connections", () 
     ],
   })
 
-  const reconnected = reconnectReroutedSimpleRouteJsonRegion(srj, rerouted)
+  const reconnected = reconnectReroutedSimpleRouteJsonRegion(srj, rerouted, {
+    region,
+  })
 
   expect(reconnected.connections).toEqual(srj.connections)
   expect(
     reconnected.traces?.find(
-      (trace) => trace.pcb_trace_id === "rerouted_trace_0",
+      (trace) => trace.pcb_trace_id === "rerouted_trace_0_inside_0",
     )?.connection_name,
   ).toBe("source_net_0")
+  expect(
+    reconnected.traces?.find(
+      (trace) => trace.pcb_trace_id === "source_net_0_0_keep_0",
+    )?.route,
+  ).toEqual([
+    { route_type: "wire", x: -5, y: 0, layer: "top", width: 0.15 },
+    { route_type: "wire", x: -1, y: 0, layer: "top", width: 0.15 },
+  ])
 })

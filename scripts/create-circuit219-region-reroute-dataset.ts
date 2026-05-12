@@ -5,6 +5,8 @@ import path from "node:path"
 import * as dataset01 from "@tscircuit/autorouting-dataset-01"
 import {
   AutoroutingPipelineSolver4,
+  DEFAULT_REROUTE_BOUNDS_MARGIN,
+  DEFAULT_REROUTE_BOUNDS_MARGIN_CONNECTION_THRESHOLD,
   getRerouteSimpleRouteJson,
   type RerouteRectRegion,
 } from "../lib"
@@ -131,6 +133,11 @@ const main = async () => {
       sourceCircuit: "circuit219",
       generatedWith: "AutoroutingPipelineSolver4",
       rerouteMethod: "getRerouteSimpleRouteJson",
+      rerouteBoundsMargin: {
+        mode: "auto",
+        margin: DEFAULT_REROUTE_BOUNDS_MARGIN,
+        connectionThreshold: DEFAULT_REROUTE_BOUNDS_MARGIN_CONNECTION_THRESHOLD,
+      },
       randomSeed: RANDOM_SEED,
       sampleCount: SAMPLE_COUNT,
       minRegionSize: MIN_REGION_SIZE,

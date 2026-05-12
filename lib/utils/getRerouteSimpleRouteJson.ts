@@ -15,6 +15,14 @@ export type RerouteRectRegion = {
   maxY: number
 }
 
+export type RerouteSimpleRouteJsonOptions = {
+  boundsMargin?: number
+}
+
+export type ReconnectReroutedSimpleRouteJsonRegionOptions = {
+  region?: RerouteRectRegion
+}
+
 type RoutePoint = SimplifiedPcbTrace["route"][number]
 type WireRoutePoint = Extract<RoutePoint, { route_type: "wire" }>
 type ViaRoutePoint = Extract<RoutePoint, { route_type: "via" }>
@@ -44,6 +52,8 @@ type RerouteConnectionResult = {
   endpointObstacles: Obstacle[]
 }
 
+export const DEFAULT_REROUTE_BOUNDS_MARGIN = 1
+export const DEFAULT_REROUTE_BOUNDS_MARGIN_CONNECTION_THRESHOLD = 20
 const EPSILON = 1e-9
 
 const isWireRoutePoint = (point: RoutePoint): point is WireRoutePoint =>
@@ -183,6 +193,19 @@ const getRectInsideInterval = (
   return { startT: t0, endT: t1 }
 }
 
+const expandRegionWithMargin = (
+  region: RerouteRectRegion,
+  margin: number,
+): RerouteRectRegion => {
+  return {
+    shape: "rect" as const,
+    minX: region.minX - margin,
+    maxX: region.maxX + margin,
+    minY: region.minY - margin,
+    maxY: region.maxY + margin,
+  }
+}
+
 const distance = (a: LocatedPoint, b: LocatedPoint) =>
   Math.hypot(a.x - b.x, a.y - b.y)
 
@@ -206,11 +229,27 @@ const appendClippedTraceSegment = (
   start: LocatedPoint,
   end: LocatedPoint,
 ) => {
+  appendTraceSegment(
+    traces,
+    trace,
+    `${trace.pcb_trace_id}_keep_${segmentIndex}`,
+    start,
+    end,
+  )
+}
+
+const appendTraceSegment = (
+  traces: SimplifiedPcbTrace[],
+  trace: Pick<SimplifiedPcbTrace, "connection_name">,
+  pcbTraceId: string,
+  start: LocatedPoint,
+  end: LocatedPoint,
+) => {
   if (distance(start, end) <= EPSILON) return
 
   traces.push({
     type: "pcb_trace",
-    pcb_trace_id: `${trace.pcb_trace_id}_keep_${segmentIndex}`,
+    pcb_trace_id: pcbTraceId,
     connection_name: trace.connection_name,
     route: [
       locatedPointToWireRoutePoint(start),
@@ -520,9 +559,42 @@ const getClippedTracePieces = (
   }
 }
 
+const getTraceInsideRegionPieces = (
+  trace: SimplifiedPcbTrace,
+  region: RerouteRectRegion,
+  fallbackWidth: number,
+) => {
+  const insideTraces: SimplifiedPcbTrace[] = []
+  let tracePieceIndex = 0
+
+  for (let i = 0; i < trace.route.length - 1; i++) {
+    const start = getRoutePointLocation(trace.route[i]!)
+    const end = getRoutePointLocation(trace.route[i + 1]!)
+
+    if (!start || !end) return [structuredClone(trace)]
+
+    const layer = getSegmentLayer(start, end)
+    const width = getSegmentWidth(start, end, fallbackWidth)
+    const interval = getRectInsideInterval(start, end, region)
+
+    if (!interval || interval.endT - interval.startT <= EPSILON) continue
+
+    appendTraceSegment(
+      insideTraces,
+      trace,
+      `${trace.pcb_trace_id}_inside_${tracePieceIndex++}`,
+      getInterpolatedPoint(start, end, interval.startT, layer, width),
+      getInterpolatedPoint(start, end, interval.endT, layer, width),
+    )
+  }
+
+  return insideTraces
+}
+
 export const getRerouteSimpleRouteJson = (
   simpleRouteJson: SimpleRouteJson,
   region: RerouteRectRegion,
+  options: RerouteSimpleRouteJsonOptions = {},
 ): SimpleRouteJson => {
   const nextSrj = structuredClone(simpleRouteJson)
   const nextTraces: SimplifiedPcbTrace[] = []
@@ -555,10 +627,28 @@ export const getRerouteSimpleRouteJson = (
     )
   }
 
-  const bounds = expandRegionToContainObstacles(region, [
+  const boundsWithoutMargin = expandRegionToContainObstacles(region, [
     ...rerouteEndpointObstacles,
     ...clippedTraceSegmentObstacles,
   ])
+  const boundsMargin = Math.max(
+    0,
+    options.boundsMargin ??
+      (rerouteConnections.length >=
+      DEFAULT_REROUTE_BOUNDS_MARGIN_CONNECTION_THRESHOLD
+        ? DEFAULT_REROUTE_BOUNDS_MARGIN
+        : 0),
+  )
+  const expandedBounds = expandRegionWithMargin(
+    { shape: "rect", ...boundsWithoutMargin },
+    boundsMargin,
+  )
+  const bounds: SimpleRouteJson["bounds"] = {
+    minX: expandedBounds.minX,
+    maxX: expandedBounds.maxX,
+    minY: expandedBounds.minY,
+    maxY: expandedBounds.maxY,
+  }
 
   return {
     ...nextSrj,
@@ -572,6 +662,7 @@ export const getRerouteSimpleRouteJson = (
 export const reconnectReroutedSimpleRouteJsonRegion = (
   originalSrj: SimpleRouteJson,
   reroutedSrj: SimpleRouteJson,
+  options: ReconnectReroutedSimpleRouteJsonRegionOptions = {},
 ): SimpleRouteJson => {
   const rerouteConnectionToRoot = new Map(
     reroutedSrj.connections.map((connection) => [
@@ -580,17 +671,45 @@ export const reconnectReroutedSimpleRouteJsonRegion = (
     ]),
   )
 
-  const traces = (reroutedSrj.traces ?? []).map((trace) => {
+  const reroutedTraces = (reroutedSrj.traces ?? []).flatMap((trace) => {
     const rootConnectionName = rerouteConnectionToRoot.get(
       trace.connection_name,
     )
-    if (!rootConnectionName) return structuredClone(trace)
+    if (!rootConnectionName) {
+      return options.region ? [] : [structuredClone(trace)]
+    }
 
-    return {
+    const rootedTrace = {
       ...structuredClone(trace),
       connection_name: rootConnectionName,
     }
+
+    if (!options.region) return [rootedTrace]
+
+    return getTraceInsideRegionPieces(
+      rootedTrace,
+      options.region,
+      originalSrj.minTraceWidth,
+    )
   })
+  const traces = options.region
+    ? [
+        ...(originalSrj.traces ?? []).flatMap((trace) => {
+          const clippedPieces = getClippedTracePieces(
+            trace,
+            options.region!,
+            originalSrj.minTraceWidth,
+          )
+
+          if (!clippedPieces || !clippedPieces.hadIntersection) {
+            return [structuredClone(trace)]
+          }
+
+          return clippedPieces.keptTraces
+        }),
+        ...reroutedTraces,
+      ]
+    : reroutedTraces
 
   return {
     ...structuredClone(originalSrj),
