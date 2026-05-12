@@ -1,17 +1,5 @@
-interface ConnectivityMap {
-  getNetId: (pinId: string) => string | undefined
-  netMap: Record<string, string[]>
-  idToNetMap: Record<string, string>
-  addConnections: (connections: any[]) => void
-  getIdsConnectedToNet: (netId: string) => string[]
-  [key: string]: any
-}
-interface GraphicsObject {
-  lines: any[]
-  points: any[]
-  rects: any[]
-  circles: any[]
-}
+type ConnectivityMap = any;
+type GraphicsObject = any;
 import type { CapacityMeshNodeId } from "lib/types/capacity-mesh-types"
 import { mergeRouteSegments } from "lib/utils/mergeRouteSegments"
 import { BaseSolver, type PendingEffect } from "../../solvers/BaseSolver"
