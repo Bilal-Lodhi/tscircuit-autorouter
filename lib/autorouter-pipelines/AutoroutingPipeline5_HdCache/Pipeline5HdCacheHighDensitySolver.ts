@@ -1,8 +1,12 @@
+interface ConnectivityMap { getNetId: (pinId: string) => string | undefined }
+interface GraphicsObject { lines: any[], points: any[], rects: any[], circles: any[] }
 import type { CapacityMeshNodeId } from "lib/types/capacity-mesh-types"
+import { mergeRouteSegments } from "lib/utils/mergeRouteSegments"
 import { BaseSolver, type PendingEffect } from "../../solvers/BaseSolver"
 import { CachedIntraNodeRouteSolver } from "../../solvers/HighDensitySolver/CachedIntraNodeRouteSolver"
 import { IntraNodeRouteSolver } from "../../solvers/HighDensitySolver/IntraNodeSolver"
 import { HyperSingleIntraNodeSolver } from "../../solvers/HyperHighDensitySolver/HyperSingleIntraNodeSolver"
+import { safeTransparentize } from "../../solvers/colors"
 import type {
   HighDensityIntraNodeRoute,
   NodeWithPortPoints,
@@ -466,7 +470,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
 
   readonly unsolvedNodePortPoints: NodeWithPortPoints[]
   readonly colorMap: Record<string, string>
-  readonly connMap?: any
+  readonly connMap?: ConnectivityMap
   readonly viaDiameter: number
   readonly traceWidth: number
   readonly obstacleMargin: number
@@ -1210,16 +1214,184 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
     this.solved = true
   }
 
-  /**
-   * Visual rendering is disabled to minimize import surface.
-   * Returns an empty GraphicsObject stub so BaseSolver contract is satisfied.
-   */
-  override visualize(): any {
-    return {
+  override visualize(): GraphicsObject {
+    const graphics: GraphicsObject = {
       lines: [],
       points: [],
       rects: [],
       circles: [],
     }
+
+    for (const route of this.getVisibleRoutes()) {
+      const mergedSegments = mergeRouteSegments(
+        route.route,
+        route.connectionName,
+        this.colorMap[route.connectionName],
+      )
+
+      for (const segment of mergedSegments) {
+        graphics.lines!.push({
+          points: segment.points,
+          label: segment.connectionName,
+          strokeColor:
+            segment.z === 0
+              ? segment.color
+              : safeTransparentize(segment.color, 0.75),
+          layer: `z${segment.z}`,
+          strokeWidth: route.traceThickness,
+          strokeDash: segment.z !== 0 ? "10, 5" : undefined,
+        })
+      }
+
+      for (const via of route.vias) {
+        graphics.circles!.push({
+          center: via,
+          layer: "z0,1",
+          radius: route.viaDiameter / 2,
+          fill: this.colorMap[route.connectionName],
+          label: `${route.connectionName} via`,
+        })
+      }
+    }
+
+    for (const [capacityMeshNodeId, metadata] of this.nodeSolveMetadataById) {
+      const left = metadata.node.center.x - metadata.node.width / 2
+      const right = metadata.node.center.x + metadata.node.width / 2
+      const top = metadata.node.center.y - metadata.node.height / 2
+      const bottom = metadata.node.center.y + metadata.node.height / 2
+      const label = this.createNodeMarkerLabel(capacityMeshNodeId, metadata)
+      const markerColor = metadata.status === "solved" ? "blue" : "red"
+      const boundaryStrokeWidth = metadata.status === "solved" ? 0.03 : 0.08
+
+      graphics.lines!.push(
+        {
+          points: [
+            { x: left, y: top },
+            { x: right, y: top },
+          ],
+          layer: "hd_node_boundaries",
+          strokeColor: markerColor,
+          strokeDash: "6, 4",
+          strokeWidth: boundaryStrokeWidth,
+          label,
+        },
+        {
+          points: [
+            { x: right, y: top },
+            { x: right, y: bottom },
+          ],
+          layer: "hd_node_boundaries",
+          strokeColor: markerColor,
+          strokeDash: "6, 4",
+          strokeWidth: boundaryStrokeWidth,
+          label,
+        },
+        {
+          points: [
+            { x: right, y: bottom },
+            { x: left, y: bottom },
+          ],
+          layer: "hd_node_boundaries",
+          strokeColor: markerColor,
+          strokeDash: "6, 4",
+          strokeWidth: boundaryStrokeWidth,
+          label,
+        },
+        {
+          points: [
+            { x: left, y: bottom },
+            { x: left, y: top },
+          ],
+          layer: "hd_node_boundaries",
+          strokeColor: markerColor,
+          strokeDash: "6, 4",
+          strokeWidth: boundaryStrokeWidth,
+          label,
+        },
+      )
+
+      if (metadata.status === "solved") {
+        graphics.points!.push({
+          x: metadata.node.center.x,
+          y: metadata.node.center.y,
+          color: markerColor,
+          layer: "hd_node_markers",
+          label,
+        })
+      } else {
+        graphics.lines!.push({
+          points: [
+            { x: 0, y: 0 },
+            {
+              x: metadata.node.center.x,
+              y: metadata.node.center.y,
+            },
+          ],
+          layer: "hd_failed_node_guides",
+          strokeColor: markerColor,
+          strokeDash: "8, 6",
+          strokeWidth: 0.05,
+          label,
+        })
+        const rectWidth = Math.max(metadata.node.width, 1.2)
+        const rectHeight = Math.max(metadata.node.height, 1.2)
+        const halfRectWidth = rectWidth / 2
+        const halfRectHeight = rectHeight / 2
+
+        graphics.rects!.push({
+          center: metadata.node.center,
+          layer: "hd_node_markers",
+          width: rectWidth,
+          height: rectHeight,
+          fill: "rgba(255, 0, 0, 0.3)",
+          stroke: markerColor,
+          label,
+        })
+        graphics.circles!.push({
+          center: metadata.node.center,
+          radius: Math.max(Math.max(rectWidth, rectHeight) * 0.6, 1.1),
+          layer: "hd_node_markers",
+          fill: "rgba(255, 0, 0, 0.08)",
+          stroke: markerColor,
+          label,
+        })
+        graphics.lines!.push(
+          {
+            points: [
+              {
+                x: metadata.node.center.x - halfRectWidth,
+                y: metadata.node.center.y - halfRectHeight,
+              },
+              {
+                x: metadata.node.center.x + halfRectWidth,
+                y: metadata.node.center.y + halfRectHeight,
+              },
+            ],
+            layer: "hd_node_markers",
+            strokeColor: markerColor,
+            strokeWidth: 0.16,
+            label,
+          },
+          {
+            points: [
+              {
+                x: metadata.node.center.x - halfRectWidth,
+                y: metadata.node.center.y + halfRectHeight,
+              },
+              {
+                x: metadata.node.center.x + halfRectWidth,
+                y: metadata.node.center.y - halfRectHeight,
+              },
+            ],
+            layer: "hd_node_markers",
+            strokeColor: markerColor,
+            strokeWidth: 0.16,
+            label,
+          },
+        )
+      }
+    }
+
+    return graphics
   }
 }
