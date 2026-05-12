@@ -1215,11 +1215,11 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
   }
 
   override visualize(): GraphicsObject {
-    return {
-      lines: [],
-      points: [],
-      rects: [],
-      circles: [],
+    const graphics: GraphicsObject = {
+      lines: [] as any[],
+      points: [] as any[],
+      rects: [] as any[],
+      circles: [] as any[],
     }
 
     for (const route of this.getVisibleRoutes()) {
@@ -1230,7 +1230,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
       )
 
       for (const segment of mergedSegments) {
-        graphics.lines!.push({
+        graphics.lines.push({
           points: segment.points,
           label: segment.connectionName,
           strokeColor:
@@ -1244,7 +1244,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
       }
 
       for (const via of route.vias) {
-        graphics.circles!.push({
+        graphics.circles.push({
           center: via,
           layer: "z0,1",
           radius: route.viaDiameter / 2,
@@ -1263,7 +1263,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
       const markerColor = metadata.status === "solved" ? "blue" : "red"
       const boundaryStrokeWidth = metadata.status === "solved" ? 0.03 : 0.08
 
-      graphics.lines!.push(
+      graphics.lines.push(
         {
           points: [
             { x: left, y: top },
@@ -1311,7 +1311,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
       )
 
       if (metadata.status === "solved") {
-        graphics.points!.push({
+        graphics.points.push({
           x: metadata.node.center.x,
           y: metadata.node.center.y,
           color: markerColor,
@@ -1319,7 +1319,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
           label,
         })
       } else {
-        graphics.lines!.push({
+        graphics.lines.push({
           points: [
             { x: 0, y: 0 },
             {
@@ -1338,7 +1338,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
         const halfRectWidth = rectWidth / 2
         const halfRectHeight = rectHeight / 2
 
-        graphics.rects!.push({
+        graphics.rects.push({
           center: metadata.node.center,
           layer: "hd_node_markers",
           width: rectWidth,
@@ -1347,7 +1347,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
           stroke: markerColor,
           label,
         })
-        graphics.circles!.push({
+        graphics.circles.push({
           center: metadata.node.center,
           radius: Math.max(Math.max(rectWidth, rectHeight) * 0.6, 1.1),
           layer: "hd_node_markers",
@@ -1355,7 +1355,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
           stroke: markerColor,
           label,
         })
-        graphics.lines!.push(
+        graphics.lines.push(
           {
             points: [
               {
