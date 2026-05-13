@@ -1,11 +1,4 @@
-interface ConnectivityMap {
-  getNetId: (pinId: string) => string | undefined
-  netMap: Record<string, string[]>
-  idToNetMap: Record<string, string>
-  addConnections: (connections: any[]) => void
-  getIdsConnectedToNet: (netId: string) => string[]
-  [key: string]: any
-}
+import type { ConnectivityMap } from "circuit-json-to-connectivity-map"
 import type { CapacityMeshNodeId } from "lib/types/capacity-mesh-types"
 import { mergeRouteSegments } from "lib/utils/mergeRouteSegments"
 import { BaseSolver, type PendingEffect } from "../../solvers/BaseSolver"
