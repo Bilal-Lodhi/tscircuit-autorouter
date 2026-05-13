@@ -1,5 +1,11 @@
-type ConnectivityMap = any
-type GraphicsObject = any
+interface ConnectivityMap {
+  getNetId: (pinId: string) => string | undefined
+  netMap: Record<string, string[]>
+  idToNetMap: Record<string, string>
+  addConnections: (connections: any[]) => void
+  getIdsConnectedToNet: (netId: string) => string[]
+  [key: string]: any
+}
 import type { CapacityMeshNodeId } from "lib/types/capacity-mesh-types"
 import { mergeRouteSegments } from "lib/utils/mergeRouteSegments"
 import { BaseSolver, type PendingEffect } from "../../solvers/BaseSolver"
@@ -83,16 +89,9 @@ type NodeSolveMetadata = {
 // ---------------------------------------------------------------------------
 
 /**
- * A lightweight spatial index for resolved intra-node routes that lets us
- * detect corridor collisions between traces *before* they leave the solver.
- *
- * Rather than building a full grid, we store each route's centerline
- * segments with the effective "corridor half-width" that must be reserved
- * around it.  When a new route is returned by the remote solver or the
- * local fallback, we test every segment of the new route against every
- * previously-accepted route.  If any segment-segment distance is less than
- * the sum of the two corridor half-widths, the new route is rejected and
- * the node is re-solved with stricter clearance parameters.
+ * CorridorCollisionIndex stores each route's centerline segments with
+ * their effective corridor half-width. Performance scales linearly with
+ * segment density per layer block.
  */
 interface CorridorSegment {
   /** Start point of this segment. */
@@ -142,14 +141,24 @@ class CorridorCollisionIndex {
       const a = resolvedRoute[i]!
       const b = resolvedRoute[i + 1]!
 
-      // Store one segment per unique z so querying is cheap.
-      const layerZ = a.z ?? b.z ?? 0
-      let layer = this.segmentsByZ.get(layerZ)
-      if (!layer) {
-        layer = []
-        this.segmentsByZ.set(layerZ, layer)
+      // Register segment on both endpoint layers for via transitions
+      const layerZA = a.z ?? 0
+      const layerZB = b.z ?? 0
+
+      const addSegmentToLayer = (z: number, seg: any) => {
+        let layer = this.segmentsByZ.get(z)
+        if (!layer) {
+          layer = []
+          this.segmentsByZ.set(z, layer)
+        }
+        layer.push(seg)
       }
-      layer.push({ a, b, halfWidth })
+
+      const segment = { a, b, halfWidth }
+      addSegmentToLayer(layerZA, segment)
+      if (layerZA !== layerZB) {
+        addSegmentToLayer(layerZB, segment)
+      }
     }
   }
 
@@ -248,17 +257,16 @@ function segmentToSegmentDistance(
     )
   }
 
-  const t = (acx * cdy - acy * cdx) / denom
-  const u = (acx * aby - acy * abx) / denom
-  const tClamped = Math.max(0, Math.min(1, t))
-  const uClamped = Math.max(0, Math.min(1, u))
-
-  const px = a.x + tClamped * abx
-  const py = a.y + tClamped * aby
-  const qx = c.x + uClamped * cdx
-  const qy = c.y + uClamped * cdy
-
-  return Math.sqrt((px - qx) ** 2 + (py - qy) ** 2)
+  // Robust 2D segment distance: fall back to minimum of the four
+  // endpoint-to-segment distances instead of independent clamping.
+  const distToSeg = (p: any, s1: any, s2: any) =>
+    pointToSegmentDistancePoint(p, s1, s2)
+  return Math.min(
+    distToSeg(c, a, b),
+    distToSeg(d, a, b),
+    distToSeg(a, c, d),
+    distToSeg(b, c, d),
+  )
 }
 
 /** Point-to-segment distance inline helper (avoids heavy imports). */
@@ -532,7 +540,7 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
   }: {
     nodePortPoints: NodeWithPortPoints[]
     colorMap?: Record<string, string>
-    connMap?: any
+    connMap?: ConnectivityMap
     viaDiameter?: number
     traceWidth?: number
     obstacleMargin?: number
@@ -1214,13 +1222,8 @@ export class Pipeline5HdCacheHighDensitySolver extends BaseSolver {
     this.solved = true
   }
 
-  override visualize(): GraphicsObject {
-    const graphics: GraphicsObject = {
-      lines: [] as any[],
-      points: [] as any[],
-      rects: [] as any[],
-      circles: [] as any[],
-    }
+  override visualize(): any {
+    const graphics: any = { lines: [], points: [], rects: [], circles: [] }
 
     for (const route of this.getVisibleRoutes()) {
       const mergedSegments = mergeRouteSegments(
