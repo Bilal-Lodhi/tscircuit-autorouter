@@ -203,7 +203,9 @@ const MIN_CLEARANCE = 0.15
 const INDEX_SIZE = 1000
 const Q = 5000
 
-function makeRoute(coords: [number, number, number][]): HighDensityIntraNodeRoute {
+function makeRoute(
+  coords: [number, number, number][],
+): HighDensityIntraNodeRoute {
   return {
     connectionName: "bench",
     traceThickness: 0.15,
@@ -272,7 +274,9 @@ function runScenarioA(): { totalUs: number; perOpUs: number } {
   )
   console.log(`    Total time:     ${totalMs.toFixed(2)} ms`)
   console.log(`    Per-operation:  ${perOpUs.toFixed(2)} µs`)
-  console.log(`    Collisions:     ${totalCollisions} ${totalCollisions === 0 ? "✓" : "✗ UNEXPECTED"}`)
+  console.log(
+    `    Collisions:     ${totalCollisions} ${totalCollisions === 0 ? "✓" : "✗ UNEXPECTED"}`,
+  )
 
   return { totalUs, perOpUs }
 }
@@ -287,7 +291,10 @@ function runScenarioB(): { totalUs: number; perOpUs: number } {
   const index = new CorridorCollisionIndex(MIN_CLEARANCE)
 
   // Same INDEX_SIZE segments layout
-  const registered: { a: { x: number; y: number }; b: { x: number; y: number } }[] = []
+  const registered: {
+    a: { x: number; y: number }
+    b: { x: number; y: number }
+  }[] = []
   for (let i = 0; i < INDEX_SIZE; i++) {
     const ax = (i % 40) * 50
     const ay = Math.floor(i / 40) * 50
@@ -324,7 +331,9 @@ function runScenarioB(): { totalUs: number; perOpUs: number } {
   )
   console.log(`    Total time:     ${totalMs.toFixed(2)} ms`)
   console.log(`    Per-operation:  ${perOpUs.toFixed(2)} µs`)
-  console.log(`    Collisions:     ${totalCollisions} ${totalCollisions === Q ? "✓" : "✗ EXPECTED " + Q}`)
+  console.log(
+    `    Collisions:     ${totalCollisions} ${totalCollisions === Q ? "✓" : "✗ EXPECTED " + Q}`,
+  )
 
   return { totalUs, perOpUs }
 }
@@ -355,4 +364,3 @@ console.log(
 console.log(
   `  Stage-1→Stage-2 ratio:    ${(resultB.perOpUs / Math.max(resultA.perOpUs, 0.001)).toFixed(1)}x slower in worst-case`,
 )
-console.log()
